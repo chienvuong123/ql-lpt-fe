@@ -1,0 +1,8 @@
+.ant-card {
+  background-clip: padding-box;
+}
+
+/* small adjustments to match screenshot spacing */
+.ant-card .ant-typography {
+  color: #0b1330;
+}

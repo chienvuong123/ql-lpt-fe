@@ -1,0 +1,15 @@
+.drawer-alert {
+  position: fixed;
+  top: 20px;
+  right: 34px;
+  width: 920px;
+  z-index: 1001;
+}
+
+.alert-success {
+  border-left: 5px solid #31c23f;
+}
+
+.alert-error {
+  border-left: 5px solid #db3333;
+}

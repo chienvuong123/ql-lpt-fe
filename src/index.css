@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2")
+    format("woff2");
+  /* Bỏ unicode-range để load cho TẤT CẢ ký tự */
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/inter/v20/UcC75FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/inter/v20/UcC75FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/inter/v20/UcC75FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2")
+    format("woff2");
+}
+
+* {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    sans-serif !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    sans-serif !important;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* AntD message (toast) custom blue style */
+.ant-message-notice .ant-message-notice-content {
+  background: linear-gradient(90deg, #0b57e6 0%, #0a3fd1 100%);
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 6px 18px rgba(11, 37, 120, 0.16);
+}
+.ant-message-notice .ant-message-notice-content .ant-message-custom-content {
+  color: #fff;
+}
+.ant-message-notice .anticon {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Blue table header for admin tables */
+.table-blue .ant-table-thead > tr > th {
+  background: linear-gradient(180deg, #165fb8 0%, #0b4fb6 100%);
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.table-blue .ant-table-thead > tr > th .ant-table-cell-scrollbar {
+  background: transparent;
+}
+.table-blue .ant-table-tbody > tr > td {
+  background: #fff;
+}
+
+/* === Custom Ant Design Message === */
+
+/* Container chính: nền trắng, viền nhẹ, shadow chuẩn */
+.ant-message-notice-content {
+  background-color: #ffffff !important;
+  border: 1px solid #e8e8e8 !important; /* viền xám nhạt */
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  padding: 10px 16px !important;
+  min-width: 300px !important; /* tránh quá hẹp */
+}
+
+/* Không ép màu chữ chung, để Antd tự quản lý theo type */
+.ant-message-custom-content {
+  color: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+/* Icon + text kế thừa màu từ type */
+.ant-message .anticon {
+  color: inherit !important;
+  font-size: 16px !important;
+  margin-right: 8px !important;
+}
+
+/* === Màu theo trạng thái (khôi phục mặc định Antd + tăng độ tương phản nếu cần) === */
+.ant-message-success .ant-message-custom-content,
+.ant-message-success .anticon {
+  color: #52c41a !important; /* xanh lá success */
+}
+
+.ant-message-error .ant-message-custom-content,
+.ant-message-error .anticon {
+  color: #f5222d !important; /* đỏ đậm hơn một chút cho nổi bật (tùy chọn #ff4d4f) */
+}
+
+.ant-message-warning .ant-message-custom-content,
+.ant-message-warning .anticon {
+  color: #faad14 !important; /* vàng warning */
+}
+
+.ant-message-info .ant-message-custom-content,
+.ant-message-info .anticon {
+  color: #1890ff !important; /* xanh dương info */
+}
+
+/* Nếu dự án có dark mode (tùy chọn) */
+@media (prefers-color-scheme: dark) {
+  .ant-message-notice-content {
+    /* background-color: #1f1f1f !important;
+    border-color: #434343 !important; */
+    color: #e6e6e6 !important;
+  }
+
+  .ant-message-success .ant-message-custom-content,
+  .ant-message-success .anticon {
+    color: #73d13d !important; /* xanh sáng hơn cho dark */
+  }
+
+  .ant-message-error .ant-message-custom-content,
+  .ant-message-error .anticon {
+    color: #ff7875 !important;
+  }
+
+  .ant-message-warning .ant-message-custom-content,
+  .ant-message-warning .anticon {
+    color: #ffd666 !important;
+  }
+
+  .ant-message-info .ant-message-custom-content,
+  .ant-message-info .anticon {
+    color: #69c0ff !important;
+  }
+}
+
+/* Fix thêm nếu Tailwind reset quá mạnh */
+.ant-message span,
+.ant-message div {
+  color: inherit !important;
+}

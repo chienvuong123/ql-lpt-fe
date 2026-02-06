@@ -1,0 +1,52 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ConfigProvider } from "antd";
+import viVN from "antd/locale/vi_VN";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import SearchStudents from "./pages/SearchStudents";
+import StudentDetail from "./pages/StudentDetail";
+import Login from "./pages/auth/LoginAntd";
+import LayoutApp from "./components/LayoutApp";
+import LayoutDashboard from "./components/LayoutDashboard";
+import Dashboard from "./pages/dashboard";
+import DongBoGiaoVienVaoXe from "./pages/synchronous/DongBoGiaoVienVaoXe";
+import DongBoHocVienVaoXe from "./pages/synchronous/DongBoHocVienVaoXe";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+    },
+  },
+});
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ConfigProvider locale={viVN}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/tim-hoc-vien" element={<LayoutApp />}>
+              <Route index element={<SearchStudents />} />
+              <Route path="student/:id" element={<StudentDetail />} />
+            </Route>
+            <Route path="/" element={<LayoutDashboard />}>
+              <Route index element={<Dashboard />} />
+              <Route
+                path="dong-bo-giao-vien-ve-xe"
+                element={<DongBoGiaoVienVaoXe />}
+              />
+              <Route
+                path="dong-bo-hoc-vien-ve-xe"
+                element={<DongBoHocVienVaoXe />}
+              />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ConfigProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
