@@ -112,13 +112,13 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
 
     // POPUP CONTENT: Dùng Tailwind CSS hoàn toàn
     const popupContent = `
-      <div class="min-w-[150px] font-sans">
-        <div class="text-xs text-gray-700">
-          <p>Vận tốc: <span class="font-bold text-gray-900">${speed}</span></p>
-          <p class="!mt-[-10px]">Quãng đường: <span class="font-bold text-gray-900">${totalKm}</span></p>
-          <p class="text-[10px] text-gray-400 !mt-[-10px]">Thời gian thực: ${new Date(timestamp).toLocaleTimeString("vi-VN")}</p>
-        </div>
-      </div>`;
+        <div class="min-w-[150px] font-sans p-1">
+            <div class="flex flex-col gap-0 text-xs text-gray-700">
+            <p class="!m-0.5">Vận tốc: <span class="font-bold text-gray-900">${speed} Km/h</span></p>
+            <p class="!m-0.5">Quãng đường: <span class="font-bold text-gray-900">${totalKm} Km</span></p>
+            <p class="!m-0.5 text-[10px] text-gray-400 mt-1">Thời gian: ${new Date(timestamp).toLocaleTimeString("vi-VN")}</p>
+            </div>
+        </div>`;
 
     if (markerRef.current && map.hasLayer(markerRef.current)) {
       markerRef.current.setLatLng([latitude, longitude]);
@@ -134,6 +134,7 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
           offset: [0, -10],
           autoClose: false,
           closeOnClick: false,
+          closeButton: false,
           className: "custom-smooth-popup",
         });
     }
@@ -151,19 +152,19 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
     <div className="relative w-full h-122 rounded-xl overflow-hidden border border-gray-200 shadow-inner bg-gray-50">
       <div ref={mapRef} className="w-full h-full z-10" />
       <div className=" absolute bottom-0 right-0 z-[1000] bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 text-[11px] font-medium text-gray-700 space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-0.5">
           <span class="w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></span>
           <span>Điểm đi</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-0.5">
           <span class="w-6 h-1 bg-blue-500 rounded-full"></span>
           <span>Lộ trình</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-0.5">
           <span class="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
           <span>Điểm đến</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-0.5">
           <img
             src="https://cdn-icons-png.flaticon.com/512/744/744465.png"
             class="w-4 h-4"
