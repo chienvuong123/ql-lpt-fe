@@ -24,7 +24,7 @@ export default function DongBoHocVienVaoXe() {
   const [searchCar, setSearchCar] = useState("");
   const [debouncedSearchCar, setDebouncedSearchCar] = useState(searchCar);
   const debounceTimer = useRef(null);
-  const [selectedTeacherKeys, setSelectedTeacherKeys] = useState([]);
+  const [selectedStudentKeys, setSelectedStudentKeys] = useState([]);
   const [selectedCarKeys, setSelectedCarKeys] = useState([]);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
 
@@ -56,9 +56,9 @@ export default function DongBoHocVienVaoXe() {
 
   // Fetch danh sách học viên - gọi khi searchParams thay đổi
   const {
-    data: dataTeachers = {},
-    isLoading: isLoadingTeachers,
-    refetch: refetchTeachers,
+    data: dataStudents = {},
+    isLoading: isLoadingStudents,
+    refetch: refetchStudents,
   } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
     queryFn: () =>
@@ -92,7 +92,7 @@ export default function DongBoHocVienVaoXe() {
     return dataLoaiXe?.data?.Data || [];
   }, [dataLoaiXe]);
 
-  const teacherColumns = useMemo(
+  const studentColumns = useMemo(
     () => [
       {
         title: "Mã học viên",
@@ -208,11 +208,11 @@ export default function DongBoHocVienVaoXe() {
       setDebouncedSearchCar("");
       refetchCars();
     } else {
-      setSelectedTeacherKeys([]);
+      setSelectedStudentKeys([]);
       setSearchText("");
       setSelectedKhoaHoc("");
       setSearchParams({});
-      refetchTeachers();
+      refetchStudents();
     }
   };
 
@@ -238,14 +238,19 @@ export default function DongBoHocVienVaoXe() {
   };
 
   const handleSubmit = () => {
-    if (selectedTeacherKeys.length === 0) {
-      message.error("Vui lòng chọn ít nhất 1 giáo viên!", 3);
+    if (selectedStudentKeys.length === 0) {
+      message.error("Vui lòng chọn ít nhất 1 học viên!", 3);
       return;
     }
     if (selectedCarKeys.length === 0) {
       message.error("Vui lòng chọn ít nhất 1 xe!", 3);
       return;
     }
+    DanhSachXe({
+      dsBienSo: selectedCarKeys,
+      dsMaDk: selectedStudentKeys,
+      idkhoahoc: selectedKhoaHoc,
+    });
   };
 
   return (
@@ -316,10 +321,10 @@ export default function DongBoHocVienVaoXe() {
                   type="primary"
                   onClick={() =>
                     handleToggleAll(
-                      dataTeachers?.data?.Data || [],
-                      "MaGV",
-                      selectedTeacherKeys,
-                      setSelectedTeacherKeys,
+                      dataStudents?.data?.Data || [],
+                      "MaDk",
+                      selectedStudentKeys,
+                      setSelectedStudentKeys,
                     )
                   }
                 >
@@ -328,22 +333,22 @@ export default function DongBoHocVienVaoXe() {
               </div>
 
               <Table
-                columns={teacherColumns}
+                columns={studentColumns}
                 dataSource={
-                  Array.isArray(dataTeachers?.data?.Data)
-                    ? dataTeachers.data.Data
+                  Array.isArray(dataStudents?.data?.Data)
+                    ? dataStudents.data.Data
                     : []
                 }
-                loading={isLoadingTeachers}
+                loading={isLoadingStudents}
                 pagination={{ pageSize: 10 }}
                 size="small"
                 bordered
-                rowKey="MaGV"
+                rowKey="MaDk"
                 sticky={true}
                 className="h-60 overflow-y-auto overflow-x-hidden"
                 rowSelection={{
-                  selectedRowKeys: selectedTeacherKeys,
-                  onChange: (keys) => setSelectedTeacherKeys(keys),
+                  selectedRowKeys: selectedStudentKeys,
+                  onChange: (keys) => setSelectedStudentKeys(keys),
                 }}
                 locale={{
                   emptyText: (
@@ -443,7 +448,7 @@ export default function DongBoHocVienVaoXe() {
                     aria-label="mã giáo viên"
                     size="large"
                     disabled
-                    value={selectedTeacherKeys.join(",")}
+                    value={selectedStudentKeys.join(",")}
                   />
                 </Col>
                 <Col span={10}>

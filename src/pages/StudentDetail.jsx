@@ -24,12 +24,15 @@ import dayjs from "dayjs";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { HanhTrinh } from "../apis/hocVien";
+import { useNavigate } from "react-router-dom";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 const StudentDetail = ({ data }) => {
   const [dateTime, setDateTime] = useState("");
+
+  const navigate = useNavigate();
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["hanhTrinh", data?.MaDK],
@@ -74,6 +77,7 @@ const StudentDetail = ({ data }) => {
       key: "HoTen",
       width: 150,
       ellipsis: true,
+      fixed: "left",
       render: (text) => renderValue(text),
     },
     {
@@ -128,7 +132,7 @@ const StudentDetail = ({ data }) => {
       title: "Tỉ lệ nhận diện",
       dataIndex: "Tile",
       key: "Tile",
-      width: 110,
+      width: 120,
       align: "center",
       responsive: ["lg"],
       render: (text) => <Text>{Math.floor(text * 10) / 10}%</Text>,
@@ -181,16 +185,16 @@ const StudentDetail = ({ data }) => {
         return <Text>{(distance / time).toFixed(1)} km/h</Text>;
       },
     },
-    {
-      title: "Kết luận",
-      dataIndex: "result",
-      key: "result",
-      width: 100,
-      align: "center",
-      render: (text) => (
-        <Tag color={text === "Đạt" ? "success" : "error"}>{text}</Tag>
-      ),
-    },
+    // {
+    //   title: "Kết luận",
+    //   dataIndex: "result",
+    //   key: "result",
+    //   width: 100,
+    //   align: "center",
+    //   render: (text) => (
+    //     <Tag color={text === "Đạt" ? "success" : "error"}>{text}</Tag>
+    //   ),
+    // },
   ];
 
   const hasJourneyData = dataSource.length > 0;
@@ -521,6 +525,14 @@ const StudentDetail = ({ data }) => {
     setDateTime(dateTime);
   };
 
+  const handleGoMap = () => {
+    navigate("/map", {
+      state: {
+        duLieuPhienHoc: dataSource,
+      },
+    });
+  };
+
   return (
     <Spin spinning={isLoading}>
       <div className="student-detail-container">
@@ -702,7 +714,11 @@ const StudentDetail = ({ data }) => {
                 </Space>
                 {dataSource.length > 0 && (
                   <div className="mt-4">
-                    <Button type="primary" icon={<EyeOutlined />}>
+                    <Button
+                      type="primary"
+                      icon={<EyeOutlined />}
+                      onClick={() => handleGoMap()}
+                    >
                       Giám sát hành trình
                     </Button>
                   </div>

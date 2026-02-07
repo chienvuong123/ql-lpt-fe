@@ -37,20 +37,20 @@ const Dashboard = () => {
       bgColor: "bg-gray-800",
       textColor: "text-white",
     },
-    {
-      icon: <BookOutlined className="text-xs" />,
-      title: "Lớp lý thuyết",
-      description: "Đóng bỏ và quản lý danh sách lớp học lý thuyết.",
-      bgColor: "bg-rose-500",
-      textColor: "text-white",
-    },
-    {
-      icon: <TeamOutlined className="text-xs" />,
-      title: "Thành viên lớp LT",
-      description: "Xem và tra cứu tình trạng tiến độ học lý thuyết.",
-      bgColor: "bg-amber-500",
-      textColor: "text-white",
-    },
+    // {
+    //   icon: <BookOutlined className="text-xs" />,
+    //   title: "Lớp lý thuyết",
+    //   description: "Đóng bỏ và quản lý danh sách lớp học lý thuyết.",
+    //   bgColor: "bg-rose-500",
+    //   textColor: "text-white",
+    // },
+    // {
+    //   icon: <TeamOutlined className="text-xs" />,
+    //   title: "Thành viên lớp LT",
+    //   description: "Xem và tra cứu tình trạng tiến độ học lý thuyết.",
+    //   bgColor: "bg-amber-500",
+    //   textColor: "text-white",
+    // },
     {
       icon: <BarChartOutlined className="text-xs" />,
       title: "Báo cáo quá trình",
@@ -59,28 +59,28 @@ const Dashboard = () => {
       textColor: "text-white",
       navigate: "/tim-hoc-vien",
     },
-    {
-      icon: <FileTextOutlined className="text-xs" />,
-      title: "Báo cáo nhiều học viên",
-      description: "Đánh giá/báo cáo hàng loạt đã tiết kiệm thời gian.",
-      bgColor: "bg-emerald-500",
-      textColor: "text-white",
-    },
-    {
-      icon: <CheckSquareOutlined className="text-xs" />,
-      title: "Học viên đã ký DAT",
-      description: "Danh sách tổng hợp trạng thái ký, ghi chú & CABIN.",
-      bgColor: "bg-gray-100",
-      textColor: "text-gray-700",
-    },
-    {
-      icon: <CarOutlined className="text-xs" />,
-      title: "Báo cáo A1",
-      description:
-        "Tổng hợp kết quả kỳ sát hạch A1 (LT/TH, Đô/Trượt, ảnh dự thi).",
-      bgColor: "bg-rose-500",
-      textColor: "text-white",
-    },
+    // {
+    //   icon: <FileTextOutlined className="text-xs" />,
+    //   title: "Báo cáo nhiều học viên",
+    //   description: "Đánh giá/báo cáo hàng loạt đã tiết kiệm thời gian.",
+    //   bgColor: "bg-emerald-500",
+    //   textColor: "text-white",
+    // },
+    // {
+    //   icon: <CheckSquareOutlined className="text-xs" />,
+    //   title: "Học viên đã ký DAT",
+    //   description: "Danh sách tổng hợp trạng thái ký, ghi chú & CABIN.",
+    //   bgColor: "bg-gray-100",
+    //   textColor: "text-gray-700",
+    // },
+    // {
+    //   icon: <CarOutlined className="text-xs" />,
+    //   title: "Báo cáo A1",
+    //   description:
+    //     "Tổng hợp kết quả kỳ sát hạch A1 (LT/TH, Đô/Trượt, ảnh dự thi).",
+    //   bgColor: "bg-rose-500",
+    //   textColor: "text-white",
+    // },
     {
       icon: "🚗",
       title: "Đồng bộ GV ↔ Xe",
@@ -110,41 +110,41 @@ const Dashboard = () => {
       icon: "💎",
       color: "border-gray-200 bg-white hover:bg-gray-50",
     },
-    {
-      title: "Lớp LT",
-      icon: "🏫",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-    {
-      title: "Thành viên LT",
-      icon: "🎓",
-      color: "border-amber-200 bg-amber-50 hover:bg-amber-100",
-    },
+    // {
+    //   title: "Lớp LT",
+    //   icon: "🏫",
+    //   color: "border-gray-200 bg-white hover:bg-gray-50",
+    // },
+    // {
+    //   title: "Thành viên LT",
+    //   icon: "🎓",
+    //   color: "border-amber-200 bg-amber-50 hover:bg-amber-100",
+    // },
     {
       title: "Báo cáo",
       icon: "💡",
       color: "border-gray-200 bg-white hover:bg-gray-50",
     },
-    {
-      title: "Đã ký DAT",
-      icon: "📋",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-    {
-      title: "1 Báo cáo A1",
-      icon: "🆎",
-      color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
-    },
-    {
-      title: "CABIN thiếu",
-      icon: "🕐",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-    {
-      title: "Lịch CABIN",
-      icon: "📅",
-      color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
-    },
+    // {
+    //   title: "Đã ký DAT",
+    //   icon: "📋",
+    //   color: "border-gray-200 bg-white hover:bg-gray-50",
+    // },
+    // {
+    //   title: "1 Báo cáo A1",
+    //   icon: "🆎",
+    //   color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
+    // },
+    // {
+    //   title: "CABIN thiếu",
+    //   icon: "🕐",
+    //   color: "border-gray-200 bg-white hover:bg-gray-50",
+    // },
+    // {
+    //   title: "Lịch CABIN",
+    //   icon: "📅",
+    //   color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
+    // },
     {
       title: "GV → Xe",
       icon: "🚗",

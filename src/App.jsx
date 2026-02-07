@@ -10,6 +10,7 @@ import LayoutDashboard from "./components/LayoutDashboard";
 import Dashboard from "./pages/dashboard";
 import DongBoGiaoVienVaoXe from "./pages/synchronous/DongBoGiaoVienVaoXe";
 import DongBoHocVienVaoXe from "./pages/synchronous/DongBoHocVienVaoXe";
+import TrackingPage from "./pages/map/TrackingPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,6 +42,7 @@ function App() {
                 path="dong-bo-hoc-vien-ve-xe"
                 element={<DongBoHocVienVaoXe />}
               />
+              <Route path="/map" element={<TrackingPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

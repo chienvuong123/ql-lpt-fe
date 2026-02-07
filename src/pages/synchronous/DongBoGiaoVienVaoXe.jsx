@@ -199,6 +199,10 @@ export default function AssignTeacherToVehicle() {
       message.error("Vui lòng chọn ít nhất 1 xe!", 3);
       return;
     }
+    // DanhSachLoaiXe({
+    //   dsBienSo: selectedCarKeys,
+    //   dsMaGV: selectedTeacherKeys,
+    // });
   };
 
   return (
