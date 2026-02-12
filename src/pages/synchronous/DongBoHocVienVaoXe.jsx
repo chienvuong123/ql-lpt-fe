@@ -237,7 +237,7 @@ export default function DongBoHocVienVaoXe() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedStudentKeys.length === 0) {
       message.error("Vui lòng chọn ít nhất 1 học viên!", 3);
       return;
@@ -246,11 +246,23 @@ export default function DongBoHocVienVaoXe() {
       message.error("Vui lòng chọn ít nhất 1 xe!", 3);
       return;
     }
-    DanhSachXe({
-      dsBienSo: selectedCarKeys,
-      dsMaDk: selectedStudentKeys,
-      idkhoahoc: selectedKhoaHoc,
-    });
+
+    const hide = message.loading("Đang xử lý dữ liệu...", 0);
+
+    try {
+      await DanhSachXe({
+        dsBienSo: selectedCarKeys,
+        dsMaDk: selectedStudentKeys,
+        idkhoahoc: selectedKhoaHoc,
+      });
+
+      message.success("Đồng bộ học viên vào xe thành công!", 3);
+    } catch (error) {
+      console.error("Lỗi API:", error);
+      message.error("Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại!");
+    } finally {
+      hide();
+    }
   };
 
   return (

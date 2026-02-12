@@ -526,9 +526,12 @@ const StudentDetail = ({ data }) => {
   };
 
   const handleGoMap = () => {
+    console.log(summaryData);
+
     navigate("/map", {
       state: {
         duLieuPhienHoc: dataSource,
+        summaryData: data,
       },
     });
   };

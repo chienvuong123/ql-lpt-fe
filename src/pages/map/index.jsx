@@ -149,7 +149,7 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
   }, [currentPoint]);
 
   return (
-    <div className="relative w-full h-122 rounded-xl overflow-hidden border border-gray-200 shadow-inner bg-gray-50">
+    <div className="relative w-full h-110 rounded-xl overflow-hidden border border-gray-200 shadow-inner bg-gray-50">
       <div ref={mapRef} className="w-full h-full z-10" />
       <div className=" absolute bottom-0 right-0 z-[1000] bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 text-[11px] font-medium text-gray-700 space-y-2">
         <div className="flex items-center gap-2 mb-0.5">

@@ -1,29 +1,47 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Button, Card, Progress, Spin, Row, Col, Table } from "antd";
+import {
+  Button,
+  Card,
+  Progress,
+  Spin,
+  Row,
+  Col,
+  Table,
+  Flex,
+  Typography,
+} from "antd";
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   ReloadOutlined,
+  UserOutlined,
+  IdcardOutlined,
+  ClockCircleOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
 import { LoTringOnline } from "../../apis/xeOnline";
 import TrackingMap from ".";
 import { useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 
+const { Text } = Typography;
+
 const TrackingPage = () => {
   const [trackingData, setTrackingData] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedRowKey, setSelectedRowKey] = useState(null);
 
   const location = useLocation();
 
-  const { duLieuPhienHoc = [] } = location.state || {};
+  const { duLieuPhienHoc = [], summaryData } = location.state || {};
 
   const timerRef = useRef(null);
   const hasCalledAPI = useRef(false);
 
   useEffect(() => {
+    setSelectedRowKey(duLieuPhienHoc[0]?.ID || null);
     if (hasCalledAPI.current) return;
 
     const fetchData = async () => {
@@ -31,10 +49,23 @@ const TrackingPage = () => {
         setLoading(true);
         hasCalledAPI.current = true;
 
+        const firstRecord = duLieuPhienHoc && duLieuPhienHoc[0];
+
+        const datePart = firstRecord.ThoiDiemDangNhap.split("T")[0];
+
+        const startDate = new Date(datePart);
+
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1);
+
+        const ngaybatdau = `${datePart}T00:00:00`;
+        const ngayketthuc = `${endDate.toISOString().split("T")[0]}T23:59:00`;
+
+        // Gọi API
         const response = await LoTringOnline({
-          ngaybatdau: "2023-05-19T00:00:00",
-          ngayketthuc: "2023-05-20T23:59:00",
-          madk: "30004-20220719072325910",
+          ngaybatdau: ngaybatdau,
+          ngayketthuc: ngayketthuc,
+          madk: duLieuPhienHoc[0]?.MaDK,
         });
 
         const data = response.data;
@@ -125,6 +156,52 @@ const TrackingPage = () => {
     [],
   );
 
+  const handleSelect = async (record) => {
+    setSelectedRowKey(record.ID);
+    try {
+      setLoading(true);
+      setIsPlaying(false);
+      setCurrentIndex(0);
+
+      const datePart = record?.ThoiDiemDangNhap?.split("T")[0];
+      const startDate = new Date(datePart);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 1);
+
+      const ngaybatdau = `${datePart}T00:00:00`;
+      const ngayketthuc = `${endDate.toISOString().split("T")[0]}T23:59:00`;
+
+      const response = await LoTringOnline({
+        ngaybatdau: ngaybatdau,
+        ngayketthuc: ngayketthuc,
+        madk: record?.MaDK,
+      });
+
+      const data = response.data;
+      const routeData = Array.isArray(data) ? data[0] : data;
+
+      if (routeData?.ListCoordinate && routeData.ListCoordinate.length > 0) {
+        const formatted = routeData.ListCoordinate.map((point) => ({
+          latitude: point.Latitude,
+          longitude: point.Longitude,
+          speed: point.VanToc,
+          timestamp: point.ThoiGian,
+          totalKm: point.TotalKm,
+          driverName: point.HoTen,
+          direction: point.Huong,
+        }));
+
+        setTrackingData(formatted);
+      } else {
+        setTrackingData([]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Spin spinning={loading} tip="Đang tải dữ liệu hành trình...">
       <div className="max-w-6xl mx-auto">
@@ -135,20 +212,66 @@ const TrackingPage = () => {
           <p className="text-[#64748b] text-sm">
             Quãng đường di chuyển của xe trong các phiên học viên đã tham gia.
           </p>
+          <div className=" pt-4">
+            <a href="/" className="text-blue-500 text-sm hover:text-blue-700">
+              ← Quay lại Dashboard
+            </a>
+          </div>
         </div>
         <Row gutter={[12, 12]} className="mb-3">
           <Col span={24}>
             <Card>
               <Row>
-                <h2 className="text-lg !font-bold text-gray-900 !mb-1">
-                  Lê Xuân Hùng
-                </h2>
+                <h1 className="text-xl !font-bold text-gray-900 !mb-1">
+                  Thông tin học viên
+                </h1>
+                <Col span={24}>
+                  <Flex
+                    justify="space-between"
+                    align="center"
+                    className="!px-2"
+                  >
+                    <Flex vertical>
+                      <h2 className="text-lg !font-semibold text-blue-700 !mb-0 flex items-center">
+                        <UserOutlined className="mr-1" />
+                        {summaryData?.HoTen || "N/A"}
+                      </h2>
+                    </Flex>
+
+                    <Flex gap="middle" align="center">
+                      <Flex
+                        align="center"
+                        className="bg-orange-50 !px-10 !py-1 rounded-full border border-orange-100"
+                      >
+                        <IdcardOutlined className="text-orange-500 mr-2" />
+                        <span className="text-sm font-semibold">
+                          Hạng: {summaryData?.HangDaoTao}
+                        </span>
+                      </Flex>
+
+                      <Flex
+                        align="center"
+                        className="bg-blue-50 !px-10 !py-1 rounded-full border border-blue-100"
+                      >
+                        <ClockCircleOutlined className="text-blue-500 mr-2" />
+                        <span className="text-sm font-semibold">
+                          Tổng TG: {summaryData?.TongTGFont}'
+                        </span>
+                      </Flex>
+
+                      <Flex
+                        align="center"
+                        className="bg-green-50 !px-10 !py-1 rounded-full border border-green-100"
+                      >
+                        <DashboardOutlined className="text-green-500 mr-2" />
+                        <span className="text-sm font-semibold">
+                          Tổng QD: {summaryData?.TongQD}km
+                        </span>
+                      </Flex>
+                    </Flex>
+                  </Flex>
+                </Col>
               </Row>
-              {/* <Row>
-                <h2 className="text-lg !font-bold text-gray-900 !mb-1">
-                  Lộ trình theo học viên
-                </h2>
-              </Row> */}
             </Card>
           </Col>
         </Row>
@@ -229,6 +352,16 @@ const TrackingPage = () => {
                 bordered
                 rowKey="MaGV"
                 sticky={true}
+                className="h-115.5"
+                onRow={(record) => ({
+                  onClick: () => handleSelect(record),
+                  style: { cursor: "pointer" },
+                })}
+                rowClassName={(record) =>
+                  record.ID === selectedRowKey
+                    ? "bg-blue-200 transition-colors"
+                    : "hover:bg-gray-50 transition-colors"
+                }
                 locale={{
                   emptyText: (
                     <span className="text-xs font-medium">

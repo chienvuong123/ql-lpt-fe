@@ -190,7 +190,7 @@ export default function AssignTeacherToVehicle() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedTeacherKeys.length === 0) {
       message.error("Vui lòng chọn ít nhất 1 giáo viên!", 3);
       return;
@@ -199,10 +199,22 @@ export default function AssignTeacherToVehicle() {
       message.error("Vui lòng chọn ít nhất 1 xe!", 3);
       return;
     }
-    // DanhSachLoaiXe({
-    //   dsBienSo: selectedCarKeys,
-    //   dsMaGV: selectedTeacherKeys,
-    // });
+
+    const hide = message.loading("Đang xử lý dữ liệu...", 0);
+
+    try {
+      await DanhSachLoaiXe({
+        dsBienSo: selectedCarKeys,
+        dsMaGV: selectedTeacherKeys,
+      });
+
+      message.success("Đồng bộ giáo viên vào xe thành công!", 3);
+    } catch (error) {
+      console.error("Lỗi API:", error);
+      message.error("Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại!");
+    } finally {
+      hide();
+    }
   };
 
   return (

@@ -41,9 +41,9 @@ export default function LayoutDashboard() {
           </div>
 
           <div className="space-x-2">
-            <Button type="primary" className="!font-medium !mr-2">
+            {/* <Button type="primary" className="!font-medium !mr-2">
               Báo cáo hàng loạt
-            </Button>
+            </Button> */}
             <span className="border border-sky-300 bg-gray-200 rounded-full px-4 py-1 text-md text-sky-700">
               {name} - admin
             </span>

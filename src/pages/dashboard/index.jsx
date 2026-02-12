@@ -36,14 +36,16 @@ const Dashboard = () => {
       description: "Thêm, sửa, xóa, đổi mật khẩu, phân quyền và ép đăng xuất.",
       bgColor: "bg-gray-800",
       textColor: "text-white",
+      navigate: "/tai-khoan",
     },
-    // {
-    //   icon: <BookOutlined className="text-xs" />,
-    //   title: "Lớp lý thuyết",
-    //   description: "Đóng bỏ và quản lý danh sách lớp học lý thuyết.",
-    //   bgColor: "bg-rose-500",
-    //   textColor: "text-white",
-    // },
+    {
+      icon: <BookOutlined className="text-xs" />,
+      title: "Lớp lý thuyết",
+      description: "Đóng bỏ và quản lý danh sách lớp học lý thuyết.",
+      bgColor: "bg-rose-500",
+      textColor: "text-white",
+      navigate: "/lop-hoc-ly-thuyet",
+    },
     // {
     //   icon: <TeamOutlined className="text-xs" />,
     //   title: "Thành viên lớp LT",
@@ -211,10 +213,10 @@ const Dashboard = () => {
                           {feature.icon}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-800 mb-2 text-sm md:text-base">
+                          <h3 className="!font-semibold text-gray-800 mb-2 text-sm md:text-base !mb-0">
                             {feature.title}
                           </h3>
-                          <p className="text-xs md:text-sm text-gray-600 leading-relaxed mb-3">
+                          <p className="text-xs md:text-[13px] text-gray-500 leading-relaxed mb-3">
                             {feature.description}
                           </p>
                         </div>

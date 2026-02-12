@@ -11,6 +11,9 @@ import Dashboard from "./pages/dashboard";
 import DongBoGiaoVienVaoXe from "./pages/synchronous/DongBoGiaoVienVaoXe";
 import DongBoHocVienVaoXe from "./pages/synchronous/DongBoHocVienVaoXe";
 import TrackingPage from "./pages/map/TrackingPage";
+import AccountManagement from "./pages/user/AccountManagement";
+import ClassManagement from "./pages/class/ClassManagement";
+import Member from "./pages/class/Member";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +46,9 @@ function App() {
                 element={<DongBoHocVienVaoXe />}
               />
               <Route path="/map" element={<TrackingPage />} />
+              <Route path="/tai-khoan" element={<AccountManagement />} />
+              <Route path="/lop-hoc-ly-thuyet" element={<ClassManagement />} />
+              <Route path="/thanh-vien-lop-hoc" element={<Member />} />
             </Route>
           </Routes>
         </BrowserRouter>

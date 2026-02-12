@@ -41,15 +41,15 @@ export default function LayoutApp() {
         <div className="layout-app-header-content max-w-5xl mx-auto">
           <div className="layout-app-logo">
             <div className="logo-badge">L</div>
-            <span className="text-lg font-semibold">
+            {/* <span className="text-lg font-semibold">
               Báo cáo đào tạo - Admin
-            </span>
+            </span> */}
           </div>
 
           <div className="space-x-2">
-            <Button type="primary" className="!font-medium !mr-2">
+            {/* <Button type="primary" className="!font-medium !mr-2">
               Báo cáo hàng loạt
-            </Button>
+            </Button> */}
             <span className="border border-sky-300 bg-gray-200 rounded-full px-4 py-1 text-md text-sky-700">
               {name} - admin
             </span>
