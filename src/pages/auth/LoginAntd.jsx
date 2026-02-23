@@ -87,7 +87,7 @@ export default function LoginAntd() {
                 htmlType="submit"
                 size="large"
                 className="w-full bg-gradient-to-r from-blue-700 to-blue-600"
-                loading={isLoading}
+                // loading={isLoading}
               >
                 Đăng nhập
               </Button>

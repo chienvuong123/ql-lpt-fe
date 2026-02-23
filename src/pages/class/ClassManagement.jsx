@@ -9,57 +9,62 @@ import {
   Progress,
   Row,
   Col,
+  DatePicker,
 } from "antd";
 import { useNavigate } from "react-router-dom";
-import { danhSachKhoaHoc } from "../../apis/khoaHoc";
+import { lopHocLyThuyet } from "../../apis/khoaHoc";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import { DangNhapLopLyThuyet } from "../../apis/auth";
 
 const ClassManagement = () => {
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState(undefined);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [params, setParams] = useState({
-    page: 1,
-    limit: 10,
-    search: "",
-    trangThai: "",
+    text: "",
   });
 
   const navigate = useNavigate();
 
+  const { data: loginData } = useQuery({
+    queryKey: ["loginLyThuyet"],
+    queryFn: () => DangNhapLopLyThuyet(),
+    staleTime: Infinity, // không gọi lại
+    select: (data) => data?.result,
+  });
+
   const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
-    queryKey: ["danhSachKhoaHoc", params],
-    queryFn: () => danhSachKhoaHoc(params),
+    queryKey: ["lopHocLyThuyet", params],
+    queryFn: () => lopHocLyThuyet(loginData, params),
+    enabled: !!loginData,
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
 
   const dataSource = useMemo(() => {
-    return dataKhoaHoc?.data || [];
-  }, [dataKhoaHoc]);
-
-  const paginationFromApi = useMemo(() => {
-    return dataKhoaHoc?.data?.pagination || {};
+    return dataKhoaHoc?.result || [];
   }, [dataKhoaHoc]);
 
   const handleFilter = () => {
-    setParams((prev) => ({
-      ...prev,
-      page: 1,
-      search: searchText,
-      trangThai: statusFilter,
-    }));
+    const newParams = {
+      text: searchText || undefined,
+      start_date: startDate ? dayjs(startDate).unix() : undefined,
+      end_date: endDate ? dayjs(endDate).unix() : undefined,
+    };
+
+    Object.keys(newParams).forEach(
+      (key) => newParams[key] === undefined && delete newParams[key],
+    );
+
+    setParams(newParams);
   };
 
   const handleClearFilter = () => {
     setSearchText("");
-    setStatusFilter(undefined);
-    setParams({
-      page: 1,
-      limit: 10,
-      search: "",
-      trangThai: "",
-    });
+    setStartDate(null);
+    setEndDate(null);
+    setParams({ page: 1, text: "" });
   };
 
   const getProgressColor = (progress) => {
@@ -68,71 +73,96 @@ const ClassManagement = () => {
     return "#f5222d";
   };
 
+  const handleNavigate = (record) => {
+    navigate("/thanh-vien-lop-hoc", {
+      state: {
+        enrolment_plan_iid: record?.iid,
+        program_name: record?.__expand?.program?.name,
+        program_code: record?.__expand?.program?.code,
+      },
+    });
+  };
+
   const columns = [
     {
       title: "Tên khóa học",
-      dataIndex: "maKhoa",
-      key: "maKhoa",
+      dataIndex: "suffix_name",
+      key: "suffix_name",
       width: 120,
-      align: "center",
-      render: (text) => <span className="font-bold">{text}</span>,
+      align: "left",
+      render: (text, record) => (
+        <span>
+          <span className="font-bold">{text}</span>{" "}
+          <p>{dayjs.unix(record?.ts).format("DD-MM-YYYY")}</p>
+        </span>
+      ),
     },
     {
       title: "Dơn vị",
-      dataIndex: "tenKhoa",
-      key: "tenKhoa",
+      dataIndex: "__expand",
+      key: "__expand",
+      ellipsis: true,
       width: 300,
+      render: (stats) => (
+        <span>
+          {stats?.organizations?.[0]?.short_name || "Không có đơn vị"}
+        </span>
+      ),
     },
     {
       title: "Bắt đầu",
-      dataIndex: "ngayBatDau",
-      key: "ngayBatDau",
+      dataIndex: "start_date",
+      key: "start_date",
       width: 100,
-      render: (date) => <span>{dayjs(date).format("DD/MM/YYYY")}</span>,
+      render: (date) => <span>{dayjs.unix(date).format("DD/MM/YYYY")}</span>,
     },
     {
       title: "Kết thúc",
-      dataIndex: "ngayKetThuc",
-      key: "ngayKetThuc",
+      dataIndex: "end_date",
+      key: "end_date",
       width: 100,
-      render: (date) => <span>{dayjs(date).format("DD/MM/YYYY")}</span>,
+      render: (date) => <span>{dayjs.unix(date).format("DD/MM/YYYY")}</span>,
     },
     {
       title: "Lớp học",
-      dataIndex: "lopHoc",
-      key: "lopHoc",
+      dataIndex: "number_of_courses",
+      key: "number_of_courses",
       width: 70,
       align: "center",
     },
 
     {
       title: "Thành viên",
-      dataIndex: "luotCuDiHoc",
-      key: "luotCuDiHoc",
+      dataIndex: "stats",
+      key: "stats",
       width: 90,
       align: "center",
+      render: (stats) => <span>{stats?.total_members || 0}</span>,
     },
     {
       title: "Đã học",
-      dataIndex: "soLuotDat",
-      key: "soLuotDat",
+      dataIndex: "stats",
+      key: "stats",
       width: 60,
       align: "center",
+      render: (stats) => <span>{stats?.passed || 0}</span>,
     },
     {
       title: "Tiến độ",
-      dataIndex: "progress",
-      key: "progress",
+      dataIndex: "stats",
+      key: "stats",
       width: 120,
       render: (_, record) => {
         const percent = Math.floor(
-          (record.soLuotDat / (record.luotCuDiHoc || 1)) * 100,
+          ((record.stats?.passed || 0) / (record.stats?.total_members || 1)) *
+            100,
         );
 
         return (
           <div className="flex flex-col items-start w-full gap-2">
             <span className="text-[9px] text-gray-600">
-              {record.luotCuDiHoc - record.soLuotDat} chưa hoàn thành
+              {record.stats?.total_members - record.stats?.passed || 0} chưa
+              hoàn thành
             </span>
 
             <Progress
@@ -142,7 +172,8 @@ const ClassManagement = () => {
             />
 
             <span className="!text-[11px]">
-              {record.soLuotDat}/{record.luotCuDiHoc} ({percent}%)
+              {record.stats?.passed || 0}/{record.stats?.total_members || 0} (
+              {percent}%)
             </span>
           </div>
         );
@@ -150,8 +181,8 @@ const ClassManagement = () => {
     },
     {
       title: "Trạng thái",
-      dataIndex: "trangThai",
-      key: "trangThai",
+      dataIndex: "status",
+      key: "status",
       width: 80,
       align: "center",
       render: (status) => (
@@ -165,22 +196,15 @@ const ClassManagement = () => {
       key: "actions",
       width: 90,
       align: "center",
-      render: () => (
+      render: (_, record) => (
         <Space size="small" className="flex justify-center flex-wrap">
           <Button
             type="text"
             size="small"
-            onClick={() => navigate("/thanh-vien-lop-hoc")}
+            onClick={() => handleNavigate(record)}
             className="!bg-gray-300 !text-[13px] !rounded-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             👥
-          </Button>
-          <Button
-            type="primary"
-            size="small"
-            className="!bg-[#0000CC] !text-[13px] !rounded-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            🔄
           </Button>
         </Space>
       ),
@@ -195,46 +219,39 @@ const ClassManagement = () => {
       <p className="text-[#64748b] text-sm">
         Đồng bộ và theo dõi tiến độ học viên theo lớp.
       </p>
-
-      <Space size="small" className="my-4">
-        <Button
-          type="primary"
-          className="!font-medium !bg-[#0000CC] !shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 !px-4 !py-2 !h-10 !rounded-xl"
-        >
-          🔄 Đồng bộ lớp
-        </Button>
-
-        <Button
-          type="text"
-          className="!font-medium !bg-gray-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center !px-4 !py-2 !h-10 !rounded-xl"
-        >
-          👥 Đồng bộ toàn bộ thành viên
-        </Button>
-      </Space>
-
-      <Row gutter={[12, 12]} align="bottom">
+      <Row gutter={[12, 12]} align="bottom" className="mt-8">
         <Col>
-          <label className="block text-xs text-gray-500">TỪ KHÓA</label>
+          <label className="block text-xs text-gray-500 uppercase">
+            Tên Khóa Học
+          </label>
           <Input
             placeholder="Mã / Tên lớp"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
         </Col>
-        <Col span={4}>
-          <label className="block text-xs text-gray-500">TRẠNG THÁI</label>
-          <Select
-            placeholder="--Tất cả--"
-            className="w-full"
-            // defaultValue="all"
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-          >
-            <Select.Option value="đã triển khai">Đã triển khai</Select.Option>
-            <Select.Option value="chưa triển khai">
-              Chưa triển khai
-            </Select.Option>
-          </Select>
+        <Col>
+          <label className="block text-xs text-gray-500 uppercase">
+            Ngày bắt đầu
+          </label>
+          <DatePicker
+            value={startDate}
+            onChange={(date) => setStartDate(date)}
+            format="DD/MM/YYYY"
+            placeholder="Chọn ngày"
+          />
+        </Col>
+        <Col>
+          <label className="block text-xs text-gray-500 uppercase">
+            Ngày kết thúc
+          </label>
+          <DatePicker
+            value={endDate}
+            onChange={(date) => setEndDate(date)}
+            format="DD/MM/YYYY"
+            placeholder="Chọn ngày"
+            disabledDate={(current) => startDate && current < startDate} // không chọn trước ngày bắt đầu
+          />
         </Col>
         <Col>
           <Space>
@@ -249,29 +266,20 @@ const ClassManagement = () => {
           </Space>
         </Col>
       </Row>
-
+      <Row className="mt-8 mb-2">
+        <span>
+          Tổng: <span className="font-bold">{dataSource?.length || 0}</span> lớp
+        </span>
+      </Row>
       <Table
         columns={columns}
-        dataSource={dataSource?.data || []}
+        dataSource={dataSource || []}
         loading={isLoadingKhoaHoc}
         rowKey="id"
-        pagination={{
-          current: params.page,
-          pageSize: params.limit,
-          total: paginationFromApi.total || 0,
-          showSizeChanger: true,
-          showTotal: (total) => `Tổng cộng ${total} khóa học`,
-        }}
-        onChange={(pagination) => {
-          setParams((prev) => ({
-            ...prev,
-            page: pagination.current,
-            limit: pagination.pageSize,
-          }));
-        }}
+        pagination={false}
         size="middle"
         scroll={{ x: 1200 }}
-        className="rounded-lg overflow-hidden mt-10"
+        className="rounded-lg overflow-hidden"
       />
     </div>
   );

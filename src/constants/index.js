@@ -4,10 +4,10 @@ export const LICENSE_PLATE_TYPE = {
 };
 
 export const LICENSE_PLATE_LABEL = {
-  B1: "Số tự động",
-  B11: "Số tự động",
-  B2: "Số sàn",
-  B01: "Số sàn",
-  B: "Số sàn",
-  C1: "Số sàn",
+  B1: "B số tự động",
+  B11: "B số tự động",
+  B2: "B số sàn",
+  B01: "B01 số sàn",
+  B: "B số sàn",
+  C1: "C số sàn",
 };

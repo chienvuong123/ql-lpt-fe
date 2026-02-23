@@ -105,6 +105,7 @@ const StudentDetailModal = ({
       },
     ];
   };
+  console.log(studentData);
 
   return (
     <Modal
@@ -118,9 +119,9 @@ const StudentDetailModal = ({
       <Card className="!mt-4">
         <div className="mb-4">
           <h3 className="text-xl !font-semibold text-gray-800 !mb-0">
-            Học viên: {studentData?.ten || ""}{" "}
+            Học viên: {studentData?.user?.name || ""}{" "}
             <span className="text-gray-500 font-normal text-sm">
-              ({studentData?.ma || ""})
+              ({studentData?.user?.identification_card || ""})
             </span>
           </h3>
           <p className="text-sm text-gray-500">
@@ -172,14 +173,14 @@ const StudentDetailModal = ({
                 <Col span={14}>
                   <Flex vertical gap={"middle"} className="!h-full">
                     <span className="!text-[13px] text-gray-600">
-                      {studentData?.ma || ""}
+                      {studentData?.user?.identification_card || ""}
                     </span>
                     <span className="!text-[13px] text-gray-600">
-                      {dayjs(studentData?.ngaySinh).format("YYYY")}
+                      {dayjs(studentData?.user?.birth_date).format("YYYY")}
                     </span>
                     <span className="!text-[13px] text-gray-600">
                       {" "}
-                      {studentData?.gioiTinh || ""}
+                      {studentData?.user?.sex || ""}
                     </span>
                     <span className="!text-[13px] text-gray-600 !break-words !whitespace-normal">
                       Trung tâm dạy nghề và sát hạch lái xe Lập Phương Thành
@@ -187,7 +188,10 @@ const StudentDetailModal = ({
                     <div className="flex items-start">
                       <Image
                         size={120}
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=BuiKhanhLy&backgroundColor=0ea5e9"
+                        src={
+                          studentData?.user?.avatar ||
+                          studentData?.user?.default_avatar
+                        }
                         className="!h-20 !w-20 rounded-lg"
                       />
                     </div>

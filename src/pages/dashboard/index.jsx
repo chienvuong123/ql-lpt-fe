@@ -25,8 +25,13 @@ const Dashboard = () => {
       primary: true,
       navigate: "/tim-hoc-vien",
     },
-    { title: "Báo cáo nhiều HV", icon: "📚", primary: false },
-    { title: "Báo cáo A1", icon: "🚗", primary: false },
+    {
+      title: "Kiểm tra toàn khóa",
+      icon: "📚",
+      primary: false,
+      navigate: "/kiem-tra-toan-khoa",
+    },
+    // { title: "Báo cáo A1", icon: "🚗", primary: false },
   ];
 
   const managementFeatures = [
