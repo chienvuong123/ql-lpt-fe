@@ -13,6 +13,8 @@ import {
   Flex,
   Spin,
   Image,
+  message,
+  Form,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -21,18 +23,60 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { HanhTrinh } from "../apis/hocVien";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import {
+  getHocVienCheck,
+  HanhTrinh,
+  updateHocVienCheck,
+} from "../apis/hocVien";
 import { useNavigate } from "react-router-dom";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 const StudentDetail = ({ data }) => {
-  const [dateTime, setDateTime] = useState("");
-
   const navigate = useNavigate();
+  const [form] = Form.useForm();
+
+  const queryClient = useQueryClient();
+  const queryKey = ["hocvien-check", data?.MaDK];
+
+  const { mutate, isPending: isMutating } = useMutation({
+    mutationFn: (payload) => updateHocVienCheck(data?.MaDK, payload),
+
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+
+      queryClient.setQueryData(queryKey, (old) => ({
+        ...old,
+        data: { ...(old?.data ?? {}), ...payload },
+      }));
+
+      return { previous }; // rollback nếu lỗi
+    },
+
+    onError: (err, _payload, ctx) => {
+      console.log(err);
+
+      queryClient.setQueryData(queryKey, ctx.previous);
+      message.error(
+        "Lưu thất bại: " + (err?.response?.data?.message ?? err.message),
+      );
+    },
+
+    onSuccess: (res) => {
+      queryClient.setQueryData(queryKey, res);
+      message.success(res?.data?.message ?? "Đã lưu.");
+    },
+  });
+
+  const { data: hocVienCheckData } = useQuery({
+    queryKey: ["hocvien-check", data?.MaDK],
+    queryFn: () => getHocVienCheck(data?.MaDK),
+    staleTime: 1000 * 60 * 5,
+  });
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["hanhTrinh", data?.MaDK],
@@ -52,6 +96,10 @@ const StudentDetail = ({ data }) => {
   const dataSource = useMemo(() => {
     return Array.isArray(results?.data?.Data) ? results.data.Data : [];
   }, [results]);
+
+  const dataCheck = useMemo(() => {
+    return hocVienCheckData?.data ?? {};
+  }, [hocVienCheckData]);
 
   const renderValue = (value, suffix = "") => {
     if (value === null || value === undefined || value === "") {
@@ -520,14 +568,11 @@ const StudentDetail = ({ data }) => {
     return `${gio}h${phutDu.toString().padStart(2, "0")}`;
   };
 
-  const handleDAT = () => {
-    const dateTime = dayjs().format("DD/MM/YYYY HH:mm:ss");
-    setDateTime(dateTime);
+  const onFinish = (values) => {
+    mutate(values);
   };
 
   const handleGoMap = () => {
-    console.log(summaryData);
-
     navigate("/map", {
       state: {
         duLieuPhienHoc: dataSource,
@@ -535,6 +580,16 @@ const StudentDetail = ({ data }) => {
       },
     });
   };
+
+  useEffect(() => {
+    if (dataCheck) {
+      form.setFieldsValue({
+        dat_confirmed: dataCheck.dat_confirmed ?? false,
+        internal_note: dataCheck.internal_note ?? "",
+        public_note: dataCheck.public_note ?? "",
+      });
+    }
+  }, [dataCheck, form]);
 
   return (
     <Spin spinning={isLoading}>
@@ -639,41 +694,55 @@ const StudentDetail = ({ data }) => {
                   size="middle"
                   style={{ width: "100%" }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: "8px",
-                    }}
+                  <Form
+                    key="hocvien-check-form"
+                    form={form}
+                    layout="vertical"
+                    onFinish={onFinish}
                   >
-                    <Text strong>Ký Xác Nhận DAT</Text>
-                    <Checkbox onClick={handleDAT}>
-                      <Text type="success">Học viên đã ký</Text>
-                    </Checkbox>
-                  </div>
+                    <Row gutter={[8, 8]} justify={"space-between"}>
+                      <Text strong className="items-top mt-2">
+                        Ký Xác Nhận DAT
+                      </Text>
+                      <Form.Item name="dat_confirmed" valuePropName="checked">
+                        <Checkbox>
+                          <Text type="success">Học viên đã ký</Text>
+                        </Checkbox>
+                      </Form.Item>
+                    </Row>
 
-                  <div>
-                    <Text>Ghi chú nội bộ</Text>
-                    <TextArea
-                      rows={2}
-                      placeholder="Ghi chú nội bộ (chỉ Admin thấy) ..."
-                      style={{ marginTop: "4px" }}
-                    />
-                  </div>
+                    <Form.Item label="Ghi chú nội bộ" name="internal_note">
+                      <TextArea
+                        rows={2}
+                        placeholder="Ghi chú nội bộ (chỉ Admin thấy) ..."
+                      />
+                    </Form.Item>
 
-                  <div>
-                    <Text>Ghi chú công khai</Text>
-                    <TextArea
-                      rows={2}
-                      placeholder="Ghi chú công khai (có thể hiển thị cho các bên khác) ..."
-                      style={{ marginTop: "4px" }}
-                    />
-                  </div>
-                  <Text style={{ fontSize: "11px" }}>
-                    Cập nhật cuối: {dateTime} (GMT+7)
-                  </Text>
+                    <Form.Item label="Ghi chú công khai" name="public_note">
+                      <TextArea
+                        rows={2}
+                        placeholder="Ghi chú công khai (có thể hiển thị cho các bên khác) ..."
+                      />
+                    </Form.Item>
+
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        block
+                        loading={isMutating}
+                      >
+                        Lưu thông tin
+                      </Button>
+                    </Form.Item>
+                    <Text className="!text-[11px]">
+                      Cập nhật cuối:{" "}
+                      {dataCheck?.updatedAt
+                        ? dayjs(dataCheck.updatedAt).format("DD/MM/YYYY HH:mm")
+                        : "Chưa có dữ liệu"}{" "}
+                      (GMT+7)
+                    </Text>
+                  </Form>
                 </Space>
               </Card>
             </Col>

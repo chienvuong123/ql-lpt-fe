@@ -24,6 +24,23 @@ export const HanhTrinh = async (params) => {
   });
 };
 
+export const getHocVienCheck = async (maHocVien) => {
+  const response = await axios.get(
+    `http://localhost:3000/api/hoc-vien/${maHocVien}/check`,
+  );
+
+  return response.data;
+};
+
+export const updateHocVienCheck = async (maHocVien, payload) => {
+  const response = await axios.put(
+    `http://localhost:3000/api/hoc-vien/${maHocVien}/check`,
+    payload,
+  );
+
+  return response.data;
+};
+
 export const hocVienTheoKhoa = async (enrolment_plan_iid) => {
   const userInfoString = sessionStorage.getItem("user_info");
   const userInfo = userInfoString ? JSON.parse(userInfoString) : null;

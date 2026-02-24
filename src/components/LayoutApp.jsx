@@ -39,8 +39,10 @@ export default function LayoutApp() {
     <Layout className="!min-h-screen !flex !flex-col ">
       <Header className="layout-app-header ">
         <div className="layout-app-header-content max-w-5xl mx-auto">
-          <div className="layout-app-logo">
-            <div className="logo-badge">L</div>
+          <div className="layout-app-logo cursor-pointer">
+            <div className="logo-badge" onClick={() => navigate("/")}>
+              L
+            </div>
             {/* <span className="text-lg font-semibold">
               Báo cáo đào tạo - Admin
             </span> */}

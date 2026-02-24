@@ -35,7 +35,10 @@ export default function LayoutDashboard() {
     <Layout className="!min-h-screen !flex !flex-col ">
       <Header className="layout-app-header ">
         <div className="layout-app-header-content mx-auto">
-          <div className="layout-app-logo">
+          <div
+            className="layout-app-logo cursor-pointer"
+            onClick={() => navigate("/")}
+          >
             <div className="logo-badge">L</div>
             <span className="text-lg font-semibold">Lập Phương Thành</span>
           </div>
