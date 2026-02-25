@@ -203,9 +203,9 @@ export default function AssignTeacherToVehicle() {
     const hide = message.loading("Đang xử lý dữ liệu...", 0);
 
     try {
-      await DanhSachLoaiXe({
-        dsBienSo: selectedCarKeys,
-        dsMaGV: selectedTeacherKeys,
+      await DanhSachXe({
+        dsBienSo: selectedCarKeys.join(","),
+        dsMaGV: selectedTeacherKeys.join(","),
       });
 
       message.success("Đồng bộ giáo viên vào xe thành công!", 3);

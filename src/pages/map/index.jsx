@@ -94,7 +94,7 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
 
     const { latitude, longitude, direction, speed, timestamp, totalKm } =
       currentPoint;
-    const rotation = direction ? direction * 360 : 0;
+    const rotation = direction ?? 0;
 
     // ICON XE: Bỏ transition transform 0.3s để tránh bị "đuôi" khi map pan
     const vehicleIcon = L.divIcon({
@@ -112,13 +112,15 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
 
     // POPUP CONTENT: Dùng Tailwind CSS hoàn toàn
     const popupContent = `
-        <div class="min-w-[150px] font-sans p-1">
-            <div class="flex flex-col gap-0 text-xs text-gray-700">
-            <p class="!m-0.5">Vận tốc: <span class="font-bold text-gray-900">${speed} Km/h</span></p>
-            <p class="!m-0.5">Quãng đường: <span class="font-bold text-gray-900">${totalKm} Km</span></p>
-            <p class="!m-0.5 text-[10px] text-gray-400 mt-1">Thời gian: ${new Date(timestamp).toLocaleTimeString("vi-VN")}</p>
-            </div>
-        </div>`;
+      <div class="min-w-[150px] font-sans p-1">
+        <div class="flex flex-col gap-0 text-xs text-gray-700">
+          <p class="!m-0.5">Vận tốc: <span class="font-bold text-gray-900">${speed}</span></p>
+          <p class="!m-0.5">Quãng đường: <span class="font-bold text-gray-900">${totalKm}</span></p>
+          <p class="!m-0.5 text-[10px] text-gray-400 mt-1">
+            Thời gian: ${new Date(timestamp).toLocaleTimeString("vi-VN")}
+          </p>
+        </div>
+      </div>`;
 
     if (markerRef.current && map.hasLayer(markerRef.current)) {
       markerRef.current.setLatLng([latitude, longitude]);

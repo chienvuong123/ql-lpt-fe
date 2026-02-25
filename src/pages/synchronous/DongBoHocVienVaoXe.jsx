@@ -1,13 +1,6 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Input, Button, Table, Row, Col, message, Select } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
-import { DanhSachGiaoVien } from "../../apis/giaoVien";
 import { DanhSachLoaiXe, DanhSachXe } from "../../apis/xe";
 import { useQuery } from "@tanstack/react-query";
 import { DanhSachHocVien, DanhSachKhoaHoc } from "../../apis/hocVien";
@@ -23,7 +16,6 @@ export default function DongBoHocVienVaoXe() {
   const [searchText, setSearchText] = useState("");
   const [searchCar, setSearchCar] = useState("");
   const [debouncedSearchCar, setDebouncedSearchCar] = useState(searchCar);
-  const debounceTimer = useRef(null);
   const [selectedStudentKeys, setSelectedStudentKeys] = useState([]);
   const [selectedCarKeys, setSelectedCarKeys] = useState([]);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
@@ -55,11 +47,7 @@ export default function DongBoHocVienVaoXe() {
   });
 
   // Fetch danh sách học viên - gọi khi searchParams thay đổi
-  const {
-    data: dataStudents = {},
-    isLoading: isLoadingStudents,
-    refetch: refetchStudents,
-  } = useQuery({
+  const { data: dataStudents = {}, isLoading: isLoadingStudents } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
     queryFn: () =>
       DanhSachHocVien({
@@ -70,7 +58,7 @@ export default function DongBoHocVienVaoXe() {
       }),
     staleTime: 1000 * 60 * 5,
     retry: false,
-    enabled: Object.keys(searchParams).length > 0,
+    // enabled: Object.keys(searchParams).length > 0,
   });
 
   useEffect(() => {
@@ -145,47 +133,27 @@ export default function DongBoHocVienVaoXe() {
     [],
   );
 
-  const handleSearchChange = useCallback((value) => {
-    setSearchText(value);
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
+  const handleSearch = useCallback(() => {
+    const trimmed = searchText.trim();
+    const next = {};
+
+    if (trimmed.length >= 2) {
+      next.soCmt = trimmed;
     }
 
-    debounceTimer.current = setTimeout(() => {
-      setSearchParams((prev) => {
-        const trimmed = value.trim();
+    if (selectedKhoaHoc) {
+      next.idkhoahoc = selectedKhoaHoc;
+    }
 
-        if (trimmed.length >= 2) {
-          return {
-            ...prev,
-            soCmt: trimmed,
-          };
-        }
+    setSearchParams(next);
+  }, [searchText, selectedKhoaHoc]);
 
-        if (trimmed.length === 0) {
-          const { ...rest } = prev;
-          return rest;
-        }
-
-        return prev;
-      });
-    }, 1000);
+  const handleSearchChange = useCallback((value) => {
+    setSearchText(value);
   }, []);
 
   const handleKhoaHocChange = (value) => {
     setSelectedKhoaHoc(value);
-
-    setSearchParams((prev) => {
-      if (value) {
-        return {
-          ...prev,
-          idkhoahoc: value,
-        };
-      }
-
-      const { ...rest } = prev;
-      return rest;
-    });
   };
 
   // Lọc dữ liệu xe từ cached data - không cần call API lại
@@ -208,11 +176,7 @@ export default function DongBoHocVienVaoXe() {
       setDebouncedSearchCar("");
       refetchCars();
     } else {
-      setSelectedStudentKeys([]);
-      setSearchText("");
-      setSelectedKhoaHoc("");
-      setSearchParams({});
-      refetchStudents();
+      handleSearch();
     }
   };
 
@@ -246,13 +210,17 @@ export default function DongBoHocVienVaoXe() {
       message.error("Vui lòng chọn ít nhất 1 xe!", 3);
       return;
     }
+    if (selectedKhoaHoc === "") {
+      message.error("Vui lòng chọn khóa học của học viên!", 3);
+      return;
+    }
 
     const hide = message.loading("Đang xử lý dữ liệu...", 0);
 
     try {
       await DanhSachXe({
-        dsBienSo: selectedCarKeys,
-        dsMaDk: selectedStudentKeys,
+        dsBienSo: selectedCarKeys.join(","),
+        dsMaDk: selectedStudentKeys.join(","),
         idkhoahoc: selectedKhoaHoc,
       });
 
@@ -267,7 +235,7 @@ export default function DongBoHocVienVaoXe() {
 
   return (
     <div>
-      <div className="max-w-5xl mx-auto mb-6">
+      <div className="max-w-7xl mx-auto mb-6">
         <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
           Đồng bộ học viên vào xe
         </h1>
@@ -277,7 +245,7 @@ export default function DongBoHocVienVaoXe() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto space-y-4">
+      <div className="max-w-7xl mx-auto space-y-4">
         <Row gutter={[12, 12]} className="mb-4">
           <Col span={12}>
             <Card
@@ -298,12 +266,13 @@ export default function DongBoHocVienVaoXe() {
                   aria-label="lọc"
                   value={searchText}
                   onChange={(e) => handleSearchChange(e.target.value)}
+                  onPressEnter={handleSearch}
                 />
                 <Select
                   placeholder="Chọn khóa học"
                   size="middle"
                   style={{ width: 320 }}
-                  value={selectedKhoaHoc}
+                  value={selectedKhoaHoc || undefined}
                   onChange={handleKhoaHocChange}
                   allowClear
                   showSearch
@@ -334,7 +303,7 @@ export default function DongBoHocVienVaoXe() {
                   onClick={() =>
                     handleToggleAll(
                       dataStudents?.data?.Data || [],
-                      "MaDk",
+                      "MaDK",
                       selectedStudentKeys,
                       setSelectedStudentKeys,
                     )
@@ -355,7 +324,7 @@ export default function DongBoHocVienVaoXe() {
                 pagination={{ pageSize: 10 }}
                 size="small"
                 bordered
-                rowKey="MaDk"
+                rowKey="MaDK"
                 sticky={true}
                 className="h-60 overflow-y-auto overflow-x-hidden"
                 rowSelection={{
@@ -379,7 +348,7 @@ export default function DongBoHocVienVaoXe() {
             >
               <h2 className="text-lg !font-bold text-gray-900 !mb-0">Xe</h2>
               <p className="text-[#64748b] text-sm">
-                Chọn 1 hoặc nhiều xe cần gán giáo viên.
+                Chọn 1 hoặc nhiều xe cần gán học viên.
               </p>
 
               <div className="flex gap-2 mb-2 mt-5">
@@ -449,12 +418,12 @@ export default function DongBoHocVienVaoXe() {
                 Thực hiện đồng bộ
               </h2>
               <p className="text-[#64748b] text-sm">
-                Có thể đồng bộ 1 giáo viên vào nhiều xe: hệ thống sẽ gọi tuần tự
+                Có thể đồng bộ 1 học viên vào nhiều xe: hệ thống sẽ gọi tuần tự
                 cho từng xe.
               </p>
 
               <Row gutter={[8, 8]}>
-                <Col span={10}>
+                <Col span={11}>
                   <Input
                     placeholder="Mã GV đã chọn"
                     aria-label="mã giáo viên"
@@ -463,7 +432,7 @@ export default function DongBoHocVienVaoXe() {
                     value={selectedStudentKeys.join(",")}
                   />
                 </Col>
-                <Col span={10}>
+                <Col span={11}>
                   <Input
                     placeholder="Biển số xe đã chọn (1 hoặc nhiều)"
                     size="large"

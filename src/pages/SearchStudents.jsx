@@ -271,13 +271,19 @@ export default function SearchStudents() {
                   onChange={(e) => setSearchText(e.target.value)}
                   size="large"
                   className="!text-sm"
+                  onPressEnter={handleSearch}
                 />
               </Col>
               <Col span={4} className="pl-4 flex items-center">
                 <Button
                   type="primary"
-                  onClick={handleSearch}
                   className="!font-medium !py-4.5 !rounded-md"
+                  onClick={handleSearch}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearch();
+                    }
+                  }}
                 >
                   Tìm kiếm
                 </Button>
