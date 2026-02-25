@@ -1,5 +1,6 @@
 import axios from "axios";
 import { apiClient } from "./clientApi";
+import { baseURL } from "../constants/base";
 
 export const DanhSachHocVien = async (params) => {
   return apiClient({
@@ -25,16 +26,14 @@ export const HanhTrinh = async (params) => {
 };
 
 export const getHocVienCheck = async (maHocVien) => {
-  const response = await axios.get(
-    `http://localhost:3000/api/hoc-vien/${maHocVien}/check`,
-  );
+  const response = await axios.get(`${baseURL}/hoc-vien/${maHocVien}/check`);
 
   return response.data;
 };
 
 export const updateHocVienCheck = async (maHocVien, payload) => {
   const response = await axios.put(
-    `http://localhost:3000/api/hoc-vien/${maHocVien}/check`,
+    `${baseURL}/hoc-vien/${maHocVien}/check`,
     payload,
   );
 

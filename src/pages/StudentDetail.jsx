@@ -85,7 +85,7 @@ const StudentDetail = ({ data }) => {
         ngaybatdau: "2020-01-01",
         ngayketthuc: "2026-12-31",
         ten: data?.MaDK,
-        makhoahoc: data?.TenKhoaHoc,
+        makhoahoc: data?.MaKhoaHoc,
         limit: 20,
         page: 1,
       }),
@@ -148,7 +148,7 @@ const StudentDetail = ({ data }) => {
       title: "Đăng nhập",
       dataIndex: "DangNhap",
       key: "DangNhap",
-      width: 100,
+      width: 160,
       ellipsis: true,
       render: (text) => renderValue(text),
     },
@@ -156,7 +156,7 @@ const StudentDetail = ({ data }) => {
       title: "Đăng xuất",
       dataIndex: "DangXuat",
       key: "DangXuat",
-      width: 100,
+      width: 160,
       ellipsis: true,
       render: (text) => renderValue(text),
     },
@@ -164,7 +164,7 @@ const StudentDetail = ({ data }) => {
       title: "Phiên đào tạo",
       dataIndex: "MaKhoaHoc",
       key: "MaKhoaHoc",
-      width: 120,
+      width: 140,
       ellipsis: true,
       render: (text) => renderValue(text),
     },
@@ -172,7 +172,7 @@ const StudentDetail = ({ data }) => {
       title: "Biển số",
       dataIndex: "BienSo",
       key: "BienSo",
-      width: 80,
+      width: 90,
       responsive: ["md"],
       render: (text) => renderValue(text),
     },
@@ -407,10 +407,10 @@ const StudentDetail = ({ data }) => {
       // ERRORS - Điều kiện 1: Thời gian ban đêm
       {
         type: "error",
-        condition: summaryData.thoiGianBanDemGio < yeuCauHang.thoiGian.banDem,
+        condition: summaryData.thoiGianBanDemGio < yeuCauHang?.thoiGian?.banDem,
         getMessage: () => {
           const thieuGio =
-            yeuCauHang.thoiGian.banDem - summaryData.thoiGianBanDemGio;
+            yeuCauHang?.thoiGian?.banDem - summaryData.thoiGianBanDemGio;
           const gio = Math.floor(thieuGio);
           const phut = Math.round((thieuGio - gio) * 60);
           return `Thời gian ban đêm thiếu so với yêu cầu tối thiểu (${gio}h ${phut.toString().padStart(2, "0")}').`;
@@ -420,10 +420,10 @@ const StudentDetail = ({ data }) => {
       // ERRORS - Điều kiện 2: Quãng đường ban đêm
       {
         type: "error",
-        condition: summaryData.quangDuongBanDem < yeuCauHang.quangDuong.banDem,
+        condition: summaryData.quangDuongBanDem < yeuCauHang?.quangDuong.banDem,
         getMessage: () => {
           const thieu =
-            yeuCauHang.quangDuong.banDem - summaryData.quangDuongBanDem;
+            yeuCauHang?.quangDuong?.banDem - summaryData.quangDuongBanDem;
           return `Quãng đường ban đêm thiếu so với yêu cầu tối thiểu (${thieu.toFixed(2)} km).`;
         },
       },
@@ -431,10 +431,10 @@ const StudentDetail = ({ data }) => {
       // ERRORS - Điều kiện 3: Thời gian số tự động
       {
         type: "error",
-        condition: summaryData.thoiGianTuDongGio < yeuCauHang.thoiGian.tuDong,
+        condition: summaryData.thoiGianTuDongGio < yeuCauHang?.thoiGian?.tuDong,
         getMessage: () => {
           const thieuGio =
-            yeuCauHang.thoiGian.tuDong - summaryData.thoiGianTuDongGio;
+            yeuCauHang?.thoiGian?.tuDong - summaryData.thoiGianTuDongGio;
           const gio = Math.floor(thieuGio);
           const phut = Math.round((thieuGio - gio) * 60);
           return `Thời gian lái xe số tự động thiếu so với yêu cầu tối thiểu (${gio}h ${phut.toString().padStart(2, "0")}').`;
@@ -444,10 +444,11 @@ const StudentDetail = ({ data }) => {
       // ERRORS - Điều kiện 3: Quãng đường số tự động
       {
         type: "error",
-        condition: summaryData.quangDuongTuDong < yeuCauHang.quangDuong.tuDong,
+        condition:
+          summaryData.quangDuongTuDong < yeuCauHang?.quangDuong?.tuDong,
         getMessage: () => {
           const thieu =
-            yeuCauHang.quangDuong.tuDong - summaryData.quangDuongTuDong;
+            yeuCauHang?.quangDuong?.tuDong - summaryData.quangDuongTuDong;
           return `Quãng đường lái xe số tự động thiếu so với yêu cầu tối thiểu (${thieu.toFixed(2)} km).`;
         },
       },
@@ -455,9 +456,10 @@ const StudentDetail = ({ data }) => {
       // ERRORS - Điều kiện 4: Tổng thời lượng
       {
         type: "error",
-        condition: summaryData.tongThoiGianGio < yeuCauHang.thoiGian.tong,
+        condition: summaryData.tongThoiGianGio < yeuCauHang?.thoiGian?.tong,
         getMessage: () => {
-          const thieu = yeuCauHang.thoiGian.tong - summaryData.tongThoiGianGio;
+          const thieu =
+            yeuCauHang?.thoiGian?.tong - summaryData.tongThoiGianGio;
           const gio = Math.floor(thieu);
           const phut = Math.round((thieu - gio) * 60);
           return `Tổng thời lượng thiếu so với yêu cầu (thiếu ${gio}h ${phut.toString().padStart(2, "0")}').`;
@@ -467,9 +469,10 @@ const StudentDetail = ({ data }) => {
       // ERRORS - Điều kiện 5: Tổng quãng đường
       {
         type: "error",
-        condition: summaryData.tongQuangDuong < yeuCauHang.quangDuong.tong,
+        condition: summaryData.tongQuangDuong < yeuCauHang?.quangDuong?.tong,
         getMessage: () => {
-          const thieu = yeuCauHang.quangDuong.tong - summaryData.tongQuangDuong;
+          const thieu =
+            yeuCauHang?.quangDuong?.tong - summaryData.tongQuangDuong;
           return `Tổng quãng đường thiếu so với yêu cầu (thiếu ${thieu.toFixed(2)} km).`;
         },
       },
@@ -485,14 +488,14 @@ const StudentDetail = ({ data }) => {
       {
         type: "warning",
         condition: (() => {
-          const yeuCau = yeuCauHang.thoiGian.banNgay;
+          const yeuCau = yeuCauHang?.thoiGian?.banNgay;
           if (yeuCau === 0) return false;
           const thucTe = summaryData.thoiGianBanNgayGio;
           const phanTramDat = (thucTe / yeuCau) * 100;
           return phanTramDat < 80;
         })(),
         getMessage: () => {
-          const yeuCau = yeuCauHang.thoiGian.banNgay;
+          const yeuCau = yeuCauHang?.thoiGian?.banNgay;
           const thucTe = summaryData.thoiGianBanNgayGio;
           const phanTramDat = (thucTe / yeuCau) * 100;
           const phanTramThieu = 100 - phanTramDat;

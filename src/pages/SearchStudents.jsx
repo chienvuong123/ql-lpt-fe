@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -12,11 +12,13 @@ import {
   Col,
   Button,
   Row,
+  Select,
 } from "antd";
-import { DanhSachHocVien, DanhSachKhoaHoc, HanhTrinh } from "../apis/hocVien";
+import { DanhSachHocVien } from "../apis/hocVien";
 import StudentDetail from "./StudentDetail";
 import { exportReport } from "../apis/report";
 import dayjs from "dayjs";
+import { courseOptions } from "../apis/khoaHoc";
 
 const { Title } = Typography;
 
@@ -25,7 +27,7 @@ export default function SearchStudents() {
   const [searchParams, setSearchParams] = useState({});
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [openedDrawer, setOpenedDrawer] = useState(false);
-  const debounceTimer = useRef(null);
+  const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
 
   const { data: results = {}, isLoading } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
@@ -35,12 +37,11 @@ export default function SearchStudents() {
     enabled: Object.keys(searchParams).length > 0,
   });
 
-  const { data: resultsCourse = {} } = useQuery({
-    queryKey: ["danhSachKhoaHoc"],
-    queryFn: () => DanhSachKhoaHoc(),
+  const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
+    queryKey: ["khoahocOptions"],
+    queryFn: () => courseOptions(),
     staleTime: 1000 * 60 * 5,
-    retry: false,
-    enabled: Object.keys(searchParams).length > 0,
+    keepPreviousData: true,
   });
 
   const dataSource = useMemo(() => {
@@ -48,8 +49,8 @@ export default function SearchStudents() {
       ? results.data.Data
       : [];
 
-    const courses = Array.isArray(resultsCourse?.data?.Data)
-      ? resultsCourse.data.Data
+    const courses = Array.isArray(dataKhoaHoc?.data?.Data)
+      ? dataKhoaHoc.data.Data
       : [];
 
     return students.map((student) => {
@@ -60,29 +61,43 @@ export default function SearchStudents() {
       return {
         ...student,
         TenKhoaHoc: course?.Ten || "",
+        MaKhoaHoc: course?.MaKhoaHoc || "",
+        IDKhoaHoc: course?.ID || "",
       };
     });
-  }, [results, resultsCourse]);
+  }, [results, dataKhoaHoc]);
 
-  const handleSearchChange = useCallback((value) => {
-    setSearchText(value);
+  const khoaHocOptions = useMemo(() => {
+    const options = dataKhoaHoc?.data?.Data || [];
+    return [
+      { label: "Tất cả khóa học", value: "" },
+      ...options.map((kh) => ({
+        label: kh.Ten || kh.MaKhoaHoc || "Không có tên",
+        value: kh.ID || "",
+      })),
+    ];
+  }, [dataKhoaHoc]);
 
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
+  const handleSearch = () => {
+    const params = {};
+
+    if (searchText.trim().length >= 2) {
+      params.soCmt = searchText.trim();
     }
 
-    debounceTimer.current = setTimeout(() => {
-      if (value.trim().length >= 2) {
-        setSearchParams({
-          soCmt: value.trim(),
-          page: 1,
-          limit: 20,
-        });
-      } else if (value.trim().length === 0) {
-        setSearchParams({});
-      }
-    }, 500);
-  }, []);
+    if (selectedKhoaHoc) {
+      console.log(selectedKhoaHoc);
+
+      params.idkhoahoc = selectedKhoaHoc;
+    }
+
+    if (Object.keys(params).length === 0) {
+      message.warning("Vui lòng nhập từ khóa hoặc chọn khóa học để tìm kiếm");
+      return;
+    }
+
+    setSearchParams({ ...params, page: 1, limit: 20 });
+  };
 
   const handleView = (record) => {
     setSelectedRecord(record);
@@ -218,19 +233,42 @@ export default function SearchStudents() {
     <div>
       <Card className="!shadow-md">
         <div className="space-y-4">
-          <Title level={3} className="!mb-3">
+          <Title level={3} className="!mb-1">
             Tìm kiếm học viên
           </Title>
           <div>
             <label className="text-[13px] text-gray-600 block mb-1">
               Từ khóa (tên / số CMT) (gõ để tìm nhanh)
             </label>
-            <Row gutter={16}>
-              <Col span={20}>
+            <Row gutter={16} align="bottom" className="mt-6">
+              <Col xs={24} sm={12} md={10}>
+                <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+                  Khóa học
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="-- Chọn khóa học --"
+                  loading={loadingKhoaHoc}
+                  value={selectedKhoaHoc}
+                  onChange={(value) => setSelectedKhoaHoc(value)}
+                  options={khoaHocOptions}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                />
+              </Col>
+              <Col span={10}>
+                <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+                  Từ khóa
+                </label>
                 <Input
                   placeholder="Nhập tối thiểu 2 ký tự..."
                   value={searchText}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => setSearchText(e.target.value)}
                   size="large"
                   className="!text-sm"
                 />
@@ -238,7 +276,7 @@ export default function SearchStudents() {
               <Col span={4} className="pl-4 flex items-center">
                 <Button
                   type="primary"
-                  onClick={handleSearchChange}
+                  onClick={handleSearch}
                   className="!font-medium !py-4.5 !rounded-md"
                 >
                   Tìm kiếm

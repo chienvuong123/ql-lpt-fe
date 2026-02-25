@@ -35,7 +35,7 @@ const { Text } = Typography;
 const { Panel } = Collapse;
 
 // ─── Gọi API và đánh giá một mã học viên ─────────────────────────────────────
-async function checkOneCode(code, selectedKhoaHoc, signal) {
+async function checkOneCode(code, selectedKhoaHoc, signal, hang) {
   if (signal.aborted) throw new DOMException("Đã dừng", "AbortError");
 
   // Gọi API lấy hành trình
@@ -51,9 +51,24 @@ async function checkOneCode(code, selectedKhoaHoc, signal) {
   if (signal.aborted) throw new DOMException("Đã dừng", "AbortError");
 
   // Tuỳ cấu trúc API của bạn, điều chỉnh đường dẫn data ở đây
-  const dataSource =
-    response?.data?.Data || response?.data?.data || response?.Data || [];
-  const hangDaoTao = response?.data?.HangDaoTao || "";
+  const dataSource = response?.data?.Data || response?.data?.data || [];
+  const hangDaoTao = response?.data?.Data?.[0]?.HangDaoTao || hang || "";
+
+  if (dataSource.length === 0) {
+    return {
+      code,
+      status: "Chưa đạt",
+      errors: [
+        {
+          type: "error",
+          label: "Chưa có phiên học",
+          message: "Không tìm thấy dữ liệu phiên học của học viên này.",
+        },
+      ],
+      warnings: [],
+      summary: null,
+    };
+  }
 
   const summary = computeSummary(dataSource, hangDaoTao);
   const evaluation = evaluate(summary, dataSource);
@@ -75,6 +90,7 @@ const KiemTraHangLoat = () => {
   const [progress, setProgress] = useState(0);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
   const [expandedKeys, setExpandedKeys] = useState([]);
+  const [hangDaoTao, setHangDaoTao] = useState("");
 
   const abortControllerRef = useRef(null);
   const resultsRef = useRef(null);
@@ -97,6 +113,7 @@ const KiemTraHangLoat = () => {
       ...options.map((kh) => ({
         label: kh.Ten || kh.MaKhoaHoc || "Không có tên",
         value: kh.MaKhoaHoc || kh.MaKhoaHoc || kh.MaCSDT || "",
+        hangDaoTao: kh.HangDaoTao || "",
       })),
     ];
   }, [dataKhoaHoc]);
@@ -133,6 +150,7 @@ const KiemTraHangLoat = () => {
             code,
             selectedKhoaHoc,
             controller.signal,
+            hangDaoTao,
           );
           newResults.push(result);
           setResults([...newResults]);
@@ -173,7 +191,15 @@ const KiemTraHangLoat = () => {
       setIsRunning(false);
       abortControllerRef.current = null;
     }
-  }, [inputText, selectedKhoaHoc]);
+  }, [inputText, selectedKhoaHoc, hangDaoTao]);
+
+  const handleSelectKhoaHoc = (value) => {
+    const hangDaoTao =
+      khoaHocOptions.find((kh) => kh.value === value)?.hangDaoTao || "";
+
+    setSelectedKhoaHoc(value);
+    setHangDaoTao(hangDaoTao);
+  };
 
   // ── Dừng ──
   const handleStop = () => {
@@ -251,10 +277,10 @@ const KiemTraHangLoat = () => {
     <div>
       <div className="mx-20 mb-6">
         <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
-          Đồng bộ giáo viên vào xe
+          Kiểm tra điều kiện đạt của học viên hàng loạt
         </h1>
         <p className="text-[#64748b] text-sm">
-          Chọn giáo viên, chọn xe rồi bấm Đồng bộ.
+          Dán danh sách mã học viên cần kiểm tra, bạn nên chọn khóa để kiểm
         </p>
       </div>
       <Row gutter={[12, 12]} className="!mx-20">
@@ -264,8 +290,7 @@ const KiemTraHangLoat = () => {
               Thông tin kiểm tra
             </h2>
             <p className="text-[#64748b] text-sm">
-              Dán danh sách mã học viên cần kiểm tra, bạn nên chọn khóa để kiểm
-              tra nhanh hơn.
+              Bạn nên chọn khóa để kiểm tra đúng và nhanh hơn.
             </p>
             <Row gutter={[18, 18]} className="mt-8" align="bottom">
               <Col xs={24} sm={12} md={7}>
@@ -277,7 +302,7 @@ const KiemTraHangLoat = () => {
                   placeholder="-- Chọn khóa học --"
                   loading={loadingKhoaHoc}
                   value={selectedKhoaHoc}
-                  onChange={(value) => setSelectedKhoaHoc(value)}
+                  onChange={(value) => handleSelectKhoaHoc(value)}
                   options={khoaHocOptions}
                   allowClear
                   showSearch
@@ -332,41 +357,50 @@ const KiemTraHangLoat = () => {
             </Row>
           </Card>
           <Card className="!mt-2">
-            <div className="flex flex-wraps justify-center gap-3">
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={() =>
-                  exportCSV(
-                    results
-                      .filter((r) => r.status === "Đạt")
-                      .map((r) => r.code),
-                    "danh-sach-dat.csv",
-                  )
-                }
-              >
-                Xuất danh sách đạt
-              </Button>
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={() =>
-                  exportCSV(
-                    results
-                      .filter((r) => r.status === "Chưa đạt")
-                      .map((r) => r.code),
-                    "danh-sach-chua-dat.csv",
-                  )
-                }
-              >
-                Xuất danh sách chưa đạt
-              </Button>
-              <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                onClick={exportDetailedCSV}
-              >
-                Xuất chi tiết điều kiện sai
-              </Button>
-            </div>
+            <Row gutter={[12, 12]}>
+              <Col span={8}>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={() =>
+                    exportCSV(
+                      results
+                        .filter((r) => r.status === "Đạt")
+                        .map((r) => r.code),
+                      "danh-sach-dat.csv",
+                    )
+                  }
+                  className="w-full"
+                >
+                  Xuất danh sách đạt
+                </Button>
+              </Col>
+              <Col span={8}>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={() =>
+                    exportCSV(
+                      results
+                        .filter((r) => r.status === "Chưa đạt")
+                        .map((r) => r.code),
+                      "danh-sach-chua-dat.csv",
+                    )
+                  }
+                  className="w-full"
+                >
+                  Xuất danh sách chưa đạt
+                </Button>
+              </Col>
+              <Col span={8}>
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={exportDetailedCSV}
+                  className="w-full"
+                >
+                  Xuất chi tiết điều kiện sai
+                </Button>
+              </Col>
+            </Row>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={14}>
@@ -448,17 +482,27 @@ const KiemTraHangLoat = () => {
                               <span className="text-xs text-gray-400 w-6 text-right">
                                 {idx + 1}
                               </span>
-                              <Text code className="text-sm font-medium">
+                              <Text
+                                code
+                                copyable
+                                className="text-sm font-medium"
+                              >
                                 {item.code}
                               </Text>
                               {/* Badge số lỗi */}
-                              {item.errors.length > 0 && (
-                                <Badge
-                                  count={item.errors.length}
-                                  style={{ backgroundColor: "#ef4444" }}
-                                  title={`${item.errors.length} điều kiện không đạt`}
-                                />
-                              )}
+                              {item.errors.length > 0 &&
+                                (item.errors[0]?.label ===
+                                "Chưa có phiên học" ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
+                                    Chưa có phiên học
+                                  </span>
+                                ) : (
+                                  <Badge
+                                    count={item.errors.length}
+                                    style={{ backgroundColor: "#ef4444" }}
+                                    title={`${item.errors.length} điều kiện không đạt`}
+                                  />
+                                ))}
                               {item.warnings.length > 0 && (
                                 <Badge
                                   count={item.warnings.length}

@@ -20,18 +20,17 @@ const Dashboard = () => {
 
   const quickActions = [
     {
-      title: "Mở báo cáo quá trình",
+      title: "Mở báo cáo học viên",
       icon: "📊",
       primary: true,
       navigate: "/tim-hoc-vien",
     },
     {
-      title: "Kiểm tra toàn khóa",
+      title: "Kiểm tra học viên toàn khóa",
       icon: "📚",
       primary: false,
       navigate: "/kiem-tra-toan-khoa",
     },
-    // { title: "Báo cáo A1", icon: "🚗", primary: false },
   ];
 
   const managementFeatures = [
@@ -51,13 +50,6 @@ const Dashboard = () => {
       textColor: "text-white",
       navigate: "/lop-hoc-ly-thuyet",
     },
-    // {
-    //   icon: <TeamOutlined className="text-xs" />,
-    //   title: "Thành viên lớp LT",
-    //   description: "Xem và tra cứu tình trạng tiến độ học lý thuyết.",
-    //   bgColor: "bg-amber-500",
-    //   textColor: "text-white",
-    // },
     {
       icon: <BarChartOutlined className="text-xs" />,
       title: "Báo cáo quá trình",
@@ -66,13 +58,6 @@ const Dashboard = () => {
       textColor: "text-white",
       navigate: "/tim-hoc-vien",
     },
-    // {
-    //   icon: <FileTextOutlined className="text-xs" />,
-    //   title: "Báo cáo nhiều học viên",
-    //   description: "Đánh giá/báo cáo hàng loạt đã tiết kiệm thời gian.",
-    //   bgColor: "bg-emerald-500",
-    //   textColor: "text-white",
-    // },
     // {
     //   icon: <CheckSquareOutlined className="text-xs" />,
     //   title: "Học viên đã ký DAT",

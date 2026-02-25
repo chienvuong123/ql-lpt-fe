@@ -60,7 +60,7 @@ export default function LayoutApp() {
               className="!font-medium"
               onClick={handleDashboard}
             >
-              Dashboard
+              Trang chủ
             </Button>
             <Dropdown
               menu={{ items: userMenuItems }}

@@ -7,11 +7,23 @@ export const HANG_DAO_TAO_CONFIG = {
     thoiGian: { banNgay: 9, banDem: 3, tuDong: 0, tong: 12 },
     quangDuong: { banNgay: 590, banDem: 120, tuDong: 0, tong: 710 },
   },
+  "B.01": {
+    thoiGian: { banNgay: 9, banDem: 3, tuDong: 0, tong: 12 },
+    quangDuong: { banNgay: 590, banDem: 120, tuDong: 0, tong: 710 },
+  },
   B2: {
     thoiGian: { banNgay: 15, banDem: 3, tuDong: 2, tong: 20 },
     quangDuong: { banNgay: 610, banDem: 120, tuDong: 80, tong: 810 },
   },
+  B: {
+    thoiGian: { banNgay: 15, banDem: 3, tuDong: 2, tong: 20 },
+    quangDuong: { banNgay: 610, banDem: 120, tuDong: 80, tong: 810 },
+  },
   C: {
+    thoiGian: { banNgay: 20, banDem: 3, tuDong: 1, tong: 24 },
+    quangDuong: { banNgay: 705, banDem: 90, tuDong: 30, tong: 825 },
+  },
+  C1: {
     thoiGian: { banNgay: 20, banDem: 3, tuDong: 1, tong: 24 },
     quangDuong: { banNgay: 705, banDem: 90, tuDong: 30, tong: 825 },
   },
