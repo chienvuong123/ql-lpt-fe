@@ -174,14 +174,14 @@ const TrackingPage = () => {
     () => [
       {
         title: "#",
-        width: 28,
+        width: 40,
         align: "center",
         render: (_, __, index) => index + 1,
       },
       {
         title: "Biển số xe",
         dataIndex: "BienSo",
-        width: 120,
+        width: 110,
         align: "center",
       },
       {

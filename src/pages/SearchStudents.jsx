@@ -261,7 +261,7 @@ export default function SearchStudents() {
                   }
                 />
               </Col>
-              <Col span={10}>
+              <Col span={11}>
                 <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
                   Từ khóa
                 </label>
@@ -274,10 +274,10 @@ export default function SearchStudents() {
                   onPressEnter={handleSearch}
                 />
               </Col>
-              <Col span={4} className="pl-4 flex items-center">
+              <Col span={3} className="pl-4 flex items-center">
                 <Button
                   type="primary"
-                  className="!font-medium !py-4.5 !rounded-md"
+                  className="w-full !font-medium !py-4.5 !rounded-md"
                   onClick={handleSearch}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {

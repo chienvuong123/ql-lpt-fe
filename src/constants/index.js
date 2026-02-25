@@ -11,3 +11,6 @@ export const LICENSE_PLATE_LABEL = {
   B: "B số sàn",
   C1: "C số sàn",
 };
+
+const BATCH_SIZE = 5;
+const DELAY_BETWEEN_BATCHES = 300;

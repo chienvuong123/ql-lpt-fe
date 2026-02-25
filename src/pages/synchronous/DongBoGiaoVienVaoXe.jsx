@@ -384,10 +384,13 @@ export default function AssignTeacherToVehicle() {
                 cho từng xe.
               </p>
 
-              <Row gutter={[8, 8]}>
-                <Col span={10}>
+              <Row gutter={[8, 8]} align={"bottom"} className="mt-6">
+                <Col span={11}>
+                  <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                    Mã GV đã chọn
+                  </label>
                   <Input
-                    placeholder="Mã GV đã chọn"
+                    placeholder="Mã GV đã chọn (1 hoặc nhiều)"
                     aria-label="mã giáo viên"
                     size="large"
                     disabled
@@ -395,6 +398,9 @@ export default function AssignTeacherToVehicle() {
                   />
                 </Col>
                 <Col span={10}>
+                  <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                    Biển số xe đã chọn
+                  </label>
                   <Input
                     placeholder="Biển số xe đã chọn (1 hoặc nhiều)"
                     size="large"
@@ -402,11 +408,11 @@ export default function AssignTeacherToVehicle() {
                     value={selectedCarKeys.join(",")}
                   />
                 </Col>
-                <Col span={2}>
+                <Col span={3}>
                   <Button
                     type="primary"
                     size="large"
-                    className="bg-blue-600"
+                    className="w-full bg-blue-600"
                     onClick={handleSubmit}
                   >
                     Đồng bộ

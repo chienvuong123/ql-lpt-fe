@@ -29,6 +29,152 @@ export const HANG_DAO_TAO_CONFIG = {
   },
 };
 
+// ─── Bounding box các cung đường bắt buộc ────────────────────────────────────
+const CUNG_DUONG_CONFIG = [
+  {
+    id: "chi_linh",
+    ten: "Chí Linh",
+    bounds: { latMin: 21.05, latMax: 21.25, lngMin: 106.3, lngMax: 106.65 },
+  },
+  {
+    id: "kinh_mon",
+    ten: "Kinh Môn",
+    bounds: { latMin: 20.92, latMax: 21.05, lngMin: 106.4, lngMax: 106.62 },
+  },
+];
+
+/**
+ * Kiểm tra xe có đi qua cung đường không
+ * @param {Array} listCoordinate - ListCoordinate từ 1 phiên hành trình
+ * @param {object} bounds - { latMin, latMax, lngMin, lngMax }
+ */
+export function checkCungDuong(listCoordinate, bounds) {
+  if (!Array.isArray(listCoordinate) || listCoordinate.length === 0)
+    return false;
+
+  return listCoordinate.some(
+    (point) =>
+      point.Latitude >= bounds.latMin &&
+      point.Latitude <= bounds.latMax &&
+      point.Longitude >= bounds.lngMin &&
+      point.Longitude <= bounds.lngMax,
+  );
+}
+
+/**
+ * Kiểm tra toàn bộ danh sách hành trình có đi qua cung đường không
+ * @param {Array} dataSource - Mảng phiên hành trình, mỗi phiên có ListCoordinate
+ */
+export function evaluateCungDuong(dataSource) {
+  const allCoords = dataSource.flatMap((item) => item.ListCoordinate || []);
+
+  const daDiQuaMotTrong = CUNG_DUONG_CONFIG.some(({ bounds }) =>
+    checkCungDuong(allCoords, bounds),
+  );
+
+  if (!daDiQuaMotTrong) {
+    return [
+      {
+        type: "error",
+        label: "Cung đường Chí Linh / Kinh Môn",
+        message: "Chưa đi qua cung đường Chí Linh hoặc Kinh Môn.",
+      },
+    ];
+  }
+
+  return [];
+}
+
+/**
+ * Kiểm tra thời gian nghỉ giữa các phiên (tối thiểu 15 phút)
+ * @param {Array} dataSource - Mảng phiên hành trình, đã sắp xếp theo thời gian
+ */
+export function evaluateNghiGiuaPhien(dataSource) {
+  if (!dataSource || dataSource.length < 2) return [];
+
+  const errors = [];
+
+  // Sắp xếp theo ThoiDiemDangNhap tăng dần
+  const sorted = [...dataSource].sort(
+    (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
+  );
+
+  for (let i = 1; i < sorted.length; i++) {
+    const phienTruoc = sorted[i - 1];
+    const phienSau = sorted[i];
+
+    const thoiGianXuat = new Date(phienTruoc.ThoiDiemDangXuat);
+    const thoiGianNhap = new Date(phienSau.ThoiDiemDangNhap);
+
+    if (isNaN(thoiGianXuat) || isNaN(thoiGianNhap)) continue;
+
+    const khoangCachPhut = (thoiGianNhap - thoiGianXuat) / 1000 / 60;
+
+    if (khoangCachPhut < 15) {
+      const formatTime = (d) =>
+        d.toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+      errors.push({
+        type: "error",
+        label: "Thời gian nghỉ giữa phiên",
+        message: `Phiên ${i} và ${i + 1}: thời gian nghỉ chỉ ${khoangCachPhut.toFixed(0)} phút (${formatTime(thoiGianXuat)} → ${formatTime(thoiGianNhap)}), yêu cầu tối thiểu 15 phút.`,
+      });
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Kiểm tra tốc độ trung bình từng phiên (tối thiểu 20 km/h)
+ * Tính từ TongQuangDuong (km) / TongThoiGian (giây)
+ */
+export function evaluateTocDoPhien(dataSource) {
+  if (!dataSource || dataSource.length === 0) return [];
+
+  const errors = [];
+  const MIN_SPEED = 18; // km/h
+
+  dataSource.forEach((phien, idx) => {
+    const km = phien.TongQuangDuong || phien.TongQD_raw || 0;
+    const giay = phien.TongThoiGian || 0;
+
+    if (giay === 0 || km === 0) return; // Bỏ qua phiên không có dữ liệu
+
+    const gioLai = giay / 3600;
+    const tocDoTrungBinh = km / gioLai;
+
+    if (tocDoTrungBinh < MIN_SPEED) {
+      const formatTime = (str) => {
+        if (!str) return `Phiên ${idx + 1}`;
+        const d = new Date(str);
+        return isNaN(d)
+          ? str
+          : d.toLocaleString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+      };
+
+      errors.push({
+        type: "error",
+        label: "Tốc độ trung bình phiên",
+        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): tốc độ trung bình ${tocDoTrungBinh.toFixed(1)} km/h, yêu cầu tối thiểu ${MIN_SPEED} km/h.`,
+      });
+    }
+  });
+
+  return errors;
+}
+
 /**
  * Tính toán tổng hợp từ danh sách hành trình
  * @param {Array} dataSource - Mảng các phiên hành trình từ API
@@ -139,8 +285,9 @@ export function computeSummary(dataSource, hangDaoTao = "") {
  * Đánh giá pass/fail và trả về danh sách lỗi + cảnh báo
  * @param {object} summaryData - Kết quả từ computeSummary
  * @param {Array} dataSource - Raw data để kiểm tra thêm
+ * @param {Array} loTrinh - Dữ liệu lộ trình từ API LoTrinhOnline
  */
-export function evaluate(summaryData, dataSource = []) {
+export function evaluate(summaryData, dataSource = [], loTrinh = []) {
   const errors = [];
   const warnings = [];
 
@@ -266,6 +413,10 @@ export function evaluate(summaryData, dataSource = []) {
       else warnings.push(issue);
     }
   });
+
+  warnings.push(...evaluateNghiGiuaPhien(dataSource)); // lỗi nếu có 2 phiên liên tiếp mà thời gian nghỉ < 15 phút
+  warnings.push(...evaluateTocDoPhien(dataSource)); // lỗi nếu có phiên nào đó tốc độ trung bình < 20 km/h
+  warnings.push(...evaluateCungDuong(loTrinh)); // check đường có đi qua Chí Linh hoặc Kinh Môn không
 
   return { status: errors.length === 0 ? "pass" : "fail", errors, warnings };
 }

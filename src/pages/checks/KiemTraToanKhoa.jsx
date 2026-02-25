@@ -29,10 +29,14 @@ import { useQuery } from "@tanstack/react-query";
 import { courseOptions } from "../../apis/khoaHoc";
 import { HanhTrinh } from "../../apis/hocVien";
 import { computeSummary, evaluate } from "./DieuKienKiemTra";
+import { LoTringOnline } from "../../apis/xeOnline";
 
 const { TextArea } = Input;
 const { Text } = Typography;
 const { Panel } = Collapse;
+
+const BATCH_SIZE = 5;
+const DELAY_BETWEEN_BATCHES = 300;
 
 // ─── Gọi API và đánh giá một mã học viên ─────────────────────────────────────
 async function checkOneCode(code, selectedKhoaHoc, signal, hang) {
@@ -46,6 +50,15 @@ async function checkOneCode(code, selectedKhoaHoc, signal, hang) {
     makhoahoc: selectedKhoaHoc,
     limit: 20, // lấy đủ toàn bộ phiên
     page: 1,
+  });
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const loTrinh = await LoTringOnline({
+    ngaybatdau: `2022-1-1T00:00:00`,
+    // ngayketthuc: `${endDate.toISOString().split("T")[0]}T23:59:00`,
+    ngayketthuc: `${today}T23:59:00`,
+    madk: code,
   });
 
   if (signal.aborted) throw new DOMException("Đã dừng", "AbortError");
@@ -71,7 +84,7 @@ async function checkOneCode(code, selectedKhoaHoc, signal, hang) {
   }
 
   const summary = computeSummary(dataSource, hangDaoTao);
-  const evaluation = evaluate(summary, dataSource);
+  const evaluation = evaluate(summary, dataSource, loTrinh?.data || []);
 
   return {
     code,
@@ -118,7 +131,10 @@ const KiemTraHangLoat = () => {
     ];
   }, [dataKhoaHoc]);
 
-  // ── Bắt đầu kiểm tra ──
+  const BATCH_SIZE = 10;
+  const DELAY_BETWEEN_BATCHES = 0;
+
+  // ─── checkOneCode giữ nguyên, chỉ sửa handleRun ──────────────────────────────
   const handleRun = useCallback(async () => {
     const codes = inputText
       .split("\n")
@@ -138,47 +154,86 @@ const KiemTraHangLoat = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    const newResults = [];
+    // Dùng Map để giữ thứ tự kết quả theo index gốc
+    const resultMap = new Map();
+    let completedCount = 0;
+
+    // Helper: flush resultMap ra setResults theo đúng thứ tự
+    const flushResults = () => {
+      const ordered = [];
+      for (let i = 0; i < codes.length; i++) {
+        if (resultMap.has(i)) ordered.push(resultMap.get(i));
+        else break; // Dừng khi gặp index chưa có (giữ thứ tự liên tục)
+      }
+      setResults([...ordered]);
+    };
 
     try {
-      for (let i = 0; i < codes.length; i++) {
+      // Chia codes thành các batch
+      const batches = [];
+      for (let i = 0; i < codes.length; i += BATCH_SIZE) {
+        batches.push(
+          codes.slice(i, i + BATCH_SIZE).map((code, j) => ({
+            code,
+            originalIndex: i + j,
+          })),
+        );
+      }
+
+      for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
         if (controller.signal.aborted) break;
 
-        const code = codes[i];
-        try {
-          const result = await checkOneCode(
-            code,
-            selectedKhoaHoc,
-            controller.signal,
-            hangDaoTao,
-          );
-          newResults.push(result);
-          setResults([...newResults]);
-          setProgress(Math.round(((i + 1) / codes.length) * 100));
+        const batch = batches[batchIdx];
 
-          resultsRef.current?.scrollTo({
-            top: resultsRef.current.scrollHeight,
-            behavior: "smooth",
-          });
-        } catch (err) {
-          if (err.name === "AbortError") break;
-          console.error(err);
-          // Nếu lỗi API thì ghi nhận là lỗi
-          newResults.push({
-            code,
-            status: "Lỗi",
-            errors: [{ type: "error", label: "Lỗi API", message: err.message }],
-            warnings: [],
-            summary: null,
-          });
-          setResults([...newResults]);
-          setProgress(Math.round(((i + 1) / codes.length) * 100));
+        // Chạy song song toàn bộ code trong batch
+        await Promise.all(
+          batch.map(async ({ code, originalIndex }) => {
+            if (controller.signal.aborted) return;
+
+            try {
+              const result = await checkOneCode(
+                code,
+                selectedKhoaHoc,
+                controller.signal,
+                hangDaoTao,
+              );
+              resultMap.set(originalIndex, result);
+            } catch (err) {
+              if (err.name === "AbortError") return;
+              console.error(err);
+              resultMap.set(originalIndex, {
+                code,
+                status: "Lỗi",
+                errors: [
+                  { type: "error", label: "Lỗi API", message: err.message },
+                ],
+                warnings: [],
+                summary: null,
+              });
+            } finally {
+              completedCount++;
+              setProgress(Math.round((completedCount / codes.length) * 100));
+              flushResults();
+              resultsRef.current?.scrollTo({
+                top: resultsRef.current.scrollHeight,
+                behavior: "smooth",
+              });
+            }
+          }),
+        );
+
+        // Nghỉ giữa các batch (trừ batch cuối)
+        if (batchIdx < batches.length - 1 && !controller.signal.aborted) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, DELAY_BETWEEN_BATCHES),
+          );
         }
       }
 
       if (!controller.signal.aborted) {
-        const finalDat = newResults.filter((r) => r.status === "Đạt").length;
-        const finalChuaDat = newResults.filter(
+        const allResults = [...resultMap.values()];
+        const finalDat = allResults.filter((r) => r.status === "Đạt").length;
+        const finalChuaDat = allResults.filter(
           (r) => r.status === "Chưa đạt",
         ).length;
         message.success(

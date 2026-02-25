@@ -220,7 +220,10 @@ export default function DongBoHocVienVaoXe() {
     try {
       await DanhSachXe({
         dsBienSo: selectedCarKeys.join(","),
-        dsMaDk: selectedStudentKeys.join(","),
+        dsMaDk:
+          selectedStudentKeys.length > 0
+            ? undefined
+            : selectedStudentKeys.join(","),
         idkhoahoc: selectedKhoaHoc,
       });
 
@@ -422,17 +425,23 @@ export default function DongBoHocVienVaoXe() {
                 cho từng xe.
               </p>
 
-              <Row gutter={[8, 8]}>
+              <Row gutter={[8, 8]} align={"bottom"} className="mt-6">
                 <Col span={11}>
+                  <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                    Mã HV đã chọn
+                  </label>
                   <Input
-                    placeholder="Mã GV đã chọn"
-                    aria-label="mã giáo viên"
+                    placeholder="Mã HV đã chọn (1 hoặc nhiều)"
+                    aria-label="mã học viên"
                     size="large"
                     disabled
                     value={selectedStudentKeys.join(",")}
                   />
                 </Col>
                 <Col span={11}>
+                  <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                    Biển số xe đã chọn
+                  </label>
                   <Input
                     placeholder="Biển số xe đã chọn (1 hoặc nhiều)"
                     size="large"
