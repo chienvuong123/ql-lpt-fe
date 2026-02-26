@@ -11,6 +11,7 @@ import {
   Badge,
   Upload,
 } from "antd";
+import XLSX from "xlsx-js-style";
 import {
   DownloadOutlined,
   PlayCircleOutlined,
@@ -31,12 +32,20 @@ import {
   importCheckStudentExcel,
 } from "../../apis/kiemTra";
 import { courseOptions } from "../../apis/khoaHoc";
+import dayjs from "dayjs";
+
+// ✅ Bỏ hoàn toàn import react-window
 
 const { TextArea } = Input;
 const { Text } = Typography;
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 50;
 const DELAY_BETWEEN_BATCHES = 0;
+const UI_UPDATE_INTERVAL = 500;
+
+// Virtual scroll constants
+const ITEM_HEIGHT = 56;
+const VISIBLE_COUNT = 10;
 
 // ─── Gọi API và kiểm tra một mã học viên ─────────────────────────────────────
 async function checkOneCode(code, signal, studentInfo, maKh) {
@@ -58,6 +67,8 @@ async function checkOneCode(code, signal, studentInfo, maKh) {
   if (dataSource.length === 0) {
     return {
       code,
+      tenHV: studentInfo?.hoVaTen,
+      ngaySinh: dayjs(studentInfo?.ngaySinh).format("DD/MM/YYYY"),
       status: "Chưa đạt",
       errors: [
         {
@@ -76,6 +87,8 @@ async function checkOneCode(code, signal, studentInfo, maKh) {
 
   return {
     code,
+    tenHV: studentInfo?.hoVaTen,
+    ngaySinh: dayjs(studentInfo?.ngaySinh).format("DD/MM/YYYY"),
     status: evaluation.status === "pass" ? "Đạt" : "Chưa đạt",
     errors: evaluation.errors,
     warnings: evaluation.warnings,
@@ -90,12 +103,13 @@ const KiemTraHangNam = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [expandedKeys, setExpandedKeys] = useState([]);
-  // Lưu trữ kết quả đã xử lý để hỗ trợ resume
   const [canResume, setCanResume] = useState(false);
+
+  // ✅ State cho virtual scroll
+  const [scrollTop, setScrollTop] = useState(0);
 
   const abortControllerRef = useRef(null);
   const resultsRef = useRef(null);
-  // Ref lưu resultMap và codes hiện tại để resume
   const savedResultMapRef = useRef(new Map());
   const savedCodesRef = useRef([]);
 
@@ -103,6 +117,13 @@ const KiemTraHangNam = () => {
 
   const datCount = results.filter((r) => r.status === "Đạt").length;
   const chuaDatCount = results.filter((r) => r.status === "Chưa đạt").length;
+
+  // ✅ Tính toán virtual scroll
+  const totalHeight = results.length * ITEM_HEIGHT;
+  const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - 2);
+  const endIndex = Math.min(results.length - 1, startIndex + VISIBLE_COUNT + 4);
+  const visibleResults = results.slice(startIndex, endIndex + 1);
+  const offsetY = startIndex * ITEM_HEIGHT;
 
   const extractCodes = useCallback((data) => {
     const list = data?.data || [];
@@ -123,7 +144,6 @@ const KiemTraHangNam = () => {
       });
       const codes = extractCodes(freshData);
       if (codes) setInputText(codes);
-      // Reset resume state khi import mới
       setCanResume(false);
       savedResultMapRef.current = new Map();
       savedCodesRef.current = [];
@@ -170,40 +190,47 @@ const KiemTraHangNam = () => {
     return dataKhoaHoc?.data?.Data || [];
   }, [dataKhoaHoc]);
 
-  // ── Hàm core chạy kiểm tra (dùng chung cho Run và Resume) ──
+  // ── Hàm core chạy kiểm tra ──
   const runCheck = useCallback(
     async (codes, initialResultMap) => {
       setIsRunning(true);
       setProgress(0);
       setExpandedKeys([]);
       setCanResume(false);
+      setScrollTop(0);
 
-      // Lưu codes hiện tại để dùng khi resume
       savedCodesRef.current = codes;
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       const resultMap = new Map(initialResultMap);
-      let completedCount = resultMap.size; // Tính cả kết quả đã có từ trước
+      let completedCount = resultMap.size;
+
+      let pendingFlush = false;
 
       const flushResults = () => {
-        const ordered = [];
-        for (let i = 0; i < codes.length; i++) {
-          if (resultMap.has(i)) ordered.push(resultMap.get(i));
-          else break;
-        }
-        setResults([...ordered]);
+        if (pendingFlush) return;
+        pendingFlush = true;
+        requestAnimationFrame(() => {
+          const ordered = [];
+          for (let i = 0; i < codes.length; i++) {
+            if (resultMap.has(i)) ordered.push(resultMap.get(i));
+            else break;
+          }
+          setResults([...ordered]);
+          setProgress(Math.round((completedCount / codes.length) * 100));
+          pendingFlush = false;
+        });
       };
 
-      // Hiển thị ngay kết quả cũ (nếu resume)
+      const flushInterval = setInterval(flushResults, UI_UPDATE_INTERVAL);
+
       if (completedCount > 0) {
         flushResults();
-        setProgress(Math.round((completedCount / codes.length) * 100));
       }
 
       try {
-        // Lọc ra các index chưa có kết quả
         const pendingItems = [];
         for (let i = 0; i < codes.length; i++) {
           if (!resultMap.has(i)) {
@@ -240,7 +267,6 @@ const KiemTraHangNam = () => {
                 resultMap.set(originalIndex, result);
               } catch (err) {
                 if (err.name === "AbortError") return;
-                console.error(err);
                 resultMap.set(originalIndex, {
                   code,
                   status: "Lỗi",
@@ -252,12 +278,6 @@ const KiemTraHangNam = () => {
                 });
               } finally {
                 completedCount++;
-                setProgress(Math.round((completedCount / codes.length) * 100));
-                flushResults();
-                resultsRef.current?.scrollTo({
-                  top: resultsRef.current.scrollHeight,
-                  behavior: "smooth",
-                });
               }
             }),
           );
@@ -269,6 +289,17 @@ const KiemTraHangNam = () => {
           }
         }
 
+        clearInterval(flushInterval);
+
+        // Force final flush
+        const ordered = [];
+        for (let i = 0; i < codes.length; i++) {
+          if (resultMap.has(i)) ordered.push(resultMap.get(i));
+          else break;
+        }
+        setResults([...ordered]);
+        setProgress(Math.round((completedCount / codes.length) * 100));
+
         if (!controller.signal.aborted) {
           const allResults = [...resultMap.values()];
           const finalDat = allResults.filter((r) => r.status === "Đạt").length;
@@ -278,17 +309,17 @@ const KiemTraHangNam = () => {
           message.success(
             `Hoàn tất! Đạt: ${finalDat} | Chưa đạt: ${finalChuaDat}`,
           );
-          // Hoàn tất → không cần resume nữa
           savedResultMapRef.current = new Map();
           setCanResume(false);
         } else {
-          // Bị dừng → lưu lại để resume
           savedResultMapRef.current = new Map(resultMap);
           setCanResume(true);
         }
       } catch (err) {
+        clearInterval(flushInterval);
         message.error("Quá trình bị gián đoạn: " + err.message);
       } finally {
+        clearInterval(flushInterval);
         setIsRunning(false);
         abortControllerRef.current = null;
       }
@@ -296,7 +327,6 @@ const KiemTraHangNam = () => {
     [studentMap, khoaHoc],
   );
 
-  // ── Chạy mới hoàn toàn ──
   const handleRun = useCallback(async () => {
     const codes = inputText
       .split("\n")
@@ -308,7 +338,6 @@ const KiemTraHangNam = () => {
       return;
     }
 
-    // Reset toàn bộ kết quả cũ
     setResults([]);
     savedResultMapRef.current = new Map();
     setCanResume(false);
@@ -316,7 +345,6 @@ const KiemTraHangNam = () => {
     await runCheck(codes, new Map());
   }, [inputText, runCheck]);
 
-  // ── Tiếp tục từ chỗ dừng ──
   const handleResume = useCallback(async () => {
     const codes = savedCodesRef.current;
     if (codes.length === 0) {
@@ -326,7 +354,6 @@ const KiemTraHangNam = () => {
     await runCheck(codes, savedResultMapRef.current);
   }, [runCheck]);
 
-  // ── Dừng ──
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -334,7 +361,6 @@ const KiemTraHangNam = () => {
     }
   };
 
-  // ── Xuất CSV ──
   const exportCSV = (list, filename) => {
     if (list.length === 0) {
       message.warning("Danh sách rỗng!");
@@ -350,34 +376,56 @@ const KiemTraHangNam = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ── Xuất CSV chi tiết ──
-  const exportDetailedCSV = () => {
+  const exportDetailedExcel = () => {
     const failed = results.filter((r) => r.status === "Chưa đạt");
-    if (failed.length === 0) {
-      message.warning("Không có học viên chưa đạt!");
-      return;
-    }
-    const rows = [["Mã học viên", "Điều kiện sai", "Chi tiết"]];
+    if (!failed.length) return message.warning("Không có dữ liệu chưa đạt!");
+
+    const hStyle = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4F81BD" } },
+    };
+
+    const data = [
+      [
+        "STT",
+        "Mã học viên",
+        "Họ và tên",
+        "Ngày sinh",
+        "Lỗi sai",
+        "Ghi chú",
+      ].map((h) => ({ v: h, s: hStyle })),
+    ];
+
+    let stt = 1;
     failed.forEach((item) => {
       item.errors.forEach((err) => {
-        rows.push([item.code, err.label, err.message]);
+        data.push(
+          [
+            stt++,
+            item.code,
+            item.tenHV,
+            item.ngaySinh,
+            err.label,
+            err.message,
+          ].map((v) => ({ v: v || "" })),
+        );
       });
     });
-    const csv = rows
-      .map((r) => r.map((cell) => `"${cell}"`).join(","))
-      .join("\n");
-    const blob = new Blob(["\uFEFF" + csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "danh-sach-chua-dat-chitiet.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws["!cols"] = [
+      { wch: 5 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 110 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chi tiết");
+    XLSX.writeFile(wb, "Ket_Qua_Kiem_Tra.xlsx");
   };
 
-  // ── Render badge trạng thái ──
   const StatusBadge = ({ status }) => {
     if (status === "Đạt")
       return (
@@ -398,7 +446,6 @@ const KiemTraHangNam = () => {
     );
   };
 
-  // Số học viên còn lại chưa kiểm tra
   const remainingCount = canResume
     ? savedCodesRef.current.length - savedResultMapRef.current.size
     : 0;
@@ -493,7 +540,6 @@ const KiemTraHangNam = () => {
                 value={inputText}
                 onChange={(e) => {
                   setInputText(e.target.value);
-                  // Nếu người dùng thay đổi input thì reset resume
                   if (canResume) {
                     setCanResume(false);
                     savedResultMapRef.current = new Map();
@@ -562,7 +608,7 @@ const KiemTraHangNam = () => {
                 <Button
                   type="primary"
                   icon={<DownloadOutlined />}
-                  onClick={exportDetailedCSV}
+                  onClick={exportDetailedExcel}
                   className="w-full"
                 >
                   Xuất chi tiết điều kiện sai
@@ -611,115 +657,142 @@ const KiemTraHangNam = () => {
 
             <div className="px-0 pb-8">
               {results.length === 0 ? (
-                <div className="text-center py-16 text-gray-500 italic">
+                // ── Empty state ──
+                <div className="text-center py-16 text-gray-500 italic border border-gray-200 rounded-xl">
                   {isRunning ? "Đang xử lý..." : "Chưa có thông tin kiểm tra."}
                 </div>
               ) : (
-                <div
-                  ref={resultsRef}
-                  className="max-h-[520px] overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner"
-                >
-                  {results.map((item, idx) => {
-                    const hasIssues =
-                      item.errors.length > 0 || item.warnings.length > 0;
-                    const isExpanded = expandedKeys.includes(idx);
-
-                    return (
+                <>
+                  {/* ── Virtual scroll container ── */}
+                  <div
+                    ref={resultsRef}
+                    className="border border-gray-200 rounded-xl bg-white shadow-inner overflow-y-auto"
+                    style={{ height: 520 }}
+                    onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+                  >
+                    {/* Div cao tổng để thanh scroll đúng tỉ lệ */}
+                    <div style={{ height: totalHeight, position: "relative" }}>
+                      {/* Chỉ render các row đang visible */}
                       <div
-                        key={idx}
-                        className={`border-b border-gray-100 last:border-b-0 transition-colors ${
-                          item.status !== "Đạt" ? "bg-red-50/30" : ""
-                        }`}
+                        style={{
+                          position: "absolute",
+                          top: offsetY,
+                          width: "100%",
+                        }}
                       >
-                        {/* Hàng chính */}
-                        <div
-                          className={`px-5 py-3.5 flex justify-between items-center ${
-                            hasIssues ? "cursor-pointer hover:bg-gray-50" : ""
-                          }`}
-                          onClick={() => {
-                            if (!hasIssues) return;
-                            setExpandedKeys((prev) =>
-                              prev.includes(idx)
-                                ? prev.filter((k) => k !== idx)
-                                : [...prev, idx],
-                            );
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-400 w-6 text-right">
-                              {idx + 1}
-                            </span>
-                            <Text code copyable className="text-sm font-medium">
-                              {item.code}
-                            </Text>
-                            {item.errors.length > 0 &&
-                              (item.errors[0]?.label === "Chưa có phiên học" ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
-                                  Chưa có phiên học
-                                </span>
-                              ) : (
-                                <Badge
-                                  count={item.errors.length}
-                                  style={{ backgroundColor: "#ef4444" }}
-                                  title={`${item.errors.length} điều kiện không đạt`}
-                                />
-                              ))}
-                            {item.warnings.length > 0 && (
-                              <Badge
-                                count={item.warnings.length}
-                                style={{ backgroundColor: "#f59e0b" }}
-                                title={`${item.warnings.length} cảnh báo`}
-                              />
-                            )}
-                          </div>
+                        {visibleResults.map((item, i) => {
+                          const idx = startIndex + i;
+                          const hasIssues =
+                            item.errors.length > 0 || item.warnings.length > 0;
+                          const isExpanded = expandedKeys.includes(idx);
 
-                          <div className="flex items-center gap-3">
-                            <StatusBadge status={item.status} />
-                            {hasIssues && (
-                              <span className="text-xs text-gray-400">
-                                {isExpanded ? "▲" : "▼"}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Chi tiết lỗi khi expand */}
-                        {isExpanded && hasIssues && (
-                          <div className="px-4 pb-4 space-y-1.5">
-                            {item.errors.map((err, i) => (
+                          return (
+                            <div
+                              key={idx}
+                              style={{ minHeight: ITEM_HEIGHT }}
+                              className={`border-b border-gray-100 last:border-b-0 transition-colors ${
+                                item.status !== "Đạt" ? "bg-red-50/30" : ""
+                              }`}
+                            >
+                              {/* Hàng chính */}
                               <div
-                                key={i}
-                                className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5"
+                                className={`px-5 py-3.5 flex justify-between items-center ${
+                                  hasIssues
+                                    ? "cursor-pointer hover:bg-gray-50"
+                                    : ""
+                                }`}
+                                onClick={() => {
+                                  if (!hasIssues) return;
+                                  setExpandedKeys((prev) =>
+                                    prev.includes(idx)
+                                      ? prev.filter((k) => k !== idx)
+                                      : [...prev, idx],
+                                  );
+                                }}
                               >
-                                <CloseCircleOutlined className="mt-0.5 shrink-0" />
-                                <div>
-                                  <span className="font-semibold">
-                                    [{err.label}]
-                                  </span>{" "}
-                                  {err.message}
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-400 w-6 text-right">
+                                    {idx + 1}
+                                  </span>
+                                  <Text
+                                    code
+                                    copyable
+                                    className="text-sm font-medium"
+                                  >
+                                    {item.code}
+                                  </Text>
+                                  {item.errors.length > 0 &&
+                                    (item.errors[0]?.label ===
+                                    "Chưa có phiên học" ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
+                                        Chưa có phiên học
+                                      </span>
+                                    ) : (
+                                      <Badge
+                                        count={item.errors.length}
+                                        style={{ backgroundColor: "#ef4444" }}
+                                        title={`${item.errors.length} điều kiện không đạt`}
+                                      />
+                                    ))}
+                                  {item.warnings.length > 0 && (
+                                    <Badge
+                                      count={item.warnings.length}
+                                      style={{ backgroundColor: "#f59e0b" }}
+                                      title={`${item.warnings.length} cảnh báo`}
+                                    />
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <StatusBadge status={item.status} />
+                                  {hasIssues && (
+                                    <span className="text-xs text-gray-400">
+                                      {isExpanded ? "▲" : "▼"}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            ))}
-                            {item.warnings.map((warn, i) => (
-                              <div
-                                key={i}
-                                className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5"
-                              >
-                                <WarningOutlined className="mt-0.5 shrink-0" />
-                                <div>
-                                  <span className="font-semibold">
-                                    [{warn.label}]
-                                  </span>{" "}
-                                  {warn.message}
+
+                              {/* Chi tiết lỗi inline khi expand */}
+                              {isExpanded && hasIssues && (
+                                <div className="px-4 pb-4 space-y-1.5">
+                                  {item.errors.map((err, i) => (
+                                    <div
+                                      key={i}
+                                      className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5"
+                                    >
+                                      <CloseCircleOutlined className="mt-0.5 shrink-0" />
+                                      <div>
+                                        <span className="font-semibold">
+                                          [{err.label}]
+                                        </span>{" "}
+                                        {err.message}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {item.warnings.map((warn, i) => (
+                                    <div
+                                      key={i}
+                                      className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5"
+                                    >
+                                      <WarningOutlined className="mt-0.5 shrink-0" />
+                                      <div>
+                                        <span className="font-semibold">
+                                          [{warn.label}]
+                                        </span>{" "}
+                                        {warn.message}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </Card>
