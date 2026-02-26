@@ -15,6 +15,7 @@ import {
   Image,
   message,
   Form,
+  Modal,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -24,19 +25,19 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   getHocVienCheck,
   HanhTrinh,
   updateHocVienCheck,
 } from "../apis/hocVien";
-import { useNavigate } from "react-router-dom";
+import TrackingPage from "./map/TrackingPage";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 const StudentDetail = ({ data }) => {
-  const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
   const queryClient = useQueryClient();
@@ -106,6 +107,18 @@ const StudentDetail = ({ data }) => {
       return <Text style={{ display: "block", textAlign: "center" }}>-</Text>;
     }
     return <Text>{`${value}${suffix}`}</Text>;
+  };
+
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleOk = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
   };
 
   const columns = [
@@ -575,14 +588,14 @@ const StudentDetail = ({ data }) => {
     mutate(values);
   };
 
-  const handleGoMap = () => {
-    navigate("/map", {
-      state: {
-        duLieuPhienHoc: dataSource,
-        summaryData: data,
-      },
-    });
-  };
+  // const handleGoMap = () => {
+  //   navigate("/map", {
+  //     state: {
+  //       duLieuPhienHoc: dataSource,
+  //       summaryData: data,
+  //     },
+  //   });
+  // };
 
   useEffect(() => {
     if (dataCheck) {
@@ -792,7 +805,7 @@ const StudentDetail = ({ data }) => {
                     <Button
                       type="primary"
                       icon={<EyeOutlined />}
-                      onClick={() => handleGoMap()}
+                      onClick={() => showModal()}
                     >
                       Giám sát hành trình
                     </Button>
@@ -932,6 +945,18 @@ const StudentDetail = ({ data }) => {
             </div>
           )}
         </Card>
+        <Modal
+          title=""
+          open={isModalOpen}
+          onOk={handleOk}
+          onCancel={handleCancel}
+          width="1280px"
+          style={{ top: 20 }}
+          footer={null}
+          destroyOnClose
+        >
+          <TrackingPage duLieuPhienHoc={dataSource} summaryData={data} />
+        </Modal>
       </div>
     </Spin>
   );

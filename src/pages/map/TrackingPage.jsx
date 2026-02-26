@@ -21,7 +21,7 @@ import {
 } from "@ant-design/icons";
 import { LoTringOnline } from "../../apis/xeOnline";
 import TrackingMap from ".";
-import { useLocation } from "react-router-dom";
+// import { useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
@@ -63,7 +63,7 @@ const findRouteForRecord = (allRoutes, record, fallbackIndex) => {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const TrackingPage = () => {
+const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
   const [trackingData, setTrackingData] = useState([]);
   const [allRoutes, setAllRoutes] = useState([]); // Toàn bộ data từ API (1 lần gọi)
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -71,8 +71,8 @@ const TrackingPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedRowKey, setSelectedRowKey] = useState(null);
 
-  const location = useLocation();
-  const { duLieuPhienHoc = [], summaryData } = location.state || {};
+  // const location = useLocation();
+  // const { duLieuPhienHoc = [], summaryData } = location.state || {};
 
   const timerRef = useRef(null);
   const hasFetched = useRef(false);
