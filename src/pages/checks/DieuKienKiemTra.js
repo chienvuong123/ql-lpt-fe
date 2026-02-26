@@ -66,7 +66,7 @@ export function checkCungDuong(listCoordinate, bounds) {
  * @param {Array} dataSource - Mảng phiên hành trình, mỗi phiên có ListCoordinate
  */
 export function evaluateCungDuong(dataSource) {
-  const allCoords = dataSource.flatMap((item) => item.ListCoordinate || []);
+  const allCoords = dataSource?.flatMap((item) => item.ListCoordinate || []);
 
   const daDiQuaMotTrong = CUNG_DUONG_CONFIG.some(({ bounds }) =>
     checkCungDuong(allCoords, bounds),

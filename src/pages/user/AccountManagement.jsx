@@ -62,8 +62,6 @@ const AccountManagement = () => {
   });
 
   const dataSource = useMemo(() => {
-    console.log(dataAccount?.data?.Data);
-
     const accounts = Array.isArray(dataAccount?.data?.Data)
       ? dataAccount.data.Data
       : [];

@@ -15,6 +15,7 @@ import AccountManagement from "./pages/user/AccountManagement";
 import ClassManagement from "./pages/class/ClassManagement";
 import Member from "./pages/class/Member";
 import KiemTraToanKhoa from "./pages/checks/KiemTraToanKhoa";
+import KiemTraHangNam from "./pages/checks/KiemTraHangNam";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +52,7 @@ function App() {
               <Route path="/lop-hoc-ly-thuyet" element={<ClassManagement />} />
               <Route path="/thanh-vien-lop-hoc" element={<Member />} />
               <Route path="/kiem-tra-toan-khoa" element={<KiemTraToanKhoa />} />
+              <Route path="/kiem-tra-hang-nam" element={<KiemTraHangNam />} />
             </Route>
           </Routes>
         </BrowserRouter>

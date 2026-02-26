@@ -86,8 +86,6 @@ export default function SearchStudents() {
     }
 
     if (selectedKhoaHoc) {
-      console.log(selectedKhoaHoc);
-
       params.idkhoahoc = selectedKhoaHoc;
     }
 

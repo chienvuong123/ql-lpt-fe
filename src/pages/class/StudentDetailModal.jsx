@@ -105,7 +105,6 @@ const StudentDetailModal = ({
       },
     ];
   };
-  console.log(studentData);
 
   return (
     <Modal

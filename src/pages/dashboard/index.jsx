@@ -9,6 +9,7 @@ import {
   CarOutlined,
   CheckSquareOutlined,
   LogoutOutlined,
+  FileSearchOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -30,6 +31,12 @@ const Dashboard = () => {
       icon: "📚",
       primary: false,
       navigate: "/kiem-tra-toan-khoa",
+    },
+    {
+      title: "Kiểm tra hằng năm",
+      icon: <FileSearchOutlined className="!text-blue-500" />,
+      primary: false,
+      navigate: "/kiem-tra-hang-nam",
     },
   ];
 
@@ -159,7 +166,6 @@ const Dashboard = () => {
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
                   Xin chào, {name}
                 </h1>
-                <span className="text-3xl">👋</span>
               </div>
               <p className="text-gray-600 mb-6">
                 Chúc bạn một ngày làm việc hiệu quả.
