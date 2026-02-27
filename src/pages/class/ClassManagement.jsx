@@ -80,6 +80,8 @@ const ClassManagement = () => {
         enrolment_plan_iid: record?.iid,
         program_name: record?.__expand?.program?.name,
         program_code: record?.__expand?.program?.code,
+        maKhoaHoc: record?.name,
+        record,
       },
     });
   };
@@ -115,6 +117,7 @@ const ClassManagement = () => {
       dataIndex: "start_date",
       key: "start_date",
       width: 100,
+      align: "center",
       render: (date) => <span>{dayjs.unix(date).format("DD/MM/YYYY")}</span>,
     },
     {
@@ -122,6 +125,7 @@ const ClassManagement = () => {
       dataIndex: "end_date",
       key: "end_date",
       width: 100,
+      align: "center",
       render: (date) => <span>{dayjs.unix(date).format("DD/MM/YYYY")}</span>,
     },
     {

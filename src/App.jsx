@@ -48,14 +48,14 @@ function App() {
                 path="dong-bo-hoc-vien-ve-xe"
                 element={<DongBoHocVienVaoXe />}
               />
-              <Route path="/map" element={<TrackingPage />} />
               <Route path="/tai-khoan" element={<AccountManagement />} />
               <Route path="/lop-hoc-ly-thuyet" element={<ClassManagement />} />
-              <Route path="/thanh-vien-lop-hoc" element={<Member />} />
               <Route path="/kiem-tra-toan-khoa" element={<KiemTraToanKhoa />} />
               <Route path="/kiem-tra-hang-nam" element={<KiemTraHangNam />} />
-            </Route> */}
+              </Route> */}
             <Route path="/" element={<LayoutTest />}>
+              <Route path="/map" element={<TrackingPage />} />
+              <Route path="/thanh-vien-lop-hoc" element={<Member />} />
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="class-management" element={<ClassManagement />} />

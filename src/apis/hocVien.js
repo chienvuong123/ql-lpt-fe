@@ -40,7 +40,7 @@ export const updateHocVienCheck = async (maHocVien, payload) => {
   return response.data;
 };
 
-export const hocVienTheoKhoa = async (enrolment_plan_iid) => {
+export const hocVienTheoKhoa = async (enrolment_plan_iid, extraParams = {}) => {
   const userInfoString = sessionStorage.getItem("user_info");
   const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
 
@@ -61,8 +61,11 @@ export const hocVienTheoKhoa = async (enrolment_plan_iid) => {
   data.append("rubric_iid", "28113712");
   data.append("get_note", 1);
   data.append("submit", 1);
-  data.append("page", 1);
+  data.append("page", extraParams.page || 1);
   data.append("items_per_page", 150);
+  if (extraParams.text) {
+    data.append("text", extraParams.text);
+  }
 
   // _sand_expand
   [

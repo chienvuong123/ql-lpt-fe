@@ -15,6 +15,9 @@ const StudentDetailModal = ({
   progress,
   passed,
   total,
+  program_code,
+  program_name,
+  maKhoaHoc,
 }) => {
   const columns = [
     {
@@ -36,8 +39,8 @@ const StudentDetailModal = ({
       key: "passed",
       align: "center",
       width: "20%",
-      render: (passed) =>
-        passed ? (
+      render: (isPassed) =>
+        isPassed ? (
           <CheckCircleFilled className="!text-green-600 text-lg" />
         ) : (
           <CloseCircleFilled className="!text-red-600 text-lg" />
@@ -48,67 +51,21 @@ const StudentDetailModal = ({
   const transformDataForTable = (apiData) => {
     if (!apiData) return [];
 
-    return [
-      // {
-      //   key: "1",
-      //   rubricName: `Khóa học: ${apiData.khoaHoc?.tenKhoaHoc || ""}`,
-      //   score: apiData.phapLuatGT08?.tongOnTap?.diem || 0,
-      //   passed: apiData.trangThaiDat === "Đạt",
-      // },
-      {
-        key: "2",
-        rubricName: "Kỹ thuật lái xe",
-        score: apiData.kyThuatLaiXe?.diem || 0,
-        passed: apiData.kyThuatLaiXe?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "3",
-        rubricName: "Cấu tạo sửa chữa",
-        score: apiData.cauTaoSuaChua?.diem || 0,
-        passed: apiData.cauTaoSuaChua?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "4",
-        rubricName: "Đạo đức, VHGT, PCCC",
-        score: apiData.daoDucVHGT?.diem || 0,
-        passed: apiData.daoDucVHGT?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "5",
-        rubricName: "Pháp luật GTĐB (Tổng ôn)",
-        score: apiData.phapLuatGT08?.tongOnTap?.diem || 0,
-        passed: apiData.phapLuatGT08?.tongOnTap?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "6",
-        rubricName: "PL1 - Luật trật tự, ATGT",
-        score: apiData.phapLuatGT08?.pl1?.diem || 0,
-        passed: apiData.phapLuatGT08?.pl1?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "7",
-        rubricName: "PL2 - Biển báo",
-        score: apiData.phapLuatGT08?.pl2?.diem || 0,
-        passed: apiData.phapLuatGT08?.pl2?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "8",
-        rubricName: "PL3 - Xử lý THGT",
-        score: apiData.phapLuatGT08?.pl3?.diem || 0,
-        passed: apiData.phapLuatGT08?.pl3?.trangThaiDat === "Đạt",
-      },
-      {
-        key: "9",
-        rubricName: "Mô phỏng",
-        score: apiData.moPhong?.diem || 0,
-        passed: apiData.moPhong?.trangThaiDat === "Đạt",
-      },
-    ];
+    const rubricList = Array.isArray(apiData?.learning_progress)
+      ? apiData.learning_progress
+      : apiData?.learning_progress?.score_by_rubrik || [];
+
+    return rubricList.map((item, index) => ({
+      key: item?.iid || `${index}`,
+      rubricName: item?.name || "-",
+      score: item?.score ?? 0,
+      passed: Number(item?.passed) === 1,
+    }));
   };
 
   return (
     <Modal
-      title="Chi tiết"
+      title="Chi tiet"
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -120,13 +77,19 @@ const StudentDetailModal = ({
           <h3 className="text-xl !font-semibold text-gray-800 !mb-0">
             Học viên: {studentData?.user?.name || ""}{" "}
             <span className="text-gray-500 font-normal text-sm">
-              ({studentData?.user?.identification_card || ""})
+              (#{studentData?.user?.iid || ""})
             </span>
           </h3>
           <p className="text-sm text-gray-500">
-            Lớp: #{studentData?.khoaHoc?.tenKhoaHoc || ""} · Chương trình:{" "}
-            {studentData?.khoaHoc?.hangDaoTao || ""} - Hạng{" "}
-            {studentData?.khoaHoc?.hangDaoTao || ""}{" "}
+            Khóa:{" "}
+            <span className="font-medium">
+              {maKhoaHoc}(#{studentData?.learning_progress?.item_iid || ""}
+              ){" "}
+            </span>
+            - Chương trình:{" "}
+            <span className="font-medium">
+              {program_name || ""} - Hạng {program_code || ""}
+            </span>{" "}
             {LICENSE_PLATE_LABEL[studentData?.khoaHoc?.hangDaoTao]}
           </p>
         </div>
@@ -140,16 +103,16 @@ const StudentDetailModal = ({
                 strokeWidth={11}
               />
               <p className="text-xs text-gray-600 mt-1">
-                Tiến độ:{" "}
+                Tien do:{" "}
                 <span className="!font-semibold text-black">{progress}%</span> (
-                {passed}/{total} chỉ tiêu đạt)
+                {passed}/{total} chi tieu dat)
               </p>
 
               <Row gutter={12} className="!text-[13px]">
                 <Col span={10}>
                   <Flex
                     vertical
-                    gap={"middle"}
+                    gap="middle"
                     className="!bg-gray-50 !p-2 !h-full"
                   >
                     <span className="!text-[13px] font-semibold text-gray-700">
@@ -170,7 +133,7 @@ const StudentDetailModal = ({
                   </Flex>
                 </Col>
                 <Col span={14}>
-                  <Flex vertical gap={"middle"} className="!h-full">
+                  <Flex vertical gap="middle" className="!h-full">
                     <span className="!text-[13px] text-gray-600">
                       {studentData?.user?.identification_card || ""}
                     </span>
@@ -178,11 +141,10 @@ const StudentDetailModal = ({
                       {dayjs(studentData?.user?.birth_date).format("YYYY")}
                     </span>
                     <span className="!text-[13px] text-gray-600">
-                      {" "}
                       {studentData?.user?.sex || ""}
                     </span>
                     <span className="!text-[13px] text-gray-600 !break-words !whitespace-normal">
-                      Trung tâm dạy nghề và sát hạch lái xe Lập Phương Thành
+                      {studentData?.user?.organization_name}
                     </span>
                     <div className="flex items-start">
                       <Image
@@ -217,12 +179,8 @@ const StudentDetailModal = ({
         </Row>
       </Card>
 
-      <div className="text-right mt-4 text-xs text-gray-500">
-        Cập nhật: 2026-02-10 08:57
-      </div>
-
       <div className="text-center text-xs text-gray-500 pb-4 mt-5">
-        © 2026 Lập Phương Thành. All rights reserved.
+        (c) 2026 Lap Phuong Thanh. All rights reserved.
       </div>
     </Modal>
   );

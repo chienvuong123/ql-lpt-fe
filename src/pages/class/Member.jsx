@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Table,
   Button,
@@ -9,57 +9,37 @@ import {
   Row,
   Col,
   Image,
-  Upload,
   Spin,
+  Card,
 } from "antd";
-import { BsArrowLeft, BsArrowBarUp } from "react-icons/bs";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { EyeOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import StudentDetailModal from "./StudentDetailModal";
-import { sourceOptions } from "../../apis/khoaHoc";
 import dayjs from "dayjs";
-import { LICENSE_PLATE_LABEL } from "../../constants";
 import { hocVienTheoKhoa } from "../../apis/hocVien";
 
 const Member = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [select, setSelected] = useState({});
-  const [filters, setFilters] = useState({
-    search: "",
-    cccd: "",
-  });
+  const keywordInputRef = useRef(null);
   const [params, setParams] = useState({
-    maKhoaHoc: null,
+    page: 1,
+    text: "",
   });
 
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const location = useLocation();
-  const { enrolment_plan_iid, program_name, program_code } =
+  const { enrolment_plan_iid, program_name, program_code, maKhoaHoc } =
     location?.state || {};
 
-  const { data: dataKhoaHoc = {} } = useQuery({
-    queryKey: ["sourceOptions"],
-    queryFn: () => sourceOptions(),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
   const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
-    queryKey: ["danhSachHocVien"],
-    queryFn: () => hocVienTheoKhoa(enrolment_plan_iid),
+    queryKey: ["danhSachHocVien", enrolment_plan_iid, params],
+    queryFn: () => hocVienTheoKhoa(enrolment_plan_iid, params),
     staleTime: 1000 * 60 * 5,
     retry: false,
+    enabled: !!enrolment_plan_iid,
   });
-
-  const optionKhoaHoc = useMemo(() => {
-    return (
-      dataKhoaHoc?.data?.data?.map((item) => ({
-        label: item.maKhoa,
-        value: item.maKhoa,
-        raw: item,
-      })) || []
-    );
-  }, [dataKhoaHoc]);
 
   const students = useMemo(() => {
     return danhSachHocVien?.result || [];
@@ -74,25 +54,21 @@ const Member = () => {
     setDrawerVisible(false);
   };
 
-  const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleFilter = async () => {
-    setParams((prev) => ({
-      ...prev,
+  const handleFilter = () => {
+    const text = keywordInputRef.current?.input?.value?.trim() || "";
+    setParams({
       page: 1,
-      ...filters,
-    }));
+      text,
+    });
   };
 
   const handleReset = () => {
-    setFilters({
-      search: "",
-      cccd: "",
+    if (keywordInputRef.current?.input) {
+      keywordInputRef.current.input.value = "";
+    }
+    setParams({
+      page: 1,
+      text: "",
     });
   };
 
@@ -137,7 +113,7 @@ const Member = () => {
       title: "Học viên",
       dataIndex: "user",
       key: "user",
-      width: 280,
+      width: 260,
       render: (user) => (
         <div className="flex items-center gap-2">
           <Image
@@ -261,18 +237,11 @@ const Member = () => {
           <Button
             type="primary"
             size="small"
-            className="text-gray-600 !text-xs !bg-[#0000CC]"
+            className="text-gray-600 !text-xs !bg-[#3366cc]"
             onClick={() => handleRowClick(record)}
           >
-            🔍
+            <EyeOutlined />
           </Button>
-          {/* <Button
-            variant="primary"
-            size="small"
-            className="!text-[11px] !bg-gray-300"
-          >
-            ⏱
-          </Button> */}
         </div>
       ),
     },
@@ -280,68 +249,61 @@ const Member = () => {
 
   return (
     <Spin spinning={isLoadingHocVien}>
-      <div className=" p-4 mx-20 bg-gray-50 min-h-screen rounded-lg shadow-md ">
-        <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
-          Học viên lớp lý thuyết
-        </h1>
-        <p className="text-[#64748b] text-sm">
-          Tra cứu và giám sát tiến độ học lý thuyết. Nhấn 🔍 để xem chi tiết
-          nhanh.
-        </p>
+      <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
+        Học viên lớp lý thuyết{" "}
+        <span className="text-gray-500 italic">
+          {" "}
+          (#{danhSachHocVien.total} thành viên)
+        </span>
+      </h1>
 
-        <Space size="small" className="my-4">
-          <Button
-            type="text"
-            icon={<BsArrowLeft size={20} />}
-            onClick={() => navigate("/lop-hoc-ly-thuyet")}
-            className="!font-medium !bg-gray-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center !px-4 !py-2 !h-10 !rounded-xl"
-          >
-            Lớp lý thuyết
-          </Button>
-          <Button
-            type="primary"
-            icon={<BsArrowBarUp size={20} />}
-            className="!font-medium !bg-[#0000CC] !shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 !px-4 !py-2 !h-10 !rounded-xl"
-          >
-            Xuất báo cáo theo môn học
-          </Button>
-        </Space>
+      {/* <Space size="small" className="my-4">
+        <Button
+          type="text"
+          icon={<BsArrowLeft size={20} />}
+          onClick={() => navigate("/class-management")}
+          className="!font-medium !bg-gray-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center !px-4 !py-2 !h-10 !rounded-xl"
+        >
+          Lớp lý thuyết
+        </Button>
+        <Button
+          type="primary"
+          icon={<BsArrowBarUp size={20} />}
+          className="!font-medium !bg-[#0000CC] !shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 !px-4 !py-2 !h-10 !rounded-xl"
+        >
+          Xuất báo cáo theo môn học
+        </Button>
+      </Space> */}
 
+      <Card className="!mt-5 !mb-4">
         <Row gutter={[12, 12]} align="bottom">
-          <Col span={3}>
+          <Col span={7}>
             <label className="block text-xs text-gray-500">LỚP</label>
             <Select
               className="w-full"
               placeholder="--Tất cả--"
-              value={filters.maKhoaHoc}
+              value={maKhoaHoc}
+              disabled
               // value={maKhoaHoc || filters.maKhoaHoc}
               // onChange={(value) => handleFilterChange("maKhoaHoc", value)}
-              options={optionKhoaHoc}
+              options={[]}
               allowClear
             />
           </Col>
 
-          <Col span={3}>
+          <Col span={7}>
             <label className="block text-xs text-gray-500">TỪ KHÓA</label>
             <Input
+              ref={keywordInputRef}
               placeholder="Tên học viên"
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-            />
-          </Col>
-          <Col span={3}>
-            <label className="block text-xs text-gray-500">CCCD</label>
-            <Input
-              placeholder="Nhập CCCD"
-              value={filters.cccd}
-              onChange={(e) => handleFilterChange("cccd", e.target.value)}
+              onPressEnter={handleFilter}
             />
           </Col>
           <Col>
             <Space>
               <Button
                 type="primary"
-                className="!bg-[#0000CC]"
+                className="!bg-[#3366cc]"
                 onClick={handleFilter}
               >
                 Lọc
@@ -350,26 +312,29 @@ const Member = () => {
             </Space>
           </Col>
         </Row>
+      </Card>
 
-        <Table
-          columns={columns}
-          dataSource={students || []}
-          pagination={false}
-          rowKey="id"
-          size="middle"
-          scroll={{ x: 1200 }}
-          className="rounded-lg overflow-hidden mt-10"
-        />
+      <Table
+        columns={columns}
+        dataSource={students || []}
+        pagination={false}
+        rowKey="id"
+        size="middle"
+        scroll={{ x: 1200 }}
+        className="overflow-hidden table-blue-header"
+      />
 
-        <StudentDetailModal
-          studentData={select}
-          visible={drawerVisible}
-          onClose={handleDrawerClose}
-          progress={getCompletionStats(select).phanTramHoanThanh}
-          passed={getCompletionStats(select).soMonDat}
-          total={getCompletionStats(select).tongSoMon}
-        />
-      </div>
+      <StudentDetailModal
+        studentData={select}
+        visible={drawerVisible}
+        onClose={handleDrawerClose}
+        progress={getCompletionStats(select).phanTramHoanThanh}
+        passed={getCompletionStats(select).soMonDat}
+        total={getCompletionStats(select).tongSoMon}
+        program_code={program_code}
+        program_name={program_name}
+        maKhoaHoc={maKhoaHoc}
+      />
     </Spin>
   );
 };
