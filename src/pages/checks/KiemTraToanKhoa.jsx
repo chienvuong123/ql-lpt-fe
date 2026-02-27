@@ -14,6 +14,7 @@ import {
   Tag,
   Collapse,
   Badge,
+  Flex,
 } from "antd";
 import {
   DownloadOutlined,
@@ -34,9 +35,6 @@ import { LoTringOnline } from "../../apis/xeOnline";
 const { TextArea } = Input;
 const { Text } = Typography;
 const { Panel } = Collapse;
-
-const BATCH_SIZE = 5;
-const DELAY_BETWEEN_BATCHES = 300;
 
 // ─── Gọi API và đánh giá một mã học viên ─────────────────────────────────────
 async function checkOneCode(code, selectedKhoaHoc, signal, hang) {
@@ -330,62 +328,85 @@ const KiemTraHangLoat = () => {
 
   return (
     <div>
-      <div className="mx-20 mb-6">
+      <div className="mb-5">
         <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
-          Kiểm tra điều kiện đạt của học viên hàng loạt
+          Báo cáo học viên hàng loạt
         </h1>
-        <p className="text-[#64748b] text-sm">
-          Dán danh sách mã học viên cần kiểm tra, bạn nên chọn khóa để kiểm
-        </p>
       </div>
-      <Row gutter={[12, 12]} className="!mx-20">
-        <Col xs={24} sm={12} md={10}>
+      <Row gutter={[12, 12]}>
+        <Col xs={24} sm={12} md={24}>
           <Card>
-            <h2 className="text-2xl !font-bold text-gray-900 !mb-1">
-              Thông tin kiểm tra
-            </h2>
-            <p className="text-[#64748b] text-sm">
-              Bạn nên chọn khóa để kiểm tra đúng và nhanh hơn.
-            </p>
-            <Row gutter={[18, 18]} className="mt-8" align="bottom">
-              <Col xs={24} sm={12} md={7}>
-                <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-                  Khóa học
-                </label>
-                <Select
-                  className="w-full"
-                  placeholder="-- Chọn khóa học --"
-                  loading={loadingKhoaHoc}
-                  value={selectedKhoaHoc}
-                  onChange={(value) => handleSelectKhoaHoc(value)}
-                  options={khoaHocOptions}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Col>
+            <Row align="bottom">
+              <Col span={12}>
+                <Flex align="center" className="w-full" gap={8}>
+                  <Col span={6}>
+                    <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+                      Khóa học
+                    </label>
+                    <Select
+                      className="w-full"
+                      placeholder="-- Chọn khóa học --"
+                      loading={loadingKhoaHoc}
+                      value={selectedKhoaHoc}
+                      onChange={(value) => handleSelectKhoaHoc(value)}
+                      options={khoaHocOptions}
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        (option?.label ?? "")
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                    />
+                  </Col>
 
-              <Col xs={24} sm={12} md={5}>
-                <div className="mt-6 sm:mt-0">
+                  <Col className="shrink-0 mt-5">
+                    <Button
+                      type="primary"
+                      icon={
+                        isRunning ? <StopOutlined /> : <PlayCircleOutlined />
+                      }
+                      size="middle"
+                      onClick={isRunning ? handleStop : handleRun}
+                      danger={isRunning}
+                      loading={
+                        isRunning && !abortControllerRef.current?.signal.aborted
+                      }
+                      disabled={!isRunning && !inputText.trim()}
+                      block
+                    >
+                      {isRunning ? "DỪNG" : "KIỂM TRA"}
+                    </Button>
+                  </Col>
+                </Flex>
+              </Col>
+              <Col span={12} className="!flex !flex justify-end gap-2">
+                <Col span={6}>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    onClick={() =>
+                      exportCSV(
+                        results
+                          .filter((r) => r.status === "Đạt")
+                          .map((r) => r.code),
+                        "danh-sach-dat.csv",
+                      )
+                    }
+                    className="w-full"
+                  >
+                    Xuất danh sách đạt
+                  </Button>
+                </Col>
+                <Col span={7}>
                   <Button
                     type="primary"
-                    icon={isRunning ? <StopOutlined /> : <PlayCircleOutlined />}
-                    size="middle"
-                    onClick={isRunning ? handleStop : handleRun}
-                    danger={isRunning}
-                    loading={
-                      isRunning && !abortControllerRef.current?.signal.aborted
-                    }
-                    disabled={!isRunning && !inputText.trim()}
-                    block
+                    icon={<DownloadOutlined />}
+                    onClick={exportDetailedCSV}
+                    className="w-full"
                   >
-                    {isRunning ? "DỪNG" : "KIỂM TRA"}
+                    Xuất danh sách chưa đạt
                   </Button>
-                </div>
+                </Col>
               </Col>
             </Row>
 
@@ -396,7 +417,7 @@ const KiemTraHangLoat = () => {
                 placeholder={`Dán danh sách mã học viên (mỗi dòng 1 mã)\nVí dụ:\nn30004-20250620145059557\nn30004-20250620145059558\n...`}
                 className="w-full h-48 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={isRunning}
-                rows={8}
+                rows={5}
               />
             </Row>
 
@@ -411,63 +432,16 @@ const KiemTraHangLoat = () => {
               />
             </Row>
           </Card>
-          <Card className="!mt-2">
-            <Row gutter={[12, 12]}>
-              <Col span={8}>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() =>
-                    exportCSV(
-                      results
-                        .filter((r) => r.status === "Đạt")
-                        .map((r) => r.code),
-                      "danh-sach-dat.csv",
-                    )
-                  }
-                  className="w-full"
-                >
-                  Xuất danh sách đạt
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() =>
-                    exportCSV(
-                      results
-                        .filter((r) => r.status === "Chưa đạt")
-                        .map((r) => r.code),
-                      "danh-sach-chua-dat.csv",
-                    )
-                  }
-                  className="w-full"
-                >
-                  Xuất danh sách chưa đạt
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={exportDetailedCSV}
-                  className="w-full"
-                >
-                  Xuất chi tiết điều kiện sai
-                </Button>
-              </Col>
-            </Row>
-          </Card>
         </Col>
-        <Col xs={24} sm={12} md={14}>
+        <Col xs={24} sm={12} md={24}>
           <Card>
             <Row align="bottom" className="mb-7">
               <Col>
-                <h2 className="text-2xl !font-bold text-gray-900 !mb-1">
+                <h2 className="text-xl !font-bold text-gray-900 !mb-1">
                   Kết quả kiểm tra
                 </h2>
-                <p className="text-[#64748b] text-sm">
-                  Danh sách kết quả kiểm tra sẽ hiển thị ở đây. Bạn có thể xem
-                  chi tiết
+                <p className="text-[#64748b] text-[13px]">
+                  Danh sách kết quả kiểm tra sẽ hiển thị ở đây.
                 </p>
               </Col>
               <Col flex="1" className="flex justify-end">
@@ -495,7 +469,7 @@ const KiemTraHangLoat = () => {
                 </div>
               </Col>
             </Row>
-            <div className="px-0 pb-8">
+            <div className="px-0">
               {results.length === 0 ? (
                 <div className="text-center py-16 text-gray-500 italic">
                   {isRunning ? "Đang xử lý..." : "Chưa có thông tin kiểm tra."}
@@ -504,7 +478,7 @@ const KiemTraHangLoat = () => {
                 <>
                   <div
                     ref={resultsRef}
-                    className="max-h-[520px] overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner"
+                    className="max-h-[380px] overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner"
                   >
                     {results.map((item, idx) => {
                       const hasIssues =

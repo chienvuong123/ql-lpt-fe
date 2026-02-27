@@ -10,6 +10,7 @@ import {
   Input,
   Badge,
   Upload,
+  Flex,
 } from "antd";
 import XLSX from "xlsx-js-style";
 import {
@@ -452,87 +453,109 @@ const KiemTraHangNam = () => {
 
   return (
     <div>
-      <div className="mx-20 mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
           Kiểm tra dữ liệu từng năm
         </h1>
-        <p className="text-[#64748b] text-sm">
-          Kiểm tra dữ liệu học viên, giáo viên theo năm
-        </p>
       </div>
-      <Row gutter={[12, 12]} className="!mx-20">
-        <Col xs={24} sm={12} md={10}>
+      <Row gutter={[12, 12]}>
+        <Col xs={24} sm={12} md={24}>
           <Card>
-            <h2 className="text-2xl !font-bold text-gray-900 !mb-1">
-              Thông tin kiểm tra
-            </h2>
-            <p className="text-[#64748b] text-sm">
-              Import danh sách học viên trước, sau đó dán mã đăng ký để kiểm
-              tra.
-            </p>
-            <Row gutter={[18, 18]} className="mt-8" align="bottom">
-              <Col xs={24} sm={12} md={6}>
-                <Upload
-                  customRequest={handleCustomRequest}
-                  showUploadList={false}
-                  accept=".xlsx, .xls"
-                  className="!w-full"
-                >
-                  <Button
-                    icon={<UploadOutlined />}
-                    loading={mutation.isPending}
-                    className="!w-full"
-                  >
-                    {mutation.isPending ? "Đang xử lý..." : "Import Excel"}
-                  </Button>
-                </Upload>
-              </Col>
+            <Row align="bottom">
+              <Col span={12}>
+                <Flex gap={8}>
+                  <Col xs={24} sm={12} md={4}>
+                    <Upload
+                      customRequest={handleCustomRequest}
+                      showUploadList={false}
+                      accept=".xlsx, .xls"
+                      className="!w-full"
+                    >
+                      <Button
+                        icon={<UploadOutlined />}
+                        loading={mutation.isPending}
+                        className="!w-full"
+                      >
+                        {mutation.isPending ? "Đang xử lý..." : "Import Excel"}
+                      </Button>
+                    </Upload>
+                  </Col>
 
-              <Col xs={24} sm={12} md={6}>
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  size="middle"
-                  onClick={handleRun}
-                  loading={
-                    isRunning && !abortControllerRef.current?.signal.aborted
-                  }
-                  disabled={isRunning || !inputText.trim()}
-                  block
-                >
-                  KIỂM TRA
-                </Button>
-              </Col>
+                  <Col xs={24} sm={12} md={4}>
+                    <Button
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      size="middle"
+                      onClick={handleRun}
+                      loading={
+                        isRunning && !abortControllerRef.current?.signal.aborted
+                      }
+                      disabled={isRunning || !inputText.trim()}
+                      block
+                    >
+                      KIỂM TRA
+                    </Button>
+                  </Col>
 
-              {canResume && !isRunning && (
-                <Col xs={24} sm={12} md={7}>
+                  {canResume && !isRunning && (
+                    <Col xs={24} sm={12} md={5}>
+                      <Button
+                        type="default"
+                        icon={<RedoOutlined />}
+                        size="middle"
+                        onClick={handleResume}
+                        className="!w-full border-blue-400 text-blue-600 hover:border-blue-500 hover:text-blue-700"
+                        block
+                      >
+                        TIẾP TỤC ({remainingCount})
+                      </Button>
+                    </Col>
+                  )}
+
+                  {isRunning && (
+                    <Col xs={24} sm={12} md={4}>
+                      <Button
+                        type="primary"
+                        icon={<StopOutlined />}
+                        size="middle"
+                        onClick={handleStop}
+                        danger
+                        block
+                      >
+                        DỪNG
+                      </Button>
+                    </Col>
+                  )}
+                </Flex>
+              </Col>
+              <Col span={12} className="!flex !flex justify-end gap-2">
+                <Col span={6}>
                   <Button
-                    type="default"
-                    icon={<RedoOutlined />}
-                    size="middle"
-                    onClick={handleResume}
-                    className="!w-full border-blue-400 text-blue-600 hover:border-blue-500 hover:text-blue-700"
-                    block
+                    icon={<DownloadOutlined />}
+                    onClick={() =>
+                      exportCSV(
+                        results
+                          .filter((r) => r.status === "Đạt")
+                          .map((r) => r.code),
+                        "danh-sach-dat.csv",
+                      )
+                    }
+                    className="w-full"
                   >
-                    TIẾP TỤC ({remainingCount})
+                    Xuất danh sách đạt
                   </Button>
                 </Col>
-              )}
-
-              {isRunning && (
-                <Col xs={24} sm={12} md={5}>
+                <Col span={7}>
                   <Button
                     type="primary"
-                    icon={<StopOutlined />}
-                    size="middle"
-                    onClick={handleStop}
-                    danger
-                    block
+                    icon={<DownloadOutlined />}
+                    onClick={exportDetailedExcel}
+                    className="w-full"
                   >
-                    DỪNG
+                    Xuất chi tiết điều kiện sai
                   </Button>
                 </Col>
-              )}
+              </Col>
             </Row>
 
             <Row className="mt-4">
@@ -549,7 +572,7 @@ const KiemTraHangNam = () => {
                 placeholder={`Dán danh sách mã đăng ký (mỗi dòng 1 mã)\nVí dụ:\n30004-20250219101911410\n30004-20250219101911411\n...`}
                 className="w-full h-48 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={isRunning}
-                rows={8}
+                rows={5}
               />
             </Row>
 
@@ -569,63 +592,16 @@ const KiemTraHangNam = () => {
               />
             </Row>
           </Card>
-
-          <Card className="!mt-2">
-            <Row gutter={[12, 12]}>
-              <Col span={8}>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() =>
-                    exportCSV(
-                      results
-                        .filter((r) => r.status === "Đạt")
-                        .map((r) => r.code),
-                      "danh-sach-dat.csv",
-                    )
-                  }
-                  className="w-full"
-                >
-                  Xuất danh sách đạt
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() =>
-                    exportCSV(
-                      results
-                        .filter((r) => r.status === "Chưa đạt")
-                        .map((r) => r.code),
-                      "danh-sach-chua-dat.csv",
-                    )
-                  }
-                  className="w-full"
-                >
-                  Xuất danh sách chưa đạt
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  onClick={exportDetailedExcel}
-                  className="w-full"
-                >
-                  Xuất chi tiết điều kiện sai
-                </Button>
-              </Col>
-            </Row>
-          </Card>
         </Col>
 
-        <Col xs={24} sm={12} md={14}>
+        <Col xs={24} sm={12} md={24}>
           <Card>
-            <Row align="bottom" className="mb-7">
+            <Row align="bottom" className="mb-5">
               <Col>
-                <h2 className="text-2xl !font-bold text-gray-900 !mb-1">
+                <h2 className="text-xl !font-bold text-gray-900 !mb-1">
                   Kết quả kiểm tra
                 </h2>
-                <p className="text-[#64748b] text-sm">
+                <p className="text-[#64748b] text-[13px]">
                   Danh sách kết quả kiểm tra sẽ hiển thị ở đây.
                 </p>
               </Col>
@@ -655,7 +631,7 @@ const KiemTraHangNam = () => {
               </Col>
             </Row>
 
-            <div className="px-0 pb-8">
+            <div className="px-0 ">
               {results.length === 0 ? (
                 // ── Empty state ──
                 <div className="text-center py-16 text-gray-500 italic border border-gray-200 rounded-xl">
@@ -663,16 +639,13 @@ const KiemTraHangNam = () => {
                 </div>
               ) : (
                 <>
-                  {/* ── Virtual scroll container ── */}
                   <div
                     ref={resultsRef}
                     className="border border-gray-200 rounded-xl bg-white shadow-inner overflow-y-auto"
-                    style={{ height: 520 }}
+                    style={{ height: 380 }}
                     onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
                   >
-                    {/* Div cao tổng để thanh scroll đúng tỉ lệ */}
                     <div style={{ height: totalHeight, position: "relative" }}>
-                      {/* Chỉ render các row đang visible */}
                       <div
                         style={{
                           position: "absolute",
@@ -694,7 +667,6 @@ const KiemTraHangNam = () => {
                                 item.status !== "Đạt" ? "bg-red-50/30" : ""
                               }`}
                             >
-                              {/* Hàng chính */}
                               <div
                                 className={`px-5 py-3.5 flex justify-between items-center ${
                                   hasIssues

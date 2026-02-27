@@ -9,8 +9,10 @@ import {
   Row,
   Col,
   DatePicker,
+  Card,
 } from "antd";
 import { useNavigate } from "react-router-dom";
+import { EyeOutlined } from "@ant-design/icons";
 import { lopHocLyThuyet } from "../../apis/khoaHoc";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -87,8 +89,8 @@ const ClassManagement = () => {
       title: "Tên khóa học",
       dataIndex: "suffix_name",
       key: "suffix_name",
-      width: 120,
-      align: "left",
+      width: 100,
+      align: "center",
       render: (text, record) => (
         <span>
           <span className="font-bold">{text}</span>{" "}
@@ -185,7 +187,7 @@ const ClassManagement = () => {
       width: 80,
       align: "center",
       render: (status) => (
-        <Tag color="#008000" variant="filled" className="!rounded-full">
+        <Tag color="#3366CC" variant="filled" className="!rounded-full">
           {status}
         </Tag>
       ),
@@ -203,7 +205,7 @@ const ClassManagement = () => {
             onClick={() => handleNavigate(record)}
             className="!bg-gray-300 !text-[13px] !rounded-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
-            👥
+            <EyeOutlined />
           </Button>
         </Space>
       ),
@@ -211,75 +213,80 @@ const ClassManagement = () => {
   ];
 
   return (
-    <div className="max-w-7xl p-4 mx-auto bg-gray-50 min-h-screen rounded-lg shadow-md ">
+    <div className="mx-auto min-h-screen ">
       <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
         Quản lý lớp học lý thuyết
       </h1>
-      <p className="text-[#64748b] text-sm">
-        Đồng bộ và theo dõi tiến độ học viên theo lớp.
-      </p>
-      <Row gutter={[12, 12]} align="bottom" className="mt-8">
-        <Col>
-          <label className="block text-xs text-gray-500 uppercase">
-            Tên Khóa Học
-          </label>
-          <Input
-            placeholder="Mã / Tên lớp"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-        </Col>
-        <Col>
-          <label className="block text-xs text-gray-500 uppercase">
-            Ngày bắt đầu
-          </label>
-          <DatePicker
-            value={startDate}
-            onChange={(date) => setStartDate(date)}
-            format="DD/MM/YYYY"
-            placeholder="Chọn ngày"
-          />
-        </Col>
-        <Col>
-          <label className="block text-xs text-gray-500 uppercase">
-            Ngày kết thúc
-          </label>
-          <DatePicker
-            value={endDate}
-            onChange={(date) => setEndDate(date)}
-            format="DD/MM/YYYY"
-            placeholder="Chọn ngày"
-            disabledDate={(current) => startDate && current < startDate} // không chọn trước ngày bắt đầu
-          />
-        </Col>
-        <Col>
-          <Space>
-            <Button
-              type="primary"
-              className="!bg-[#0000CC]"
-              onClick={handleFilter}
-            >
-              Lọc
-            </Button>
-            <Button onClick={handleClearFilter}>Bỏ Lọc</Button>
-          </Space>
-        </Col>
-      </Row>
-      <Row className="mt-8 mb-2">
-        <span>
-          Tổng: <span className="font-bold">{dataSource?.length || 0}</span> lớp
-        </span>
-      </Row>
-      <Table
-        columns={columns}
-        dataSource={dataSource || []}
-        loading={isLoadingKhoaHoc}
-        rowKey="id"
-        pagination={false}
-        size="middle"
-        scroll={{ x: 1200 }}
-        className="rounded-lg overflow-hidden"
-      />
+      <Card className="!mt-4">
+        <Row gutter={[12, 12]} align="bottom">
+          <Col md={7}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Tên Khóa Học
+            </label>
+            <Input
+              placeholder="Mã / Tên lớp"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </Col>
+          <Col md={7}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Ngày bắt đầu
+            </label>
+            <DatePicker
+              value={startDate}
+              onChange={(date) => setStartDate(date)}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày"
+              className="!w-full"
+            />
+          </Col>
+          <Col md={7}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Ngày kết thúc
+            </label>
+            <DatePicker
+              value={endDate}
+              onChange={(date) => setEndDate(date)}
+              format="DD/MM/YYYY"
+              placeholder="Chọn ngày"
+              className="!w-full"
+              disabledDate={(current) => startDate && current < startDate} // không chọn trước ngày bắt đầu
+            />
+          </Col>
+          <Col>
+            <Space>
+              <Button
+                type="primary"
+                className="!bg-[#3366CC]"
+                onClick={handleFilter}
+              >
+                Lọc
+              </Button>
+              <Button onClick={handleClearFilter}>Bỏ Lọc</Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+      <div className="py-5 !mt-2">
+        <Row className="mb-3">
+          <span>
+            Tổng: <span className="font-bold">{dataSource?.length || 0}</span>{" "}
+            lớp
+          </span>
+        </Row>
+        <Table
+          columns={columns}
+          dataSource={dataSource || []}
+          loading={isLoadingKhoaHoc}
+          rowKey="id"
+          pagination={false}
+          size="middle"
+          scroll={{ x: 1200 }}
+          bordered
+          className="overflow-hidden table-blue-header"
+        />
+      </div>
     </div>
   );
 };

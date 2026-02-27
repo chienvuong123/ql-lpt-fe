@@ -54,6 +54,13 @@ body {
   background: #fff;
 }
 
+.table-blue-header .ant-table-thead th {
+  background-color: #3366cc !important;
+  color: #ffffff !important;
+  border-radius: 0 !important;
+  padding: 0 1 !important;
+}
+
 /* === Custom Ant Design Message === */
 
 /* Container chính: nền trắng, viền nhẹ, shadow chuẩn */

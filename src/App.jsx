@@ -16,6 +16,7 @@ import ClassManagement from "./pages/class/ClassManagement";
 import Member from "./pages/class/Member";
 import KiemTraToanKhoa from "./pages/checks/KiemTraToanKhoa";
 import KiemTraHangNam from "./pages/checks/KiemTraHangNam";
+import LayoutTest from "./components/LayoutTest";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,7 +38,7 @@ function App() {
               <Route index element={<SearchStudents />} />
               <Route path="student/:id" element={<StudentDetail />} />
             </Route>
-            <Route path="/" element={<LayoutDashboard />}>
+            {/* <Route path="/" element={<LayoutDashboard />}>
               <Route index element={<Dashboard />} />
               <Route
                 path="dong-bo-giao-vien-ve-xe"
@@ -53,6 +54,19 @@ function App() {
               <Route path="/thanh-vien-lop-hoc" element={<Member />} />
               <Route path="/kiem-tra-toan-khoa" element={<KiemTraToanKhoa />} />
               <Route path="/kiem-tra-hang-nam" element={<KiemTraHangNam />} />
+            </Route> */}
+            <Route path="/" element={<LayoutTest />}>
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="class-management" element={<ClassManagement />} />
+              <Route path="student-report" element={<SearchStudents />} />
+              <Route path="check-full-course" element={<KiemTraToanKhoa />} />
+              <Route
+                path="sync-teacher-car"
+                element={<DongBoGiaoVienVaoXe />}
+              />
+              <Route path="sync-student-car" element={<DongBoHocVienVaoXe />} />
+              <Route path="annual-check" element={<KiemTraHangNam />} />
             </Route>
           </Routes>
         </BrowserRouter>

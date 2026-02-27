@@ -219,219 +219,195 @@ export default function AssignTeacherToVehicle() {
 
   return (
     <div>
-      <div className="max-w-5xl mx-auto mb-6">
+      <div className="mx-auto mb-6">
         <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
           Đồng bộ giáo viên vào xe
         </h1>
-        <p className="text-[#64748b] text-sm">
-          Chọn giáo viên, chọn xe rồi bấm Đồng bộ.
-        </p>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-5xl mx-auto space-y-4">
-        <Row gutter={[12, 12]} className="mb-4">
-          <Col span={12}>
-            <Card
-              className="shadow-sm rounded-lg border border-gray-200"
-              bodyStyle={{ padding: "24px" }}
-            >
-              <h2 className="text-lg !font-bold text-gray-900 !mb-0">
-                Giáo viên
-              </h2>
-              <p className="text-[#64748b] text-sm">
-                Tìm kiếm theo tên hoặc mã GV.
-              </p>
+      <Row gutter={[12, 12]} className="mb-4">
+        <Col span={12}>
+          <Card>
+            <h2 className="text-lg !font-bold text-gray-900 !mb-0">
+              Giáo viên
+            </h2>
+            <p className="text-[#64748b] text-sm">
+              Tìm kiếm theo tên hoặc mã GV.
+            </p>
 
-              <div className="flex gap-2 mt-5 mb-2">
-                <Input
-                  placeholder="Lọc (tên hoặc mã)..."
-                  size="middle"
-                  aria-label="lọc"
-                  value={searchText}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-                <Button
-                  icon={<ReloadOutlined />}
-                  size="middle"
-                  className="!px-2"
-                  type="primary"
-                  onClick={() => handleReload(false)}
-                />
-                <Button
-                  size="middle"
-                  className="!px-2"
-                  type="primary"
-                  onClick={() =>
-                    handleToggleAll(
-                      dataTeachers?.data?.Data || [],
-                      "MaGV",
-                      selectedTeacherKeys,
-                      setSelectedTeacherKeys,
-                    )
-                  }
-                >
-                  Chọn tất cả
-                </Button>
-              </div>
-
-              <Table
-                columns={teacherColumns}
-                dataSource={
-                  Array.isArray(dataTeachers?.data?.Data)
-                    ? dataTeachers.data.Data
-                    : []
+            <div className="flex gap-2 mt-5 mb-2">
+              <Input
+                placeholder="Lọc (tên hoặc mã)..."
+                size="middle"
+                aria-label="lọc"
+                value={searchText}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+              <Button
+                icon={<ReloadOutlined />}
+                size="middle"
+                className="!px-2"
+                type="primary"
+                onClick={() => handleReload(false)}
+              />
+              <Button
+                size="middle"
+                className="!px-2"
+                type="primary"
+                onClick={() =>
+                  handleToggleAll(
+                    dataTeachers?.data?.Data || [],
+                    "MaGV",
+                    selectedTeacherKeys,
+                    setSelectedTeacherKeys,
+                  )
                 }
-                loading={isLoadingTeachers}
-                pagination={{ pageSize: 10 }}
-                size="small"
-                bordered
-                rowKey="MaGV"
-                sticky={true}
-                className="h-60 overflow-y-auto overflow-x-hidden"
-                rowSelection={{
-                  selectedRowKeys: selectedTeacherKeys,
-                  onChange: (keys) => setSelectedTeacherKeys(keys),
-                }}
-                locale={{
-                  emptyText: (
-                    <span className="text-xs font-medium">
-                      Chưa có thông tin giáo viên
-                    </span>
-                  ),
-                }}
-              />
-            </Card>
-          </Col>
-          <Col span={12}>
-            <Card
-              className="shadow-sm rounded-lg border border-gray-200"
-              bodyStyle={{ padding: "24px" }}
-            >
-              <h2 className="text-lg !font-bold text-gray-900 !mb-0">Xe</h2>
-              <p className="text-[#64748b] text-sm">
-                Chọn 1 hoặc nhiều xe cần gán giáo viên.
-              </p>
+              >
+                Chọn tất cả
+              </Button>
+            </div>
 
-              <div className="flex gap-2 mb-2 mt-5">
+            <Table
+              columns={teacherColumns}
+              dataSource={
+                Array.isArray(dataTeachers?.data?.Data)
+                  ? dataTeachers.data.Data
+                  : []
+              }
+              loading={isLoadingTeachers}
+              pagination={{ pageSize: 10 }}
+              size="small"
+              bordered
+              rowKey="MaGV"
+              sticky={true}
+              className="h-60 overflow-y-auto overflow-x-hidden"
+              rowSelection={{
+                selectedRowKeys: selectedTeacherKeys,
+                onChange: (keys) => setSelectedTeacherKeys(keys),
+              }}
+              locale={{
+                emptyText: (
+                  <span className="text-xs font-medium">
+                    Chưa có thông tin giáo viên
+                  </span>
+                ),
+              }}
+            />
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card>
+            <h2 className="text-lg !font-bold text-gray-900 !mb-0">Xe</h2>
+            <p className="text-[#64748b] text-sm">
+              Chọn 1 hoặc nhiều xe cần gán giáo viên.
+            </p>
+
+            <div className="flex gap-2 mb-2 mt-5">
+              <Input
+                placeholder="Lọc (biển số hoặc hạng)..."
+                className="flex-1"
+                size="middle"
+                value={searchCar}
+                onChange={(e) => setSearchCar(e.target.value)}
+              />
+              <Button
+                icon={<ReloadOutlined />}
+                size="middle"
+                className="!px-2"
+                type="primary"
+                onClick={() => handleReload(true)}
+              />
+              <Button
+                size="middle"
+                className="!px-2"
+                type="primary"
+                onClick={() =>
+                  handleToggleAll(
+                    carData || [],
+                    "BienSo",
+                    selectedCarKeys,
+                    setSelectedCarKeys,
+                  )
+                }
+              >
+                Chọn tất cả
+              </Button>
+            </div>
+
+            <Table
+              columns={carColumns}
+              dataSource={carData}
+              pagination={{ pageSize: 10 }}
+              loading={isLoadingCar}
+              sticky={true}
+              className="h-60 overflow-y-auto !overflow-x-hidden"
+              size="small"
+              bordered
+              rowKey="BienSo"
+              rowSelection={{
+                selectedRowKeys: selectedCarKeys,
+                onChange: (keys) => setSelectedCarKeys(keys),
+              }}
+              locale={{
+                emptyText: (
+                  <span className="text-xs font-medium">
+                    Chưa có thông tin xe
+                  </span>
+                ),
+              }}
+            />
+          </Card>
+        </Col>
+      </Row>
+      <Row>
+        <Col span={24}>
+          <Card>
+            <h2 className="text-lg !font-bold text-gray-900 !mb-0">
+              Thực hiện đồng bộ
+            </h2>
+            <p className="text-[#64748b] text-sm">
+              Có thể đồng bộ 1 giáo viên vào nhiều xe: hệ thống sẽ gọi tuần tự
+              cho từng xe.
+            </p>
+
+            <Row gutter={[8, 8]} align={"bottom"} className="mt-6">
+              <Col span={11}>
+                <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                  Mã GV đã chọn
+                </label>
                 <Input
-                  placeholder="Lọc (biển số hoặc hạng)..."
-                  className="flex-1"
-                  size="middle"
-                  value={searchCar}
-                  onChange={(e) => setSearchCar(e.target.value)}
+                  placeholder="Mã GV đã chọn (1 hoặc nhiều)"
+                  aria-label="mã giáo viên"
+                  size="large"
+                  disabled
+                  value={selectedTeacherKeys.join(",")}
                 />
-                <Button
-                  icon={<ReloadOutlined />}
-                  size="middle"
-                  className="!px-2"
-                  type="primary"
-                  onClick={() => handleReload(true)}
+              </Col>
+              <Col span={10}>
+                <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                  Biển số xe đã chọn
+                </label>
+                <Input
+                  placeholder="Biển số xe đã chọn (1 hoặc nhiều)"
+                  size="large"
+                  disabled
+                  value={selectedCarKeys.join(",")}
                 />
+              </Col>
+              <Col span={3}>
                 <Button
-                  size="middle"
-                  className="!px-2"
                   type="primary"
-                  onClick={() =>
-                    handleToggleAll(
-                      carData || [],
-                      "BienSo",
-                      selectedCarKeys,
-                      setSelectedCarKeys,
-                    )
-                  }
+                  size="large"
+                  className="w-full bg-blue-600"
+                  onClick={handleSubmit}
                 >
-                  Chọn tất cả
+                  Đồng bộ
                 </Button>
-              </div>
-
-              <Table
-                columns={carColumns}
-                dataSource={carData}
-                pagination={{ pageSize: 10 }}
-                loading={isLoadingCar}
-                sticky={true}
-                className="h-60 overflow-y-auto !overflow-x-hidden"
-                size="small"
-                bordered
-                rowKey="BienSo"
-                rowSelection={{
-                  selectedRowKeys: selectedCarKeys,
-                  onChange: (keys) => setSelectedCarKeys(keys),
-                }}
-                locale={{
-                  emptyText: (
-                    <span className="text-xs font-medium">
-                      Chưa có thông tin xe
-                    </span>
-                  ),
-                }}
-              />
-            </Card>
-          </Col>
-        </Row>
-        <Row>
-          <Col span={24}>
-            <Card
-              className="shadow-sm rounded-lg border border-gray-200"
-              bodyStyle={{ padding: "24px" }}
-            >
-              <h2 className="text-lg !font-bold text-gray-900 !mb-0">
-                Thực hiện đồng bộ
-              </h2>
-              <p className="text-[#64748b] text-sm">
-                Có thể đồng bộ 1 giáo viên vào nhiều xe: hệ thống sẽ gọi tuần tự
-                cho từng xe.
-              </p>
-
-              <Row gutter={[8, 8]} align={"bottom"} className="mt-6">
-                <Col span={11}>
-                  <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
-                    Mã GV đã chọn
-                  </label>
-                  <Input
-                    placeholder="Mã GV đã chọn (1 hoặc nhiều)"
-                    aria-label="mã giáo viên"
-                    size="large"
-                    disabled
-                    value={selectedTeacherKeys.join(",")}
-                  />
-                </Col>
-                <Col span={10}>
-                  <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
-                    Biển số xe đã chọn
-                  </label>
-                  <Input
-                    placeholder="Biển số xe đã chọn (1 hoặc nhiều)"
-                    size="large"
-                    disabled
-                    value={selectedCarKeys.join(",")}
-                  />
-                </Col>
-                <Col span={3}>
-                  <Button
-                    type="primary"
-                    size="large"
-                    className="w-full bg-blue-600"
-                    onClick={handleSubmit}
-                  >
-                    Đồng bộ
-                  </Button>
-                </Col>
-              </Row>
-
-              <div className=" pt-4">
-                <a
-                  href="/"
-                  className="text-blue-500 text-sm hover:text-blue-700"
-                >
-                  ← Quay lại Dashboard
-                </a>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      </div>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
 
       <div className="text-center text-gray-500 text-sm mt-12">
         © 2026 Lập Phương Thành. All rights reserved.

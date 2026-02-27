@@ -14,6 +14,7 @@ import {
   Row,
   Select,
 } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 import { DanhSachHocVien } from "../apis/hocVien";
 import StudentDetail from "./StudentDetail";
 import { exportReport } from "../apis/report";
@@ -229,66 +230,60 @@ export default function SearchStudents() {
 
   return (
     <div>
-      <Card className="!shadow-md">
-        <div className="space-y-4">
-          <Title level={3} className="!mb-1">
-            Tìm kiếm học viên
-          </Title>
-          <div>
-            <label className="text-[13px] text-gray-600 block mb-1">
-              Từ khóa (tên / số CMT) (gõ để tìm nhanh)
+      <Title level={3} className="!mb-1">
+        Tìm kiếm học viên
+      </Title>
+      <Card className="!mt-5">
+        <Row gutter={16} align="bottom">
+          <Col xs={24} sm={12} md={10}>
+            <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+              Khóa học
             </label>
-            <Row gutter={16} align="bottom" className="mt-6">
-              <Col xs={24} sm={12} md={10}>
-                <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-                  Khóa học
-                </label>
-                <Select
-                  className="w-full"
-                  placeholder="-- Chọn khóa học --"
-                  loading={loadingKhoaHoc}
-                  value={selectedKhoaHoc}
-                  onChange={(value) => setSelectedKhoaHoc(value)}
-                  options={khoaHocOptions}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Col>
-              <Col span={11}>
-                <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-                  Từ khóa
-                </label>
-                <Input
-                  placeholder="Nhập tối thiểu 2 ký tự..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  size="large"
-                  className="!text-sm"
-                  onPressEnter={handleSearch}
-                />
-              </Col>
-              <Col span={3} className="pl-4 flex items-center">
-                <Button
-                  type="primary"
-                  className="w-full !font-medium !py-4.5 !rounded-md"
-                  onClick={handleSearch}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearch();
-                    }
-                  }}
-                >
-                  Tìm kiếm
-                </Button>
-              </Col>
-            </Row>
-          </div>
-        </div>
+            <Select
+              className="w-full"
+              placeholder="-- Chọn khóa học --"
+              loading={loadingKhoaHoc}
+              value={selectedKhoaHoc}
+              onChange={(value) => setSelectedKhoaHoc(value)}
+              options={khoaHocOptions}
+              allowClear
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            />
+          </Col>
+          <Col span={11}>
+            <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+              Từ khóa
+            </label>
+            <Input
+              placeholder="Nhập tối thiểu 2 ký tự..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              size="large"
+              className="!text-sm"
+              onPressEnter={handleSearch}
+            />
+          </Col>
+          <Col span={3} className="pl-4 flex items-center">
+            <Button
+              type="primary"
+              className="w-full !font-medium !py-4.5 !rounded-md !bg-[#3366CC] "
+              onClick={handleSearch}
+              icon={<SearchOutlined />}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
+            >
+              Tìm kiếm
+            </Button>
+          </Col>
+        </Row>
       </Card>
 
       {Object.keys(searchParams).length > 0 && (
