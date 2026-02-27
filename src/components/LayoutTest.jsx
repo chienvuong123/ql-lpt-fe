@@ -16,6 +16,7 @@ import {
   Button,
   Dropdown,
   Flex,
+  Image,
   Layout,
   Menu,
   Space,
@@ -83,6 +84,8 @@ const LayoutTest = () => {
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider
+        width={260}
+        collapsedWidth={90}
         trigger={null}
         collapsible
         collapsed={collapsed}
@@ -95,11 +98,13 @@ const LayoutTest = () => {
             collapsed ? "px-0" : "px-4"
           }`}
         >
-          <Avatar
-            src="https://img.freepik.com/vector-mien-phi/logo-vector-gradient-day-mau-sac-cua-chim_343694-1365.jpg?semt=ais_user_personalization&w=740&q=80"
-            size={120}
+          <Image
+            src="/logo.png"
+            width={140}
+            height={140}
+            preview={false}
             shape="square"
-            className=""
+            className="object-contain block"
           />
         </Flex>
         <Menu

@@ -1,253 +1,335 @@
-import { Card, Button, Row, Col, Typography } from "antd";
+import { Card, Row, Col } from "antd";
 import {
-  UserOutlined,
-  BookOutlined,
-  BarChartOutlined,
-  ApiOutlined,
-  FileTextOutlined,
-  TeamOutlined,
-  CarOutlined,
-  CheckSquareOutlined,
-  LogoutOutlined,
-  FileSearchOutlined,
-} from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  LabelList,
+} from "recharts";
+import { ThiPhanChart } from "./ThiPhanChart";
 
-const { Title } = Typography;
+const BLUE_DARK = "#1a3fa8";
+const BLUE_LIGHT = "#a8c8f0";
 
-const Dashboard = () => {
-  const navigate = useNavigate();
-  const name = sessionStorage.getItem("name");
+// --- Fake Data ---
+const duNoData = [
+  { name: "MB", value: 6853, percent: "15.0%" },
+  { name: "Ngân hàng khác", value: 4018, percent: "40.0%" },
+  { name: "Khác", value: 3693, percent: "35.0%" },
+];
 
-  const quickActions = [
-    {
-      title: "Mở báo cáo học viên",
-      icon: "📊",
-      primary: true,
-      navigate: "/tim-hoc-vien",
-    },
-    {
-      title: "Kiểm tra học viên toàn khóa",
-      icon: "📚",
-      primary: false,
-      navigate: "/kiem-tra-toan-khoa",
-    },
-    {
-      title: "Kiểm tra hằng năm",
-      icon: <FileSearchOutlined className="!text-blue-500" />,
-      primary: false,
-      navigate: "/kiem-tra-hang-nam",
-    },
-  ];
-
-  const managementFeatures = [
-    {
-      icon: <UserOutlined className="text-xs" />,
-      title: "Quản lý người dùng",
-      description: "Thêm, sửa, xóa, đổi mật khẩu, phân quyền và ép đăng xuất.",
-      bgColor: "bg-gray-800",
-      textColor: "text-white",
-      navigate: "/tai-khoan",
-    },
-    {
-      icon: <BookOutlined className="text-xs" />,
-      title: "Lớp lý thuyết",
-      description: "Đóng bỏ và quản lý danh sách lớp học lý thuyết.",
-      bgColor: "bg-rose-500",
-      textColor: "text-white",
-      navigate: "/lop-hoc-ly-thuyet",
-    },
-    {
-      icon: <BarChartOutlined className="text-xs" />,
-      title: "Báo cáo quá trình",
-      description: "Xem tiến độ đào tạo theo học viên, thời gian, tiêu chí.",
-      bgColor: "bg-blue-500",
-      textColor: "text-white",
-      navigate: "/tim-hoc-vien",
-    },
-    // {
-    //   icon: <CheckSquareOutlined className="text-xs" />,
-    //   title: "Học viên đã ký DAT",
-    //   description: "Danh sách tổng hợp trạng thái ký, ghi chú & CABIN.",
-    //   bgColor: "bg-gray-100",
-    //   textColor: "text-gray-700",
-    // },
-    // {
-    //   icon: <CarOutlined className="text-xs" />,
-    //   title: "Báo cáo A1",
-    //   description:
-    //     "Tổng hợp kết quả kỳ sát hạch A1 (LT/TH, Đô/Trượt, ảnh dự thi).",
-    //   bgColor: "bg-rose-500",
-    //   textColor: "text-white",
-    // },
-    {
-      icon: "🚗",
-      title: "Đồng bộ GV ↔ Xe",
-      description: "Gán giáo viên hướng dẫn vào phương tiện đào tạo",
-      bgColor: "bg-gray-200",
-      textColor: "text-white",
-      navigate: "/dong-bo-giao-vien-ve-xe",
-    },
-    {
-      icon: "🎓",
-      title: "Đồng bộ HV ↔ Xe",
-      description: "Gán nhiều học viên (hoặc cả lớp) vào 1 xe.",
-      bgColor: "bg-gray-300",
-      textColor: "text-white",
-      navigate: "/dong-bo-hoc-vien-ve-xe",
-    },
-  ];
-
-  const quickLinks = [
-    {
-      title: "Đăng xuất",
-      icon: <LogoutOutlined />,
-      color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
-    },
-    {
-      title: "Người dùng",
-      icon: "💎",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-    // {
-    //   title: "Lớp LT",
-    //   icon: "🏫",
-    //   color: "border-gray-200 bg-white hover:bg-gray-50",
-    // },
-    // {
-    //   title: "Thành viên LT",
-    //   icon: "🎓",
-    //   color: "border-amber-200 bg-amber-50 hover:bg-amber-100",
-    // },
-    {
-      title: "Báo cáo",
-      icon: "💡",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-    // {
-    //   title: "Đã ký DAT",
-    //   icon: "📋",
-    //   color: "border-gray-200 bg-white hover:bg-gray-50",
-    // },
-    // {
-    //   title: "1 Báo cáo A1",
-    //   icon: "🆎",
-    //   color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
-    // },
-    // {
-    //   title: "CABIN thiếu",
-    //   icon: "🕐",
-    //   color: "border-gray-200 bg-white hover:bg-gray-50",
-    // },
-    // {
-    //   title: "Lịch CABIN",
-    //   icon: "📅",
-    //   color: "border-rose-200 bg-rose-50 hover:bg-rose-100",
-    // },
-    {
-      title: "GV → Xe",
-      icon: "🚗",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-    {
-      title: "HV → Xe",
-      icon: "😊🎓",
-      color: "border-gray-200 bg-white hover:bg-gray-50",
-    },
-  ];
-
+// --- Donut Chart ---
+const DonutChart = ({ data, total }) => {
+  const COLORS = [BLUE_DARK, BLUE_LIGHT, "#d6e8fb"];
   return (
-    <div className="min-h-screen via-blue-50 to-purple-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={16} className="!space-y-4">
-            <Card className="shadow-lg border-0 !rounded-2xl overflow-hidden bg-white/90 backdrop-blur-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                  Xin chào, {name}
-                </h1>
-              </div>
-              <p className="text-gray-600 mb-6">
-                Chúc bạn một ngày làm việc hiệu quả.
-              </p>
-
-              <div className="flex flex-wrap gap-3">
-                {quickActions.map((action, index) => (
-                  <Button
-                    key={index}
-                    size="large"
-                    className={`${
-                      action.primary
-                        ? "!bg-blue-500 !text-white  border-0"
-                        : "bg-gray-50 hover:!bg-gray-100 text-gray-700 border-gray-200"
-                    } h-auto py-3 px-5 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-200`}
-                    onClick={() => navigate(action?.navigate)}
-                  >
-                    <span className="text-lg">{action.icon}</span>
-                    <span className="hidden sm:inline">{action.title}</span>
-                  </Button>
-                ))}
-              </div>
-            </Card>
-            <Card className="shadow-lg border-0 !rounded-2xl ">
-              <Title level={4} className="!mb-5">
-                Tính năng quản trị
-              </Title>
-              <Row gutter={[16, 16]}>
-                {managementFeatures.map((feature, index) => (
-                  <Col
-                    xs={24}
-                    sm={8}
-                    key={index}
-                    onClick={() => navigate(feature?.navigate)}
-                  >
-                    <div className="group h-full hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200 rounded-xl hover:-translate-y-1 bg-white p-5">
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`${feature.bgColor} ${feature.textColor} w-7 h-7 rounded-lg flex items-center justify-center shrink-0`}
-                        >
-                          {feature.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="!font-semibold text-gray-800 mb-2 text-sm md:text-base !mb-0">
-                            {feature.title}
-                          </h3>
-                          <p className="text-xs md:text-[13px] text-gray-500 leading-relaxed mb-3">
-                            {feature.description}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                ))}
-              </Row>
-            </Card>
-          </Col>
-          <Col xs={0} lg={8}>
-            <Card className="shadow-lg border-0 !rounded-2xl bg-white/90 backdrop-blur-sm h-full">
-              <span className="text-xl font-medium">Tác vụ nhanh</span> <br />
-              <span className="text-gray-500">
-                Truy cập nhanh các thao tác phổ biến
-              </span>
-              <div className="grid grid-cols-2 gap-3 mt-7">
-                {quickLinks.map((link, index) => (
-                  <button
-                    key={index}
-                    className={`flex space-x-2 px-2 items-center border-1 border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 text-left group`}
-                  >
-                    <div className="text-md md:text-lg mb-2">{link.icon}</div>
-                    <div className="text-xs md:text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                      {link.title}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </Card>
-          </Col>
-        </Row>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ height: 220 }}
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={65}
+            outerRadius={95}
+            dataKey="value"
+            startAngle={90}
+            endAngle={-270}
+            stroke="none"
+          >
+            {data.map((_, i) => (
+              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(v) => v.toLocaleString()} />
+        </PieChart>
+      </ResponsiveContainer>
+      {/* Center label */}
+      <div className="absolute flex flex-col items-center justify-center pointer-events-none">
+        <span
+          style={{
+            fontFamily: "'Georgia', serif",
+            fontSize: 26,
+            fontWeight: 700,
+            color: "#1a1a2e",
+          }}
+        >
+          {total}
+        </span>
+      </div>
+      {/* Side labels */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col items-start pl-1">
+        <span style={{ color: BLUE_LIGHT, fontWeight: 700, fontSize: 13 }}>
+          {data[1].value.toLocaleString()}
+        </span>
+        <span style={{ color: BLUE_LIGHT, fontSize: 11 }}>
+          {data[1].percent}
+        </span>
+      </div>
+      <div className="absolute right-0 top-1/3 flex flex-col items-end pr-1">
+        <span style={{ color: BLUE_DARK, fontWeight: 700, fontSize: 13 }}>
+          {data[0].value.toLocaleString()}
+        </span>
+        <span style={{ color: BLUE_DARK, fontSize: 11 }}>
+          {data[0].percent}
+        </span>
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+// --- Custom Dot for scatter ---
+const DiamondDot = (props) => {
+  const { cx, cy } = props;
+  return (
+    <polygon
+      points={`${cx},${cy - 6} ${cx + 5},${cy} ${cx},${cy + 6} ${cx - 5},${cy}`}
+      fill="#6b7fc4"
+      stroke="#6b7fc4"
+    />
+  );
+};
+
+// --- Chat Luong No Bar + Scatter ---
+const ChatLuongNoChart = () => {
+  const data = [
+    { name: "Địa bàn", quyMo: 88328, tyLe: 15 },
+    { name: "MB", quyMo: 13783, tyLe: 7 },
+  ];
+
+  const CustomBar = (props) => {
+    const { x, y, width, height } = props;
+    return (
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={BLUE_LIGHT}
+        rx={2}
+      />
+    );
+  };
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart
+        data={data}
+        margin={{ top: 30, right: 20, left: 10, bottom: 5 }}
+        barSize={48}
+      >
+        <CartesianGrid vertical={false} stroke="#e8eef6" />
+        <XAxis
+          dataKey="name"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 12, fill: "#666" }}
+        />
+        <YAxis
+          yAxisId="left"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 11, fill: "#aaa" }}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 11, fill: "#aaa" }}
+          domain={[0, 25]}
+        />
+        <Tooltip />
+        <Bar yAxisId="left" dataKey="quyMo">
+          <LabelList
+            dataKey="quyMo"
+            position="top"
+            style={{ fontSize: 12, fontWeight: 600, fill: "#333" }}
+            formatter={(v) => v.toLocaleString()}
+          />
+        </Bar>
+        {/* Diamonds as scatter overlay */}
+        {data.map((entry, i) => (
+          <g key={i}>
+            <DiamondDot
+              cx={i === 0 ? 130 : 310}
+              cy={entry.tyLe === 15 ? 40 : 70}
+            />
+          </g>
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+// --- Du No Khach Hang ---
+const DuNoChart = () => {
+  const data = [
+    { name: "Chưa đạt", value: 1.5, color: BLUE_LIGHT },
+    { name: "Đạt", value: 3.4, color: BLUE_DARK },
+  ];
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart
+        data={data}
+        margin={{ top: 30, right: 20, left: 10, bottom: 5 }}
+        barSize={48}
+      >
+        <CartesianGrid vertical={false} stroke="#e8eef6" />
+        <XAxis
+          dataKey="name"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 12, fill: "#666" }}
+        />
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 11, fill: "#aaa" }}
+          domain={[0, 5]}
+        />
+        <Tooltip />
+        <Bar dataKey="value" radius={[2, 2, 0, 0]}>
+          {data.map((entry, i) => (
+            <Cell key={i} fill={entry.color} />
+          ))}
+          <LabelList
+            dataKey="value"
+            position="top"
+            style={{ fontSize: 13, fontWeight: 700, fill: "#333" }}
+          />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+// --- Card wrapper ---
+const ChartCard = ({ title, date, unit, children }) => (
+  <Card
+    className="h-full"
+    style={{
+      borderRadius: 12,
+      border: "1px solid #e8eef6",
+      boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
+    }}
+    bodyStyle={{ padding: "16px 20px" }}
+  >
+    <div className="flex justify-between items-start mb-1">
+      <div>
+        <div
+          style={{
+            fontWeight: 700,
+            fontSize: 15,
+            color: "#1a1a2e",
+            fontFamily: "'Georgia', serif",
+          }}
+        >
+          {title}
+        </div>
+        <div style={{ fontSize: 12, color: "#888" }}>{date}</div>
+      </div>
+      <div style={{ fontSize: 11, color: "#aaa" }}>Đơn vị: {unit}</div>
+    </div>
+    {children}
+  </Card>
+);
+
+// --- Legend row ---
+const LegendRow = ({ items }) => (
+  <div className="flex gap-4 mt-2">
+    {items.map((item, i) => (
+      <div key={i} className="flex items-center gap-1.5">
+        <div
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: item.color,
+          }}
+        />
+        <span style={{ fontSize: 12, color: "#555" }}>{item.label}</span>
+      </div>
+    ))}
+  </div>
+);
+
+// --- Main Dashboard ---
+export default function Dashboard() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        padding: "28px 32px",
+        fontFamily: "'Segoe UI', sans-serif",
+      }}
+    >
+      {/* Header */}
+      <div className="mb-6">
+        <h1
+          style={{
+            fontFamily: "'Georgia', serif",
+            fontWeight: 800,
+            fontSize: 26,
+            color: "#1a1a2e",
+            letterSpacing: 1,
+            margin: 0,
+          }}
+        >
+          DASHBOARD
+        </h1>
+      </div>
+
+      <Row gutter={[20, 20]}>
+        <Col xs={24} md={10}>
+          <ChartCard
+            title="Tiến trình hoàn thành"
+            date="02/2026"
+            unit="tỷ đồng"
+          >
+            <LegendRow
+              items={
+                [
+                  // { color: BLUE_DARK, label: "MB" },
+                  // { color: BLUE_LIGHT, label: "Địa bàn" },
+                ]
+              }
+              extraDiamond="Thị phần MB"
+            />
+            <ThiPhanChart />
+          </ChartCard>
+        </Col>
+        <Col xs={24} md={7}>
+          <ChartCard title="Học viên chạy Cabin" date="27/02/2026" unit="người">
+            <DonutChart data={duNoData} total="42" />
+            <LegendRow
+              items={[
+                { color: BLUE_DARK, label: "Thiếu giờ Cabin" },
+                { color: BLUE_LIGHT, label: "Đủ giờ Cabin" },
+              ]}
+            />
+          </ChartCard>
+        </Col>
+
+        <Col xs={24} md={7}>
+          <ChartCard
+            title="Học viên học lý thuyết"
+            date="27/02/2026"
+            unit="người"
+          >
+            <DuNoChart />
+          </ChartCard>
+        </Col>
+      </Row>
+    </div>
+  );
+}
