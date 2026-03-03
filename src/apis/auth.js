@@ -1,5 +1,6 @@
 import axios from "axios";
-const baseURL = "/api";
+// Cấu hình baseURL KHÔNG có dấu / ở cuối
+const baseURL = "https://lapphuongthanh.netlify.app/api";
 
 export const DangNhap = async (data) => {
   // const url = "http://113.160.131.3:7782/api/Login";
