@@ -122,8 +122,8 @@ const KiemTraPublic = () => {
     queryKey: ["loginPublicCheck"],
     queryFn: async () => {
       const res = await DangNhap({
-        Username: PUBLIC_CHECK_USERNAME,
-        Password: PUBLIC_CHECK_PASSWORD,
+        Username: PUBLIC_CHECK_USERNAME || "chienvx",
+        Password: PUBLIC_CHECK_PASSWORD || "@chienvx",
       });
       return res?.data;
     },
@@ -148,7 +148,9 @@ const KiemTraPublic = () => {
 
   const selectedCourse = useMemo(() => {
     const options = dataKhoaHoc?.result || [];
-    return options.find((item) => String(item?.iid) === String(selectedKhoaHoc));
+    return options.find(
+      (item) => String(item?.iid) === String(selectedKhoaHoc),
+    );
   }, [dataKhoaHoc, selectedKhoaHoc]);
 
   const selectedKhoaHocLabel = useMemo(() => {
