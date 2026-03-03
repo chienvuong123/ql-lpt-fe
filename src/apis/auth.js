@@ -25,7 +25,7 @@ export const DangNhapLopLyThuyet = async () => {
 
   if (result) {
     const userInfo = {
-      token: result.token,
+      token_lt: result.token,
       iid: result.iid,
       id: result.id,
       session_id,

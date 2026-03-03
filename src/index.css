@@ -146,3 +146,40 @@ body {
 .ant-table-thead > tr > th {
   text-align: center !important;
 }
+
+/* HocVienKyDAT table */
+.hoc-vien-ky-dat-table .ant-table-wrapper,
+.hoc-vien-ky-dat-table .ant-table {
+  border-radius: 0;
+}
+
+.hoc-vien-ky-dat-table .ant-table-container {
+  border: 1px solid #d1d5db !important;
+}
+
+.hoc-vien-ky-dat-table .ant-table-thead > tr > th {
+  background: #f3f4f6 !important;
+  color: #0f172a !important;
+  font-weight: 700;
+  border-bottom: 1px solid #d1d5db !important;
+  border-inline-end: 1px solid #d1d5db !important;
+  padding: 10px 8px !important;
+  white-space: nowrap;
+}
+
+.hoc-vien-ky-dat-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #d1d5db !important;
+  border-inline-end: 1px solid #d1d5db !important;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 8px !important;
+  vertical-align: middle;
+}
+
+.hoc-vien-ky-dat-table .ant-table-tbody > tr:hover > td {
+  background: #f8fafc !important;
+}
+
+.hoc-vien-ky-dat-table .ant-table-cell {
+  font-size: 12px;
+}

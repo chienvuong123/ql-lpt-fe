@@ -285,7 +285,7 @@ const ClassManagement = () => {
           loading={isLoadingKhoaHoc}
           rowKey="id"
           pagination={false}
-          size="middle"
+          size="small"
           scroll={{ x: 1200 }}
           bordered
           className="overflow-hidden table-blue-header"

@@ -11,6 +11,7 @@ import {
   SyncOutlined,
   SafetyOutlined,
 } from "@ant-design/icons";
+import { BsCalendar3, BsCardChecklist } from "react-icons/bs";
 import {
   Avatar,
   Button,
@@ -33,6 +34,12 @@ const menuPathMap = {
   "sync-teacher-car": "/sync-teacher-car",
   "sync-student-car": "/sync-student-car",
   "annual-check": "/annual-check",
+  "cabin-schedule": "/cabin-schedule",
+  "hoc-vien-ky-dat": "/hoc-vien-ky-dat",
+  "danh-sach-cabin": "/danh-sach-cabin",
+  "lich-cabin": "/lich-cabin",
+  "hoc-bu-cabin": "/hoc-bu-cabin",
+  "kiem-tra-hoc-vien": "/kiem-tra-hoc-vien",
 };
 
 const LayoutTest = () => {
@@ -112,6 +119,13 @@ const LayoutTest = () => {
           mode="inline"
           selectedKeys={[selectedMenuKey]}
           onClick={({ key }) => {
+            if (key === "class-management") {
+              const currentToken = sessionStorage.getItem("token");
+              if (!currentToken) {
+                navigate("/login-ly-thuyet");
+                return;
+              }
+            }
             const nextPath = menuPathMap[key];
             if (nextPath) navigate(nextPath);
           }}
@@ -129,7 +143,7 @@ const LayoutTest = () => {
             {
               key: "reports",
               icon: <BarChartOutlined />,
-              label: "Báo cáo",
+              label: "DAT",
               children: [
                 {
                   key: "student-report",
@@ -137,7 +151,11 @@ const LayoutTest = () => {
                 },
                 {
                   key: "check-full-course",
-                  label: "Báo cáo hàng loạt",
+                  label: "Báo cáo học viên hàng loạt",
+                },
+                {
+                  key: "hoc-vien-ky-dat",
+                  label: "Danh sách học viên kí DAT",
                 },
               ],
             },
@@ -160,6 +178,29 @@ const LayoutTest = () => {
               key: "annual-check",
               icon: <SafetyOutlined />,
               label: "Kiểm tra hàng năm",
+            },
+            {
+              key: "cabin",
+              icon: <BsCalendar3 />,
+              label: "Cabin",
+              children: [
+                {
+                  key: "danh-sach-cabin",
+                  label: "Danh sách học viên Cabin",
+                },
+                {
+                  key: "lich-cabin",
+                  label: "Chia lịch Cabin",
+                },
+                {
+                  key: "hoc-bu-cabin",
+                  label: "Thiếu/bù giờ Cabin",
+                },
+              ],
+            },
+            {
+              key: "kiem-tra-hoc-vien",
+              label: "Kiểm tra học viên",
             },
           ]}
         />

@@ -93,7 +93,7 @@ export const hocVienTheoKhoa = async (enrolment_plan_iid, extraParams = {}) => {
   data.append("_sand_session_id", userInfo?.session_id);
   data.append("_sand_use_internal_network", 0);
   data.append("allow_cache_api_cdn", 1);
-  data.append("_sand_token", userInfo?.token);
+  data.append("_sand_token", userInfo?.token_lt);
   data.append("_sand_uiid", userInfo?.iid);
   data.append("_sand_uid", userInfo?.id);
   data.append("_sand_user_agent", navigator.userAgent);

@@ -17,6 +17,12 @@ import Member from "./pages/class/Member";
 import KiemTraToanKhoa from "./pages/checks/KiemTraToanKhoa";
 import KiemTraHangNam from "./pages/checks/KiemTraHangNam";
 import LayoutTest from "./components/LayoutTest";
+import DangNhapLopLyThuyet from "./pages/auth/DangNhapLopLyThuyet";
+import DanhSachChiaCabin from "./pages/cabin/DanhSachChiaCabin";
+import HocVienKyDAT from "./pages/dat/HocVienKyDAT";
+import LichCabin from "./pages/cabin/LichCabin";
+import BuCaBin from "./pages/cabin/BuCaBin";
+import KiemTraPublic from "./pages/checks/KiemTraPublic";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,29 +40,17 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/login-ly-thuyet" element={<DangNhapLopLyThuyet />} />
             <Route path="/tim-hoc-vien" element={<LayoutApp />}>
               <Route index element={<SearchStudents />} />
               <Route path="student/:id" element={<StudentDetail />} />
             </Route>
-            {/* <Route path="/" element={<LayoutDashboard />}>
-              <Route index element={<Dashboard />} />
-              <Route
-                path="dong-bo-giao-vien-ve-xe"
-                element={<DongBoGiaoVienVaoXe />}
-              />
-              <Route
-                path="dong-bo-hoc-vien-ve-xe"
-                element={<DongBoHocVienVaoXe />}
-              />
-              <Route path="/tai-khoan" element={<AccountManagement />} />
-              <Route path="/lop-hoc-ly-thuyet" element={<ClassManagement />} />
-              <Route path="/kiem-tra-toan-khoa" element={<KiemTraToanKhoa />} />
-              <Route path="/kiem-tra-hang-nam" element={<KiemTraHangNam />} />
-              </Route> */}
+            {/* roter mới khuyên dùng */}
             <Route path="/" element={<LayoutTest />}>
+              <Route index element={<Dashboard />} />
               <Route path="/map" element={<TrackingPage />} />
               <Route path="/thanh-vien-lop-hoc" element={<Member />} />
-              <Route index element={<Dashboard />} />
+              <Route path="/cabin-schedule" element={<DanhSachChiaCabin />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="class-management" element={<ClassManagement />} />
               <Route path="student-report" element={<SearchStudents />} />
@@ -67,7 +61,12 @@ function App() {
               />
               <Route path="sync-student-car" element={<DongBoHocVienVaoXe />} />
               <Route path="annual-check" element={<KiemTraHangNam />} />
+              <Route path="hoc-vien-ky-dat" element={<HocVienKyDAT />} />
+              <Route path="danh-sach-cabin" element={<DanhSachChiaCabin />} />
+              <Route path="lich-cabin" element={<LichCabin />} />
+              <Route path="hoc-bu-cabin" element={<BuCaBin />} />
             </Route>
+            <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
           </Routes>
         </BrowserRouter>
       </ConfigProvider>
