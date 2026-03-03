@@ -1,7 +1,9 @@
 import axios from "axios";
+const baseURL = "/api";
 
 export const DangNhap = async (data) => {
-  const url = "http://113.160.131.3:7782/api/Login";
+  // const url = "http://113.160.131.3:7782/api/Login";
+  const url = baseURL;
   const response = await axios.post(url, data);
   return response;
 };
