@@ -80,7 +80,7 @@ const DatJourneyModal = ({
               <div className="!grid !grid-cols-2 !text-center">
                 <Text strong>Tổng Km: {totalDistance.toFixed(2)} km</Text>
                 <Text strong>
-                  Tổng giờ: {formatDurationFromSeconds(totalSeconds)}
+                  Tổng giờ: {formatDurationFromSeconds(totalSeconds)}'
                 </Text>
               </div>
             </Card>

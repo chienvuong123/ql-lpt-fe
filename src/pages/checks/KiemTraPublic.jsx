@@ -18,12 +18,13 @@ import {
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { lopHocLyThuyet } from "../../apis/khoaHoc";
-import { HanhTrinh, hocVienTheoKhoa } from "../../apis/hocVien";
+import { hocVienTheoKhoa } from "../../apis/hocVien";
 import { getDuLieuCabin } from "../../apis/searchPublic";
 import CabinModal from "./CabinModal";
-import { DangNhap, DangNhapLopLyThuyet } from "../../apis/auth";
+import { DangNhapLopLyThuyet } from "../../apis/auth";
 import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import DatJourneyModal from "./DatJourneyModal";
+import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -121,7 +122,7 @@ const KiemTraPublic = () => {
   useQuery({
     queryKey: ["loginPublicCheck"],
     queryFn: async () => {
-      const res = await DangNhap({
+      const res = await DangNhapPublic({
         Username: PUBLIC_CHECK_USERNAME || "chienvx",
         Password: PUBLIC_CHECK_PASSWORD || "@chienvx",
       });
@@ -187,12 +188,12 @@ const KiemTraPublic = () => {
   const { data: dataDat, isLoading: loadingDat } = useQuery({
     queryKey: ["hanhTrinhPublic", cabinKey, selectedKhoaHocCode],
     queryFn: () =>
-      HanhTrinh({
+      HanhTrinhPublic({
         ngaybatdau: "2020-01-01",
-        ngayketthuc: "2030-12-31",
+        ngayketthuc: "2026-12-31",
         ten: cabinKey,
         makhoahoc: selectedKhoaHocCode,
-        limit: 50,
+        limit: 20,
         page: 1,
       }),
     enabled: isDatModalOpen && !!cabinKey,

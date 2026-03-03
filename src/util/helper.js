@@ -48,3 +48,15 @@ export const buildParams = (extra = {}) => {
 
   return params.toString();
 };
+
+export const getEndOfToday = () => {
+  const now = new Date();
+
+  // Lấy Năm-Tháng-Ngày
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  // Nối chuỗi với giờ cuối ngày
+  return `${year}-${month}-${day} 23:59:59`;
+};
