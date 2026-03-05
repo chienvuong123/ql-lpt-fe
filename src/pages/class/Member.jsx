@@ -319,7 +319,8 @@ const Member = () => {
         dataSource={students || []}
         pagination={false}
         rowKey="id"
-        size="middle"
+        size="small"
+        bordered
         scroll={{ x: 1200 }}
         className="overflow-hidden table-blue-header"
       />

@@ -43,6 +43,19 @@ const CUNG_DUONG_CONFIG = [
   },
 ];
 
+function getCourseYearFromCode(courseCode = "") {
+  const match = String(courseCode).trim().match(/^K(\d{2})/i);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  return Number.isFinite(year) ? year : null;
+}
+
+function shouldCheckCungDuongByCourse(courseCode = "") {
+  const year = getCourseYearFromCode(courseCode);
+  return year !== null && year >= 25;
+}
+
 /**
  * Kiểm tra xe có đi qua cung đường không
  * @param {Array} listCoordinate - ListCoordinate từ 1 phiên hành trình
@@ -416,7 +429,14 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
 
   warnings.push(...evaluateNghiGiuaPhien(dataSource)); // lỗi nếu có 2 phiên liên tiếp mà thời gian nghỉ < 15 phút
   warnings.push(...evaluateTocDoPhien(dataSource)); // lỗi nếu có phiên nào đó tốc độ trung bình < 20 km/h
-  warnings.push(...evaluateCungDuong(loTrinh)); // check đường có đi qua Chí Linh hoặc Kinh Môn không
+  const courseCode =
+    dataSource?.[0]?.MaKhoaHoc ||
+    dataSource?.[0]?.MaKhoa ||
+    dataSource?.[0]?.KhoaHoc ||
+    "";
+  if (shouldCheckCungDuongByCourse(courseCode)) {
+    warnings.push(...evaluateCungDuong(loTrinh)); // check đường có đi qua Chí Linh hoặc Kinh Môn không
+  }
 
   return { status: errors.length === 0 ? "pass" : "fail", errors, warnings };
 }

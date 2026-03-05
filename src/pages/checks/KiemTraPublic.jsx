@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -13,6 +13,7 @@ import {
   Row,
   Select,
   Space,
+  Tag,
   Typography,
 } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
@@ -20,11 +21,11 @@ import { useQuery } from "@tanstack/react-query";
 import { lopHocLyThuyet } from "../../apis/khoaHoc";
 import { hocVienTheoKhoa } from "../../apis/hocVien";
 import { getDuLieuCabin } from "../../apis/searchPublic";
-import CabinModal from "./CabinModal";
 import { DangNhapLopLyThuyet } from "../../apis/auth";
 import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import DatJourneyModal from "./DatJourneyModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
+import { fetchCheckStudents } from "../../apis/kiemTra";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -115,7 +116,6 @@ const KiemTraPublic = () => {
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
   const [searchParams, setSearchParams] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [isCabinModalOpen, setIsCabinModalOpen] = useState(false);
   const [isLyThuyetModalOpen, setIsLyThuyetModalOpen] = useState(false);
   const [isDatModalOpen, setIsDatModalOpen] = useState(false);
 
@@ -167,7 +167,7 @@ const KiemTraPublic = () => {
     queryFn: () => hocVienTheoKhoa(selectedKhoaHoc, searchParams || {}),
     staleTime: 1000 * 60 * 5,
     retry: false,
-    enabled: !!selectedKhoaHoc && !!searchParams && !!loginData,
+    enabled: !!searchParams && !!loginData,
   });
 
   const cabinKey =
@@ -201,6 +201,14 @@ const KiemTraPublic = () => {
     retry: false,
   });
 
+  const { data: dataCheckStudents = {} } = useQuery({
+    queryKey: ["checkStudentPublic"],
+    queryFn: () => fetchCheckStudents(),
+    enabled: isDatModalOpen && !!cabinKey,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
   const cabinDataList = useMemo(() => {
     const list = dataCabin?.data || dataCabin?.Data || [];
     return Array.isArray(list) ? list : [];
@@ -211,25 +219,17 @@ const KiemTraPublic = () => {
     return Array.isArray(list) ? list : [];
   }, [dataDat]);
 
-  const cabinGroupedByRule = useMemo(() => {
-    const groupedMap = CABIN_RULES.reduce((acc, rule) => {
-      acc[rule.key] = {
-        ...rule,
-        learnedMinutes: 0,
-      };
-      return acc;
-    }, {});
-
-    cabinDataList.forEach((item) => {
-      const rule = getCabinRuleByName(item?.Name || "");
-      if (!rule) return;
-
-      groupedMap[rule.key].learnedMinutes +=
-        Number(item?.TongThoiGian || 0) / 60;
-    });
-
-    return CABIN_RULES.map((rule) => groupedMap[rule.key]);
-  }, [cabinDataList]);
+  const studentCheckInfo = useMemo(() => {
+    const list = dataCheckStudents?.data || [];
+    if (!Array.isArray(list) || !cabinKey) return null;
+    const normalizedKey = String(cabinKey).trim();
+    return (
+      list.find(
+        (item) => String(item?.maDangKy || "").trim() === normalizedKey,
+      ) ||
+      null
+    );
+  }, [dataCheckStudents, cabinKey]);
 
   const uniqueCabinLessonCount = useMemo(() => {
     const lessonKeys = new Set();
@@ -299,22 +299,11 @@ const KiemTraPublic = () => {
 
     setSelectedStudent(null);
     setIsLyThuyetModalOpen(false);
-    setIsCabinModalOpen(false);
     setIsDatModalOpen(false);
     setSearchParams({
       page: 1,
       text: keyword.trim(),
     });
-  };
-
-  const handleClear = () => {
-    setKeyword("");
-    setSelectedKhoaHoc("");
-    setSearchParams(null);
-    setSelectedStudent(null);
-    setIsLyThuyetModalOpen(false);
-    setIsCabinModalOpen(false);
-    setIsDatModalOpen(false);
   };
 
   const soMonLyThuyetDat = scoreRows.filter((item) => item.passed).length;
@@ -326,25 +315,41 @@ const KiemTraPublic = () => {
 
   const lyThuyetStatus = lyThuyetPercent >= 100 ? "Đạt" : "Chưa đạt";
 
+  const totalCabinSeconds = useMemo(
+    () =>
+      cabinDataList.reduce(
+        (sum, item) => sum + Number(item?.TongThoiGian || 0),
+        0,
+      ),
+    [cabinDataList],
+  );
+
+  const hasEnoughCabinLessons = uniqueCabinLessonCount >= 7;
+  const hasEnoughCabinTime = totalCabinSeconds > 2 * 3600 + 20 * 60;
+  const isCabinPassed =
+    cabinDataList.length > 0 && hasEnoughCabinLessons && hasEnoughCabinTime;
+
   const cabinText = useMemo(() => {
     if (loadingCabin) return "Đang tải dữ liệu CABIN...";
+    if (cabinDataList.length === 0) return "Chưa đạt";
 
-    if (cabinDataList.length > 0) {
-      const completedLessons = Math.min(uniqueCabinLessonCount, 8);
-      return `${completedLessons}/8 bài`;
-    }
+    return isCabinPassed ? "Đạt" : "Chưa đạt";
+  }, [loadingCabin, cabinDataList.length, isCabinPassed]);
 
-    if (selectedStudent?.CABIN?.soBaiHoc || selectedStudent?.CABIN?.thoiLuong) {
-      return `Bài: ${selectedStudent?.CABIN?.soBaiHoc || 0} • Phút: ${selectedStudent?.CABIN?.thoiLuong || 0}`;
-    }
+  useEffect(() => {
+    window.history.pushState(null, null, window.location.href);
 
-    return "Chưa có dữ liệu CABIN";
-  }, [cabinDataList, loadingCabin, selectedStudent, uniqueCabinLessonCount]);
+    const handlePopState = () => {
+      window.history.pushState(null, null, window.location.href);
+      alert("Bạn không thể quay lại trang trước từ đây!");
+    };
 
-  const cabinTextClassName =
-    cabinDataList.length > 0
-      ? "!mb-0 !mt-3 !text-xs !text-[#16a34a]"
-      : "!mb-0 !mt-3 !text-xs !text-[#ff2c2c]";
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   return (
     <Layout className="!min-h-screen !bg-[#f2f4f8]">
@@ -375,7 +380,7 @@ const KiemTraPublic = () => {
         <Content>
           <Card className="!rounded-none !border-x-0 !border-b-0 !border-t !border-[#d8dee8]">
             <Row gutter={[8, 8]} align="bottom">
-              <Col span={8}>
+              <Col span={9}>
                 <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
                   Khóa học
                 </Text>
@@ -403,7 +408,7 @@ const KiemTraPublic = () => {
                 />
               </Col>
 
-              <Col span={8}>
+              <Col span={9}>
                 <Text className="!mb-1 !text-xs !uppercase !text-gray-500">
                   Từ khóa
                 </Text>
@@ -421,20 +426,18 @@ const KiemTraPublic = () => {
               </Col>
 
               <Col span={6}>
-                <Space className="!w-full" size={8}>
-                  <Button
-                    type="primary"
-                    onClick={handleSearch}
-                    disabled={
-                      !selectedKhoaHoc ||
-                      keyword.trim().length < 2 ||
-                      loadingLogin
-                    }
-                  >
-                    Tìm
-                  </Button>
-                  <Button onClick={handleClear}>Xóa</Button>
-                </Space>
+                <Button
+                  type="primary"
+                  className="w-full"
+                  onClick={handleSearch}
+                  disabled={
+                    !selectedKhoaHoc ||
+                    keyword.trim().length < 2 ||
+                    loadingLogin
+                  }
+                >
+                  Tìm
+                </Button>
               </Col>
             </Row>
 
@@ -599,7 +602,7 @@ const KiemTraPublic = () => {
                           {lyThuyetStatus}
                         </Text>
                         <Button
-                          className="!rounded-xl !px-3 !text-sm"
+                          className="!rounded-xl !px-3 !text-xs"
                           size="small"
                           onClick={() => setIsLyThuyetModalOpen(true)}
                         >
@@ -613,15 +616,26 @@ const KiemTraPublic = () => {
                     <Card
                       bordered={false}
                       bodyStyle={{ padding: 10 }}
-                      className="!h-full !cursor-pointer !rounded-xl !bg-[#edf1f7]"
-                      onClick={() => setIsCabinModalOpen(true)}
+                      className="!h-full !rounded-xl !bg-[#edf1f7]"
                     >
                       <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
                         Cabin
                       </Text>
-                      <Paragraph className={cabinTextClassName}>
-                        {cabinText}
-                      </Paragraph>
+                      {loadingCabin ? (
+                        <Paragraph className="!mb-0 !mt-3 !text-xs !text-[#74839e]">
+                          {cabinText}
+                        </Paragraph>
+                      ) : (
+                        <div className="flex justify-center mt-5 w-full">
+                          <Tag
+                            color={isCabinPassed ? "processing" : "error"}
+                            className="!mt-3 !text-xs !font-bold w-full !text-center"
+                            variant={"solid"}
+                          >
+                            {cabinText}
+                          </Tag>
+                        </div>
+                      )}
                     </Card>
                   </Col>
 
@@ -636,7 +650,7 @@ const KiemTraPublic = () => {
                       </Text>
                       <Button
                         type="primary"
-                        className="!mt-6 !w-full !rounded-xl !bg-[#2f6ce0] !text-sm"
+                        className="!mt-6 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
                         size="small"
                         onClick={() => setIsDatModalOpen(true)}
                       >
@@ -649,13 +663,6 @@ const KiemTraPublic = () => {
             ) : null}
           </Card>
         </Content>
-
-        <CabinModal
-          open={isCabinModalOpen}
-          onCancel={() => setIsCabinModalOpen(false)}
-          loading={loadingCabin}
-          cabinGroupedByRule={cabinGroupedByRule}
-        />
 
         <Footer className="!bg-[#f2f4f8] !px-4 !pb-6 !pt-10 !text-center !text-xs !text-[#7e8ea6]">
           Public view • Cập nhật: 2026-02-27 16:08 • Nguồn nội bộ
@@ -674,6 +681,7 @@ const KiemTraPublic = () => {
         loading={loadingDat}
         student={selectedStudent}
         courseLabel={selectedKhoaHocLabel}
+        studentCheckInfo={studentCheckInfo}
         rows={datJourneyList}
       />
     </Layout>

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Card,
   Row,
   Col,
@@ -31,7 +31,18 @@ import {
   HanhTrinh,
   updateHocVienCheck,
 } from "../apis/hocVien";
+import { LoTringOnline } from "../apis/xeOnline";
+import {
+  computeSummary as computeSummaryHangLoat,
+  evaluate as evaluateHangLoat,
+} from "./checks/DieuKienKiemTra";
+import {
+  computeSummary as computeSummaryHangNam,
+  evaluate as evaluateHangNam,
+} from "./checks/DieuKienKiemTraNam";
 import TrackingPage from "./map/TrackingPage";
+import { fetchCheckStudents } from "../apis/kiemTra";
+import { getDuLieuCabin } from "../apis/searchPublic";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -94,6 +105,37 @@ const StudentDetail = ({ data }) => {
     enabled: !!data?.MaDK, // Chỉ chạy khác học viên
   });
 
+  const { data: loTrinhResults } = useQuery({
+    queryKey: ["loTrinh", data?.MaDK],
+    queryFn: () => {
+      const today = new Date().toISOString().split("T")[0];
+      return LoTringOnline({
+        ngaybatdau: "2022-1-1T00:00:00",
+        ngayketthuc: `${today}T23:59:00`,
+        madk: data?.MaDK,
+      });
+    },
+    enabled: !!data?.MaDK,
+    staleTime: Infinity,
+  });
+
+  const { data: dataCheckStudent } = useQuery({
+    queryKey: ["checkStudent"],
+    queryFn: () => fetchCheckStudents(),
+    staleTime: 1000 * 60 * 5,
+    keepPreviousData: true,
+  });
+
+  const cabinKey = String(data?.MaDK || "").trim();
+  const { data: dataCabin, isLoading: loadingCabin } = useQuery({
+    queryKey: ["cabin", cabinKey],
+    queryFn: () => getDuLieuCabin(cabinKey),
+    enabled: !!cabinKey,
+    staleTime: 1000 * 60 * 5,
+    keepPreviousData: true,
+    retry: false,
+  });
+
   const dataSource = useMemo(() => {
     return Array.isArray(results?.data?.Data) ? results.data.Data : [];
   }, [results]);
@@ -101,6 +143,62 @@ const StudentDetail = ({ data }) => {
   const dataCheck = useMemo(() => {
     return hocVienCheckData?.data ?? {};
   }, [hocVienCheckData]);
+
+  const studentMap = React.useMemo(() => {
+    const list = dataCheckStudent?.data || [];
+    const map = new Map();
+    list.forEach((s) => {
+      if (s.maDangKy) map.set(s.maDangKy.trim(), s);
+    });
+    return map;
+  }, [dataCheckStudent]);
+
+  const cabinDataList = useMemo(() => {
+    const list = dataCabin?.data || dataCabin?.Data || [];
+    return Array.isArray(list) ? list : [];
+  }, [dataCabin]);
+
+  const groupedCabinLessons = useMemo(() => {
+    const map = new Map();
+
+    cabinDataList.forEach((item) => {
+      const lessonKey = String(
+        item?.ID_BaiTap || item?.Name || item?.id || "",
+      ).trim();
+      if (!lessonKey) return;
+
+      const prev = map.get(lessonKey);
+      const seconds = Number(item?.TongThoiGian || 0);
+
+      if (!prev) {
+        map.set(lessonKey, {
+          lessonKey,
+          name: item?.Name || "",
+          totalSeconds: Number.isFinite(seconds) ? seconds : 0,
+        });
+        return;
+      }
+
+      map.set(lessonKey, {
+        ...prev,
+        totalSeconds:
+          prev.totalSeconds + (Number.isFinite(seconds) ? seconds : 0),
+      });
+    });
+
+    return Array.from(map.values());
+  }, [cabinDataList]);
+
+  const uniqueCabinLessonCount = groupedCabinLessons.length;
+
+  const totalCabinSeconds = useMemo(
+    () =>
+      groupedCabinLessons.reduce(
+        (sum, item) => sum + Number(item?.totalSeconds || 0),
+        0,
+      ),
+    [groupedCabinLessons],
+  );
 
   const renderValue = (value, suffix = "") => {
     if (value === null || value === undefined || value === "") {
@@ -246,324 +344,64 @@ const StudentDetail = ({ data }) => {
         return <Text>{(distance / time).toFixed(1)} km/h</Text>;
       },
     },
-    // {
-    //   title: "Kết luận",
-    //   dataIndex: "result",
-    //   key: "result",
-    //   width: 100,
-    //   align: "center",
-    //   render: (text) => (
-    //     <Tag color={text === "Đạt" ? "success" : "error"}>{text}</Tag>
-    //   ),
-    // },
   ];
 
   const hasJourneyData = dataSource.length > 0;
 
-  // Cấu hình yêu cầu theo hạng đào tạo (dựa vào bảng)
-  const HANG_DAO_TAO_CONFIG = {
-    B1: {
-      thoiGian: { banNgay: 9, banDem: 3, tuDong: 0, tong: 12 },
-      quangDuong: { banNgay: 590, banDem: 120, tuDong: 0, tong: 710 },
-    },
-    B11: {
-      hoiGian: { banNgay: 9, banDem: 3, tuDong: 0, tong: 12 },
-      quangDuong: { banNgay: 590, banDem: 120, tuDong: 0, tong: 710 },
-    },
-    B2: {
-      thoiGian: { banNgay: 15, banDem: 3, tuDong: 2, tong: 20 },
-      quangDuong: { banNgay: 610, banDem: 120, tuDong: 80, tong: 810 },
-    },
-    C: {
-      thoiGian: { banNgay: 20, banDem: 3, tuDong: 1, tong: 24 },
-      quangDuong: { banNgay: 705, banDem: 90, tuDong: 30, tong: 825 },
-    },
-  };
+  const summaryData = useMemo(
+    () => computeSummaryHangLoat(dataSource, data?.HangDaoTao || ""),
+    [dataSource, data],
+  );
 
-  // Tính toán tổng hợp từ dataSource
-  const summaryData = useMemo(() => {
-    if (!hasJourneyData) {
-      return {
-        tongThoiGianGio: 0,
-        tongQuangDuong: 0,
-        thoiGianBanDemGio: 0,
-        quangDuongBanDem: 0,
-        thoiGianBanNgayGio: 0,
-        quangDuongBanNgay: 0,
-        thoiGianTuDongGio: 0,
-        quangDuongTuDong: 0,
-        hangDaoTao: data?.HangDaoTao || "",
-      };
-    }
+  const admissionCode = data?.MaDK ?? "";
+  const annualStudentInfo = useMemo(() => {
+    const code = String(admissionCode).trim();
+    if (!code) return null;
+    return studentMap.get(code) || null;
+  }, [studentMap, admissionCode]);
 
-    // Lấy thông tin ban đêm
-
-    // Đếm số lần xuất hiện của mỗi biển số
-    const bienSoCount = dataSource.reduce((acc, item) => {
-      const bienSo = item.BienSo;
-      if (bienSo) {
-        acc[bienSo] = (acc[bienSo] || 0) + 1;
-      }
-      return acc;
-    }, {});
-
-    // Tìm biển số xuất hiện ít nhất (là xe số tự động)
-    let bienSoTuDong = null;
-    let minCount = Infinity;
-
-    // Lấy danh sách các biển số
-    const danhSachBienSo = Object.entries(bienSoCount);
-
-    // Chỉ tìm xe tự động nếu có ít nhất 2 biển số khác nhau
-    if (danhSachBienSo.length > 1) {
-      danhSachBienSo.forEach(([bienSo, count]) => {
-        if (count < minCount) {
-          minCount = count;
-          bienSoTuDong = bienSo;
-        }
-      });
-    }
-
-    // Tính tổng từ tất cả các phiên
-    const totals = dataSource.reduce(
-      (acc, item) => {
-        const isTuDong = bienSoTuDong && item.BienSo === bienSoTuDong;
-
-        const thoiGianPhut = item.TongThoiGian || 0;
-        const quangDuong = item.TongQuangDuong || item.TongQD || 0;
-
-        // Xác định phiên này có phải ban đêm không
-        const thoiDiem = item.ThoiDiemDangNhap;
-        let isBanDem = false;
-
-        acc.tongThoiGianPhut += item.TongThoiGian || 0;
-        acc.tongQuangDuong += item.TongQuangDuong || item.TongQD || 0;
-        acc.thoiGianBanDemPhut += item.ThoiGianBanDem || 0;
-        acc.quangDuongBanDem += item.QuangDuongBanDem || 0;
-        acc.thoiGianTuDongPhut += item.ThoiGianTuDong || 0; // Cần field này từ API
-        acc.quangDuongTuDong += item.QuangDuongTuDong || 0; // Cần field này từ API
-
-        // Nếu là xe tự động thì cộng vào tự động
-        if (isTuDong) {
-          acc.thoiGianTuDongPhut += item.TongThoiGian || 0;
-          acc.quangDuongTuDong += item.TongQuangDuong || item.TongQD || 0;
-        }
-
-        if (thoiDiem) {
-          const hour = new Date(thoiDiem).getHours();
-          isBanDem = hour >= 18; // từ 18:00 trở đi
-        }
-
-        // Phân loại ban đêm / ban ngày / tự động
-        if (isBanDem) {
-          acc.thoiGianBanDemPhut += thoiGianPhut;
-          acc.quangDuongBanDem += quangDuong;
-        } else {
-          acc.thoiGianBanNgayPhut += thoiGianPhut;
-          acc.quangDuongBanNgay += quangDuong;
-        }
-
-        return acc;
-      },
-      {
-        tongThoiGianPhut: 0,
-        tongQuangDuong: 0,
-        thoiGianBanDemPhut: 0,
-        quangDuongBanDem: 0,
-        thoiGianTuDongPhut: 0,
-        quangDuongTuDong: 0,
-      },
-    );
-
-    const tongThoiGianGio = totals.tongThoiGianPhut / 60;
-    const thoiGianBanDemGio = totals.thoiGianBanDemPhut / 60;
-    const thoiGianTuDongGio = totals.thoiGianTuDongPhut / 60;
-    const thoiGianBanNgayGio = Math.max(
-      tongThoiGianGio - thoiGianBanDemGio - thoiGianTuDongGio,
-      0,
-    );
-    const quangDuongBanNgay = Math.max(
-      totals.tongQuangDuong - totals.quangDuongBanDem - totals.quangDuongTuDong,
-      0,
-    );
-
-    // Lấy hạng đào tạo từ phiên đầu tiên hoặc từ data
-    const hangDaoTao = dataSource[0]?.HangDaoTao || data?.HangDaoTao || "";
-
-    return {
-      tongThoiGianGio,
-      tongQuangDuong: totals.tongQuangDuong,
-      thoiGianBanDemGio,
-      quangDuongBanDem: totals.quangDuongBanDem,
-      thoiGianBanNgayGio,
-      quangDuongBanNgay,
-      thoiGianTuDongGio,
-      quangDuongTuDong: totals.quangDuongTuDong,
-      hangDaoTao,
-    };
-  }, [dataSource, hasJourneyData, data]);
-
-  // Logic đánh giá
   const evaluationData = useMemo(() => {
     if (!hasJourneyData) {
       return { status: "fail", errors: [], warnings: [] };
     }
 
-    const errors = [];
-    const warnings = [];
+    const fullCourseEvaluation = evaluateHangLoat(
+      summaryData,
+      dataSource,
+      loTrinhResults?.data || [],
+    );
 
-    const yeuCauHang =
-      HANG_DAO_TAO_CONFIG[summaryData.hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
+    const hasAnnualSource =
+      !!annualStudentInfo &&
+      (!!annualStudentInfo.giaoVien ||
+        !!annualStudentInfo.xeB1 ||
+        !!annualStudentInfo.xeB2);
 
-    // Cấu hình các điều kiện kiểm tra
-    const validationRules = [
-      // ERRORS - Điều kiện 1: Thời gian ban đêm
-      {
-        type: "error",
-        condition: summaryData.thoiGianBanDemGio < yeuCauHang?.thoiGian?.banDem,
-        getMessage: () => {
-          const thieuGio =
-            yeuCauHang?.thoiGian?.banDem - summaryData.thoiGianBanDemGio;
-          const gio = Math.floor(thieuGio);
-          const phut = Math.round((thieuGio - gio) * 60);
-          return `Thời gian ban đêm thiếu so với yêu cầu tối thiểu (${gio}h ${phut.toString().padStart(2, "0")}').`;
-        },
-      },
+    const annualEvaluation = hasAnnualSource
+      ? evaluateHangNam(
+          computeSummaryHangNam(dataSource),
+          dataSource,
+          annualStudentInfo,
+        )
+      : { status: "pass", errors: [], warnings: [] };
 
-      // ERRORS - Điều kiện 2: Quãng đường ban đêm
-      {
-        type: "error",
-        condition: summaryData.quangDuongBanDem < yeuCauHang?.quangDuong.banDem,
-        getMessage: () => {
-          const thieu =
-            yeuCauHang?.quangDuong?.banDem - summaryData.quangDuongBanDem;
-          return `Quãng đường ban đêm thiếu so với yêu cầu tối thiểu (${thieu.toFixed(2)} km).`;
-        },
-      },
-
-      // ERRORS - Điều kiện 3: Thời gian số tự động
-      {
-        type: "error",
-        condition: summaryData.thoiGianTuDongGio < yeuCauHang?.thoiGian?.tuDong,
-        getMessage: () => {
-          const thieuGio =
-            yeuCauHang?.thoiGian?.tuDong - summaryData.thoiGianTuDongGio;
-          const gio = Math.floor(thieuGio);
-          const phut = Math.round((thieuGio - gio) * 60);
-          return `Thời gian lái xe số tự động thiếu so với yêu cầu tối thiểu (${gio}h ${phut.toString().padStart(2, "0")}').`;
-        },
-      },
-
-      // ERRORS - Điều kiện 3: Quãng đường số tự động
-      {
-        type: "error",
-        condition:
-          summaryData.quangDuongTuDong < yeuCauHang?.quangDuong?.tuDong,
-        getMessage: () => {
-          const thieu =
-            yeuCauHang?.quangDuong?.tuDong - summaryData.quangDuongTuDong;
-          return `Quãng đường lái xe số tự động thiếu so với yêu cầu tối thiểu (${thieu.toFixed(2)} km).`;
-        },
-      },
-
-      // ERRORS - Điều kiện 4: Tổng thời lượng
-      {
-        type: "error",
-        condition: summaryData.tongThoiGianGio < yeuCauHang?.thoiGian?.tong,
-        getMessage: () => {
-          const thieu =
-            yeuCauHang?.thoiGian?.tong - summaryData.tongThoiGianGio;
-          const gio = Math.floor(thieu);
-          const phut = Math.round((thieu - gio) * 60);
-          return `Tổng thời lượng thiếu so với yêu cầu (thiếu ${gio}h ${phut.toString().padStart(2, "0")}').`;
-        },
-      },
-
-      // ERRORS - Điều kiện 5: Tổng quãng đường
-      {
-        type: "error",
-        condition: summaryData.tongQuangDuong < yeuCauHang?.quangDuong?.tong,
-        getMessage: () => {
-          const thieu =
-            yeuCauHang?.quangDuong?.tong - summaryData.tongQuangDuong;
-          return `Tổng quãng đường thiếu so với yêu cầu (thiếu ${thieu.toFixed(2)} km).`;
-        },
-      },
-
-      // WARNINGS - Không có tên giáo viên
-      {
-        type: "warning",
-        condition: !dataSource.some((item) => item.HoTenGV),
-        getMessage: () => "Không có tên giáo viên để kiểm tra tính nhất quán.",
-      },
-
-      // WARNINGS - Thời gian ban ngày thiếu quá 20%
-      {
-        type: "warning",
-        condition: (() => {
-          const yeuCau = yeuCauHang?.thoiGian?.banNgay;
-          if (yeuCau === 0) return false;
-          const thucTe = summaryData.thoiGianBanNgayGio;
-          const phanTramDat = (thucTe / yeuCau) * 100;
-          return phanTramDat < 80;
-        })(),
-        getMessage: () => {
-          const yeuCau = yeuCauHang?.thoiGian?.banNgay;
-          const thucTe = summaryData.thoiGianBanNgayGio;
-          const phanTramDat = (thucTe / yeuCau) * 100;
-          const phanTramThieu = 100 - phanTramDat;
-
-          const thieuGio = yeuCau - thucTe;
-          const gio = Math.floor(thieuGio);
-          const phut = Math.round((thieuGio - gio) * 60);
-
-          return `Thời gian ban ngày thiếu ${phanTramThieu.toFixed(1)}% so với yêu cầu (thiếu ${gio}h ${phut.toString().padStart(2, "0")}').`;
-        },
-      },
-
-      // WARNINGS - Quãng đường ban ngày thiếu quá 20%
-      {
-        type: "warning",
-        condition: (() => {
-          const yeuCau = yeuCauHang.quangDuong.banNgay;
-          if (yeuCau === 0) return false;
-          const thucTe = summaryData.quangDuongBanNgay;
-          const phanTramDat = (thucTe / yeuCau) * 100;
-          return phanTramDat < 80;
-        })(),
-        getMessage: () => {
-          const yeuCau = yeuCauHang.quangDuong.banNgay;
-          const thucTe = summaryData.quangDuongBanNgay;
-          const phanTramDat = (thucTe / yeuCau) * 100;
-          const phanTramThieu = 100 - phanTramDat;
-          const thieu = yeuCau - thucTe;
-
-          return `Quãng đường ban ngày thiếu ${phanTramThieu.toFixed(1)}% so với yêu cầu (thiếu ${thieu.toFixed(2)} km).`;
-        },
-      },
+    const errors = [
+      ...(fullCourseEvaluation?.errors || []),
+      ...(annualEvaluation?.errors || []),
+    ];
+    const warnings = [
+      ...(fullCourseEvaluation?.warnings || []),
+      ...(annualEvaluation?.warnings || []),
     ];
 
-    // Lặp qua các rules và tạo errors/warnings
-    validationRules.forEach((rule) => {
-      if (rule.condition) {
-        const issue = {
-          type: rule.type,
-          message: rule.getMessage(),
-        };
-
-        if (rule.type === "error") {
-          errors.push(issue);
-        } else {
-          warnings.push(issue);
-        }
-      }
-    });
-
-    const status = errors.length === 0 ? "pass" : "fail";
-
-    return { status, errors, warnings };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataSource, hasJourneyData, summaryData]);
+    return { status: errors.length === 0 ? "pass" : "fail", errors, warnings };
+  }, [
+    dataSource,
+    hasJourneyData,
+    summaryData,
+    loTrinhResults,
+    annualStudentInfo,
+  ]);
 
   const allIssues = [...evaluationData.warnings, ...evaluationData.errors];
 
@@ -576,12 +414,19 @@ const StudentDetail = ({ data }) => {
     return `${gio}h${phut}`;
   };
 
-  const formatThoiGian = (phut) => {
-    const totalMinutes = Math.floor(Number(phut));
+  const formatThoiGianFromHours = (hours) => {
+    const totalMinutes = Math.floor(Number(hours || 0) * 60);
     const gio = Math.floor(totalMinutes / 60);
     const phutDu = totalMinutes % 60;
 
     return `${gio}h${phutDu.toString().padStart(2, "0")}`;
+  };
+
+  const formatCabinDuration = (seconds = 0) => {
+    const totalMinutes = Math.floor(Number(seconds || 0) / 60);
+    const gio = Math.floor(totalMinutes / 60);
+    const phut = totalMinutes % 60;
+    return `${gio} giờ ${phut} phút`;
   };
 
   const onFinish = (values) => {
@@ -785,15 +630,13 @@ const StudentDetail = ({ data }) => {
                 <Space>
                   <Text strong>DỮ LIỆU HỌC CABIN:</Text>
 
-                  {data?.CABIN ? (
-                    <>
-                      <Text>
-                        {data.CABIN.thoiLuong} - {data.CABIN.soBaiHoc} bài học -
-                      </Text>
-                      <Tag color="success" icon={<CheckCircleOutlined />}>
-                        Đạt
-                      </Tag>
-                    </>
+                  {loadingCabin ? (
+                    <Text>Đang tải dữ liệu Cabin...</Text>
+                  ) : cabinDataList.length > 0 ? (
+                    <Text strong className="!text-blue-600">
+                      {uniqueCabinLessonCount}/8 bài -{" "}
+                      {formatCabinDuration(totalCabinSeconds)}
+                    </Text>
                   ) : (
                     <Tag color="error" className="font-medium">
                       Chưa có dữ liệu Cabin
@@ -926,15 +769,19 @@ const StudentDetail = ({ data }) => {
                         </Text>
                         <Text className="text-[#888888] font-medium">
                           Ban đêm:{" "}
-                          {formatThoiGian(summaryData.thoiGianBanDemGio)}' -{" "}
-                          {summaryData?.quangDuongBanDem.toFixed(2)} km
+                          {formatThoiGianFromHours(
+                            summaryData.thoiGianBanDemGio,
+                          )}
+                          ' - {summaryData?.quangDuongBanDem.toFixed(2)} km
                         </Text>
-                        {dataSource[0]?.HangDaoTao !== "B1" ||
+                        {dataSource[0]?.HangDaoTao !== "B1" &&
                         dataSource[0]?.HangDaoTao !== "B11" ? (
                           <Text className="text-[#888888] font-medium">
                             Trải nghiệm hộp số tự động (17h-7h):{" "}
-                            {formatThoiGian(summaryData.thoiGianTuDongGio)}' -{" "}
-                            {summaryData.quangDuongTuDong.toFixed(2)} km
+                            {formatThoiGianFromHours(
+                              summaryData.thoiGianTuDongGio,
+                            )}
+                            ' - {summaryData.quangDuongTuDong.toFixed(2)} km
                           </Text>
                         ) : null}
                       </Space>

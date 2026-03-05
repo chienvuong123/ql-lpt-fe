@@ -289,6 +289,14 @@ const ClassManagement = () => {
           scroll={{ x: 1200 }}
           bordered
           className="overflow-hidden table-blue-header"
+          onRow={(record) => {
+            return {
+              onClick: () => {
+                handleNavigate(record);
+              },
+              style: { cursor: "pointer" },
+            };
+          }}
         />
       </div>
     </div>

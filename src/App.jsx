@@ -23,6 +23,7 @@ import HocVienKyDAT from "./pages/dat/HocVienKyDAT";
 import LichCabin from "./pages/cabin/LichCabin";
 import BuCaBin from "./pages/cabin/BuCaBin";
 import KiemTraPublic from "./pages/checks/KiemTraPublic";
+import QuanLyHocVienLyThuyet from "./pages/class/QuanLyHocVienLyThuyet";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,24 +48,40 @@ function App() {
             </Route>
             {/* roter mới khuyên dùng */}
             <Route path="/" element={<LayoutTest />}>
+              {/* Dashboard */}
               <Route index element={<Dashboard />} />
-              <Route path="/map" element={<TrackingPage />} />
-              <Route path="/thanh-vien-lop-hoc" element={<Member />} />
-              <Route path="/cabin-schedule" element={<DanhSachChiaCabin />} />
               <Route path="dashboard" element={<Dashboard />} />
+
+              {/* Map */}
+              <Route path="/map" element={<TrackingPage />} />
+
+              {/* Lớp học lý thuyết */}
+              <Route path="/thanh-vien-lop-hoc" element={<Member />} />
+              <Route
+                path="/quan-ly-hoc-vien-ly-thuyet"
+                element={<QuanLyHocVienLyThuyet />}
+              />
               <Route path="class-management" element={<ClassManagement />} />
+
+              {/* CABIN */}
+              <Route path="lich-cabin" element={<LichCabin />} />
+              <Route path="hoc-bu-cabin" element={<BuCaBin />} />
+              <Route path="danh-sach-cabin" element={<DanhSachChiaCabin />} />
+
+              {/* DAT */}
               <Route path="student-report" element={<SearchStudents />} />
               <Route path="check-full-course" element={<KiemTraToanKhoa />} />
+              <Route path="hoc-vien-ky-dat" element={<HocVienKyDAT />} />
+
+              {/* Đồng bộ */}
               <Route
                 path="sync-teacher-car"
                 element={<DongBoGiaoVienVaoXe />}
               />
               <Route path="sync-student-car" element={<DongBoHocVienVaoXe />} />
+
+              {/* Kiểm tra */}
               <Route path="annual-check" element={<KiemTraHangNam />} />
-              <Route path="hoc-vien-ky-dat" element={<HocVienKyDAT />} />
-              <Route path="danh-sach-cabin" element={<DanhSachChiaCabin />} />
-              <Route path="lich-cabin" element={<LichCabin />} />
-              <Route path="hoc-bu-cabin" element={<BuCaBin />} />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
           </Routes>

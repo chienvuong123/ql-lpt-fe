@@ -4,9 +4,32 @@ import { Card, Empty, Image, Modal, Spin, Typography } from "antd";
 
 const { Text } = Typography;
 
+const MIN_DAT_SPEED = 18;
+
 const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
+};
+
+const normalizeName = (name) =>
+  String(name || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+
+const normalizePlate = (plate) =>
+  String(plate || "")
+    .replace(/[-.\s]/g, "")
+    .toUpperCase()
+    .trim();
+
+const getAvgSpeed = (item) => {
+  const km = toNumber(item?.TongQuangDuong);
+  const seconds = toNumber(item?.TongThoiGian);
+
+  if (km <= 0 || seconds <= 0) return 0;
+
+  return km / (seconds / 3600);
 };
 
 const formatDurationFromSeconds = (seconds) => {
@@ -22,16 +45,69 @@ const DatJourneyModal = ({
   loading,
   student,
   courseLabel,
+  studentCheckInfo = null,
   rows = [],
 }) => {
+  const rowsWithStatus = useMemo(
+    () =>
+      rows.map((item) => {
+        const avgSpeed = getAvgSpeed(item);
+        const isSpeedInvalid = avgSpeed > 0 && avgSpeed < MIN_DAT_SPEED;
+
+        const registeredTeacher = normalizeName(studentCheckInfo?.giaoVien);
+        const sessionTeacher = normalizeName(item?.HoTenGV);
+        const isTeacherMismatch =
+          !!registeredTeacher && !!sessionTeacher
+            ? sessionTeacher !== registeredTeacher
+            : false;
+
+        const registeredPlateB1 = normalizePlate(studentCheckInfo?.xeB1);
+        const registeredPlateB2 = normalizePlate(studentCheckInfo?.xeB2);
+        const sessionPlate = normalizePlate(item?.BienSo);
+        const allowedPlates = [registeredPlateB1, registeredPlateB2].filter(
+          Boolean,
+        );
+        const isPlateMismatch =
+          allowedPlates.length > 0 && sessionPlate
+            ? !allowedPlates.includes(sessionPlate)
+            : false;
+
+        const isInvalid =
+          isSpeedInvalid || isTeacherMismatch || isPlateMismatch;
+
+        return {
+          ...item,
+          _avgSpeed: avgSpeed,
+          _isSpeedInvalid: isSpeedInvalid,
+          _isTeacherMismatch: isTeacherMismatch,
+          _isPlateMismatch: isPlateMismatch,
+          _isInvalid: isInvalid,
+        };
+      }),
+    [rows, studentCheckInfo],
+  );
+
   const totalDistance = useMemo(
-    () => rows.reduce((sum, item) => sum + toNumber(item?.TongQuangDuong), 0),
-    [rows],
+    () =>
+      rowsWithStatus.reduce((sum, item) => {
+        if (item?._isInvalid) return sum;
+        return sum + toNumber(item?.TongQuangDuong);
+      }, 0),
+    [rowsWithStatus],
   );
 
   const totalSeconds = useMemo(
-    () => rows.reduce((sum, item) => sum + toNumber(item?.TongThoiGian), 0),
-    [rows],
+    () =>
+      rowsWithStatus.reduce(
+        (sum, item) => sum + toNumber(item?.TongThoiGian),
+        0,
+      ),
+    [rowsWithStatus],
+  );
+
+  const invalidSessionCount = useMemo(
+    () => rowsWithStatus.filter((item) => item?._isInvalid).length,
+    [rowsWithStatus],
   );
 
   return (
@@ -53,7 +129,7 @@ const DatJourneyModal = ({
               <div className="!mb-1 !text-xs">
                 Họ tên:{" "}
                 <span className="!font-bold">
-                  {student?.user?.name || "Không rõ tên"}
+                  {student?.user?.name || "Khong ro ten"}
                 </span>
               </div>
               <div className="!mb-1 !text-xs">
@@ -61,7 +137,7 @@ const DatJourneyModal = ({
               </div>
               <div className="!mb-1 !text-xs">Khóa: {courseLabel || "--"}</div>
               <div className="!text-xs">
-                Ngày sinh: {student?.user?.birth_year || "--"}
+                Năm sinh: {student?.user?.birth_year || "--"}
               </div>
             </div>
             <Image
@@ -74,7 +150,7 @@ const DatJourneyModal = ({
           </div>
         </Card>
 
-        {rows.length > 0 ? (
+        {rowsWithStatus.length > 0 ? (
           <>
             <Card bodyStyle={{ padding: 8 }} className="!mb-3 !bg-[#dff4f7]">
               <div className="!grid !grid-cols-2 !text-center">
@@ -85,26 +161,60 @@ const DatJourneyModal = ({
               </div>
             </Card>
 
+            {invalidSessionCount > 0 && (
+              <Card
+                bodyStyle={{ padding: 8 }}
+                className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
+              >
+                <Text className="!text-[#cf1322] !text-xs !font-semibold">
+                  Bạn có ({invalidSessionCount} phiên lỗi) liên hệ phòng DAT để
+                  kiểm tra chi tiết.
+                </Text>
+              </Card>
+            )}
+
             <div className="!space-y-2 !overflow-y-auto !max-h-[60vh]">
-              {rows.map((item, index) => {
+              {rowsWithStatus.map((item, index) => {
                 const start = item?.ThoiDiemDangNhap;
                 const end = item?.ThoiDiemDangXuat;
                 return (
-                  <Card key={item?.ID || index} bodyStyle={{ padding: 0 }}>
+                  <Card
+                    key={item?.ID || index}
+                    bodyStyle={{ padding: 0 }}
+                    className={item?._isInvalid ? "!border-[#cf1322]" : ""}
+                  >
                     <div className="!flex">
-                      <div className="!w-8 !bg-[#1e88d8] !text-center !text-xs !font-semibold !text-white !py-3">
+                      <div
+                        className={`!w-8 !text-center !text-xs !font-semibold !text-white !py-3 ${
+                          item?._isInvalid ? "!bg-[#cf1322]" : "!bg-[#1e88d8]"
+                        }`}
+                      >
                         {index + 1}
                       </div>
                       <div className="!flex-1 !text-xs">
-                        <div className="!flex !items-center !justify-between !border-b !bg-[#f5f7fb] !px-3 !py-2">
+                        <div
+                          className={`!flex !items-center !justify-between !border-b !px-3 !py-2 ${
+                            item?._isInvalid ? "!bg-[#fff1f0]" : "!bg-[#f5f7fb]"
+                          }`}
+                        >
                           <Text strong>
                             {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
                           </Text>
-                          <div className="!rounded !bg-[#1e88d8] !px-3 !py-1 !text-white !font-semibold">
+                          <div
+                            className={`!rounded !px-3 !py-1 !text-white !font-semibold ${
+                              item?._isInvalid
+                                ? "!bg-[#cf1322]"
+                                : "!bg-[#1e88d8]"
+                            }`}
+                          >
                             {item?.BienSo || "--"}
                           </div>
                         </div>
-                        <div className="!grid !grid-cols-2 !px-3 !py-2">
+                        <div
+                          className={`!grid !grid-cols-2 !px-3 !py-2 ${
+                            item?._isInvalid ? "!bg-[#fff1f0]" : ""
+                          }`}
+                        >
                           <span>
                             {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
                             {end ? dayjs(end).format("HH:mm") : "--"}
@@ -114,6 +224,21 @@ const DatJourneyModal = ({
                             {toNumber(item?.TongQuangDuong).toFixed(2)} km
                           </div>
                         </div>
+                        {item?._isInvalid && (
+                          <div className="!px-3 !pb-2 !text-[11px] !text-[#cf1322]">
+                            {[
+                              item?._isSpeedInvalid ? "Loi toc do DAT" : null,
+                              item?._isTeacherMismatch
+                                ? "Sai tên giáo viên so với đăng kí"
+                                : null,
+                              item?._isPlateMismatch
+                                ? "Sai biển số so với đăng kí"
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" | ")}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Card>

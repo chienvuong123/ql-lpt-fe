@@ -40,6 +40,7 @@ const menuPathMap = {
   "lich-cabin": "/lich-cabin",
   "hoc-bu-cabin": "/hoc-bu-cabin",
   "kiem-tra-hoc-vien": "/kiem-tra-hoc-vien",
+  "quan-ly-hoc-vien-ly-thuyet": "/quan-ly-hoc-vien-ly-thuyet",
 };
 
 const LayoutTest = () => {
@@ -136,9 +137,19 @@ const LayoutTest = () => {
               label: "Dashboard",
             },
             {
-              key: "class-management",
+              key: "class",
               icon: <BookOutlined />,
-              label: "Lớp lý thuyết",
+              label: "Lý thuyết",
+              children: [
+                {
+                  key: "class-management",
+                  label: "Lớp học lý thuyết",
+                },
+                {
+                  key: "quan-ly-hoc-vien-ly-thuyet",
+                  label: "Quản lý học viên",
+                },
+              ],
             },
             {
               key: "reports",
@@ -201,6 +212,10 @@ const LayoutTest = () => {
             {
               key: "kiem-tra-hoc-vien",
               label: "Kiểm tra học viên",
+            },
+            {
+              key: "them-du-lieu",
+              label: "Thêm dữ liệu vào hệ thống",
             },
           ]}
         />

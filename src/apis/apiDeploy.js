@@ -40,3 +40,11 @@ export const HanhTrinhPublic = async (params) => {
     params,
   });
 };
+
+export const DanhSachHocVienDeploy = async (params) => {
+  return api({
+    method: "get",
+    url: "/HocVienTH",
+    params,
+  });
+};
