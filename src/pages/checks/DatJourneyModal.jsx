@@ -224,21 +224,6 @@ const DatJourneyModal = ({
                             {toNumber(item?.TongQuangDuong).toFixed(2)} km
                           </div>
                         </div>
-                        {item?._isInvalid && (
-                          <div className="!px-3 !pb-2 !text-[11px] !text-[#cf1322]">
-                            {[
-                              item?._isSpeedInvalid ? "Loi toc do DAT" : null,
-                              item?._isTeacherMismatch
-                                ? "Sai tên giáo viên so với đăng kí"
-                                : null,
-                              item?._isPlateMismatch
-                                ? "Sai biển số so với đăng kí"
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" | ")}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </Card>

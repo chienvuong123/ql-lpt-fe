@@ -22,7 +22,11 @@ function normalizePlate(plate) {
 // ─── Chuẩn hoá tên để so sánh (bỏ dấu thừa, uppercase) ───────────────────────
 function normalizeName(name) {
   if (!name) return "";
-  return name.trim().toUpperCase().replace(/\s+/g, " ");
+  return name
+    .replace(/\(\s*\d{4}\s*\)/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
 }
 
 /**

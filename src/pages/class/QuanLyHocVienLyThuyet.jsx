@@ -14,20 +14,14 @@ import {
   message,
 } from "antd";
 import { useLocation } from "react-router-dom";
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import StudentDetailModal from "./StudentDetailModal";
-import {
-  getHocVienCheck,
-  hocVienTheoKhoa,
-  updateHocVienCheck,
-} from "../../apis/hocVien";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { hocVienTheoKhoa } from "../../apis/hocVien";
 import { lopHocLyThuyet } from "../../apis/khoaHoc";
 import { DangNhapLopLyThuyet } from "../../apis/auth";
+import {
+  capNhatTrangThaiHocVienLyThuyet,
+  getDanhSachHocVienLyThuyet,
+} from "../../apis/apiHocVienLopLyThuyet";
 
 const normalizeText = (value = "") =>
   String(value)
@@ -36,9 +30,24 @@ const normalizeText = (value = "") =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d");
 
+const formatDateTime = (value) => {
+  if (!value) return "-";
+
+  const raw = Number(value);
+  const date =
+    Number.isFinite(raw) && raw > 0
+      ? new Date(raw > 1e12 ? raw : raw * 1000)
+      : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const datePart = date.toLocaleDateString("vi-VN");
+  const timePart = date.toLocaleTimeString("vi-VN");
+
+  return `${datePart} ${timePart}`;
+};
+
 const QuanLyHocVienLyThuyet = () => {
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [select, setSelected] = useState({});
   const [selectedClassIid, setSelectedClassIid] = useState("");
   const [savingStudentCode, setSavingStudentCode] = useState("");
   const keywordInputRef = useRef(null);
@@ -49,7 +58,7 @@ const QuanLyHocVienLyThuyet = () => {
   });
 
   const location = useLocation();
-  const { program_name, program_code, maKhoaHoc } = location?.state || {};
+  const { program_code } = location?.state || {};
 
   const { data: loginData } = useQuery({
     queryKey: ["loginLyThuyet"],
@@ -108,65 +117,127 @@ const QuanLyHocVienLyThuyet = () => {
     });
   };
 
-  const studentCheckQueries = useQueries({
-    queries: students.map((student) => {
-      const studentCode = getStudentCode(student);
+  const isPassAllLyThuyet = (record) => {
+    const scoreByRubrik = record?.learning_progress?.score_by_rubrik || [];
+    if (!Array.isArray(scoreByRubrik) || scoreByRubrik.length === 0)
+      return false;
+    return scoreByRubrik.every((item) => Number(item?.passed) !== 0);
+  };
 
-      return {
-        queryKey: ["hocvien-check-theory", studentCode],
-        queryFn: () => getHocVienCheck(studentCode),
-        enabled: !!studentCode,
-        staleTime: 1000 * 60 * 5,
-        retry: false,
-      };
-    }),
+  const parseGhiChu = (value) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value !== "string") return String(value);
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed?.note === "string") return parsed.note;
+      return "";
+    } catch {
+      return value;
+    }
+  };
+
+  const maKhoaFilter =
+    selectedClass?.suffix_name || selectedClass?.name || program_code || "";
+  const statusQueryKey = [
+    "trang-thai-hoc-vien-ly-thuyet-hoc-vien",
+    maKhoaFilter,
+  ];
+
+  const { data: trangThaiHocVienData } = useQuery({
+    queryKey: statusQueryKey,
+    queryFn: () => getDanhSachHocVienLyThuyet({ maKhoa: maKhoaFilter }),
+    enabled: !!maKhoaFilter,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 
   const studentCheckMap = useMemo(() => {
     const result = {};
+    const list = Array.isArray(trangThaiHocVienData?.data)
+      ? trangThaiHocVienData.data
+      : [];
 
-    students.forEach((student, index) => {
-      const studentCode = getStudentCode(student);
-      if (!studentCode) return;
-      result[studentCode] = studentCheckQueries[index]?.data?.data || {};
+    list.forEach((item) => {
+      if (!item?.ma_dk) return;
+      result[String(item.ma_dk)] = item;
     });
 
     return result;
-  }, [studentCheckQueries, students]);
+  }, [trangThaiHocVienData]);
 
   const resolveCheckState = (record) => {
-    const studentCode = getStudentCode(record);
-    const savedData = studentCheckMap?.[studentCode] || {};
+    const maDk = getStudentCode(record);
+    const savedData = studentCheckMap?.[maDk] || {};
     const autoHetMon = isPassBaiHetMon(record);
+    const autoLyThuyetPassed = isPassAllLyThuyet(record);
 
-    const lyThuyetChecked = Boolean(savedData?.ly_thuyet_checked);
+    const lyThuyetChecked =
+      savedData?.loai_ly_thuyet === undefined
+        ? !autoLyThuyetPassed
+        : Boolean(savedData?.loai_ly_thuyet);
     const hetMonChecked =
-      savedData?.het_mon_checked === undefined
+      savedData?.loai_het_mon === undefined
         ? autoHetMon
-        : Boolean(savedData?.het_mon_checked);
-    const cabinEligible = lyThuyetChecked && hetMonChecked;
+        : Boolean(savedData?.loai_het_mon);
+    const cabinChecked = Boolean(savedData?.cabin);
+    const datChecked = Boolean(savedData?.dat);
+    const ghiChu = parseGhiChu(savedData?.ghi_chu);
+    const statusUpdatedAt =
+      savedData?.status_updated_at ||
+      savedData?.updated_at ||
+      savedData?.updatedAt ||
+      savedData?.updated_ts ||
+      null;
+    const isDuDieuKien =
+      !lyThuyetChecked && !hetMonChecked
+        ? true
+        : lyThuyetChecked && hetMonChecked;
 
     return {
+      maDk,
       lyThuyetChecked,
       hetMonChecked,
-      cabinEligible,
-      autoHetMon,
+      cabinChecked,
+      datChecked,
+      ghiChu,
+      statusUpdatedAt,
+      isDuDieuKien: isDuDieuKien,
     };
   };
 
   const { mutate: saveStudentCheck } = useMutation({
-    mutationFn: ({ studentCode, payload }) => updateHocVienCheck(studentCode, payload),
+    mutationFn: ({ maDk, payload }) =>
+      capNhatTrangThaiHocVienLyThuyet(maDk, payload),
     onSuccess: (_response, variables) => {
-      queryClient.setQueryData(
-        ["hocvien-check-theory", variables.studentCode],
-        (old) => ({
+      queryClient.setQueryData(statusQueryKey, (old) => {
+        const currentList = Array.isArray(old?.data) ? old.data : [];
+        const nextList = [...currentList];
+        const targetIndex = nextList.findIndex(
+          (item) => String(item?.ma_dk) === String(variables?.maDk),
+        );
+
+        if (targetIndex >= 0) {
+          nextList[targetIndex] = {
+            ...nextList[targetIndex],
+            ...variables?.payload,
+            ma_dk: variables?.maDk,
+          };
+        } else {
+          nextList.push({
+            ma_dk: variables?.maDk,
+            ...variables?.payload,
+          });
+        }
+
+        return {
           ...(old || {}),
-          data: {
-            ...(old?.data || {}),
-            ...(variables?.payload || {}),
-          },
-        }),
-      );
+          data: nextList,
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: statusQueryKey });
     },
     onError: (error) => {
       message.error(
@@ -178,47 +249,51 @@ const QuanLyHocVienLyThuyet = () => {
     },
   });
 
+  const buildPayload = (record, overrides = {}) => {
+    const currentState = resolveCheckState(record);
+    return {
+      loai_ly_thuyet: overrides.loai_ly_thuyet ?? currentState.lyThuyetChecked,
+      loai_het_mon: overrides.loai_het_mon ?? currentState.hetMonChecked,
+      ghi_chu: overrides.ghi_chu ?? currentState.ghiChu,
+      status_updated_at:
+        overrides.status_updated_at || new Date().toISOString(),
+    };
+  };
+
   const handleToggleCheckbox = (record, fieldName, checkedValue) => {
-    const studentCode = getStudentCode(record);
-    if (!studentCode) {
+    const maDk = getStudentCode(record);
+    if (!maDk) {
       message.warning("Không tìm thấy mã học viên để lưu dữ liệu.");
       return;
     }
 
-    const currentState = resolveCheckState(record);
-
-    const nextState =
-      fieldName === "ly_thuyet_checked"
-        ? {
-            ...currentState,
-            lyThuyetChecked: checkedValue,
-          }
-        : {
-            ...currentState,
-            hetMonChecked: checkedValue,
-          };
-
-    const payload = {
-      ly_thuyet_checked: nextState.lyThuyetChecked,
-      het_mon_checked: nextState.hetMonChecked,
-      cabin_eligible: nextState.lyThuyetChecked && nextState.hetMonChecked,
-      auto_het_mon_passed: currentState.autoHetMon,
-      class_iid: activeClassIid || null,
-      student_code: studentCode,
-      student_name: record?.user?.name || "",
+    const overrides = {
+      [fieldName]: checkedValue,
     };
+    if (fieldName === "loai_ly_thuyet" && checkedValue) {
+      overrides.loai_het_mon = true;
+    }
 
-    setSavingStudentCode(studentCode);
-    saveStudentCheck({ studentCode, payload });
+    const payload = buildPayload(record, overrides);
+
+    setSavingStudentCode(maDk);
+    saveStudentCheck({ maDk, payload });
   };
 
-  const handleRowClick = (record) => {
-    setSelected(record);
-    setDrawerVisible(true);
-  };
+  const handleBlurGhiChu = (record, value) => {
+    const maDk = getStudentCode(record);
+    if (!maDk) return;
 
-  const handleDrawerClose = () => {
-    setDrawerVisible(false);
+    const currentState = resolveCheckState(record);
+    const nextGhiChu = typeof value === "string" ? value.trim() : "";
+
+    if ((currentState.ghiChu || "").trim() === nextGhiChu) return;
+
+    setSavingStudentCode(maDk);
+    saveStudentCheck({
+      maDk,
+      payload: buildPayload(record, { ghi_chu: nextGhiChu }),
+    });
   };
 
   const handleFilter = () => {
@@ -237,30 +312,6 @@ const QuanLyHocVienLyThuyet = () => {
       page: 1,
       text: "",
     });
-  };
-
-  const getCompletionStats = (record) => {
-    const scoreByRubrik = record?.learning_progress?.score_by_rubrik || [];
-
-    const monHoc = scoreByRubrik.filter((mon) => {
-      const name = normalizeText(mon?.name || "");
-      return (
-        !name.includes("bang tong hop") &&
-        !name.includes("diem kiem tra tong hop") &&
-        !name.includes("tong thoi gian hoc")
-      );
-    });
-
-    const tongSoMon = monHoc.length;
-    const soMonDat = monHoc.filter((mon) => Number(mon?.passed) === 1).length;
-    const phanTramHoanThanh =
-      tongSoMon > 0 ? Math.round((soMonDat / tongSoMon) * 100) : 0;
-
-    return {
-      soMonDat,
-      tongSoMon,
-      phanTramHoanThanh,
-    };
   };
 
   const columns = [
@@ -320,13 +371,13 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "Điều kiện học Cabin",
       key: "progress",
-      width: 180,
+      width: 160,
       align: "center",
       render: (_, record) =>
-        resolveCheckState(record).cabinEligible ? (
+        resolveCheckState(record).isDuDieuKien ? (
           <span className="text-green-600 font-medium">Đủ điều kiện</span>
         ) : (
-          <span className="text-red-500 font-medium">Chưa đủ</span>
+          <span className="text-red-500 font-medium">Chưa đủ điều kiện</span>
         ),
     },
     {
@@ -343,7 +394,7 @@ const QuanLyHocVienLyThuyet = () => {
             checked={checked}
             disabled={savingStudentCode === studentCode}
             onChange={(e) =>
-              handleToggleCheckbox(record, "ly_thuyet_checked", e.target.checked)
+              handleToggleCheckbox(record, "loai_ly_thuyet", e.target.checked)
             }
           />
         );
@@ -353,7 +404,7 @@ const QuanLyHocVienLyThuyet = () => {
       title: "Loại hết môn",
       dataIndex: "__expand",
       key: "last_login",
-      width: 150,
+      width: 120,
       align: "center",
       render: (_, record) => {
         const studentCode = getStudentCode(record);
@@ -364,7 +415,7 @@ const QuanLyHocVienLyThuyet = () => {
             checked={checked}
             disabled={savingStudentCode === studentCode}
             onChange={(e) =>
-              handleToggleCheckbox(record, "het_mon_checked", e.target.checked)
+              handleToggleCheckbox(record, "loai_het_mon", e.target.checked)
             }
           />
         );
@@ -375,24 +426,74 @@ const QuanLyHocVienLyThuyet = () => {
       key: "updated_ts",
       width: 130,
       align: "center",
+      render: (_, record) => {
+        const checked = resolveCheckState(record).cabinChecked;
+        return (
+          <span
+            className={checked ? "text-green-600 font-medium" : "text-gray-400"}
+          >
+            {checked ? "Đạt" : "Chưa đạt"}
+          </span>
+        );
+      },
     },
     {
       title: "DAT",
       key: "detail",
       width: 90,
       align: "center",
+      render: (_, record) => {
+        const checked = resolveCheckState(record).datChecked;
+        return (
+          <span
+            className={checked ? "text-green-600 font-medium" : "text-gray-400"}
+          >
+            {checked ? "Đã ký" : "Chưa kí"}
+          </span>
+        );
+      },
     },
     {
-      title: "Tốt nghiệp",
-      key: "detail",
-      width: 110,
+      title: "Thời gian đổi trạng thái",
+      key: "status_updated_at",
+      width: 180,
       align: "center",
+      render: (_, record) =>
+        formatDateTime(resolveCheckState(record).statusUpdatedAt),
     },
+    // {
+    //   title: "Tốt nghiệp",
+    //   key: "detail",
+    //   width: 110,
+    //   align: "center",
+    //   render: (_, record) => {
+    //     const checked = resolveCheckState(record).totNghiepChecked;
+    //     return (
+    //       <span
+    //         className={checked ? "text-green-600 font-medium" : "text-gray-400"}
+    //       >
+    //         {checked ? "Đạt" : "-"}
+    //       </span>
+    //     );
+    //   },
+    // },
     {
       title: "Ghi chú",
       key: "detail",
-      width: 90,
+      width: 260,
       align: "center",
+      render: (_, record) => {
+        const state = resolveCheckState(record);
+        const maDk = getStudentCode(record);
+        return (
+          <Input
+            key={`${maDk}-${state.ghiChu}`}
+            defaultValue={state.ghiChu}
+            disabled={savingStudentCode === maDk}
+            onBlur={(e) => handleBlurGhiChu(record, e.target.value)}
+          />
+        );
+      },
     },
   ];
 
@@ -462,20 +563,6 @@ const QuanLyHocVienLyThuyet = () => {
         bordered
         scroll={{ x: 1200 }}
         className="overflow-hidden table-blue-header"
-      />
-
-      <StudentDetailModal
-        studentData={select}
-        visible={drawerVisible}
-        onClose={handleDrawerClose}
-        progress={getCompletionStats(select).phanTramHoanThanh}
-        passed={getCompletionStats(select).soMonDat}
-        total={getCompletionStats(select).tongSoMon}
-        program_code={selectedClass?.__expand?.program?.code || program_code}
-        program_name={selectedClass?.__expand?.program?.name || program_name}
-        maKhoaHoc={
-          selectedClass?.suffix_name || selectedClass?.name || maKhoaHoc
-        }
       />
     </Spin>
   );

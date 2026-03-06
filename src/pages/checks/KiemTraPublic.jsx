@@ -26,6 +26,7 @@ import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import DatJourneyModal from "./DatJourneyModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudents } from "../../apis/kiemTra";
+import { getChiTietHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -111,6 +112,23 @@ const getCabinRuleByName = (name = "") => {
   );
 };
 
+const parseBooleanLike = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["1", "true", "yes"].includes(normalized)) return true;
+    if (["0", "false", "no", ""].includes(normalized)) return false;
+  }
+  return undefined;
+};
+
+const extractKhoaNumber = (value = "") => {
+  const prefix = String(value).trim().slice(0, 3).toLowerCase();
+  const match = prefix.match(/^k(\d{2})$/);
+  return match ? Number(match[1]) : null;
+};
+
 const KiemTraPublic = () => {
   const [keyword, setKeyword] = useState("");
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
@@ -147,12 +165,21 @@ const KiemTraPublic = () => {
     keepPreviousData: true,
   });
 
-  const selectedCourse = useMemo(() => {
+  const sortedCourses = useMemo(() => {
     const options = dataKhoaHoc?.result || [];
-    return options.find(
+
+    return [...options].sort((a, b) => {
+      const tsA = a?.ts || 0;
+      const tsB = b?.ts || 0;
+      return tsB - tsA;
+    });
+  }, [dataKhoaHoc]);
+
+  const selectedCourse = useMemo(() => {
+    return sortedCourses.find(
       (item) => String(item?.iid) === String(selectedKhoaHoc),
     );
-  }, [dataKhoaHoc, selectedKhoaHoc]);
+  }, [sortedCourses, selectedKhoaHoc]);
 
   const selectedKhoaHocLabel = useMemo(() => {
     return selectedCourse?.suffix_name || selectedCourse?.name || "";
@@ -175,6 +202,15 @@ const KiemTraPublic = () => {
     selectedStudent?.user?.code ||
     selectedStudent?.MaDK ||
     "";
+
+  const { data: chiTietLyThuyetData, isLoading: loadingChiTietLyThuyet } =
+    useQuery({
+      queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
+      queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
+      enabled: isLyThuyetModalOpen && !!cabinKey,
+      staleTime: 1000 * 60 * 5,
+      retry: false,
+    });
 
   const { data: dataCabin, isLoading: loadingCabin } = useQuery({
     queryKey: ["cabin", cabinKey],
@@ -226,8 +262,7 @@ const KiemTraPublic = () => {
     return (
       list.find(
         (item) => String(item?.maDangKy || "").trim() === normalizedKey,
-      ) ||
-      null
+      ) || null
     );
   }, [dataCheckStudents, cabinKey]);
 
@@ -282,6 +317,33 @@ const KiemTraPublic = () => {
       }));
   }, [selectedStudent]);
 
+  const lyThuyetExtraStatus = useMemo(() => {
+    const raw =
+      chiTietLyThuyetData?.data ||
+      chiTietLyThuyetData?.result ||
+      chiTietLyThuyetData;
+
+    const loaiLyThuyet = parseBooleanLike(
+      raw?.loai_ly_thuyet ?? raw?.loaiLyThuyet,
+    );
+    const loaiHetMon = parseBooleanLike(raw?.loai_het_mon ?? raw?.loaiHetMon);
+
+    return {
+      loaiLyThuyet:
+        loaiLyThuyet === undefined
+          ? "-"
+          : loaiLyThuyet
+            ? "Đã tích"
+            : "Không tích",
+      loaiHetMon:
+        loaiHetMon === undefined
+          ? "-"
+          : loaiHetMon
+            ? "Đã làm bài hết môn"
+            : "Chưa làm bài hết môn",
+    };
+  }, [chiTietLyThuyetData]);
+
   const handleSearch = () => {
     if (!selectedKhoaHoc) {
       message.warning("Vui lòng chọn khóa học trước.");
@@ -324,8 +386,10 @@ const KiemTraPublic = () => {
     [cabinDataList],
   );
 
+  const khoaNumber = extractKhoaNumber(selectedKhoaHocCode || "");
+  const requiredCabinSeconds = (khoaNumber ?? 0) >= 26 ? 2.5 * 3600 : 2 * 3600;
   const hasEnoughCabinLessons = uniqueCabinLessonCount >= 7;
-  const hasEnoughCabinTime = totalCabinSeconds > 2 * 3600 + 20 * 60;
+  const hasEnoughCabinTime = totalCabinSeconds >= requiredCabinSeconds;
   const isCabinPassed =
     cabinDataList.length > 0 && hasEnoughCabinLessons && hasEnoughCabinTime;
 
@@ -673,6 +737,9 @@ const KiemTraPublic = () => {
         open={isLyThuyetModalOpen}
         onCancel={() => setIsLyThuyetModalOpen(false)}
         scoreRows={scoreRows}
+        loadingStatus={loadingChiTietLyThuyet}
+        loaiLyThuyet={lyThuyetExtraStatus.loaiLyThuyet}
+        loaiHetMon={lyThuyetExtraStatus.loaiHetMon}
       />
 
       <DatJourneyModal

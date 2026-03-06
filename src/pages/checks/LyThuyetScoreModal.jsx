@@ -1,8 +1,16 @@
 import React from "react";
 import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
-import { Empty, Modal, Table } from "antd";
+import { Empty, Modal, Space, Table, Typography } from "antd";
 
-const LyThuyetScoreModal = ({ open, onCancel, scoreRows = [] }) => {
+const { Text } = Typography;
+
+const LyThuyetScoreModal = ({
+  open,
+  onCancel,
+  scoreRows = [],
+  loadingStatus = false,
+  loaiHetMon = "-",
+}) => {
   const columns = [
     {
       title: "Tên bài",
@@ -33,7 +41,7 @@ const LyThuyetScoreModal = ({ open, onCancel, scoreRows = [] }) => {
 
   return (
     <Modal
-      title="Kết quả các bài lý thuyết"
+      title="Kết quả học lý thuyết"
       open={open}
       onCancel={onCancel}
       footer={null}
@@ -48,8 +56,18 @@ const LyThuyetScoreModal = ({ open, onCancel, scoreRows = [] }) => {
           pagination={false}
         />
       ) : (
-        <Empty description="Không có dữ liệu điểm" />
+        <Empty description="Khong co du lieu diem" />
       )}
+      <Space className="!bg-gray-100 !mt-8 w-full px-3 py-3">
+        <Text className="!text-sm !text-gray-600">Làm bài hết môn: </Text>
+        <strong
+          style={{
+            color: loaiHetMon === "Chưa làm bài hết môn" ? "red" : "green",
+          }}
+        >
+          {loadingStatus ? "Dang tai..." : loaiHetMon}
+        </strong>
+      </Space>
     </Modal>
   );
 };
