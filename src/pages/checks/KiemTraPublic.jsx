@@ -26,7 +26,7 @@ import DatJourneyModal from "./DatJourneyModal";
 import CabinModal from "./CabinModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudents } from "../../apis/kiemTra";
-import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiHocVienLopLyThuyet";
+import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
