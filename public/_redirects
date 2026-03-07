@@ -1,3 +1,3 @@
 /api/* http://113.160.131.3:7782/api/:splat  200!
-/api-local/* https://api.lapphuongthanh.io.vn/:splat 200!
+/api-local/* https://api.lapphuongthanh.io.vn/api:splat 200!
 /* /index.html  200
