@@ -267,15 +267,19 @@ const QuanLyHocVienLyThuyet = () => {
       return;
     }
 
-    const overrides = {
-      [fieldName]: checkedValue,
-    };
-    if (fieldName === "loai_ly_thuyet" && checkedValue) {
+    const overrides = { [fieldName]: checkedValue };
+
+    // Tích loại lý thuyết → tự động tích loại hết môn
+    if (fieldName === "loai_ly_thuyet" && checkedValue === true) {
       overrides.loai_het_mon = true;
     }
 
-    const payload = buildPayload(record, overrides);
+    // Bỏ tích loại hết môn → tự động bỏ loại lý thuyết
+    if (fieldName === "loai_het_mon" && checkedValue === false) {
+      overrides.loai_ly_thuyet = false;
+    }
 
+    const payload = buildPayload(record, overrides);
     setSavingStudentCode(maDk);
     saveStudentCheck({ maDk, payload });
   };

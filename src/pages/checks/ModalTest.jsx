@@ -336,7 +336,7 @@ const ModalTest = ({
                             {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
                             {end ? dayjs(end).format("HH:mm") : "--"}
                           </span>
-                          <span className="!text-gray-400">
+                          <span className="!text-gray-600 text-[13px] font-bold">
                             {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
                             {toNumber(item?.TongQuangDuong).toFixed(2)} km
                           </span>
