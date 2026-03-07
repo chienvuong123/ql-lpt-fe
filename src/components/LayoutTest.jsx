@@ -41,6 +41,7 @@ const menuPathMap = {
   "hoc-bu-cabin": "/hoc-bu-cabin",
   "kiem-tra-hoc-vien": "/kiem-tra-hoc-vien",
   "quan-ly-hoc-vien-ly-thuyet": "/quan-ly-hoc-vien-ly-thuyet",
+  "truy-vet-loi": "/truy-vet-loi",
 };
 
 const LayoutTest = () => {
@@ -167,6 +168,10 @@ const LayoutTest = () => {
                 {
                   key: "hoc-vien-ky-dat",
                   label: "Danh sách học viên kí DAT",
+                },
+                {
+                  key: "truy-vet-loi",
+                  label: "Truy vết lỗi",
                 },
               ],
             },

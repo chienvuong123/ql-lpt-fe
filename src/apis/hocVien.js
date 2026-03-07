@@ -40,6 +40,21 @@ export const updateHocVienCheck = async (maHocVien, payload) => {
   return response.data;
 };
 
+export const getPhienHocDAT = async (maHocVien) => {
+  const response = await axios.get(`${baseURL}/phien-hoc-dat/${maHocVien}`);
+
+  return response.data;
+};
+
+export const updatePhienHocDAT = async (payload) => {
+  const response = await axios.put(
+    `${baseURL}/phien-hoc-dat/trang-thai`,
+    payload,
+  );
+
+  return response.data;
+};
+
 export const hocVienTheoKhoa = async (enrolment_plan_iid, extraParams = {}) => {
   const userInfoString = sessionStorage.getItem("user_info");
   const userInfo = userInfoString ? JSON.parse(userInfoString) : null;

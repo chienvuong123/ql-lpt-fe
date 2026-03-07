@@ -24,6 +24,7 @@ import LichCabin from "./pages/cabin/LichCabin";
 import BuCaBin from "./pages/cabin/BuCaBin";
 import KiemTraPublic from "./pages/checks/KiemTraPublic";
 import QuanLyHocVienLyThuyet from "./pages/class/QuanLyHocVienLyThuyet";
+import TruyXuatLoi from "./pages/dat/TruyXuatLoi";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,6 +83,7 @@ function App() {
 
               {/* Kiểm tra */}
               <Route path="annual-check" element={<KiemTraHangNam />} />
+              <Route path="truy-vet-loi" element={<TruyXuatLoi />} />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
           </Routes>

@@ -9,11 +9,11 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     proxy: {
-      "/api-lms": {
+      "/api": {
         target: "https://staging-api.lotuslms.com",
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api-lms/, ""),
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api/, "/api"),
       },
     },
   },
