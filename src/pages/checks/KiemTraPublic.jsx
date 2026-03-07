@@ -26,7 +26,7 @@ import DatJourneyModal from "./DatJourneyModal";
 import CabinModal from "./CabinModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudents } from "../../apis/kiemTra";
-import { getChiTietHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
+import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiHocVienLopLyThuyet";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -207,7 +207,7 @@ const KiemTraPublic = () => {
   const { data: chiTietLyThuyetData, isLoading: loadingChiTietLyThuyet } =
     useQuery({
       queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
-      queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
+      queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
       enabled: isLyThuyetModalOpen && !!cabinKey,
       staleTime: 1000 * 60 * 5,
       retry: false,

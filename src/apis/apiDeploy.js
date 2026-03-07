@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const baseURL = "https://lapphuongthanh.netlify.app/api";
+const APP_URL = "https://lapphuongthanh.netlify.app";
 let isSessionExpiredDialogShown = false;
 
 const api = axios.create({
@@ -9,6 +10,12 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+export const apiLocal = axios.create({
+  baseURL: `${APP_URL}/api-local`, 
+  timeout: 50000,
+  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use(
@@ -75,4 +82,9 @@ export const DanhSachHocVienDeploy = async (params) => {
     url: "/HocVienTH",
     params,
   });
+};
+
+export const getChiTietHocVienLyThuyetPublic = async (maDk) => {
+  const response = await apiLocal.get(`/hoc-vien-lop-ly-thuyet/${maDk}`);
+  return response.data;
 };
