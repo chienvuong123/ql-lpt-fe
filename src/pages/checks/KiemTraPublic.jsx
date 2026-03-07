@@ -25,7 +25,7 @@ import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import DatJourneyModal from "./DatJourneyModal";
 import CabinModal from "./CabinModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
-import { fetchCheckStudents } from "../../apis/kiemTra";
+import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 
 const { Header, Footer, Content } = Layout;
@@ -240,7 +240,7 @@ const KiemTraPublic = () => {
 
   const { data: dataCheckStudents = {} } = useQuery({
     queryKey: ["checkStudentPublic"],
-    queryFn: () => fetchCheckStudents(),
+    queryFn: () => fetchCheckStudentsPublic(),
     enabled: isDatModalOpen && !!cabinKey,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -364,12 +364,13 @@ const KiemTraPublic = () => {
             : "Không tích",
       loaiHetMon:
         loaiHetMon === undefined
-          ? "-"
+          ? "Chưa làm bài hết môn"
           : loaiHetMon
             ? "Đã làm bài hết môn"
             : "Chưa làm bài hết môn",
     };
   }, [chiTietLyThuyetData]);
+
 
   const handleSearch = () => {
     if (!selectedKhoaHoc) {

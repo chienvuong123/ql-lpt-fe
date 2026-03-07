@@ -84,9 +84,14 @@ export const DanhSachHocVienDeploy = async (params) => {
   });
 };
 
-const url = "https://api-v2.lapphuongthanh.io.vn/api/hoc-vien-lop-ly-thuyet/"
+const url = "https://api-v2.lapphuongthanh.io.vn/api/"
 
 export const getChiTietHocVienLyThuyetPublic = async (maDk) => {
-  const response = await axios.get(`${url}/${maDk}`);
+  const response = await axios.get(`${url}hoc-vien-lop-ly-thuyet/${maDk}`);
+  return response.data;
+};
+
+export const fetchCheckStudentsPublic = async (params = {}) => {
+  const response = await axios.get(`${url}check-data-student/`, { params });
   return response.data;
 };
