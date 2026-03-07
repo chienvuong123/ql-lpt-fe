@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Card, Empty, Image, Modal, Spin, Typography, message } from "antd";
-import { getPhienHocDAT, updatePhienHocDAT } from "../../apis/hocVien";
+import { getPhienHocDATPublic } from "../../apis/apiDeploy";
 
 const { Text } = Typography;
 
@@ -100,7 +100,7 @@ const toStatusMap = (response) => {
   }, {});
 };
 
-const TruyVetModal = ({
+const ModalTest = ({
   open,
   onCancel,
   loading,
@@ -119,7 +119,7 @@ const TruyVetModal = ({
     if (!maDk) return;
     setLoadingStatus(true);
     try {
-      const response = await getPhienHocDAT(maDk);
+      const response = await getPhienHocDATPublic(maDk);
       setStatusMap(toStatusMap(response));
     } catch {
       message.error("Khong lay duoc trang thai phien DAT.");
@@ -214,68 +214,6 @@ const TruyVetModal = ({
     [rowsWithStatus],
   );
 
-  const handleSessionAction = async (item) => {
-    if (!item || !maDk) return;
-
-    const sessionId = String(item?.ID || "");
-    const start = item?.ThoiDiemDangNhap ? dayjs(item.ThoiDiemDangNhap) : null;
-    const end = item?.ThoiDiemDangXuat ? dayjs(item.ThoiDiemDangXuat) : null;
-    const actionStatus = item?._isInvalid ? "DUYET" : "HUY";
-
-    const payload = {
-      ngay: start?.isValid() ? start.format("YYYY-MM-DD") : null,
-      bien_so: item?.BienSo || null,
-      gio_vao: start?.isValid() ? start.format("HH:mm:ss") : null,
-      gio_ra: end?.isValid() ? end.format("HH:mm:ss") : null,
-      thoi_gian: Number((toNumber(item?.TongThoiGian) / 3600).toFixed(2)),
-      tong_km: Number(toNumber(item?.TongQuangDuong).toFixed(2)),
-      ma_dk: maDk,
-      trang_thai: actionStatus,
-      nguoi_thay_doi:
-        sessionStorage.getItem("name") ||
-        sessionStorage.getItem("username") ||
-        "unknown",
-      phien_hoc_id: item?.ID || null,
-    };
-
-    const sessionKeys = getSessionKeys({
-      ...item,
-      ngay: payload.ngay,
-      bien_so: payload.bien_so,
-      gio_vao: payload.gio_vao,
-      gio_ra: payload.gio_ra,
-      phien_hoc_id: payload.phien_hoc_id,
-    });
-
-    setActioningId(sessionId); // ← bật loading modal
-
-    try {
-      await updatePhienHocDAT(payload);
-
-      // Cập nhật statusMap ngay lập tức, không chờ fetch
-      setStatusMap((prev) => {
-        const next = { ...prev };
-        sessionKeys.forEach((key) => {
-          next[key] = actionStatus;
-        });
-        return next;
-      });
-
-      // Sau đó fetch lại để đồng bộ với BE
-      await fetchSessionStatuses();
-
-      message.success(
-        actionStatus === "DUYET" ? "Đã hủy phiên học." : "Đã duyệt phiên học.",
-      );
-    } catch (error) {
-      message.error(
-        error?.response?.data?.message || "Cập nhập trạng thái thất bại.",
-      );
-    } finally {
-      setActioningId(null); // ← tắt loading modal
-    }
-  };
-
   // Modal đang loading khi: fetch lần đầu, hoặc đang xử lý action
   const isModalLoading = loading || loadingStatus || actioningId !== null;
 
@@ -337,7 +275,8 @@ const TruyVetModal = ({
                 className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
               >
                 <Text className="!text-[#cf1322] !text-xs !font-semibold">
-                  Có {invalidSessionCount} phiên lỗi. Bấm duyệt để tính.
+                  Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để kiểm
+                  tra chi tiết.
                 </Text>
               </Card>
             )}
@@ -404,7 +343,7 @@ const TruyVetModal = ({
                         </div>
                       </div>
 
-                      <button
+                      {/* <button
                         onClick={() => handleSessionAction(item)}
                         disabled={!!actioningId} // ← disable tất cả button khi đang action
                         className="!shrink-0 !w-[52px] !text-xs !font-semibold !text-white !border-0 !cursor-pointer !transition-all"
@@ -422,7 +361,7 @@ const TruyVetModal = ({
                           : item?._isInvalid
                             ? "Duyệt"
                             : "Hủy"}
-                      </button>
+                      </button> */}
                     </div>
                   </Card>
                 );
@@ -437,4 +376,4 @@ const TruyVetModal = ({
   );
 };
 
-export default TruyVetModal;
+export default ModalTest;

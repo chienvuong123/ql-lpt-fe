@@ -27,6 +27,7 @@ import CabinModal from "./CabinModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
+import ModalTest from "./ModalTest";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -371,7 +372,6 @@ const KiemTraPublic = () => {
     };
   }, [chiTietLyThuyetData]);
 
-
   const handleSearch = () => {
     if (!selectedKhoaHoc) {
       message.warning("Vui lòng chọn khóa học trước.");
@@ -405,6 +405,7 @@ const KiemTraPublic = () => {
       : 0;
 
   const lyThuyetStatus = lyThuyetPercent >= 100 ? "Đạt" : "Trượt";
+  const statusColor = lyThuyetPercent >= 100 ? "#1b8a35" : "#ff0000";
 
   const totalCabinSeconds = useMemo(
     () =>
@@ -698,7 +699,10 @@ const KiemTraPublic = () => {
                         justify="space-between"
                         className="!mt-2"
                       >
-                        <Text className="!text-xs !font-bold !text-[#1b8a35]">
+                        <Text
+                          className="!text-xs !font-bold"
+                          style={{ color: statusColor }}
+                        >
                           {lyThuyetStatus}
                         </Text>
                         <Button
@@ -792,7 +796,7 @@ const KiemTraPublic = () => {
         loaiHetMon={lyThuyetExtraStatus.loaiHetMon}
       />
 
-      <DatJourneyModal
+      <ModalTest
         open={isDatModalOpen}
         onCancel={() => setIsDatModalOpen(false)}
         loading={loadingDat}

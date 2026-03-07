@@ -13,7 +13,7 @@ const api = axios.create({
 });
 
 export const apiLocal = axios.create({
-  baseURL: `${APP_URL}/api-local`, 
+  baseURL: `${APP_URL}/api-local`,
   timeout: 50000,
   headers: { "Content-Type": "application/json" },
 });
@@ -84,7 +84,7 @@ export const DanhSachHocVienDeploy = async (params) => {
   });
 };
 
-const url = "https://api-v2.lapphuongthanh.io.vn/api/"
+const url = "https://api-v2.lapphuongthanh.io.vn/api/";
 
 export const getChiTietHocVienLyThuyetPublic = async (maDk) => {
   const response = await axios.get(`${url}hoc-vien-lop-ly-thuyet/${maDk}`);
@@ -93,5 +93,11 @@ export const getChiTietHocVienLyThuyetPublic = async (maDk) => {
 
 export const fetchCheckStudentsPublic = async (params = {}) => {
   const response = await axios.get(`${url}check-data-student/`, { params });
+  return response.data;
+};
+
+export const getPhienHocDATPublic = async (maHocVien) => {
+  const response = await axios.get(`${url}phien-hoc-dat/${maHocVien}`);
+
   return response.data;
 };
