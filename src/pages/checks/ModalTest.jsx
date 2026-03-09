@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Card, Empty, Image, Modal, Spin, Typography, message } from "antd";
+import {
+  Card,
+  Drawer,
+  Empty,
+  Grid,
+  Image,
+  Modal,
+  Spin,
+  Typography,
+  message,
+} from "antd";
 import { getPhienHocDATPublic } from "../../apis/apiDeploy";
 
 const { Text } = Typography;
@@ -113,6 +123,10 @@ const ModalTest = ({
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [actioningId, setActioningId] = useState(null); // ← id đang được action
 
+  const { useBreakpoint } = Grid;
+
+  const screens = useBreakpoint();
+
   const maDk = String(student?.user?.admission_code || "").trim();
 
   const fetchSessionStatuses = async () => {
@@ -218,12 +232,12 @@ const ModalTest = ({
   const isModalLoading = loading || loadingStatus || actioningId !== null;
 
   return (
-    <Modal
+    <Drawer
       title="Chi tiết DAT"
       open={open}
-      onCancel={onCancel}
+      onClose={onCancel}
       footer={null}
-      width={480}
+      width={screens.xs ? "100%" : 600}
       destroyOnClose
     >
       <Spin spinning={isModalLoading}>
@@ -342,26 +356,6 @@ const ModalTest = ({
                           </span>
                         </div>
                       </div>
-
-                      {/* <button
-                        onClick={() => handleSessionAction(item)}
-                        disabled={!!actioningId} // ← disable tất cả button khi đang action
-                        className="!shrink-0 !w-[52px] !text-xs !font-semibold !text-white !border-0 !cursor-pointer !transition-all"
-                        style={{
-                          background: item?._isInvalid ? "#1e88d8" : "#cf1322",
-                          borderRadius: "0 8px 8px 0",
-                          // eslint-disable-next-line no-extra-boolean-cast
-                          opacity: !!actioningId ? 0.5 : 1,
-                          // eslint-disable-next-line no-extra-boolean-cast
-                          cursor: !!actioningId ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {isActioning
-                          ? "..."
-                          : item?._isInvalid
-                            ? "Duyệt"
-                            : "Hủy"}
-                      </button> */}
                     </div>
                   </Card>
                 );
@@ -372,7 +366,7 @@ const ModalTest = ({
           <Empty description="Khong co du lieu DAT" />
         )}
       </Spin>
-    </Modal>
+    </Drawer>
   );
 };
 

@@ -450,8 +450,8 @@ const KiemTraPublic = () => {
   }, []);
 
   return (
-    <Layout className="!min-h-screen !bg-[#e8ecf2] !flex !justify-center">
-      <div className="mx-auto w-full max-w-[430px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[768px] bg-[#f2f4f8] !min-h-screen">
+    <Layout className="!min-h-screen !bg-[#f2f4f8] !overflow-x-hidden">
+      <div className="mx-auto w-full max-w-full lg:max-w-[430px] bg-[#f2f4f8]">
         <Header className="!h-auto !bg-[#0b8ed8] !px-5 !pb-3 !pt-2">
           <Flex align="center" justify="center">
             <Image
@@ -568,7 +568,7 @@ const KiemTraPublic = () => {
                             }}
                           >
                             <Row>
-                              <Col span={4}>
+                              <Col span={4} className="mr-2">
                                 <Image
                                   src={
                                     item?.user?.avatar ||
@@ -582,7 +582,7 @@ const KiemTraPublic = () => {
                                   fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
                                 />
                               </Col>
-                              <Col span={20}>
+                              <Col span={19}>
                                 <Col span={24}>
                                   <Text strong className="!uppercase">
                                     {item?.user?.name || "Không rõ tên"} (
@@ -592,8 +592,7 @@ const KiemTraPublic = () => {
                                 <Col span={24}>
                                   <Text className="!text-xs !text-gray-500">
                                     <span>
-                                      Mã học viên:{" "}
-                                      {item?.user?.admission_code || ""}
+                                      Mã HV: {item?.user?.admission_code || ""}
                                     </span>
                                   </Text>
                                 </Col>
