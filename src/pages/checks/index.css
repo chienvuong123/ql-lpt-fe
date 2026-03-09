@@ -1,0 +1,7 @@
+@media (max-width: 768px) {
+  .ant-input,
+  .ant-select-selector,
+  .ant-select-selection-search-input {
+    font-size: 13px !important;
+  }
+}

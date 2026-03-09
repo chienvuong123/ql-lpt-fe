@@ -27,6 +27,7 @@ import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
+import "./index.css";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
