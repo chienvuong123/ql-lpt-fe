@@ -22,7 +22,6 @@ import { hocVienTheoKhoa } from "../../apis/hocVien";
 import { getDuLieuCabin } from "../../apis/searchPublic";
 import { DangNhapLopLyThuyet } from "../../apis/auth";
 import LyThuyetScoreModal from "./LyThuyetScoreModal";
-import DatJourneyModal from "./DatJourneyModal";
 import CabinModal from "./CabinModal";
 import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
@@ -487,6 +486,7 @@ const KiemTraPublic = () => {
                   placeholder="-- Chọn khóa học --"
                   loading={loadingKhoaHoc || loadingLogin}
                   value={selectedKhoaHoc || undefined}
+                  style={{ fontSize: 13 }}
                   onChange={(value) => {
                     setSelectedKhoaHoc(value || "");
                     setKeyword("");
@@ -516,6 +516,7 @@ const KiemTraPublic = () => {
                   disabled={!selectedKhoaHoc}
                   onChange={(e) => setKeyword(e.target.value)}
                   onPressEnter={handleSearch}
+                  style={{ fontSize: 13 }}
                   placeholder={
                     selectedKhoaHoc
                       ? "Nhập họ tên hoặc CCCD"
