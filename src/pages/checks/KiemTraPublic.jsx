@@ -18,7 +18,7 @@ import {
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { lopHocLyThuyet } from "../../apis/khoaHoc";
-import { hocVienTheoKhoa } from "../../apis/hocVien";
+import { hocVienKyDAT, hocVienTheoKhoa } from "../../apis/hocVien";
 import { getDuLieuCabin } from "../../apis/searchPublic";
 import { DangNhapLopLyThuyet } from "../../apis/auth";
 import LyThuyetScoreModal from "./LyThuyetScoreModal";
@@ -241,6 +241,14 @@ const KiemTraPublic = () => {
     retry: false,
   });
 
+  const { data: dataHocVienKyDat = {} } = useQuery({
+    queryKey: ["dataHocVienKyDat", cabinKey],
+    queryFn: () => hocVienKyDAT(cabinKey),
+    enabled: !!cabinKey && !!searchParams,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
   const cabinDataList = useMemo(() => {
     const list = dataCabin?.data || dataCabin?.Data || [];
     return Array.isArray(list) ? list : [];
@@ -318,6 +326,11 @@ const KiemTraPublic = () => {
     const list = danhSachHocVien?.result;
     return Array.isArray(list) ? list : [];
   }, [danhSachHocVien]);
+
+  const trangThaiKyDAT = useMemo(() => {
+    const status = dataHocVienKyDat?.data?.trang_thai === "da_ky";
+    return status;
+  }, [dataHocVienKyDat]);
 
   const hasResult = !!selectedStudent;
   const hasSearched = !!searchParams;
@@ -756,9 +769,16 @@ const KiemTraPublic = () => {
                       <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
                         DAT
                       </Text>
+                      <div
+                        className={`!font-semibold text-[13px] flex justify-center ${
+                          trangThaiKyDAT ? "!text-[#1b8a35]" : "!text-[#ff0000]"
+                        }`}
+                      >
+                        {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
+                      </div>
                       <Button
                         type="primary"
-                        className="!mt-7.5 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
+                        className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
                         size="small"
                         onClick={() => setIsDatModalOpen(true)}
                       >

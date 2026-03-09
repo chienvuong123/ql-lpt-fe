@@ -26,11 +26,7 @@ import {
 import dayjs from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  getHocVienCheck,
-  HanhTrinh,
-  updateHocVienCheck,
-} from "../apis/hocVien";
+import { HanhTrinh, hocVienKyDAT, updateHocVienKyDAT } from "../apis/hocVien";
 import { LoTringOnline } from "../apis/xeOnline";
 import {
   computeSummary as computeSummaryHangLoat,
@@ -43,35 +39,33 @@ import {
 import TrackingPage from "./map/TrackingPage";
 import { fetchCheckStudents } from "../apis/kiemTra";
 import { getDuLieuCabin } from "../apis/searchPublic";
+import { formatLocalTime } from "../util/helper";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 const StudentDetail = ({ data }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCheckboxLoading, setIsCheckboxLoading] = useState(false);
   const [form] = Form.useForm();
 
   const queryClient = useQueryClient();
-  const queryKey = ["hocvien-check", data?.MaDK];
+  const queryKey = ["update-hoc-vien-ky-dat", data?.MaDK];
 
   const { mutate, isPending: isMutating } = useMutation({
-    mutationFn: (payload) => updateHocVienCheck(data?.MaDK, payload),
+    mutationFn: (payload) => updateHocVienKyDAT(data?.MaDK, payload),
 
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
-
       queryClient.setQueryData(queryKey, (old) => ({
         ...old,
         data: { ...(old?.data ?? {}), ...payload },
       }));
-
-      return { previous }; // rollback nếu lỗi
+      return { previous };
     },
 
     onError: (err, _payload, ctx) => {
-      console.log(err);
-
       queryClient.setQueryData(queryKey, ctx.previous);
       message.error(
         "Lưu thất bại: " + (err?.response?.data?.message ?? err.message),
@@ -79,14 +73,21 @@ const StudentDetail = ({ data }) => {
     },
 
     onSuccess: (res) => {
-      queryClient.setQueryData(queryKey, res);
+      queryClient.setQueryData(["hoc-vien-ky-dat", data?.MaDK], res);
       message.success(res?.data?.message ?? "Đã lưu.");
+    },
+
+    onSettled: () => {
+      setIsCheckboxLoading(false);
+      queryClient.invalidateQueries({
+        queryKey: ["hoc-vien-ky-dat", data?.MaDK],
+      });
     },
   });
 
   const { data: hocVienCheckData } = useQuery({
-    queryKey: ["hocvien-check", data?.MaDK],
-    queryFn: () => getHocVienCheck(data?.MaDK),
+    queryKey: ["hoc-vien-ky-dat", data?.MaDK],
+    queryFn: () => hocVienKyDAT(data?.MaDK),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -415,7 +416,7 @@ const StudentDetail = ({ data }) => {
   };
 
   const formatThoiGianFromHours = (hours) => {
-    const totalMinutes = Math.floor(Number(hours || 0) * 60);
+    const totalMinutes = Math.floor(Number(hours || 0));
     const gio = Math.floor(totalMinutes / 60);
     const phutDu = totalMinutes % 60;
 
@@ -429,25 +430,52 @@ const StudentDetail = ({ data }) => {
     return `${gio} giờ ${phut} phút`;
   };
 
-  const onFinish = (values) => {
-    mutate(values);
+  const handleCheckboxChange = (e) => {
+    console.log(data);
+    const checked = e.target.checked;
+    setIsCheckboxLoading(true);
+    mutate(
+      {
+        ten_hoc_vien: data?.HoTen ?? null,
+        ngay_sinh: data?.NgaySinh ?? null,
+        khoa_hoc: data?.TenKhoaHoc ?? null,
+        ma_khoa: data?.MaKhoaHoc ?? null,
+        hang_dao_tao: data?.HangDaoTao ?? null,
+        gv_dat: dataSource?.[0]?.HoTenGV ?? null,
+        anh: data?.srcAvatar,
+        can_cuoc: data?.SoCMT,
+        trang_thai: checked ? "da_ky" : "chua_ky",
+        ghi_chu_1: form.getFieldValue("ghi_chu_1") ?? "",
+        ghi_chu_2: form.getFieldValue("ghi_chu_2") ?? "",
+      },
+      {
+        onSuccess: () => {
+          form.setFieldValue("trang_thai", checked);
+        },
+      },
+    );
   };
 
-  // const handleGoMap = () => {
-  //   navigate("/map", {
-  //     state: {
-  //       duLieuPhienHoc: dataSource,
-  //       summaryData: data,
-  //     },
-  //   });
-  // };
+  const onFinish = (values) => {
+    mutate({
+      ghi_chu_1: values.ghi_chu_1 ?? "",
+      ghi_chu_2: values.ghi_chu_2 ?? "",
+      trang_thai: form.getFieldValue("trang_thai") ? "da_ky" : "chua_ky",
+      ten_hoc_vien: data?.HoTen ?? null,
+      ngay_sinh: data?.NgaySinh ?? null,
+      khoa_hoc: data?.TenKhoaHoc ?? null,
+      ma_khoa: data?.MaKhoaHoc ?? null,
+      hang_dao_tao: data?.HangDaoTao ?? null,
+      gv_dat: dataSource?.[0]?.HoTenGV ?? null,
+    });
+  };
 
   useEffect(() => {
     if (dataCheck) {
       form.setFieldsValue({
-        dat_confirmed: dataCheck.dat_confirmed ?? false,
-        internal_note: dataCheck.internal_note ?? "",
-        public_note: dataCheck.public_note ?? "",
+        trang_thai: dataCheck.trang_thai === "da_ky",
+        ghi_chu_1: dataCheck.ghi_chu_1 ?? dataCheck.internal_note ?? "",
+        ghi_chu_2: dataCheck.ghi_chu_2 ?? dataCheck.public_note ?? "",
       });
     }
   }, [dataCheck, form]);
@@ -561,29 +589,36 @@ const StudentDetail = ({ data }) => {
                     layout="vertical"
                     onFinish={onFinish}
                   >
-                    <Row gutter={[8, 8]} justify={"space-between"}>
-                      <Text strong className="items-top mt-2">
+                    <Row gutter={[8, 8]} justify="space-between" align="middle">
+                      <Text strong className="mt-2">
                         Ký Xác Nhận DAT
                       </Text>
-                      <Form.Item name="dat_confirmed" valuePropName="checked">
-                        <Checkbox>
-                          <Text type="success">Học viên đã ký</Text>
+                      <Form.Item
+                        name="trang_thai"
+                        valuePropName="checked"
+                        className="!mb-0"
+                      >
+                        <Checkbox
+                          onChange={handleCheckboxChange}
+                          disabled={isCheckboxLoading}
+                        >
+                          <Spin spinning={isCheckboxLoading} size="small">
+                            <Text type="success">Học viên đã ký</Text>
+                          </Spin>
                         </Checkbox>
                       </Form.Item>
                     </Row>
 
-                    <Form.Item label="Ghi chú nội bộ" name="internal_note">
+                    {/* Đổi tên field thành ghi_chu_1, ghi_chu_2 */}
+                    <Form.Item label="Ghi chú nội bộ" name="ghi_chu_1">
                       <TextArea
                         rows={2}
                         placeholder="Ghi chú nội bộ (chỉ Admin thấy) ..."
                       />
                     </Form.Item>
 
-                    <Form.Item label="Ghi chú công khai" name="public_note">
-                      <TextArea
-                        rows={2}
-                        placeholder="Ghi chú công khai (có thể hiển thị cho các bên khác) ..."
-                      />
+                    <Form.Item label="Ghi chú công khai" name="ghi_chu_2">
+                      <TextArea rows={2} placeholder="Ghi chú công khai ..." />
                     </Form.Item>
 
                     <Form.Item>
@@ -591,15 +626,16 @@ const StudentDetail = ({ data }) => {
                         type="primary"
                         htmlType="submit"
                         block
-                        loading={isMutating}
+                        loading={isMutating && !isCheckboxLoading}
                       >
                         Lưu thông tin
                       </Button>
                     </Form.Item>
+
                     <Text className="!text-[11px]">
                       Cập nhật cuối:{" "}
-                      {dataCheck?.updatedAt
-                        ? dayjs(dataCheck.updatedAt).format("DD/MM/YYYY HH:mm")
+                      {dataCheck?.updated_at
+                        ? formatLocalTime(dataCheck.updated_at)
                         : "Chưa có dữ liệu"}{" "}
                       (GMT+7)
                     </Text>

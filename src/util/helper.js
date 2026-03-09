@@ -60,3 +60,22 @@ export const getEndOfToday = () => {
   // Nối chuỗi với giờ cuối ngày
   return `${year}-${month}-${day} 23:59:59`;
 };
+
+import dayjs from "dayjs";
+
+/**
+ * Hàm format ngày giờ chuyên dụng cho dữ liệu từ SQL Server (DATETIME2)
+ * @param {string} dateString - Chuỗi ngày tháng từ API (vd: 2026-03-09T13:41:54.000Z)
+ * @param {string} formatStr - Định dạng mong muốn (mặc định là DD/MM/YYYY HH:mm)
+ * @returns {string} - Chuỗi đã format, giữ nguyên giờ gốc
+ */
+export const formatLocalTime = (dateString, formatStr = "DD/MM/YYYY HH:mm") => {
+  if (!dateString) return "-";
+  const cleanDate = dateString.toString().replace("Z", "").split(".")[0];
+
+  return dayjs(cleanDate).format(formatStr);
+};
+
+export const getFirstDayOfMonthEnd = () => {
+  return dayjs().startOf("month").format("YYYY-MM-DD 23:59:59");
+};

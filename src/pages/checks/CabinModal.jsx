@@ -1,5 +1,7 @@
 import React from "react";
 import { Card, Col, Empty, Modal, Row, Space, Typography } from "antd";
+import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
+import { GoClock } from "react-icons/go";
 
 const { Paragraph, Text } = Typography;
 
@@ -38,8 +40,9 @@ const CabinModal = ({ open, onCancel, loading, cabinGroupedByRule }) => {
                     >
                       {item.label}
                     </Text>
-                    <Text className="!text-xs !text-slate-400 !mt-0.5 block">
-                      ⏱ {learnedMinutes} phút học
+                    <Text className="!text-xs !text-slate-400 !mt-0.5 flex items-center">
+                      <GoClock className="mr-1 text-sm" /> {learnedMinutes} phút
+                      học
                     </Text>
                   </Col>
                   <Col flex="none">
@@ -53,7 +56,17 @@ const CabinModal = ({ open, onCancel, loading, cabinGroupedByRule }) => {
                         }
                       `}
                     >
-                      {isPass ? "✓ Đạt" : "✗ Chưa đạt"}
+                      {isPass ? (
+                        <>
+                          <CheckCircleFilled className="!text-green-600 !mr-1" />{" "}
+                          Đạt
+                        </>
+                      ) : (
+                        <>
+                          <CloseCircleFilled className="!text-red-600 !mr-1" />{" "}
+                          Chưa đạt
+                        </>
+                      )}
                     </span>
                   </Col>
                 </Row>

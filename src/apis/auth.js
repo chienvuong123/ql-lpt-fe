@@ -14,9 +14,12 @@ const randomTeacherAccount = () => {
 };
 
 export const DangNhapLopLyThuyet = async () => {
-  const session_id = crypto.randomUUID();
+  let session_id = sessionStorage.getItem("session_id");
 
-  sessionStorage.setItem("session_id", session_id);
+  if (!session_id) {
+    session_id = crypto.randomUUID();
+    sessionStorage.setItem("session_id", session_id);
+  }
 
   const username = randomTeacherAccount();
 

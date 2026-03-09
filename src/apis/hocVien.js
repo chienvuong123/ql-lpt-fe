@@ -2,6 +2,7 @@ import axios from "axios";
 import { apiClient } from "./clientApi";
 import { baseURL } from "../constants/base";
 import { DangNhapLopLyThuyet } from "./auth";
+import { getCachedLogin, invalidateCachedLogin } from "./authCache";
 
 export const DanhSachHocVien = async (params) => {
   return apiClient({
@@ -26,17 +27,22 @@ export const HanhTrinh = async (params) => {
   });
 };
 
-export const getHocVienCheck = async (maHocVien) => {
-  const response = await axios.get(`${baseURL}/hoc-vien/${maHocVien}/check`);
+export const hocVienKyDAT = async (maHocVien) => {
+  const response = await axios.get(`${baseURL}/ky-dat/${maHocVien}`);
 
   return response.data;
 };
 
-export const updateHocVienCheck = async (maHocVien, payload) => {
-  const response = await axios.put(
-    `${baseURL}/hoc-vien/${maHocVien}/check`,
-    payload,
-  );
+export const updateHocVienKyDAT = async (maHocVien, payload) => {
+  const response = await axios.put(`${baseURL}/ky-dat/${maHocVien}`, payload);
+
+  return response.data;
+};
+
+export const danhSachHocVienKyDAT = async (payload) => {
+  const response = await axios.get(`${baseURL}/ky-dat/`, {
+    params: payload,
+  });
 
   return response.data;
 };
@@ -131,8 +137,8 @@ export const hocVienTheoKhoa = async (enrolment_plan_iid, extraParams = {}) => {
     result?.err_code === 402 ||
     result?.is_guest
   ) {
-    await DangNhapLopLyThuyet();
-
+    invalidateCachedLogin();
+    await getCachedLogin();
     result = await callApi();
   }
 

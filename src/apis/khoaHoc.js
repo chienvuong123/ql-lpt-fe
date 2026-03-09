@@ -2,6 +2,7 @@ import axios from "axios";
 import { buildParams } from "../util/helper";
 import { apiClient } from "./clientApi";
 import { DangNhapLopLyThuyet } from "./auth";
+import { getCachedLogin, invalidateCachedLogin } from "./authCache";
 
 export const danhSachKhoaHoc = async (params) => {
   return axios.get("http://localhost:3000/api/courses", { params });
@@ -49,16 +50,16 @@ export const lopHocLyThuyet = async (login, searchParams = {}) => {
     return response.data;
   };
 
-  let result = await callApi(login);
+  const currentLogin = login || (await getCachedLogin());
+  let result = await callApi(currentLogin);
 
   if (
     result?.message === "token_invalid" ||
     result?.err_code === 402 ||
     result?.is_guest
   ) {
-    const loginResponse = await DangNhapLopLyThuyet();
-    const newLogin = loginResponse?.result;
-
+    invalidateCachedLogin();
+    const newLogin = await getCachedLogin();
     result = await callApi(newLogin);
   }
 
