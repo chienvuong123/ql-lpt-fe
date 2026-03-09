@@ -191,10 +191,15 @@ const KiemTraPublic = () => {
     return selectedCourse?.code || selectedCourse?.name || "";
   }, [selectedCourse]);
 
-  const { data: danhSachHocVien = {}, isLoading: loadingStudents } = useQuery({
+  const {
+    data: danhSachHocVien = {},
+    isLoading: loadingStudents,
+    refetch: refetchSearchHocVien,
+  } = useQuery({
     queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
     queryFn: () => hocVienTheoKhoa(selectedKhoaHoc, searchParams || {}),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    cacheTime: 0,
     retry: false,
     enabled: !!searchParams && !!loginData,
   });
@@ -395,6 +400,7 @@ const KiemTraPublic = () => {
       page: 1,
       text: keyword.trim(),
     });
+    refetchSearchHocVien();
   };
 
   const soMonLyThuyetDat = scoreRows.filter((item) => item.passed).length;

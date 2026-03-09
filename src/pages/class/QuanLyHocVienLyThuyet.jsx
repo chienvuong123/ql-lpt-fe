@@ -178,10 +178,14 @@ const QuanLyHocVienLyThuyet = () => {
       savedData?.loai_ly_thuyet === undefined
         ? !autoLyThuyetPassed
         : Boolean(savedData?.loai_ly_thuyet);
-    const hetMonChecked =
-      savedData?.loai_het_mon === undefined
+
+    // Nếu loại lý thuyết đã tích → hết môn tự động tích theo
+    const hetMonChecked = lyThuyetChecked
+      ? true
+      : savedData?.loai_het_mon === undefined
         ? autoHetMon
         : Boolean(savedData?.loai_het_mon);
+
     const cabinChecked = Boolean(savedData?.cabin);
     const datChecked = Boolean(savedData?.dat);
     const ghiChu = parseGhiChu(savedData?.ghi_chu);
@@ -191,10 +195,9 @@ const QuanLyHocVienLyThuyet = () => {
       savedData?.updatedAt ||
       savedData?.updated_ts ||
       null;
-    const isDuDieuKien =
-      !lyThuyetChecked && !hetMonChecked
-        ? true
-        : lyThuyetChecked && hetMonChecked;
+
+    // Đủ điều kiện khi cả 2 đều không bị loại
+    const isDuDieuKien = !lyThuyetChecked && !hetMonChecked;
 
     return {
       maDk,
@@ -204,7 +207,7 @@ const QuanLyHocVienLyThuyet = () => {
       datChecked,
       ghiChu,
       statusUpdatedAt,
-      isDuDieuKien: isDuDieuKien,
+      isDuDieuKien,
     };
   };
 
@@ -237,7 +240,7 @@ const QuanLyHocVienLyThuyet = () => {
           data: nextList,
         };
       });
-      queryClient.invalidateQueries({ queryKey: statusQueryKey });
+      // queryClient.invalidateQueries({ queryKey: statusQueryKey });
     },
     onError: (error) => {
       message.error(
@@ -255,6 +258,9 @@ const QuanLyHocVienLyThuyet = () => {
       loai_ly_thuyet: overrides.loai_ly_thuyet ?? currentState.lyThuyetChecked,
       loai_het_mon: overrides.loai_het_mon ?? currentState.hetMonChecked,
       ghi_chu: overrides.ghi_chu ?? currentState.ghiChu,
+      ma_khoa:
+        selectedClass?.suffix_name || selectedClass?.name || program_code || "",
+      ten_khoa: selectedClass?.name || program_code || "",
       status_updated_at:
         overrides.status_updated_at || new Date().toISOString(),
     };
@@ -392,36 +398,41 @@ const QuanLyHocVienLyThuyet = () => {
       render: (_, record) => {
         const studentCode = getStudentCode(record);
         const checked = resolveCheckState(record).lyThuyetChecked;
+        const isSaving = savingStudentCode === studentCode;
 
         return (
-          <Checkbox
-            checked={checked}
-            disabled={savingStudentCode === studentCode}
-            onChange={(e) =>
-              handleToggleCheckbox(record, "loai_ly_thuyet", e.target.checked)
-            }
-          />
+          <Spin spinning={isSaving} size="small">
+            <Checkbox
+              checked={checked}
+              disabled={isSaving}
+              onChange={(e) =>
+                handleToggleCheckbox(record, "loai_ly_thuyet", e.target.checked)
+              }
+            />
+          </Spin>
         );
       },
     },
     {
       title: "Loại hết môn",
-      dataIndex: "__expand",
       key: "last_login",
       width: 120,
       align: "center",
       render: (_, record) => {
         const studentCode = getStudentCode(record);
         const checked = resolveCheckState(record).hetMonChecked;
+        const isSaving = savingStudentCode === studentCode;
 
         return (
-          <Checkbox
-            checked={checked}
-            disabled={savingStudentCode === studentCode}
-            onChange={(e) =>
-              handleToggleCheckbox(record, "loai_het_mon", e.target.checked)
-            }
-          />
+          <Spin spinning={isSaving} size="small">
+            <Checkbox
+              checked={checked}
+              disabled={isSaving}
+              onChange={(e) =>
+                handleToggleCheckbox(record, "loai_het_mon", e.target.checked)
+              }
+            />
+          </Spin>
         );
       },
     },
@@ -500,6 +511,7 @@ const QuanLyHocVienLyThuyet = () => {
       },
     },
   ];
+  console.log(activeClassIid);
 
   return (
     <Spin spinning={isLoadingHocVien || isLoadingKhoaHoc}>
