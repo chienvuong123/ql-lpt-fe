@@ -125,19 +125,22 @@ export const hocVienTheoKhoa = async (enrolment_plan_iid, extraParams = {}) => {
   };
 
   let result = await callApi();
-  console.log(result);
 
   if (
     result?.message === "token_invalid" ||
     result?.err_code === 402 ||
     result?.is_guest
   ) {
-    console.log("Token hết hạn → login lại");
-
     await DangNhapLopLyThuyet();
 
     result = await callApi();
   }
 
   return result;
+};
+
+export const getChiTietHocVienLyThuyet = async (maDk) => {
+  const url = "http://192.168.1.69:8000/api/";
+  const response = await axios.get(`${url}hoc-vien-lop-ly-thuyet/${maDk}`);
+  return response.data;
 };

@@ -113,17 +113,6 @@ const getCabinRuleByName = (name = "") => {
   );
 };
 
-const parseBooleanLike = (value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (["1", "true", "yes"].includes(normalized)) return true;
-    if (["0", "false", "no", ""].includes(normalized)) return false;
-  }
-  return undefined;
-};
-
 const extractKhoaNumber = (value = "") => {
   const prefix = String(value).trim().slice(0, 3).toLowerCase();
   const match = prefix.match(/^k(\d{2})$/);
@@ -214,7 +203,7 @@ const KiemTraPublic = () => {
     useQuery({
       queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
       queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
-      enabled: isLyThuyetModalOpen && !!cabinKey,
+      // queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
       staleTime: 1000 * 60 * 5,
       retry: false,
     });
@@ -356,24 +345,12 @@ const KiemTraPublic = () => {
       chiTietLyThuyetData?.result ||
       chiTietLyThuyetData;
 
-    const loaiLyThuyet = parseBooleanLike(
-      raw?.loai_ly_thuyet ?? raw?.loaiLyThuyet,
-    );
-    const loaiHetMon = parseBooleanLike(raw?.loai_het_mon ?? raw?.loaiHetMon);
+    const loaiHetMon = raw?.loai_het_mon;
 
     return {
-      loaiLyThuyet:
-        loaiLyThuyet === undefined
-          ? "-"
-          : loaiLyThuyet
-            ? "Đã tích"
-            : "Không tích",
       loaiHetMon:
-        loaiHetMon === undefined
-          ? "Chưa làm bài hết môn"
-          : loaiHetMon
-            ? "Đã làm bài hết môn"
-            : "Chưa làm bài hết môn",
+        loaiHetMon === false ? "Đã làm bài hết môn" : "Chưa làm bài hết môn",
+      loaiHetMonStatus: !loaiHetMon,
     };
   }, [chiTietLyThuyetData]);
 
@@ -410,8 +387,14 @@ const KiemTraPublic = () => {
       ? Math.round((soMonLyThuyetDat / tongMonLyThuyet) * 100)
       : 0;
 
-  const lyThuyetStatus = lyThuyetPercent >= 100 ? "Đạt" : "Trượt";
-  const statusColor = lyThuyetPercent >= 100 ? "#1b8a35" : "#ff0000";
+  const lyThuyetStatus =
+    lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
+      ? "Đạt"
+      : "Trượt";
+  const statusColor =
+    lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
+      ? "#1b8a35"
+      : "#ff0000";
 
   const totalCabinSeconds = useMemo(
     () =>
@@ -799,7 +782,6 @@ const KiemTraPublic = () => {
         onCancel={() => setIsLyThuyetModalOpen(false)}
         scoreRows={scoreRows}
         loadingStatus={loadingChiTietLyThuyet}
-        loaiLyThuyet={lyThuyetExtraStatus.loaiLyThuyet}
         loaiHetMon={lyThuyetExtraStatus.loaiHetMon}
       />
 

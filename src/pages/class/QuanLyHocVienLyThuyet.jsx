@@ -511,7 +511,6 @@ const QuanLyHocVienLyThuyet = () => {
       },
     },
   ];
-  console.log(activeClassIid);
 
   return (
     <Spin spinning={isLoadingHocVien || isLoadingKhoaHoc}>

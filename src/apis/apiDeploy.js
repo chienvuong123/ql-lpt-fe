@@ -33,8 +33,6 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
-    console.log(response);
-
     const isInvalidSessionResponse =
       response?.status === 200 &&
       response?.data?.success === false &&
