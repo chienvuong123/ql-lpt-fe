@@ -15,6 +15,11 @@ export default defineConfig({
         secure: true,
         rewrite: (path) => path.replace(/^\/api/, "/api"),
       },
+      "/lotuslms": {
+        target: "https://staging-api.lotuslms.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/lotuslms/, ""),
+      },
     },
   },
 });

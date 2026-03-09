@@ -141,7 +141,7 @@ export default function TruyXuatLoi() {
     }
 
     if (Object.keys(params).length === 0) {
-      message.warning("Vui long nhap tu khoa hoac chon khoa hoc de tim kiem");
+      message.warning("Vui lòng nhập từ khóa để tìm kiếm");
       return;
     }
 
@@ -182,11 +182,11 @@ export default function TruyXuatLoi() {
           )}
         </div>
         <div className="text-xs text-gray-600 mt-1">
-          <span>Ma: {student.MaDK}</span>
+          <span>Mã: {student.MaDK}</span>
           {student.TenKhoaHoc && (
             <>
               <span className="mx-2">·</span>
-              <span>Khoa: {student.TenKhoaHoc}</span>
+              <span>Khóa: {student.TenKhoaHoc}</span>
             </>
           )}
           {student.NgaySinh && (
@@ -206,7 +206,7 @@ export default function TruyXuatLoi() {
           }}
           className="px-3 bg-white text-gray-800 border border-gray-300 rounded-full hover:bg-gray-50 transition font-medium text-sm cursor-pointer"
         >
-          Chon
+          Chọn
         </button>
       </div>
     </div>
@@ -215,17 +215,17 @@ export default function TruyXuatLoi() {
   return (
     <div>
       <Title level={3} className="!mb-1">
-        Truy vet loi DAT cua hoc vien
+        Truy vết lỗi DAT của học viên
       </Title>
       <Card className="!mt-5">
         <Row gutter={16} align="bottom">
           <Col xs={24} sm={12} md={10}>
             <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-              Khoa hoc
+              Khóa học
             </label>
             <Select
               className="w-full"
-              placeholder="-- Chon khoa hoc --"
+              placeholder="-- Chọn khóa học --"
               loading={loadingKhoaHoc}
               value={selectedKhoaHoc}
               onChange={(value) => setSelectedKhoaHoc(value)}
@@ -241,10 +241,10 @@ export default function TruyXuatLoi() {
           </Col>
           <Col span={11}>
             <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-              Tu khoa
+              Từ khóa
             </label>
             <Input
-              placeholder="Nhap toi thieu 2 ky tu..."
+              placeholder="Nhập tối thiểu 2 từ..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               size="large"
@@ -277,7 +277,7 @@ export default function TruyXuatLoi() {
           className="!max-h-[60vh] !shadow-md overflow-y-auto"
         >
           <div className="mb-3 text-sm text-blue-600 font-medium px-3 py-2">
-            {dataSource.length} ket qua
+            {dataSource.length} kết quả
           </div>
 
           <Spin spinning={isLoading}>
