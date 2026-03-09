@@ -450,8 +450,8 @@ const KiemTraPublic = () => {
   }, []);
 
   return (
-    <Layout className="!min-h-screen !bg-[#f2f4f8]">
-      <div className="mx-auto w-full max-w-[430px] bg-[#f2f4f8]">
+    <Layout className="!min-h-screen !bg-[#e8ecf2] !flex !justify-center">
+      <div className="mx-auto w-full max-w-[430px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[768px] bg-[#f2f4f8] !min-h-screen">
         <Header className="!h-auto !bg-[#0b8ed8] !px-5 !pb-3 !pt-2">
           <Flex align="center" justify="center">
             <Image
