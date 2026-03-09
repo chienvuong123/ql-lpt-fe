@@ -18,12 +18,12 @@ import {
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { lopHocLyThuyet } from "../../apis/khoaHoc";
-import { hocVienKyDAT, hocVienTheoKhoa } from "../../apis/hocVien";
+import { hocVienTheoKhoa } from "../../apis/hocVien";
 import { getDuLieuCabin } from "../../apis/searchPublic";
 import { DangNhapLopLyThuyet } from "../../apis/auth";
 import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import CabinModal from "./CabinModal";
-import { DangNhapPublic, HanhTrinhPublic } from "../../apis/apiDeploy";
+import { DangNhapPublic, HanhTrinhPublic, hocVienKyDATPublic } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
@@ -243,7 +243,7 @@ const KiemTraPublic = () => {
 
   const { data: dataHocVienKyDat = {} } = useQuery({
     queryKey: ["dataHocVienKyDat", cabinKey],
-    queryFn: () => hocVienKyDAT(cabinKey),
+    queryFn: () => hocVienKyDATPublic(cabinKey),
     enabled: !!cabinKey && !!searchParams,
     staleTime: 1000 * 60 * 5,
     retry: false,
