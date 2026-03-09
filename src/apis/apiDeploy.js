@@ -99,3 +99,9 @@ export const getPhienHocDATPublic = async (maHocVien) => {
 
   return response.data;
 };
+
+export const hocVienKyDATPublic = async (maHocVien) => {
+  const response = await axios.get(`${url}ky-dat/${maHocVien}`);
+
+  return response.data;
+};
