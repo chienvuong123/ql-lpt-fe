@@ -22,14 +22,6 @@ import {
   capNhatTrangThaiHocVienLyThuyet,
   getDanhSachHocVienLyThuyet,
 } from "../../apis/apiHocVienLopLyThuyet";
-import { getDanhSachHocVienCabin } from "../../apis/cabinApi";
-
-const normalizeText = (value = "") =>
-  String(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d");
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -76,24 +68,6 @@ const QuanLyHocVienLyThuyet = () => {
     keepPreviousData: true,
   });
 
-  const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
-    queryKey: ["danhSachHocVien", activeClassIid, params],
-    queryFn: () => hocVienTheoKhoa(activeClassIid, params),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    enabled: !!activeClassIid,
-  });
-
-  const { data: danhSachHocVienHocCabin = {} } = useQuery({
-    queryKey: ["danhSachHocVienHocCabin", activeClassIid, params],
-    queryFn: () => getDanhSachHocVienCabin(activeClassIid, params),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    enabled: !!activeClassIid,
-  });
-
-  console.log(danhSachHocVienHocCabin);
-
   const classOptions = useMemo(() => {
     const list = dataKhoaHoc?.result || [];
     return list.map((item) => ({
@@ -109,6 +83,14 @@ const QuanLyHocVienLyThuyet = () => {
     return list.find((item) => String(item?.iid) === String(activeClassIid));
   }, [dataKhoaHoc, activeClassIid]);
 
+  const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
+    queryKey: ["danhSachHocVien", activeClassIid, params],
+    queryFn: () => hocVienTheoKhoa(activeClassIid, params),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+    enabled: !!activeClassIid,
+  });
+
   const students = useMemo(() => {
     const list = danhSachHocVien?.result;
     return Array.isArray(list) ? list : [];
@@ -118,15 +100,6 @@ const QuanLyHocVienLyThuyet = () => {
     String(
       record?.user?.admission_code || record?.user?.code || record?.id || "",
     );
-
-  const isPassBaiHetMon = (record) => {
-    const scoreByRubrik = record?.learning_progress?.score_by_rubrik || [];
-
-    return scoreByRubrik.some((item) => {
-      const name = normalizeText(item?.name || "");
-      return name.includes("het mon") && Number(item?.passed) === 1;
-    });
-  };
 
   const isPassAllLyThuyet = (record) => {
     const scoreByRubrik = record?.learning_progress?.score_by_rubrik || [];
@@ -182,7 +155,6 @@ const QuanLyHocVienLyThuyet = () => {
   const resolveCheckState = (record) => {
     const maDk = getStudentCode(record);
     const savedData = studentCheckMap?.[maDk] || {};
-    const autoHetMon = isPassBaiHetMon(record);
     const autoLyThuyetPassed = isPassAllLyThuyet(record);
 
     const lyThuyetChecked =
@@ -190,11 +162,11 @@ const QuanLyHocVienLyThuyet = () => {
         ? !autoLyThuyetPassed
         : Boolean(savedData?.loai_ly_thuyet);
 
-    // Nếu loại lý thuyết đã tích → hết môn tự động tích theo
+    // Loại hết môn mặc định được tích sẵn; nếu loại lý thuyết tích thì luôn ép tích theo.
     const hetMonChecked = lyThuyetChecked
       ? true
       : savedData?.loai_het_mon === undefined
-        ? autoHetMon
+        ? true
         : Boolean(savedData?.loai_het_mon);
 
     const cabinChecked = Boolean(savedData?.cabin);

@@ -49,6 +49,8 @@ const LayoutTest = () => {
   const name = sessionStorage.getItem("name");
   const token = sessionStorage.getItem("token");
 
+  const isGiaoVien = name?.toLowerCase().includes("giao viên");
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -89,6 +91,78 @@ const LayoutTest = () => {
     Object.keys(menuPathMap).find(
       (key) => menuPathMap[key] === location.pathname,
     ) || "dashboard";
+
+  const allMenuItems = [
+    {
+      key: "dashboard",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+    },
+    {
+      key: "class",
+      icon: <BookOutlined />,
+      label: "Lý thuyết",
+      children: [
+        { key: "class-management", label: "Lớp học lý thuyết" },
+        { key: "quan-ly-hoc-vien-ly-thuyet", label: "Quản lý học viên" },
+      ],
+    },
+    {
+      key: "reports",
+      icon: <BarChartOutlined />,
+      label: "DAT",
+      children: [
+        { key: "student-report", label: "Báo cáo học viên" },
+        { key: "check-full-course", label: "Báo cáo học viên hàng loạt" },
+        { key: "hoc-vien-ky-dat", label: "Danh sách học viên kí DAT" },
+        { key: "truy-vet-loi", label: "Truy vết lỗi" },
+      ],
+    },
+    {
+      key: "sync",
+      icon: <SyncOutlined />,
+      label: "Đồng bộ",
+      children: [
+        { key: "sync-teacher-car", label: "Đồng bộ giáo viên" },
+        { key: "sync-student-car", label: "Đồng bộ học viên" },
+      ],
+    },
+    {
+      key: "annual-check",
+      icon: <SafetyOutlined />,
+      label: "Kiểm tra hàng năm",
+    },
+    {
+      key: "cabin",
+      icon: <BsCalendar3 />,
+      label: "Cabin",
+      children: [
+        { key: "danh-sach-cabin", label: "Danh sách học viên Cabin" },
+        { key: "lich-cabin", label: "Chia lịch Cabin" },
+        { key: "hoc-bu-cabin", label: "Thiếu/bù giờ Cabin" },
+      ],
+    },
+    { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên" },
+    { key: "them-du-lieu", label: "Thêm dữ liệu vào hệ thống" },
+  ];
+
+  // Key giáo viên được phép thấy
+  const GIAO_VIEN_ALLOWED_KEYS = [
+    "class",
+    "class-management",
+    "quan-ly-hoc-vien-ly-thuyet",
+  ];
+
+  const menuItems = isGiaoVien
+    ? allMenuItems
+        .filter((item) => GIAO_VIEN_ALLOWED_KEYS.includes(item.key))
+        .map((item) => ({
+          ...item,
+          children: item.children?.filter((child) =>
+            GIAO_VIEN_ALLOWED_KEYS.includes(child.key),
+          ),
+        }))
+    : allMenuItems;
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -131,98 +205,7 @@ const LayoutTest = () => {
             const nextPath = menuPathMap[key];
             if (nextPath) navigate(nextPath);
           }}
-          items={[
-            {
-              key: "dashboard",
-              icon: <DashboardOutlined />,
-              label: "Dashboard",
-            },
-            {
-              key: "class",
-              icon: <BookOutlined />,
-              label: "Lý thuyết",
-              children: [
-                {
-                  key: "class-management",
-                  label: "Lớp học lý thuyết",
-                },
-                {
-                  key: "quan-ly-hoc-vien-ly-thuyet",
-                  label: "Quản lý học viên",
-                },
-              ],
-            },
-            {
-              key: "reports",
-              icon: <BarChartOutlined />,
-              label: "DAT",
-              children: [
-                {
-                  key: "student-report",
-                  label: "Báo cáo học viên",
-                },
-                {
-                  key: "check-full-course",
-                  label: "Báo cáo học viên hàng loạt",
-                },
-                {
-                  key: "hoc-vien-ky-dat",
-                  label: "Danh sách học viên kí DAT",
-                },
-                {
-                  key: "truy-vet-loi",
-                  label: "Truy vết lỗi",
-                },
-              ],
-            },
-            {
-              key: "sync",
-              icon: <SyncOutlined />,
-              label: "Đồng bộ",
-              children: [
-                {
-                  key: "sync-teacher-car",
-                  label: "Đồng bộ giáo viên",
-                },
-                {
-                  key: "sync-student-car",
-                  label: "Đồng bộ học viên",
-                },
-              ],
-            },
-            {
-              key: "annual-check",
-              icon: <SafetyOutlined />,
-              label: "Kiểm tra hàng năm",
-            },
-            {
-              key: "cabin",
-              icon: <BsCalendar3 />,
-              label: "Cabin",
-              children: [
-                {
-                  key: "danh-sach-cabin",
-                  label: "Danh sách học viên Cabin",
-                },
-                {
-                  key: "lich-cabin",
-                  label: "Chia lịch Cabin",
-                },
-                {
-                  key: "hoc-bu-cabin",
-                  label: "Thiếu/bù giờ Cabin",
-                },
-              ],
-            },
-            {
-              key: "kiem-tra-hoc-vien",
-              label: "Kiểm tra học viên",
-            },
-            {
-              key: "them-du-lieu",
-              label: "Thêm dữ liệu vào hệ thống",
-            },
-          ]}
+          items={menuItems}
         />
       </Sider>
       <Layout>

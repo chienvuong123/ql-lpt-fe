@@ -9,6 +9,7 @@ const { Text } = Typography;
 
 export default function LoginAntd() {
   const [isLoading, setIsLoading] = useState(false);
+  console.log(isLoading);
 
   const onSubmit = async (values) => {
     const { username, password } = values;

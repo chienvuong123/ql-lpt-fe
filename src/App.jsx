@@ -25,6 +25,7 @@ import BuCaBin from "./pages/cabin/BuCaBin";
 import KiemTraPublic from "./pages/checks/KiemTraPublic";
 import QuanLyHocVienLyThuyet from "./pages/class/QuanLyHocVienLyThuyet";
 import TruyXuatLoi from "./pages/dat/TruyXuatLoi";
+import { GiaoVienGuard } from "./components/RoleGuard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +35,10 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const GuardedRoute = ({ element, path }) => (
+  <GiaoVienGuard path={path}>{element}</GiaoVienGuard>
+);
 
 function App() {
   return (
@@ -49,41 +54,124 @@ function App() {
             </Route>
             {/* roter mới khuyên dùng */}
             <Route path="/" element={<LayoutTest />}>
-              {/* Dashboard */}
-              <Route index element={<Dashboard />} />
-              <Route path="dashboard" element={<Dashboard />} />
+              <Route
+                index
+                element={<GuardedRoute path="/" element={<Dashboard />} />}
+              />
+              <Route
+                path="dashboard"
+                element={
+                  <GuardedRoute path="/dashboard" element={<Dashboard />} />
+                }
+              />
+              <Route
+                path="/map"
+                element={
+                  <GuardedRoute path="/map" element={<TrackingPage />} />
+                }
+              />
 
-              {/* Map */}
-              <Route path="/map" element={<TrackingPage />} />
-
-              {/* Lớp học lý thuyết */}
+              {/* Lý thuyết - giáo viên được phép */}
               <Route path="/thanh-vien-lop-hoc" element={<Member />} />
               <Route
                 path="/quan-ly-hoc-vien-ly-thuyet"
                 element={<QuanLyHocVienLyThuyet />}
               />
-              <Route path="class-management" element={<ClassManagement />} />
 
-              {/* CABIN */}
-              <Route path="lich-cabin" element={<LichCabin />} />
-              <Route path="hoc-bu-cabin" element={<BuCaBin />} />
-              <Route path="danh-sach-cabin" element={<DanhSachChiaCabin />} />
-
-              {/* DAT */}
-              <Route path="student-report" element={<SearchStudents />} />
-              <Route path="check-full-course" element={<KiemTraToanKhoa />} />
-              <Route path="hoc-vien-ky-dat" element={<HocVienKyDAT />} />
-
-              {/* Đồng bộ */}
+              {/* Các route còn lại cần guard */}
+              <Route
+                path="class-management"
+                element={
+                  <GuardedRoute
+                    path="/class-management"
+                    element={<ClassManagement />}
+                  />
+                }
+              />
+              <Route
+                path="lich-cabin"
+                element={
+                  <GuardedRoute path="/lich-cabin" element={<LichCabin />} />
+                }
+              />
+              <Route
+                path="hoc-bu-cabin"
+                element={
+                  <GuardedRoute path="/hoc-bu-cabin" element={<BuCaBin />} />
+                }
+              />
+              <Route
+                path="danh-sach-cabin"
+                element={
+                  <GuardedRoute
+                    path="/danh-sach-cabin"
+                    element={<DanhSachChiaCabin />}
+                  />
+                }
+              />
+              <Route
+                path="student-report"
+                element={
+                  <GuardedRoute
+                    path="/student-report"
+                    element={<SearchStudents />}
+                  />
+                }
+              />
+              <Route
+                path="check-full-course"
+                element={
+                  <GuardedRoute
+                    path="/check-full-course"
+                    element={<KiemTraToanKhoa />}
+                  />
+                }
+              />
+              <Route
+                path="hoc-vien-ky-dat"
+                element={
+                  <GuardedRoute
+                    path="/hoc-vien-ky-dat"
+                    element={<HocVienKyDAT />}
+                  />
+                }
+              />
               <Route
                 path="sync-teacher-car"
-                element={<DongBoGiaoVienVaoXe />}
+                element={
+                  <GuardedRoute
+                    path="/sync-teacher-car"
+                    element={<DongBoGiaoVienVaoXe />}
+                  />
+                }
               />
-              <Route path="sync-student-car" element={<DongBoHocVienVaoXe />} />
-
-              {/* Kiểm tra */}
-              <Route path="annual-check" element={<KiemTraHangNam />} />
-              <Route path="truy-vet-loi" element={<TruyXuatLoi />} />
+              <Route
+                path="sync-student-car"
+                element={
+                  <GuardedRoute
+                    path="/sync-student-car"
+                    element={<DongBoHocVienVaoXe />}
+                  />
+                }
+              />
+              <Route
+                path="annual-check"
+                element={
+                  <GuardedRoute
+                    path="/annual-check"
+                    element={<KiemTraHangNam />}
+                  />
+                }
+              />
+              <Route
+                path="truy-vet-loi"
+                element={
+                  <GuardedRoute
+                    path="/truy-vet-loi"
+                    element={<TruyXuatLoi />}
+                  />
+                }
+              />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
           </Routes>
