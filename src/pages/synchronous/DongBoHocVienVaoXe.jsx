@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Input, Button, Table, Row, Col, message, Select } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
-import { DanhSachLoaiXe, DanhSachXe } from "../../apis/xe";
 import { useQuery } from "@tanstack/react-query";
+import { DanhSachGiaoVien } from "../../apis/giaoVien";
 import { DanhSachHocVien, DanhSachKhoaHoc } from "../../apis/hocVien";
+import { DanhSachLoaiXe, DanhSachXe } from "../../apis/xe";
 
 message.config({
   top: 100,
@@ -17,10 +18,10 @@ export default function DongBoHocVienVaoXe() {
   const [searchCar, setSearchCar] = useState("");
   const [debouncedSearchCar, setDebouncedSearchCar] = useState(searchCar);
   const [selectedStudentKeys, setSelectedStudentKeys] = useState([]);
+  const [selectedTeacherKeys, setSelectedTeacherKeys] = useState([]);
   const [selectedCarKeys, setSelectedCarKeys] = useState([]);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
 
-  // Fetch danh sách xe - gọi lúc mount, không cần tham số tìm kiếm
   const {
     data: dataCart = {},
     isLoading: isLoadingCar,
@@ -46,7 +47,6 @@ export default function DongBoHocVienVaoXe() {
     retry: false,
   });
 
-  // Fetch danh sách học viên - gọi khi searchParams thay đổi
   const { data: dataStudents = {}, isLoading: isLoadingStudents } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
     queryFn: () =>
@@ -58,7 +58,17 @@ export default function DongBoHocVienVaoXe() {
       }),
     staleTime: 1000 * 60 * 5,
     retry: false,
-    // enabled: Object.keys(searchParams).length > 0,
+  });
+
+  const { data: dataTeachers = {}, isLoading: isLoadingTeachers } = useQuery({
+    queryKey: ["danhSachGiaoVien"],
+    queryFn: () =>
+      DanhSachGiaoVien({
+        page: 1,
+        limit: 1000,
+      }),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 
   useEffect(() => {
@@ -69,16 +79,88 @@ export default function DongBoHocVienVaoXe() {
     return () => clearTimeout(timer);
   }, [searchCar]);
 
-  const khoaHocList = useMemo(() => {
+  const khoaHocOptions = useMemo(() => {
     const courses = Array.isArray(resultsCourse?.data?.Data)
       ? resultsCourse.data.Data
       : [];
-    return courses;
+
+    return courses.map((course) => ({
+      value: course.ID,
+      label: course.Ten,
+    }));
   }, [resultsCourse]);
 
-  const carDataWithLoaiXe = useMemo(() => {
-    return dataLoaiXe?.data?.Data || [];
-  }, [dataLoaiXe]);
+  const teacherData = useMemo(
+    () =>
+      Array.isArray(dataTeachers?.data?.Data) ? dataTeachers.data.Data : [],
+    [dataTeachers],
+  );
+
+  const teacherOptions = useMemo(() => {
+    return teacherData
+      .filter((teacher) => teacher.MaGV)
+      .map((teacher) => {
+        const teacherName = teacher.HoTen || teacher.MaGV;
+        const yearOfBirth = teacher.NgaySinh
+          ? new Date(teacher.NgaySinh).getFullYear()
+          : null;
+
+        return {
+          value: teacher.MaGV,
+          label: yearOfBirth ? `${teacherName} - ${yearOfBirth}` : teacherName,
+        };
+      });
+  }, [teacherData]);
+
+  const carLoaiXeList = useMemo(
+    () => dataLoaiXe?.data?.Data || [],
+    [dataLoaiXe],
+  );
+
+  const studentData = useMemo(
+    () =>
+      Array.isArray(dataStudents?.data?.Data) ? dataStudents.data.Data : [],
+    [dataStudents],
+  );
+
+  const carList = useMemo(
+    () => (Array.isArray(dataCart?.data?.Data) ? dataCart.data.Data : []),
+    [dataCart],
+  );
+
+  const isAllStudentsSelected = useMemo(() => {
+    if (studentData.length === 0 || selectedStudentKeys.length === 0) {
+      return false;
+    }
+
+    const allStudentKeys = studentData
+      .map((student) => student.MaDK)
+      .filter(Boolean);
+
+    return (
+      allStudentKeys.length > 0 &&
+      selectedStudentKeys.length === allStudentKeys.length &&
+      allStudentKeys.every((key) => selectedStudentKeys.includes(key))
+    );
+  }, [studentData, selectedStudentKeys]);
+
+  const selectedStudentNames = useMemo(() => {
+    return studentData
+      .filter((student) => selectedStudentKeys.includes(student.MaDK))
+      .map((student) => student.HoTen || student.MaDK);
+  }, [studentData, selectedStudentKeys]);
+
+  const selectedTeacherNames = useMemo(() => {
+    return teacherData
+      .filter((teacher) => selectedTeacherKeys.includes(teacher.MaGV))
+      .map((teacher) => teacher.HoTen || teacher.MaGV);
+  }, [teacherData, selectedTeacherKeys]);
+
+  const selectedCarNames = useMemo(() => {
+    return carList
+      .filter((car) => selectedCarKeys.includes(car.BienSo))
+      .map((car) => car.TenXe || car.BienSo);
+  }, [carList, selectedCarKeys]);
 
   const studentColumns = useMemo(
     () => [
@@ -121,16 +203,15 @@ export default function DongBoHocVienVaoXe() {
         title: "Loại xe",
         dataIndex: "IDLoaiXe",
         width: 70,
-        render: (IDLoaiXe) => {
-          const loaiXe = carDataWithLoaiXe.find(
-            (lx) => String(lx.ID) === String(IDLoaiXe),
+        render: (idLoaiXe) => {
+          const loaiXe = carLoaiXeList.find(
+            (item) => String(item.ID) === String(idLoaiXe),
           );
           return loaiXe ? loaiXe.Ten : "";
         },
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [carLoaiXeList],
   );
 
   const handleSearch = useCallback(() => {
@@ -152,65 +233,68 @@ export default function DongBoHocVienVaoXe() {
     setSearchText(value);
   }, []);
 
-  const handleKhoaHocChange = (value) => {
-    setSelectedKhoaHoc(value);
-  };
+  const handleKhoaHocChange = useCallback((value) => {
+    setSelectedKhoaHoc(value || "");
+  }, []);
 
-  // Lọc dữ liệu xe từ cached data - không cần call API lại
+  const handleTeacherChange = useCallback((value) => {
+    setSelectedTeacherKeys(value || []);
+  }, []);
+
   const carData = useMemo(() => {
-    const rawData = Array.isArray(dataCart?.data?.Data)
-      ? dataCart.data.Data
-      : [];
+    if (!debouncedSearchCar) {
+      return carList;
+    }
 
-    if (!debouncedSearchCar) return rawData;
-
-    return rawData.filter((car) =>
+    return carList.filter((car) =>
       car.BienSo?.toUpperCase().includes(debouncedSearchCar.toUpperCase()),
     );
-  }, [dataCart, debouncedSearchCar]);
+  }, [carList, debouncedSearchCar]);
 
-  const handleReload = (isCar = false) => {
-    if (isCar) {
-      setSelectedCarKeys([]);
-      setSearchCar("");
-      setDebouncedSearchCar("");
-      refetchCars();
-    } else {
+  const handleReload = useCallback(
+    (isCar = false) => {
+      if (isCar) {
+        setSelectedCarKeys([]);
+        setSearchCar("");
+        setDebouncedSearchCar("");
+        refetchCars();
+        return;
+      }
+
       handleSearch();
-    }
-  };
+    },
+    [handleSearch, refetchCars],
+  );
 
-  const handleToggleAll = (data, keyField, selectedKeys, setSelectedKeys) => {
-    // Kiểm tra dữ liệu hợp lệ
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      setSelectedKeys([]);
-      return;
-    }
+  const handleToggleAll = useCallback(
+    (data, keyField, selectedKeys, setSelectedKeys) => {
+      if (!Array.isArray(data) || data.length === 0) {
+        setSelectedKeys([]);
+        return;
+      }
 
-    // Lấy tất cả key từ data
-    const allKeys = data.map((item) => item[keyField]).filter(Boolean);
+      const allKeys = data.map((item) => item[keyField]).filter(Boolean);
+      const isAllSelected =
+        selectedKeys.length === allKeys.length &&
+        allKeys.every((key) => selectedKeys.includes(key));
 
-    const isAllSelected =
-      selectedKeys.length === allKeys.length &&
-      allKeys.every((key) => selectedKeys.includes(key));
-
-    if (isAllSelected) {
-      setSelectedKeys([]);
-    } else {
-      setSelectedKeys(allKeys);
-    }
-  };
+      setSelectedKeys(isAllSelected ? [] : allKeys);
+    },
+    [],
+  );
 
   const handleSubmit = async () => {
     if (selectedStudentKeys.length === 0) {
       message.error("Vui lòng chọn ít nhất 1 học viên!", 3);
       return;
     }
+
     if (selectedCarKeys.length === 0) {
       message.error("Vui lòng chọn ít nhất 1 xe!", 3);
       return;
     }
-    if (selectedKhoaHoc === "") {
+
+    if (!selectedKhoaHoc) {
       message.error("Vui lòng chọn khóa học của học viên!", 3);
       return;
     }
@@ -220,14 +304,39 @@ export default function DongBoHocVienVaoXe() {
     try {
       await DanhSachXe({
         dsBienSo: selectedCarKeys.join(","),
-        dsMaDk:
-          selectedStudentKeys.length > 0
-            ? undefined
-            : selectedStudentKeys.join(","),
+        dsMaDk: isAllStudentsSelected
+          ? undefined
+          : selectedStudentKeys.join(","),
+        dsMaGV:
+          selectedTeacherKeys.length > 0
+            ? selectedTeacherKeys.join(",")
+            : undefined,
         idkhoahoc: selectedKhoaHoc,
       });
 
-      message.success("Đồng bộ học viên vào xe thành công!", 3);
+      const khoaHocName =
+        khoaHocOptions.find((k) => k.value === selectedKhoaHoc)?.label || "";
+
+      const studentLabel = isAllStudentsSelected
+        ? `khóa ${khoaHocName}`
+        : selectedStudentNames.length > 0
+          ? selectedStudentNames.join(", ")
+          : selectedStudentKeys.join(", ");
+      const teacherLabel =
+        selectedTeacherNames.length > 0
+          ? selectedTeacherNames.join(", ")
+          : selectedTeacherKeys.join(", ");
+      const carLabel =
+        selectedCarNames.length > 0
+          ? selectedCarNames.join(", ")
+          : selectedCarKeys.join(", ");
+
+      message.success(
+        `Đồng bộ học viên ${studentLabel}${
+          teacherLabel ? `, giáo viên ${teacherLabel}` : ""
+        } vào xe ${carLabel} thành công!`,
+        3,
+      );
     } catch (error) {
       console.error("Lỗi API:", error);
       message.error("Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại!");
@@ -249,76 +358,97 @@ export default function DongBoHocVienVaoXe() {
           <Card>
             <h2 className="text-lg !font-bold text-gray-900 !mb-0">Học viên</h2>
             <p className="text-[#64748b] text-sm">
-              Tìm kiếm theo tên hoặc mã HV, mã Khóa học.
+              Tìm kiếm theo tên hoặc mã HV, mã khóa học.
             </p>
 
-            <div className="flex gap-2 mt-5 mb-2">
-              <Input
-                placeholder="Lọc (tên hoặc mã)..."
-                size="middle"
-                aria-label="lọc"
-                value={searchText}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onPressEnter={handleSearch}
-              />
-              <Select
-                placeholder="Chọn khóa học"
-                size="middle"
-                style={{ width: 320 }}
-                value={selectedKhoaHoc || undefined}
-                onChange={handleKhoaHocChange}
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                filterOption={(input, option) =>
-                  (option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              >
-                {khoaHocList.map((kh) => (
-                  <Select.Option key={kh.ID} value={kh.ID} label={kh.Ten}>
-                    {kh.Ten}
-                  </Select.Option>
-                ))}
-              </Select>
-              <Button
-                icon={<ReloadOutlined />}
-                size="middle"
-                className="!px-2"
-                type="primary"
-                onClick={() => handleReload(false)}
-              />
-              <Button
-                size="middle"
-                className="!px-2"
-                type="primary"
-                onClick={() =>
-                  handleToggleAll(
-                    dataStudents?.data?.Data || [],
-                    "MaDK",
-                    selectedStudentKeys,
-                    setSelectedStudentKeys,
-                  )
-                }
-              >
-                Chọn tất cả
-              </Button>
-            </div>
+            <Row gutter={6} className="mb-2">
+              <Col span={6}>
+                <Input
+                  placeholder="Nhập tên học viên"
+                  size="middle"
+                  aria-label="lọc học viên"
+                  value={searchText}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onPressEnter={handleSearch}
+                />
+              </Col>
+              <Col span={8}>
+                <Select
+                  placeholder="Chọn giáo viên"
+                  size="middle"
+                  className="w-full"
+                  value={
+                    selectedTeacherKeys.length > 0
+                      ? selectedTeacherKeys
+                      : undefined
+                  }
+                  onChange={handleTeacherChange}
+                  allowClear
+                  showSearch
+                  mode="multiple"
+                  loading={isLoadingTeachers}
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={teacherOptions}
+                />
+              </Col>
+              <Col span={6}>
+                <Select
+                  placeholder="Chọn khóa học"
+                  size="middle"
+                  className="w-full"
+                  value={selectedKhoaHoc || undefined}
+                  onChange={handleKhoaHocChange}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={khoaHocOptions}
+                />
+              </Col>
+              <Col span={4} className="!flex gap-2">
+                <Button
+                  icon={<ReloadOutlined />}
+                  size="middle"
+                  className="!px-2"
+                  type="primary"
+                  onClick={() => handleReload(false)}
+                />
+                <Button
+                  size="middle"
+                  className="!px-2"
+                  type="primary"
+                  onClick={() =>
+                    handleToggleAll(
+                      studentData,
+                      "MaDK",
+                      selectedStudentKeys,
+                      setSelectedStudentKeys,
+                    )
+                  }
+                >
+                  Chọn tất cả
+                </Button>
+              </Col>
+            </Row>
 
             <Table
               columns={studentColumns}
-              dataSource={
-                Array.isArray(dataStudents?.data?.Data)
-                  ? dataStudents.data.Data
-                  : []
-              }
+              dataSource={studentData}
               loading={isLoadingStudents}
               pagination={{ pageSize: 10 }}
               size="small"
               bordered
               rowKey="MaDK"
-              sticky={true}
+              sticky
               className="h-60 overflow-y-auto overflow-x-hidden"
               rowSelection={{
                 selectedRowKeys: selectedStudentKeys,
@@ -327,13 +457,14 @@ export default function DongBoHocVienVaoXe() {
               locale={{
                 emptyText: (
                   <span className="text-xs font-medium">
-                    Chưa có thông tin giáo viên
+                    Chưa có thông tin học viên
                   </span>
                 ),
               }}
             />
           </Card>
         </Col>
+
         <Col span={12}>
           <Card>
             <h2 className="text-lg !font-bold text-gray-900 !mb-0">Xe</h2>
@@ -362,7 +493,7 @@ export default function DongBoHocVienVaoXe() {
                 type="primary"
                 onClick={() =>
                   handleToggleAll(
-                    carData || [],
+                    carData,
                     "BienSo",
                     selectedCarKeys,
                     setSelectedCarKeys,
@@ -378,7 +509,7 @@ export default function DongBoHocVienVaoXe() {
               dataSource={carData}
               pagination={{ pageSize: 10 }}
               loading={isLoadingCar}
-              sticky={true}
+              sticky
               className="h-60 overflow-y-auto !overflow-x-hidden"
               size="small"
               bordered
@@ -398,6 +529,7 @@ export default function DongBoHocVienVaoXe() {
           </Card>
         </Col>
       </Row>
+
       <Row>
         <Col span={24}>
           <Card>
@@ -409,25 +541,37 @@ export default function DongBoHocVienVaoXe() {
               cho từng xe.
             </p>
 
-            <Row gutter={[8, 8]} align={"bottom"} className="mt-6">
-              <Col span={11}>
+            <Row gutter={[8, 8]} align="bottom" className="mt-6">
+              <Col span={8}>
                 <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
                   Mã HV đã chọn
                 </label>
                 <Input
-                  placeholder="Mã HV đã chọn (1 hoặc nhiều)"
+                  placeholder="Mã HV đã chọn"
                   aria-label="mã học viên"
                   size="large"
                   disabled
                   value={selectedStudentKeys.join(",")}
                 />
               </Col>
-              <Col span={11}>
+              <Col span={6}>
+                <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
+                  Mã GV đã chọn
+                </label>
+                <Input
+                  placeholder="Mã GV đã chọn"
+                  aria-label="mã giáo viên"
+                  size="large"
+                  disabled
+                  value={selectedTeacherKeys.join(",")}
+                />
+              </Col>
+              <Col span={8}>
                 <label className="block text-sm text-gray-500 uppercase mb-1 ml-1">
                   Biển số xe đã chọn
                 </label>
                 <Input
-                  placeholder="Biển số xe đã chọn (1 hoặc nhiều)"
+                  placeholder="Biển số xe đã chọn"
                   size="large"
                   disabled
                   value={selectedCarKeys.join(",")}
@@ -437,7 +581,7 @@ export default function DongBoHocVienVaoXe() {
                 <Button
                   type="primary"
                   size="large"
-                  className="bg-blue-600"
+                  className="w-full bg-blue-600"
                   onClick={handleSubmit}
                 >
                   Đồng bộ

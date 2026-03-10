@@ -431,7 +431,6 @@ const StudentDetail = ({ data }) => {
   };
 
   const handleCheckboxChange = (e) => {
-    console.log(data);
     const checked = e.target.checked;
     setIsCheckboxLoading(true);
     mutate(

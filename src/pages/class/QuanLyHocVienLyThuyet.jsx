@@ -22,6 +22,7 @@ import {
   capNhatTrangThaiHocVienLyThuyet,
   getDanhSachHocVienLyThuyet,
 } from "../../apis/apiHocVienLopLyThuyet";
+import { getDanhSachHocVienCabin } from "../../apis/cabinApi";
 
 const normalizeText = (value = "") =>
   String(value)
@@ -75,6 +76,24 @@ const QuanLyHocVienLyThuyet = () => {
     keepPreviousData: true,
   });
 
+  const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
+    queryKey: ["danhSachHocVien", activeClassIid, params],
+    queryFn: () => hocVienTheoKhoa(activeClassIid, params),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+    enabled: !!activeClassIid,
+  });
+
+  const { data: danhSachHocVienHocCabin = {} } = useQuery({
+    queryKey: ["danhSachHocVienHocCabin", activeClassIid, params],
+    queryFn: () => getDanhSachHocVienCabin(activeClassIid, params),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+    enabled: !!activeClassIid,
+  });
+
+  console.log(danhSachHocVienHocCabin);
+
   const classOptions = useMemo(() => {
     const list = dataKhoaHoc?.result || [];
     return list.map((item) => ({
@@ -89,14 +108,6 @@ const QuanLyHocVienLyThuyet = () => {
     const list = dataKhoaHoc?.result || [];
     return list.find((item) => String(item?.iid) === String(activeClassIid));
   }, [dataKhoaHoc, activeClassIid]);
-
-  const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
-    queryKey: ["danhSachHocVien", activeClassIid, params],
-    queryFn: () => hocVienTheoKhoa(activeClassIid, params),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    enabled: !!activeClassIid,
-  });
 
   const students = useMemo(() => {
     const list = danhSachHocVien?.result;
@@ -254,15 +265,24 @@ const QuanLyHocVienLyThuyet = () => {
 
   const buildPayload = (record, overrides = {}) => {
     const currentState = resolveCheckState(record);
+    const loaiLyThuyet =
+      overrides.loai_ly_thuyet ?? currentState.lyThuyetChecked;
+    const loaiHetMon = overrides.loai_het_mon ?? currentState.hetMonChecked;
+
     return {
-      loai_ly_thuyet: overrides.loai_ly_thuyet ?? currentState.lyThuyetChecked,
-      loai_het_mon: overrides.loai_het_mon ?? currentState.hetMonChecked,
+      loai_ly_thuyet: loaiLyThuyet,
+      loai_het_mon: loaiHetMon,
       ghi_chu: overrides.ghi_chu ?? currentState.ghiChu,
       ma_khoa:
         selectedClass?.suffix_name || selectedClass?.name || program_code || "",
       ten_khoa: selectedClass?.name || program_code || "",
       status_updated_at:
         overrides.status_updated_at || new Date().toISOString(),
+      ho_ten: record?.user?.name,
+      can_cuoc: record?.user?.code,
+      // ma_dk: record?.user?.admission_code,
+      nam_sinh: record?.user?.birth_year,
+      dat_cabin: loaiLyThuyet === false && loaiHetMon === false,
     };
   };
 

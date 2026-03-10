@@ -79,3 +79,11 @@ export const formatLocalTime = (dateString, formatStr = "DD/MM/YYYY HH:mm") => {
 export const getFirstDayOfMonthEnd = () => {
   return dayjs().startOf("month").format("YYYY-MM-DD 23:59:59");
 };
+
+export const toTitleCase = (str = "") =>
+  str
+    .toLocaleLowerCase("vi-VN")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toLocaleUpperCase("vi-VN") + word.slice(1))
+    .join(" ");

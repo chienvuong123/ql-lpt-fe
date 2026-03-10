@@ -1,166 +1,237 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Button,
   Card,
   Col,
   Input,
-  message,
   Row,
   Select,
   Table,
+  Tag,
   Typography,
 } from "antd";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { SearchOutlined } from "@ant-design/icons";
-import { courseOptions } from "../../apis/khoaHoc";
+import { lopHocLyThuyet } from "../../apis/khoaHoc";
+import {
+  getDanhSachHocVienCabin,
+  getDanhSachKetQuaHocCabin,
+} from "../../apis/cabinApi";
+import { toTitleCase } from "../../util/helper";
+import { DangNhapLopLyThuyet } from "../../apis/auth";
 
 const { Title } = Typography;
 
-const trangThaiCabinOptions = [
-  { value: "CHUA_HOC_CABIN", label: "Chưa học Cabin" },
-  { value: "CHUA_DAT_CABIN", label: "Chưa đạt Cabin" },
-];
-
 const DanhSachChiaCabin = () => {
-  const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
-  const [selectedTrangThaiCabin, setSelectedTrangThaiCabin] = useState("");
+  const [selectedTenKhoa, setSelectedTenKhoa] = useState(undefined);
   const [searchText, setSearchText] = useState("");
+  const [searchParams, setSearchParams] = useState({
+    page: 1,
+    limit: 20,
+  });
+
+  const { data: loginData, isLoading: loadingLogin } = useQuery({
+    queryKey: ["loginLyThuyet"],
+    queryFn: () => DangNhapLopLyThuyet(),
+    staleTime: Infinity,
+    select: (data) => data?.result,
+  });
 
   const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
-    queryKey: ["khoahocOptions"],
-    queryFn: () => courseOptions(),
+    queryKey: ["lopHocLyThuyetPublic"],
+    queryFn: () => lopHocLyThuyet(loginData),
+    enabled: !!loginData,
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
 
-  const khoaHocOptions = useMemo(() => {
-    const options = dataKhoaHoc?.data?.Data || [];
-    return [
-      ...options.map((kh) => ({
-        label: kh.Ten || kh.MaKhoaHoc || "Không có tên",
-        value: kh.ID || "",
-      })),
-    ];
+  const { data: danhSachHocVien = [], isLoading: isLoadingHocVien } = useQuery({
+    queryKey: ["danhSachHocVienCabin", searchParams],
+    queryFn: () => getDanhSachHocVienCabin(searchParams),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  const { data: ketQuaHocCabin = [] } = useQuery({
+    queryKey: ["ketQuaHocCabin", searchParams],
+    queryFn: () =>
+      getDanhSachKetQuaHocCabin({
+        khoa: "30004K26B003",
+        hoTen: "",
+      }),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  console.log(ketQuaHocCabin);
+
+  const sortedCourses = useMemo(() => {
+    const options = dataKhoaHoc?.result || [];
+
+    return [...options].sort((a, b) => {
+      const tsA = a?.ts || 0;
+      const tsB = b?.ts || 0;
+      return tsB - tsA;
+    });
   }, [dataKhoaHoc]);
 
-  const handleSearch = () => {
-    const params = {};
+  const selectedCourse = useMemo(() => {
+    return sortedCourses.find(
+      (item) => String(item?.iid) === String(selectedTenKhoa),
+    );
+  }, [sortedCourses, selectedTenKhoa]);
 
-    if (searchText.trim().length >= 2) {
-      params.soCmt = searchText.trim();
+  const dataSource = useMemo(() => {
+    return danhSachHocVien?.data || [];
+  }, [danhSachHocVien]);
+
+  const totalItems = useMemo(() => {
+    return danhSachHocVien?.pagination?.total || 0;
+  }, [danhSachHocVien]);
+
+  const handleSearch = useCallback(() => {
+    const nextParams = {
+      page: 1,
+      limit: searchParams.limit || 20,
+    };
+
+    if (searchText.trim()) {
+      nextParams.hoTen = searchText.trim();
     }
 
-    if (selectedKhoaHoc) {
-      params.idkhoahoc = selectedKhoaHoc;
+    if (selectedTenKhoa) {
+      nextParams.maKhoa = selectedTenKhoa;
     }
 
-    if (selectedTrangThaiCabin) {
-      params.trangThaiCabin = selectedTrangThaiCabin;
-    }
+    setSearchParams(nextParams);
+  }, [searchText, selectedTenKhoa, searchParams.limit]);
 
-    if (Object.keys(params).length === 0) {
-      message.warning(
-        "Vui lòng nhập từ khóa hoặc chọn khóa học/trạng thái cabin để tìm kiếm",
-      );
-      return;
-    }
+  const handleTableChange = useCallback((pagination) => {
+    setSearchParams((prev) => ({
+      ...prev,
+      page: pagination.current || 1,
+      limit: pagination.pageSize || 20,
+    }));
+  }, []);
 
-    // setSearchParams({ ...params, page: 1, limit: 20 });
-  };
+  const renderBooleanTag = useCallback((value, trueText, falseText) => {
+    return value ? (
+      <Tag color="error" variant="solid">
+        {trueText}
+      </Tag>
+    ) : (
+      <Tag color="green" variant="solid">
+        {falseText}
+      </Tag>
+    );
+  }, []);
 
-  const columns = [
-    {
-      title: "#",
-      key: "stt",
-      width: 50,
-      align: "center",
-      fixed: "left",
-      render: (_text, _record, index) => index + 1,
-    },
-    {
-      title: "Mã học viên",
-      dataIndex: "suffix_name",
-      key: "suffix_name",
-      width: 100,
-      align: "center",
-    },
-    {
-      title: "Tên học viên",
-      dataIndex: "__expand",
-      key: "__expand",
-      ellipsis: true,
-      width: 100,
-    },
-    {
-      title: "CCCD",
-      dataIndex: "start_date",
-      key: "start_date",
-      width: 100,
-      align: "center",
-    },
-    {
-      title: "Giáo viên DAT",
-      dataIndex: "end_date",
-      key: "end_date",
-      width: 100,
-      align: "center",
-    },
-    {
-      title: "Khóa học",
-      dataIndex: "number_of_courses",
-      key: "number_of_courses",
-      width: 70,
-      align: "center",
-    },
-
-    {
-      title: "Tên khóa học",
-      dataIndex: "stats",
-      key: "stats",
-      width: 90,
-      align: "center",
-    },
-    {
-      title: "Tiến độ lý thuyết",
-      dataIndex: "stats",
-      key: "stats",
-      width: 140,
-      align: "center",
-    },
-    {
-      title: "Trạng thái CABIN",
-      dataIndex: "stats",
-      key: "stats",
-      width: 120,
-    },
-    {
-      title: "Phút CABIN",
-      dataIndex: "status",
-      key: "status",
-      width: 80,
-      align: "center",
-    },
-    {
-      title: "Bài CABIN",
-      dataIndex: "stats",
-      key: "stats",
-      width: 120,
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        title: "#",
+        key: "stt",
+        width: 40,
+        align: "center",
+        fixed: "left",
+        render: (_text, _record, index) => index + 1,
+      },
+      {
+        title: "Mã đăng ký",
+        dataIndex: "ma_dk",
+        key: "ma_dk",
+        width: 180,
+        fixed: "left",
+      },
+      {
+        title: "Tên  khóa",
+        dataIndex: "ma_khoa",
+        key: "ma_khoa",
+        width: 80,
+      },
+      {
+        title: "Họ tên",
+        dataIndex: "ho_ten",
+        key: "ho_ten",
+        width: 180,
+        render: (text) => toTitleCase(text),
+      },
+      {
+        title: "CCCD",
+        dataIndex: "cccd",
+        key: "cccd",
+        width: 110,
+      },
+      {
+        title: "Năm sinh",
+        dataIndex: "nam_sinh",
+        key: "nam_sinh",
+        width: 80,
+        align: "center",
+      },
+      {
+        title: "Lý thuyết",
+        dataIndex: "loai_ly_thuyet",
+        key: "loai_ly_thuyet",
+        width: 90,
+        align: "center",
+        render: (value) => renderBooleanTag(value, "Trượt", "Đạt"),
+      },
+      {
+        title: "Làm bài hết môn",
+        dataIndex: "loai_het_mon",
+        key: "loai_het_mon",
+        width: 110,
+        align: "center",
+        render: (value) =>
+          renderBooleanTag(value, "Chưa làm bài", "Đã làm bài"),
+      },
+      {
+        title: "Trạng thái cabin",
+        dataIndex: "ghi_chu",
+        key: "ghi_chu",
+        width: 120,
+        render: (value) => value || "-",
+      },
+      {
+        title: "Phút cabin",
+        dataIndex: "ghi_chu",
+        key: "ghi_chu",
+        width: 100,
+        render: (value) => value || "-",
+      },
+      {
+        title: "Bài cabin",
+        dataIndex: "ghi_chu",
+        key: "ghi_chu",
+        width: 80,
+        render: (value) => value || "-",
+      },
+      {
+        title: "Ghi chú",
+        dataIndex: "ghi_chu",
+        key: "ghi_chu",
+        width: 180,
+        render: (value) => value || "-",
+      },
+    ],
+    [renderBooleanTag],
+  );
 
   return (
     <div>
       <Title level={3} className="!mb-1">
         Danh sách học viên học Cabin
       </Title>
+
       <Card className="!mt-5 !mb-5">
         <Row gutter={16} align="bottom">
-          <Col xs={24} sm={12} md={7}>
+          <Col xs={24} sm={12} md={9}>
             <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-              Từ khóa
+              Họ tên
             </label>
             <Input
-              placeholder="Tên/Mã học viên"
+              placeholder="Nhập họ tên học viên"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               size="large"
@@ -168,19 +239,21 @@ const DanhSachChiaCabin = () => {
               onPressEnter={handleSearch}
             />
           </Col>
-          <Col xs={24} sm={12} md={7}>
+
+          <Col xs={24} sm={12} md={9}>
             <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-              Khóa học
+              Tên khóa
             </label>
             <Select
               className="w-full"
               placeholder="-- Chọn khóa học --"
-              loading={loadingKhoaHoc}
-              value={selectedKhoaHoc}
-              onChange={(value) => setSelectedKhoaHoc(value)}
-              options={khoaHocOptions}
+              loading={loadingKhoaHoc || loadingLogin}
+              value={selectedTenKhoa}
+              onChange={(value) => setSelectedTenKhoa(value)}
+              options={selectedCourse}
               allowClear
               showSearch
+              optionFilterProp="label"
               filterOption={(input, option) =>
                 (option?.label ?? "")
                   .toLowerCase()
@@ -188,42 +261,33 @@ const DanhSachChiaCabin = () => {
               }
             />
           </Col>
-          <Col xs={24} sm={12} md={7}>
-            <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
-              Trạng thái Cabin
-            </label>
-            <Select
-              className="w-full"
-              placeholder="-- Chọn trạng thái Cabin --"
-              value={selectedTrangThaiCabin}
-              onChange={(value) => setSelectedTrangThaiCabin(value)}
-              options={trangThaiCabinOptions}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} sm={12} md={3} className="pl-4 flex items-center">
+
+          <Col xs={24} sm={12} md={2} className="pl-4 flex items-center">
             <Button
               type="primary"
-              className="w-full !font-medium !py-4.5 !rounded-md !bg-[#3366CC] "
+              className="w-full !font-medium !py-4.5 !rounded-md !bg-[#3366CC]"
               onClick={handleSearch}
               icon={<SearchOutlined />}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
             >
               Tìm kiếm
             </Button>
           </Col>
         </Row>
       </Card>
+
       <Table
         columns={columns}
-        dataSource={[]}
-        // loading={isLoadingKhoaHoc}
-        rowKey="id"
-        pagination={false}
+        dataSource={dataSource}
+        loading={isLoadingHocVien}
+        rowKey="ma_dk"
+        pagination={{
+          current: searchParams.page,
+          pageSize: searchParams.limit,
+          total: totalItems,
+          showSizeChanger: false,
+          showTotal: (total) => `Tổng ${total} học viên`,
+        }}
+        onChange={handleTableChange}
         size="small"
         scroll={{ x: 1200 }}
         bordered
