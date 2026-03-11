@@ -12,16 +12,13 @@ import {
   Card,
   Checkbox,
   message,
+  Tag,
 } from "antd";
 import { useLocation } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { hocVienTheoKhoa } from "../../apis/hocVien";
-import { lopHocLyThuyet } from "../../apis/khoaHoc";
-import { DangNhapLopLyThuyet } from "../../apis/auth";
-import {
-  capNhatTrangThaiHocVienLyThuyet,
-  getDanhSachHocVienLyThuyet,
-} from "../../apis/apiHocVienLopLyThuyet";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { capNhatTrangThaiHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
+import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
+import { toTitleCase } from "../../util/helper";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -40,71 +37,118 @@ const formatDateTime = (value) => {
   return `${datePart} ${timePart}`;
 };
 
+const normalizeApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.result)) return payload.result;
+  return [];
+};
+
+const normalizeBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["false", "0", "no", "off", ""].includes(normalized)) return false;
+    if (["true", "1", "yes", "on"].includes(normalized)) return true;
+  }
+  return Boolean(value);
+};
+
 const QuanLyHocVienLyThuyet = () => {
   const [selectedClassIid, setSelectedClassIid] = useState("");
   const [savingStudentCode, setSavingStudentCode] = useState("");
+  const [studentStatusOverrides, setStudentStatusOverrides] = useState({});
   const keywordInputRef = useRef(null);
-  const queryClient = useQueryClient();
   const [params, setParams] = useState({
     page: 1,
+    limit: 10,
     text: "",
   });
 
   const location = useLocation();
   const { program_code } = location?.state || {};
 
-  const { data: loginData } = useQuery({
-    queryKey: ["loginLyThuyet"],
-    queryFn: () => DangNhapLopLyThuyet(),
-    staleTime: Infinity,
-    select: (data) => data?.result,
-  });
-
   const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
-    queryKey: ["lopHocLyThuyet", params],
-    queryFn: () => lopHocLyThuyet(loginData, params),
-    enabled: !!loginData,
+    queryKey: ["optionLopLyThuyet"],
+    queryFn: () => optionLopLyThuyet(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
 
+  const courseList = useMemo(
+    () => normalizeApiList(dataKhoaHoc),
+    [dataKhoaHoc],
+  );
+
   const classOptions = useMemo(() => {
-    const list = dataKhoaHoc?.result || [];
-    return list.map((item) => ({
-      label: item?.suffix_name || item?.name || `#${item?.iid}`,
+    return courseList.map((item) => ({
+      label: item?.name || item?.suffix_name || item?.code || `#${item?.iid}`,
       value: item?.iid,
     }));
-  }, [dataKhoaHoc]);
+  }, [courseList]);
 
-  const activeClassIid = selectedClassIid || classOptions?.[0]?.value || "";
+  const activeClassIid = selectedClassIid || classOptions[0]?.value || "";
 
   const selectedClass = useMemo(() => {
-    const list = dataKhoaHoc?.result || [];
-    return list.find((item) => String(item?.iid) === String(activeClassIid));
-  }, [dataKhoaHoc, activeClassIid]);
+    return courseList.find(
+      (item) => String(item?.iid) === String(activeClassIid),
+    );
+  }, [courseList, activeClassIid]);
 
-  const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
-    queryKey: ["danhSachHocVien", activeClassIid, params],
-    queryFn: () => hocVienTheoKhoa(activeClassIid, params),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    enabled: !!activeClassIid,
-  });
+  const enrolmentPlanIid = selectedClass?.iid || activeClassIid || "";
+
+  const { data: ketQuaKiemTraData = {}, isLoading: isLoadingHocVien } =
+    useQuery({
+      queryKey: ["ketQuaKiemTra", enrolmentPlanIid, params.page, params.limit],
+      queryFn: () =>
+        ketQuaKiemTra(enrolmentPlanIid, {
+          page: params.page,
+          limit: params.limit,
+        }),
+      staleTime: 1000 * 60 * 5,
+      retry: false,
+      enabled: Boolean(enrolmentPlanIid),
+    });
 
   const students = useMemo(() => {
-    const list = danhSachHocVien?.result;
-    return Array.isArray(list) ? list : [];
-  }, [danhSachHocVien]);
+    const list = normalizeApiList(ketQuaKiemTraData);
+
+    const keyword = params.text.trim().toLowerCase();
+    if (!keyword) return list;
+
+    return list.filter((item) => {
+      const user = item?.user || {};
+      const maDk = item?.ma_dk || "";
+      return [user?.name, user?.first_name, user?.last_name, maDk]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword));
+    });
+  }, [ketQuaKiemTraData, params.text]);
+
+  const totalStudents = Number(
+    ketQuaKiemTraData?.total ||
+      ketQuaKiemTraData?.pagination?.total ||
+      ketQuaKiemTraData?.meta?.total ||
+      students.length ||
+      0,
+  );
 
   const getStudentCode = (record) =>
     String(
-      record?.user?.admission_code || record?.user?.code || record?.id || "",
+      record?.ma_dk ||
+        record?.user?.admission_code ||
+        record?.user?.code ||
+        record?.id ||
+        "",
     );
 
   const isPassAllLyThuyet = (record) => {
-    const scoreByRubrik = record?.learning_progress?.score_by_rubrik || [];
-    if (!Array.isArray(scoreByRubrik) || scoreByRubrik.length === 0)
-      return false;
+    const scoreByRubrik = record?.learning?.learning_progress || [];
+    if (!Array.isArray(scoreByRubrik) || scoreByRubrik.length === 0) {
+      return Boolean(record?.learning?.passed);
+    }
     return scoreByRubrik.every((item) => Number(item?.passed) !== 0);
   };
 
@@ -123,54 +167,30 @@ const QuanLyHocVienLyThuyet = () => {
     }
   };
 
-  const maKhoaFilter =
-    selectedClass?.suffix_name || selectedClass?.name || program_code || "";
-  const statusQueryKey = [
-    "trang-thai-hoc-vien-ly-thuyet-hoc-vien",
-    maKhoaFilter,
-  ];
-
-  const { data: trangThaiHocVienData } = useQuery({
-    queryKey: statusQueryKey,
-    queryFn: () => getDanhSachHocVienLyThuyet({ maKhoa: maKhoaFilter }),
-    enabled: !!maKhoaFilter,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-
-  const studentCheckMap = useMemo(() => {
-    const result = {};
-    const list = Array.isArray(trangThaiHocVienData?.data)
-      ? trangThaiHocVienData.data
-      : [];
-
-    list.forEach((item) => {
-      if (!item?.ma_dk) return;
-      result[String(item.ma_dk)] = item;
-    });
-
-    return result;
-  }, [trangThaiHocVienData]);
-
   const resolveCheckState = (record) => {
     const maDk = getStudentCode(record);
-    const savedData = studentCheckMap?.[maDk] || {};
+    const localOverride = studentStatusOverrides[maDk] || {};
+    const savedData = {
+      ...(record?.trang_thai || {}),
+      ...localOverride,
+    };
     const autoLyThuyetPassed = isPassAllLyThuyet(record);
 
-    const lyThuyetChecked =
+    const lyThuyetDat =
       savedData?.loai_ly_thuyet === undefined
-        ? !autoLyThuyetPassed
-        : Boolean(savedData?.loai_ly_thuyet);
+        ? autoLyThuyetPassed
+        : normalizeBoolean(savedData?.loai_ly_thuyet);
+    const loaiLyThuyet = lyThuyetDat;
 
-    // Loại hết môn mặc định được tích sẵn; nếu loại lý thuyết tích thì luôn ép tích theo.
-    const hetMonChecked = lyThuyetChecked
-      ? true
-      : savedData?.loai_het_mon === undefined
+    const hetMonChecked =
+      savedData?.loai_het_mon === undefined
         ? true
-        : Boolean(savedData?.loai_het_mon);
+        : normalizeBoolean(savedData?.loai_het_mon, true);
 
-    const cabinChecked = Boolean(savedData?.cabin);
-    const datChecked = Boolean(savedData?.dat);
+    const cabinChecked = normalizeBoolean(
+      savedData?.dat_cabin ?? savedData?.cabin,
+    );
+    const datChecked = normalizeBoolean(savedData?.dat);
     const ghiChu = parseGhiChu(savedData?.ghi_chu);
     const statusUpdatedAt =
       savedData?.status_updated_at ||
@@ -179,12 +199,15 @@ const QuanLyHocVienLyThuyet = () => {
       savedData?.updated_ts ||
       null;
 
-    // Đủ điều kiện khi cả 2 đều không bị loại
-    const isDuDieuKien = !lyThuyetChecked && !hetMonChecked;
+    const isDuDieuKien =
+      savedData?.is_du_dieu_kien === undefined
+        ? lyThuyetDat && hetMonChecked
+        : normalizeBoolean(savedData?.is_du_dieu_kien);
 
     return {
       maDk,
-      lyThuyetChecked,
+      loaiLyThuyet,
+      lyThuyetDat,
       hetMonChecked,
       cabinChecked,
       datChecked,
@@ -198,38 +221,40 @@ const QuanLyHocVienLyThuyet = () => {
     mutationFn: ({ maDk, payload }) =>
       capNhatTrangThaiHocVienLyThuyet(maDk, payload),
     onSuccess: (_response, variables) => {
-      queryClient.setQueryData(statusQueryKey, (old) => {
-        const currentList = Array.isArray(old?.data) ? old.data : [];
-        const nextList = [...currentList];
-        const targetIndex = nextList.findIndex(
-          (item) => String(item?.ma_dk) === String(variables?.maDk),
-        );
+      console.log(variables);
 
-        if (targetIndex >= 0) {
-          nextList[targetIndex] = {
-            ...nextList[targetIndex],
-            ...variables?.payload,
-            ma_dk: variables?.maDk,
-          };
-        } else {
-          nextList.push({
-            ma_dk: variables?.maDk,
-            ...variables?.payload,
-          });
-        }
-
-        return {
-          ...(old || {}),
-          data: nextList,
-        };
-      });
-      // queryClient.invalidateQueries({ queryKey: statusQueryKey });
+      message.success(
+        `Cập nhật trạng thái thành công của học viên ${toTitleCase(variables?.payload?.ho_ten)}`,
+      );
+      setStudentStatusOverrides((prev) => ({
+        ...prev,
+        [variables.maDk]: {
+          ...(prev[variables.maDk] || {}),
+          loai_het_mon: variables.payload.loai_het_mon,
+          ghi_chu: variables.payload.ghi_chu,
+          status_updated_at: variables.payload.status_updated_at,
+          dat_cabin: variables.payload.dat_cabin,
+          is_du_dieu_kien:
+            variables.payload.loai_ly_thuyet === true &&
+            variables.payload.loai_het_mon === true,
+        },
+      }));
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      if (variables?.rollbackState) {
+        setStudentStatusOverrides((prev) => ({
+          ...prev,
+          [variables.maDk]: {
+            ...(prev[variables.maDk] || {}),
+            ...variables.rollbackState,
+          },
+        }));
+      }
       message.error(
         `Lưu trạng thái thất bại: ${error?.response?.data?.message || error?.message || "Có lỗi xảy ra"}`,
       );
     },
+
     onSettled: () => {
       setSavingStudentCode("");
     },
@@ -237,24 +262,22 @@ const QuanLyHocVienLyThuyet = () => {
 
   const buildPayload = (record, overrides = {}) => {
     const currentState = resolveCheckState(record);
-    const loaiLyThuyet =
-      overrides.loai_ly_thuyet ?? currentState.lyThuyetChecked;
+    const loaiLyThuyet = overrides.loai_ly_thuyet ?? currentState.loaiLyThuyet;
     const loaiHetMon = overrides.loai_het_mon ?? currentState.hetMonChecked;
 
     return {
       loai_ly_thuyet: loaiLyThuyet,
       loai_het_mon: loaiHetMon,
       ghi_chu: overrides.ghi_chu ?? currentState.ghiChu,
-      ma_khoa:
-        selectedClass?.suffix_name || selectedClass?.name || program_code || "",
-      ten_khoa: selectedClass?.name || program_code || "",
+      ma_khoa: selectedClass?.iid || "",
+      ten_khoa:
+        selectedClass?.name || selectedClass?.suffix_name || program_code || "",
       status_updated_at:
         overrides.status_updated_at || new Date().toISOString(),
       ho_ten: record?.user?.name,
-      can_cuoc: record?.user?.code,
-      // ma_dk: record?.user?.admission_code,
+      can_cuoc: record?.user?.identification_card,
       nam_sinh: record?.user?.birth_year,
-      dat_cabin: loaiLyThuyet === false && loaiHetMon === false,
+      dat_cabin: loaiLyThuyet === true && loaiHetMon === true,
     };
   };
 
@@ -265,21 +288,31 @@ const QuanLyHocVienLyThuyet = () => {
       return;
     }
 
-    const overrides = { [fieldName]: checkedValue };
-
-    // Tích loại lý thuyết → tự động tích loại hết môn
-    if (fieldName === "loai_ly_thuyet" && checkedValue === true) {
-      overrides.loai_het_mon = true;
-    }
-
-    // Bỏ tích loại hết môn → tự động bỏ loại lý thuyết
-    if (fieldName === "loai_het_mon" && checkedValue === false) {
-      overrides.loai_ly_thuyet = false;
-    }
+    const currentState = resolveCheckState(record);
+    const nextCheckedValue =
+      fieldName === "loai_het_mon" ? !currentState.hetMonChecked : checkedValue;
+    const overrides = { [fieldName]: nextCheckedValue };
+    const rollbackState =
+      fieldName === "loai_het_mon"
+        ? {
+            loai_het_mon: currentState.hetMonChecked,
+          }
+        : {};
 
     const payload = buildPayload(record, overrides);
+    setStudentStatusOverrides((prev) => ({
+      ...prev,
+      [maDk]: {
+        ...(prev[maDk] || {}),
+        [fieldName]: nextCheckedValue,
+        status_updated_at: payload.status_updated_at,
+        dat_cabin: payload.dat_cabin,
+        is_du_dieu_kien:
+          payload.loai_ly_thuyet === true && payload.loai_het_mon === true,
+      },
+    }));
     setSavingStudentCode(maDk);
-    saveStudentCheck({ maDk, payload });
+    saveStudentCheck({ maDk, payload, rollbackState });
   };
 
   const handleBlurGhiChu = (record, value) => {
@@ -302,6 +335,7 @@ const QuanLyHocVienLyThuyet = () => {
     const text = keywordInputRef.current?.input?.value?.trim() || "";
     setParams({
       page: 1,
+      limit: params.limit,
       text,
     });
   };
@@ -312,6 +346,7 @@ const QuanLyHocVienLyThuyet = () => {
     }
     setParams({
       page: 1,
+      limit: params.limit,
       text: "",
     });
   };
@@ -333,16 +368,14 @@ const QuanLyHocVienLyThuyet = () => {
         <div className="flex items-center gap-2">
           <Image
             src={user?.avatar || user?.default_avatar}
-            className="!h-11 !w-10.5 rounded-lg"
+            className="!h-10 !w-10 rounded-lg"
             alt="av"
           />
           <div className="flex flex-col">
             <span className="font-bold text-gray-600 text-sm">
               {user?.name || "-"}
             </span>
-            <span className="text-xs text-gray-500">
-              {user?.admission_code || "-"}
-            </span>
+            <span className="text-xs text-gray-500">{user?.code || "-"}</span>
           </div>
         </div>
       ),
@@ -368,7 +401,12 @@ const QuanLyHocVienLyThuyet = () => {
       width: 80,
       key: "khoa",
       align: "center",
-      render: () => selectedClass?.name || program_code || "-",
+      render: () =>
+        selectedClass?.name ||
+        selectedClass?.suffix_name ||
+        selectedClass?.code ||
+        program_code ||
+        "-",
     },
     {
       title: "Điều kiện học Cabin",
@@ -383,32 +421,24 @@ const QuanLyHocVienLyThuyet = () => {
         ),
     },
     {
-      title: "Loại lý thuyết",
+      title: "Lý thuyết online",
       key: "passed_total",
-      width: 120,
+      width: 130,
       align: "center",
       render: (_, record) => {
-        const studentCode = getStudentCode(record);
-        const checked = resolveCheckState(record).lyThuyetChecked;
-        const isSaving = savingStudentCode === studentCode;
+        const { lyThuyetDat } = resolveCheckState(record);
 
         return (
-          <Spin spinning={isSaving} size="small">
-            <Checkbox
-              checked={checked}
-              disabled={isSaving}
-              onChange={(e) =>
-                handleToggleCheckbox(record, "loai_ly_thuyet", e.target.checked)
-              }
-            />
-          </Spin>
+          <Tag color={lyThuyetDat ? "green" : "error"} variant="solid">
+            {lyThuyetDat ? "Đạt" : "Chưa đạt"}
+          </Tag>
         );
       },
     },
     {
-      title: "Loại hết môn",
+      title: "Làm bài hết môn",
       key: "last_login",
-      width: 120,
+      width: 140,
       align: "center",
       render: (_, record) => {
         const studentCode = getStudentCode(record);
@@ -431,7 +461,7 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "Cabin",
       key: "updated_ts",
-      width: 130,
+      width: 110,
       align: "center",
       render: (_, record) => {
         const checked = resolveCheckState(record).cabinChecked;
@@ -446,7 +476,7 @@ const QuanLyHocVienLyThuyet = () => {
     },
     {
       title: "DAT",
-      key: "detail",
+      key: "dat",
       width: 90,
       align: "center",
       render: (_, record) => {
@@ -486,8 +516,8 @@ const QuanLyHocVienLyThuyet = () => {
     // },
     {
       title: "Ghi chú",
-      key: "detail",
-      width: 260,
+      key: "ghi_chu",
+      width: 240,
       align: "center",
       render: (_, record) => {
         const state = resolveCheckState(record);
@@ -507,11 +537,7 @@ const QuanLyHocVienLyThuyet = () => {
   return (
     <Spin spinning={isLoadingHocVien || isLoadingKhoaHoc}>
       <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
-        Quản lý học viên lý thuyết - Khóa: {selectedClass?.name}
-        <span className="text-gray-500 italic">
-          {" "}
-          (#{danhSachHocVien?.total || 0} Thành viên)
-        </span>
+        Quản lý học viên lý thuyết
       </h1>
 
       <Card className="!mt-5 !mb-4">
@@ -522,7 +548,7 @@ const QuanLyHocVienLyThuyet = () => {
             </label>
             <Select
               className="w-full"
-              placeholder="--Chon lop--"
+              placeholder="--Chọn lớp--"
               value={activeClassIid || undefined}
               onChange={(value) => {
                 setSelectedClassIid(value || "");
@@ -532,6 +558,9 @@ const QuanLyHocVienLyThuyet = () => {
               loading={isLoadingKhoaHoc}
               showSearch
               optionFilterProp="label"
+              notFoundContent={
+                isLoadingKhoaHoc ? "Đang tải khóa học..." : "Không có khóa học"
+              }
             />
           </Col>
 
@@ -542,7 +571,7 @@ const QuanLyHocVienLyThuyet = () => {
             <Input
               aria-label="Tên học viên"
               ref={keywordInputRef}
-              placeholder="Ten hoc vien"
+              placeholder="Tên học viên "
               onPressEnter={handleFilter}
             />
           </Col>
@@ -564,8 +593,21 @@ const QuanLyHocVienLyThuyet = () => {
       <Table
         columns={columns}
         dataSource={students}
-        pagination={false}
-        rowKey="id"
+        pagination={{
+          current: params.page,
+          pageSize: params.limit,
+          total: totalStudents,
+          onChange: (page, pageSize) => {
+            setParams((prev) => ({
+              ...prev,
+              page,
+              limit: pageSize,
+            }));
+          },
+          showSizeChanger: false,
+          showTotal: (total) => `Tổng ${total} học viên`,
+        }}
+        rowKey={(record) => record?.user?.iid || record?.ma_dk || record?.id}
         size="small"
         bordered
         scroll={{ x: 1200 }}

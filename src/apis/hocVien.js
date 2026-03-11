@@ -1,7 +1,6 @@
 import axios from "axios";
 import { apiClient } from "./clientApi";
 import { baseURL } from "../constants/base";
-import { DangNhapLopLyThuyet } from "./auth";
 import { getCachedLogin, invalidateCachedLogin } from "./authCache";
 
 export const DanhSachHocVien = async (params) => {

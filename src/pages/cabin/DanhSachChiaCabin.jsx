@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Col,
+  Image,
   Input,
   Row,
   Select,
@@ -10,195 +11,123 @@ import {
   Tag,
   Typography,
 } from "antd";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { SearchOutlined } from "@ant-design/icons";
-import { lopHocLyThuyet } from "../../apis/khoaHoc";
-import {
-  getDanhSachHocVienCabin,
-  getDanhSachKetQuaHocCabin,
-} from "../../apis/cabinApi";
-import { toTitleCase } from "../../util/helper";
-import { DangNhapLopLyThuyet } from "../../apis/auth";
+import { danhSachHocVienCaBin } from "../../apis/apiCabinLocal";
+import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 
 const { Title } = Typography;
 
-const formatDuration = (totalSeconds) => {
-  const total = Number(totalSeconds || 0);
-  if (total <= 0) return "-";
+const normalizeApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.result)) return payload.result;
+  return [];
+};
 
+const getCabinStatus = (value) => {
+  if (value === "chua hoc") {
+    return { text: "Chưa học", color: "default" };
+  }
+
+  if (value === "dat") {
+    return { text: "Đạt", color: "green" };
+  }
+
+  return { text: "Chưa đạt", color: "orange" };
+};
+
+const secondsToHourMinute = (seconds) => {
+  const total = Number(seconds || 0);
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
 
-  if (hours > 0) {
-    return `${String(hours).padStart(2, "0")} giờ ${String(minutes).padStart(2, "0")} phút`;
-  }
-
-  return `${String(minutes).padStart(2, "0")} phút`;
+  return `${hours}h${minutes}p`;
 };
 
 const DanhSachChiaCabin = () => {
-  const [selectedTenKhoa, setSelectedTenKhoa] = useState(undefined);
-  const [searchText, setSearchText] = useState("");
+  const [selectedCourseIid, setSelectedCourseIid] = useState();
+  const [selectedCabinStatus, setSelectedCabinStatus] = useState();
+  const searchInputRef = useRef(null);
   const [searchParams, setSearchParams] = useState({
     page: 1,
-    limit: 20,
+    limit: 10,
+    hoTen: "",
+    trang_thai_cabin: undefined,
   });
 
-  const {
-    data: loginData,
-    isLoading: loadingLogin,
-    isFetched: isLoginFetched,
-  } = useQuery({
-    queryKey: ["loginLyThuyet"],
-    queryFn: () => DangNhapLopLyThuyet(),
-    staleTime: Infinity,
-    select: (data) => data?.result,
-  });
-
-  const {
-    data: dataKhoaHoc,
-    isLoading: loadingKhoaHoc,
-    isFetched: isKhoaHocFetched,
-  } = useQuery({
-    queryKey: ["lopHocLyThuyetPublic"],
-    queryFn: () => lopHocLyThuyet(loginData),
-    enabled: !!loginData,
+  const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
+    queryKey: ["optionLopLyThuyet"],
+    queryFn: () => optionLopLyThuyet(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
 
-  const sortedCourses = useMemo(() => {
-    const options = Array.isArray(dataKhoaHoc?.result)
-      ? dataKhoaHoc.result
-      : [];
-
-    return [...options].sort((a, b) => {
-      const tsA = Number(a?.ts || 0);
-      const tsB = Number(b?.ts || 0);
-      return tsB - tsA;
-    });
-  }, [dataKhoaHoc]);
-
-  const courseOptions = useMemo(() => {
-    return sortedCourses.map((item) => ({
-      label: item?.suffix_name || item?.name || `#${item?.iid}`,
-      value: String(item?.iid || ""),
-    }));
-  }, [sortedCourses]);
-
-  const activeCourseIid =
-    selectedTenKhoa || courseOptions?.[0]?.value || undefined;
-
-  const selectedCourse = useMemo(() => {
-    return sortedCourses.find(
-      (item) => String(item?.iid) === String(activeCourseIid),
-    );
-  }, [activeCourseIid, sortedCourses]);
-
-  const selectedCourseLabel = useMemo(() => {
-    return selectedCourse?.name || "";
-  }, [selectedCourse]);
-
-  const selectedCourseCode = useMemo(() => {
-    return selectedCourse?.code || "";
-  }, [selectedCourse]);
-
-  const hocVienParams = useMemo(
-    () => ({
-      page: searchParams.page,
-      limit: searchParams.limit,
-      hoTen: searchParams.hoTen || undefined,
-      maKhoa: selectedCourseLabel || undefined,
-    }),
-    [searchParams, selectedCourseLabel],
+  const courseList = useMemo(
+    () => normalizeApiList(dataKhoaHoc),
+    [dataKhoaHoc],
   );
 
-  const { data: danhSachHocVien = {}, isFetched: isHocVienFetched } = useQuery({
-    queryKey: ["danhSachHocVienCabin", hocVienParams],
-    queryFn: () => getDanhSachHocVienCabin(hocVienParams),
+  const courseOptions = useMemo(() => {
+    return courseList.map((item) => ({
+      label: item?.name || item?.suffix_name || item?.code || `#${item?.iid}`,
+      value: String(item?.iid || ""),
+    }));
+  }, [courseList]);
+
+  const activeCourseIid =
+    selectedCourseIid || courseOptions?.[0]?.value || undefined;
+
+  const selectedCourse = useMemo(() => {
+    return courseList.find(
+      (item) => String(item?.iid) === String(activeCourseIid),
+    );
+  }, [activeCourseIid, courseList]);
+
+  const selectedCourseCode = selectedCourse?.code || "";
+  const selectedCourseName = selectedCourse?.name || "";
+
+  const localParams = useMemo(() => {
+    return {
+      page: searchParams.page,
+      limit: searchParams.limit,
+      text: searchParams.hoTen || undefined,
+      khoa: selectedCourseCode,
+      trang_thai_cabin: searchParams.trang_thai_cabin || undefined,
+    };
+  }, [searchParams, selectedCourseCode]);
+
+  const { data: danhSachHocVien = {}, isLoading: isLoadingHocVien } = useQuery({
+    queryKey: ["danhSachHocVienCaBin", activeCourseIid, localParams],
+    queryFn: () => danhSachHocVienCaBin(activeCourseIid, localParams),
     staleTime: 1000 * 60 * 5,
     retry: false,
     enabled: !!activeCourseIid,
   });
 
-  const { data: ketQuaHocCabin = {}, isFetched: isKetQuaHocCabinFetched } =
-    useQuery({
-      queryKey: ["ketQuaHocCabin", selectedCourseCode],
-      queryFn: () =>
-        getDanhSachKetQuaHocCabin({
-          khoa: selectedCourseCode,
-          hoTen: "",
-        }),
-      staleTime: 1000 * 60 * 5,
-      retry: false,
-      enabled: !!selectedCourseCode,
-    });
-
-  const ketQuaMap = useMemo(() => {
-    const raw = Array.isArray(ketQuaHocCabin?.data) ? ketQuaHocCabin.data : [];
-    const map = {};
-
-    for (const item of raw) {
-      const maDK = item?.MaDK;
-      if (!maDK) continue;
-
-      if (!map[maDK]) {
-        map[maDK] = {
-          tongThoiGian: 0,
-          baiHoc: new Set(),
-        };
-      }
-
-      map[maDK].tongThoiGian += Number(item?.TongThoiGian || 0);
-      map[maDK].baiHoc.add(item?.ID_BaiTap);
-    }
-
-    const result = {};
-    for (const [maDK, val] of Object.entries(map)) {
-      result[maDK] = {
-        tongThoiGian: val.tongThoiGian,
-        tongThoiGianText: formatDuration(val.tongThoiGian),
-        soBaiHoc: val.baiHoc.size,
-      };
-    }
-
-    return result;
-  }, [ketQuaHocCabin]);
-
   const dataSource = useMemo(() => {
-    const raw = Array.isArray(danhSachHocVien?.data)
-      ? danhSachHocVien.data
-      : [];
-
-    return raw.map((item) => {
-      const cabinInfo = ketQuaMap[item?.ma_dk] || {};
-
-      return {
-        ...item,
-        thoi_gian_cabin_text: cabinInfo.tongThoiGianText || "-",
-        so_bai_cabin: cabinInfo.soBaiHoc || 0,
-      };
-    });
-  }, [danhSachHocVien, ketQuaMap]);
+    return Array.isArray(danhSachHocVien?.data) ? danhSachHocVien.data : [];
+  }, [danhSachHocVien]);
 
   const totalItems = useMemo(() => {
-    return danhSachHocVien?.pagination?.total || dataSource.length || 0;
+    return (
+      danhSachHocVien?.total ||
+      danhSachHocVien?.pagination?.total ||
+      danhSachHocVien?.meta?.total ||
+      dataSource.length ||
+      0
+    );
   }, [danhSachHocVien, dataSource.length]);
 
-  const isLoadingHocVien = [
-    !isLoginFetched,
-    !isKhoaHocFetched,
-    activeCourseIid && !isHocVienFetched,
-    selectedCourseCode && !isKetQuaHocCabinFetched,
-  ].some(Boolean);
-
   const handleSearch = useCallback(() => {
+    const nextSearchText = searchInputRef.current?.input?.value?.trim() || "";
     setSearchParams((prev) => ({
       ...prev,
       page: 1,
-      hoTen: searchText.trim() || undefined,
+      hoTen: nextSearchText,
+      trang_thai_cabin: selectedCabinStatus || undefined,
     }));
-  }, [searchText]);
+  }, [selectedCabinStatus]);
 
   const handleTableChange = useCallback((pagination) => {
     setSearchParams((prev) => ({
@@ -210,11 +139,11 @@ const DanhSachChiaCabin = () => {
 
   const renderBooleanTag = useCallback((value, trueText, falseText) => {
     return value ? (
-      <Tag color="error" variant="solid">
+      <Tag color="green" variant="solid">
         {trueText}
       </Tag>
     ) : (
-      <Tag color="green" variant="solid">
+      <Tag color="error" variant="solid">
         {falseText}
       </Tag>
     );
@@ -231,53 +160,65 @@ const DanhSachChiaCabin = () => {
           (searchParams.page - 1) * searchParams.limit + index + 1,
       },
       {
-        title: "Mã đăng ký",
-        dataIndex: "ma_dk",
-        key: "ma_dk",
-        width: 180,
+        title: "Học viên",
+        dataIndex: "user",
+        key: "user",
+        width: 260,
+        render: (user) => (
+          <div className="flex items-center gap-2">
+            <Image
+              src={user?.avatar || user?.default_avatar}
+              className="!h-10 !w-10 rounded-lg"
+              alt="av"
+            />
+            <div className="flex flex-col">
+              <span className="font-bold text-gray-600 text-sm">
+                {user?.name || "-"}
+              </span>
+              <span className="text-xs text-gray-500">{user?.code || "-"}</span>
+            </div>
+          </div>
+        ),
       },
       {
         title: "Mã khóa",
-        dataIndex: "ma_khoa",
+        dataIndex: "user",
         key: "ma_khoa",
-        width: 80,
-      },
-      {
-        title: "Họ tên",
-        dataIndex: "ho_ten",
-        key: "ho_ten",
-        width: 180,
-        render: (text) => toTitleCase(text || ""),
+        width: 120,
+        render: () => selectedCourseName || "-",
       },
       {
         title: "CCCD",
-        dataIndex: "cccd",
+        dataIndex: "user",
         key: "cccd",
-        width: 90,
+        width: 110,
+        render: (user) => user?.identification_card,
       },
       {
         title: "Năm sinh",
-        dataIndex: "nam_sinh",
+        dataIndex: "user",
         key: "nam_sinh",
-        width: 80,
+        width: 90,
         align: "center",
+        render: (user) => user?.birth_year,
       },
       {
-        title: "Lý thuyết",
-        dataIndex: "loai_ly_thuyet",
+        title: "Lý thuyết online",
+        dataIndex: "trang_thai",
         key: "loai_ly_thuyet",
-        width: 100,
+        width: 130,
         align: "center",
-        render: (value) => renderBooleanTag(value, "Trượt", "Đạt"),
+        render: (value) =>
+          renderBooleanTag(value?.loai_ly_thuyet, "Đạt", "Chưa đạt"),
       },
       {
         title: "Làm bài hết môn",
-        dataIndex: "loai_het_mon",
+        dataIndex: "trang_thai",
         key: "loai_het_mon",
-        width: 120,
+        width: 140,
         align: "center",
         render: (value) =>
-          !value ? (
+          value?.loai_het_mon ? (
             <Tag color="blue" variant="solid">
               Đã làm bài
             </Tag>
@@ -289,51 +230,45 @@ const DanhSachChiaCabin = () => {
       },
       {
         title: "Trạng thái cabin",
-        key: "trang_thai_cabin",
-        width: 120,
+        key: "cabin",
+        width: 130,
         align: "center",
-        render: (_text, record) => {
-          const cabinInfo = ketQuaMap[record.ma_dk];
-          if (!cabinInfo) return <Tag color="default">Chưa học</Tag>;
-
-          const datBai = cabinInfo.soBaiHoc >= 8;
-          const datThoiGian = cabinInfo.tongThoiGian >= 8400;
-
-          return datBai && datThoiGian ? (
-            <Tag color="cyan" variant="solid">
-              Đạt
-            </Tag>
-          ) : (
-            <Tag color="orange" variant="solid">
-              Chưa đạt
-            </Tag>
-          );
+        render: (_, record) => {
+          const status = getCabinStatus(record?.cabin?.trang_thai);
+          return <Tag color={status.color}>{status.text}</Tag>;
         },
       },
       {
         title: "Phút cabin",
-        dataIndex: "thoi_gian_cabin_text",
+        dataIndex: "cabin",
         key: "thoi_gian_cabin_text",
-        width: 110,
+        width: 120,
         align: "center",
+        render: (value) => secondsToHourMinute(value?.tong_thoi_gian || 0),
       },
       {
         title: "Bài cabin",
-        dataIndex: "so_bai_cabin",
+        dataIndex: "cabin",
         key: "so_bai_cabin",
-        width: 80,
+        width: 100,
         align: "center",
-        render: (value) => `${value || 0} bài`,
+        render: (value) => `${value?.so_bai_hoc || 0} bài`,
       },
       {
         title: "Ghi chú",
         dataIndex: "ghi_chu",
-        key: "ghi_chu_text",
-        width: 160,
+        key: "ghi_chu",
+        width: 130,
+        align: "center",
         render: (value) => value || "-",
       },
     ],
-    [renderBooleanTag, searchParams.limit, searchParams.page, ketQuaMap],
+    [
+      renderBooleanTag,
+      searchParams.limit,
+      searchParams.page,
+      selectedCourseName,
+    ],
   );
 
   return (
@@ -344,16 +279,19 @@ const DanhSachChiaCabin = () => {
 
       <Card className="!mt-5 !mb-5">
         <Row gutter={16} align="bottom">
-          <Col xs={24} sm={12} md={9}>
+          <Col xs={24} sm={12} md={7}>
             <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
               Tên khóa
             </label>
             <Select
               className="w-full"
               placeholder="-- Chọn khóa học --"
-              loading={loadingKhoaHoc || loadingLogin}
+              loading={loadingKhoaHoc}
               value={activeCourseIid}
-              onChange={(value) => setSelectedTenKhoa(value)}
+              onChange={(value) => {
+                setSelectedCourseIid(value);
+                setSearchParams((prev) => ({ ...prev, page: 1 }));
+              }}
               options={courseOptions}
               allowClear={false}
               showSearch
@@ -366,17 +304,38 @@ const DanhSachChiaCabin = () => {
             />
           </Col>
 
-          <Col xs={24} sm={12} md={9}>
+          <Col xs={24} sm={12} md={7}>
             <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
               Họ tên
             </label>
             <Input
               placeholder="Nhập họ tên học viên"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              ref={searchInputRef}
+              defaultValue={searchParams.hoTen}
               size="large"
               className="!text-sm"
               onPressEnter={handleSearch}
+            />
+          </Col>
+
+          <Col xs={24} sm={12} md={6}>
+            <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+              Trạng thái cabin
+            </label>
+            <Select
+              className="w-full"
+              placeholder="-- Chọn trạng thái --"
+              value={selectedCabinStatus}
+              onChange={(value) => {
+                setSelectedCabinStatus(value);
+                setSearchParams((prev) => ({ ...prev, page: 1 }));
+              }}
+              allowClear
+              options={[
+                { label: "Đạt", value: "dat" },
+                { label: "Chưa đạt", value: "chua dat" },
+                { label: "Chưa học", value: "chua hoc" },
+              ]}
             />
           </Col>
 
@@ -397,8 +356,10 @@ const DanhSachChiaCabin = () => {
       <Table
         columns={columns}
         dataSource={dataSource}
-        loading={isLoadingHocVien}
-        rowKey="ma_dk"
+        loading={loadingKhoaHoc || isLoadingHocVien}
+        rowKey={(record) =>
+          record?.ma_dk || record?.user?.code || record?.user?.iid
+        }
         pagination={{
           current: searchParams.page,
           pageSize: searchParams.limit,
@@ -408,7 +369,7 @@ const DanhSachChiaCabin = () => {
         }}
         onChange={handleTableChange}
         size="small"
-        scroll={{ x: 1200 }}
+        scroll={{ x: 1400 }}
         bordered
         className="overflow-hidden table-blue-header"
       />
