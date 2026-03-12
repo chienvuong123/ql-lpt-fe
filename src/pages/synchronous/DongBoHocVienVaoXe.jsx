@@ -307,12 +307,18 @@ export default function DongBoHocVienVaoXe() {
         dsMaDk: isAllStudentsSelected
           ? undefined
           : selectedStudentKeys.join(","),
-        dsMaGV:
-          selectedTeacherKeys.length > 0
-            ? selectedTeacherKeys.join(",")
-            : undefined,
         idkhoahoc: selectedKhoaHoc,
       });
+
+      if (selectedTeacherKeys.length > 0) {
+        await DanhSachXe({
+          dsBienSo: selectedCarKeys.join(","),
+          dsMaGV:
+            selectedTeacherKeys.length > 0
+              ? selectedTeacherKeys.join(",")
+              : undefined,
+        });
+      }
 
       const khoaHocName =
         khoaHocOptions.find((k) => k.value === selectedKhoaHoc)?.label || "";
