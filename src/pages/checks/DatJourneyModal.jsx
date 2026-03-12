@@ -47,7 +47,7 @@ const DatJourneyModal = ({
   courseLabel,
   studentCheckInfo = null,
   rows = [],
-}) => {  
+}) => {
   const rowsWithStatus = useMemo(
     () =>
       rows.map((item) => {

@@ -2,7 +2,6 @@ import { Navigate } from "react-router-dom";
 
 const isGiaoVien = () => {
   const name = sessionStorage.getItem("name") || "";
-  console.log(name);
 
   return (
     name.toLowerCase().includes("giao viên") ||

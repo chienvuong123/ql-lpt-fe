@@ -138,7 +138,10 @@ const StudentDetail = ({ data }) => {
   });
 
   const dataSource = useMemo(() => {
-    return Array.isArray(results?.data?.Data) ? results.data.Data : [];
+    const list = Array.isArray(results?.data?.Data) ? results.data.Data : [];
+    return [...list].sort(
+      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
+    );
   }, [results]);
 
   const dataCheck = useMemo(() => {
@@ -235,7 +238,7 @@ const StudentDetail = ({ data }) => {
       title: "Tên học viên",
       dataIndex: "HoTen",
       key: "HoTen",
-      width: 150,
+      width: 180,
       ellipsis: true,
       fixed: "left",
       render: (text) => renderValue(text),

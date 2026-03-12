@@ -46,6 +46,16 @@ export const danhSachHocVienKyDAT = async (payload) => {
   return response.data;
 };
 
+export const exportDanhSachHocVienKyDAT = async (payload) => {
+  const url = "http://192.168.1.69:8000/api/ky-dat/export-excel";
+  const response = await axios.get(url, {
+    params: payload,
+    responseType: "blob",
+  });
+
+  return response.data;
+};
+
 export const getPhienHocDAT = async (maHocVien) => {
   const response = await axios.get(`${baseURL}/phien-hoc-dat/${maHocVien}`);
 

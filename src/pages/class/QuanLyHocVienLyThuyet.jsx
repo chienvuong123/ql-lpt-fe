@@ -101,31 +101,28 @@ const QuanLyHocVienLyThuyet = () => {
 
   const { data: ketQuaKiemTraData = {}, isLoading: isLoadingHocVien } =
     useQuery({
-      queryKey: ["ketQuaKiemTra", enrolmentPlanIid, params.page, params.limit],
+      queryKey: [
+        "ketQuaKiemTra",
+        enrolmentPlanIid,
+        params.page,
+        params.limit,
+        params.text,
+      ],
       queryFn: () =>
         ketQuaKiemTra(enrolmentPlanIid, {
           page: params.page,
           limit: params.limit,
+          text: params.text,
         }),
       staleTime: 1000 * 60 * 5,
       retry: false,
       enabled: Boolean(enrolmentPlanIid),
     });
 
-  const students = useMemo(() => {
-    const list = normalizeApiList(ketQuaKiemTraData);
-
-    const keyword = params.text.trim().toLowerCase();
-    if (!keyword) return list;
-
-    return list.filter((item) => {
-      const user = item?.user || {};
-      const maDk = item?.ma_dk || "";
-      return [user?.name, user?.first_name, user?.last_name, maDk]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(keyword));
-    });
-  }, [ketQuaKiemTraData, params.text]);
+  const students = useMemo(
+    () => normalizeApiList(ketQuaKiemTraData),
+    [ketQuaKiemTraData],
+  );
 
   const totalStudents = Number(
     ketQuaKiemTraData?.total ||
@@ -221,8 +218,6 @@ const QuanLyHocVienLyThuyet = () => {
     mutationFn: ({ maDk, payload }) =>
       capNhatTrangThaiHocVienLyThuyet(maDk, payload),
     onSuccess: (_response, variables) => {
-      console.log(variables);
-
       message.success(
         `Cập nhật trạng thái thành công của học viên ${toTitleCase(variables?.payload?.ho_ten)}`,
       );

@@ -1,7 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Card, Empty, Image, Modal, Spin, Typography, message } from "antd";
+import {
+  Card,
+  Drawer,
+  Empty,
+  Image,
+  Modal,
+  Spin,
+  Typography,
+  message,
+} from "antd";
 import { getPhienHocDAT, updatePhienHocDAT } from "../../apis/hocVien";
+import {
+  evaluateNghiGiuaPhien,
+  evaluateSaiBienSo,
+  evaluateSaiGiaoVien,
+  evaluateTocDoPhien,
+} from "../checks/DieuKienKiemTraPublic";
 
 const { Text } = Typography;
 
@@ -12,11 +27,11 @@ const toNumber = (value) => {
   return Number.isFinite(num) ? num : 0;
 };
 
-const normalizeName = (name) =>
-  String(name || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, " ");
+// const normalizeName = (name) =>
+//   String(name || "")
+//     .trim()
+//     .toUpperCase()
+//     .replace(/\s+/g, " ");
 
 const normalizePlate = (plate) =>
   String(plate || "")
@@ -53,12 +68,12 @@ const getSessionKeys = (item) => {
   return Array.from(keys);
 };
 
-const getAvgSpeed = (item) => {
-  const km = toNumber(item?.TongQuangDuong);
-  const seconds = toNumber(item?.TongThoiGian);
-  if (km <= 0 || seconds <= 0) return 0;
-  return km / (seconds / 3600);
-};
+// const getAvgSpeed = (item) => {
+//   const km = toNumber(item?.TongQuangDuong);
+//   const seconds = toNumber(item?.TongThoiGian);
+//   if (km <= 0 || seconds <= 0) return 0;
+//   return km / (seconds / 3600);
+// };
 
 const formatDurationFromSeconds = (seconds) => {
   const totalMinutes = Math.round(toNumber(seconds) / 60);
@@ -122,7 +137,7 @@ const TruyVetModal = ({
       const response = await getPhienHocDAT(maDk);
       setStatusMap(toStatusMap(response));
     } catch {
-      message.error("Khong lay duoc trang thai phien DAT.");
+      // message.error("Khong lay duoc trang thai phien DAT.");
     } finally {
       setLoadingStatus(false);
     }
@@ -134,60 +149,52 @@ const TruyVetModal = ({
     fetchSessionStatuses();
   }, [open, maDk]);
 
-  const rowsWithStatus = useMemo(
-    () =>
-      rows.map((item) => {
-        const avgSpeed = getAvgSpeed(item);
-        const isSpeedInvalid = avgSpeed > 0 && avgSpeed < MIN_DAT_SPEED;
+  const rowsWithStatus = useMemo(() => {
+    const sorted = [...rows].sort(
+      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
+    );
 
-        const registeredTeacher = normalizeName(studentCheckInfo?.giaoVien);
-        const sessionTeacher = normalizeName(item?.HoTenGV);
-        const isTeacherMismatch =
-          !!registeredTeacher && !!sessionTeacher
-            ? sessionTeacher !== registeredTeacher
-            : false;
+    // Chạy toàn bộ check từ evaluateUtils
+    const nghiErrors = evaluateNghiGiuaPhien(sorted);
+    const tocDoErrors = evaluateTocDoPhien(sorted);
+    const giaoVienErrors = evaluateSaiGiaoVien(sorted, studentCheckInfo);
+    const bienSoErrors = evaluateSaiBienSo(sorted, studentCheckInfo);
 
-        const registeredPlateB1 = normalizePlate(studentCheckInfo?.xeB1);
-        const registeredPlateB2 = normalizePlate(studentCheckInfo?.xeB2);
-        const sessionPlate = normalizePlate(item?.BienSo);
-        const allowedPlates = [registeredPlateB1, registeredPlateB2].filter(
-          Boolean,
-        );
-        const isPlateMismatch =
-          allowedPlates.length > 0 && sessionPlate
-            ? !allowedPlates.includes(sessionPlate)
-            : false;
+    // Gán lỗi vào từng phiên theo index
+    return sorted.map((item, index) => {
+      const phienLabel = `Phiên ${index + 1}`;
 
-        const isInvalidByRule =
-          isSpeedInvalid || isTeacherMismatch || isPlateMismatch;
+      const _isSpeedInvalid = tocDoErrors.some((e) =>
+        e.message.startsWith(phienLabel),
+      );
+      const _isTeacherMismatch = giaoVienErrors.some((e) =>
+        e.message.startsWith(phienLabel),
+      );
+      const _isPlateMismatch = bienSoErrors.some((e) =>
+        e.message.startsWith(phienLabel),
+      );
+      const _isRestTooShort = nghiErrors.some(
+        (e) =>
+          e.message.includes(`Phiên ${index + 1} và`) ||
+          e.message.includes(`và ${index + 1}:`),
+      );
 
-        const matchedStatusKey = getSessionKeys(item).find(
-          (key) => statusMap[key],
-        );
-        const serverStatus = matchedStatusKey
-          ? statusMap[matchedStatusKey]
-          : null;
+      const _isInvalid =
+        _isSpeedInvalid ||
+        _isTeacherMismatch ||
+        _isPlateMismatch ||
+        _isRestTooShort;
 
-        const isInvalid =
-          serverStatus === "DUYET"
-            ? false
-            : serverStatus === "HUY"
-              ? true
-              : isInvalidByRule;
-
-        return {
-          ...item,
-          _avgSpeed: avgSpeed,
-          _isSpeedInvalid: isSpeedInvalid,
-          _isTeacherMismatch: isTeacherMismatch,
-          _isPlateMismatch: isPlateMismatch,
-          _isInvalidByRule: isInvalidByRule,
-          _serverStatus: serverStatus,
-          _isInvalid: isInvalid,
-        };
-      }),
-    [rows, studentCheckInfo, statusMap],
-  );
+      return {
+        ...item,
+        _isSpeedInvalid,
+        _isTeacherMismatch,
+        _isPlateMismatch,
+        _isRestTooShort,
+        _isInvalid,
+      };
+    });
+  }, [rows, studentCheckInfo]);
 
   const totalDistance = useMemo(
     () =>
@@ -280,17 +287,15 @@ const TruyVetModal = ({
   const isModalLoading = loading || loadingStatus || actioningId !== null;
 
   return (
-    <Modal
+    <Drawer
       title="Chi tiết DAT"
       open={open}
-      onCancel={onCancel}
+      onClose={onCancel}
       footer={null}
-      width={480}
+      width={680}
       destroyOnClose
     >
       <Spin spinning={isModalLoading}>
-        {" "}
-        {/* ← spin toàn modal */}
         <Card
           bodyStyle={{ padding: 12 }}
           className="!mb-3 !rounded-xl !border-0 !bg-[linear-gradient(120deg,#1e7ec8,#1aa0dd)]"
@@ -306,7 +311,7 @@ const TruyVetModal = ({
               <div className="!mb-1 !text-xs">
                 Mã học viên: {student?.user?.admission_code || "--"}
               </div>
-              <div className="!mb-1 !text-xs">Khoa: {courseLabel || "--"}</div>
+              <div className="!mb-1 !text-xs">Khóa: {courseLabel || "--"}</div>
               <div className="!text-xs">
                 Năm sinh: {student?.user?.birth_year || "--"}
               </div>
@@ -350,81 +355,124 @@ const TruyVetModal = ({
                 const isActioning = actioningId === sessionId;
 
                 return (
-                  <Card
-                    key={item?.ID || index}
-                    bodyStyle={{ padding: 0 }}
-                    className="!border-0 !shadow-sm !overflow-hidden"
-                    style={{
-                      borderLeft: `3px solid ${item?._isInvalid ? "#cf1322" : "#52c41a"}`,
-                      borderRadius: "8px",
-                      // ← dim card đang được xử lý
-                      opacity: isActioning ? 0.6 : 1,
-                      transition: "opacity 0.2s",
-                    }}
-                  >
-                    <div className="!flex !items-stretch">
-                      <div
-                        className="!w-8 !shrink-0 !flex !items-center !justify-center !text-xs !font-bold"
-                        style={{
-                          color: item?._isInvalid ? "#cf1322" : "#52c41a",
-                          background: item?._isInvalid ? "#fff1f0" : "#f6ffed",
-                        }}
-                      >
-                        {index + 1}
-                      </div>
-
-                      <div className="!flex-1 !px-3 !py-2 !text-xs">
-                        <div className="!flex !items-center !justify-between !mb-1">
-                          <span className="!font-semibold !text-gray-800 !text-sm">
-                            {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
-                          </span>
-                          <span
-                            className="!text-xs !font-semibold !px-2 !py-0.5 !rounded-full"
-                            style={{
-                              color: item?._isInvalid ? "#cf1322" : "#1e88d8",
-                              background: item?._isInvalid
-                                ? "#fff1f0"
-                                : "#e6f4ff",
-                              border: `1px solid ${item?._isInvalid ? "#ffccc7" : "#91caff"}`,
-                            }}
-                          >
-                            {item?.BienSo || "--"}
-                          </span>
+                  <div>
+                    <Card
+                      key={item?.ID || index}
+                      bodyStyle={{ padding: 0 }}
+                      className="!border-0 !shadow-sm !overflow-hidden"
+                      style={{
+                        borderLeft: `3px solid ${item?._isInvalid ? "#cf1322" : "#52c41a"}`,
+                        borderRadius: "8px",
+                        // ← dim card đang được xử lý
+                        opacity: isActioning ? 0.6 : 1,
+                        transition: "opacity 0.2s",
+                      }}
+                    >
+                      <div className="!flex !items-stretch">
+                        <div
+                          className="!w-8 !shrink-0 !flex !items-center !justify-center !text-xs !font-bold"
+                          style={{
+                            color: item?._isInvalid ? "#cf1322" : "#52c41a",
+                            background: item?._isInvalid
+                              ? "#fff1f0"
+                              : "#f6ffed",
+                          }}
+                        >
+                          {index + 1}
                         </div>
 
-                        <div className="!flex !items-center !justify-between !text-gray-500">
-                          <span>
-                            {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
-                            {end ? dayjs(end).format("HH:mm") : "--"}
-                          </span>
-                          <span className="!text-gray-400">
-                            {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
-                            {toNumber(item?.TongQuangDuong).toFixed(2)} km
-                          </span>
-                        </div>
-                      </div>
+                        <div className="!flex-1 !px-3 !py-2 !text-xs">
+                          <div className="!flex !items-center !justify-between !mb-1">
+                            <span className="!font-semibold !text-gray-800 !text-sm">
+                              {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
+                            </span>
+                            <span
+                              className="!text-xs !font-semibold !px-2 !py-0.5 !rounded-full"
+                              style={{
+                                color: item?._isInvalid ? "#cf1322" : "#1e88d8",
+                                background: item?._isInvalid
+                                  ? "#fff1f0"
+                                  : "#e6f4ff",
+                                border: `1px solid ${item?._isInvalid ? "#ffccc7" : "#91caff"}`,
+                              }}
+                            >
+                              {item?.BienSo || "--"}
+                            </span>
+                          </div>
 
-                      <button
-                        onClick={() => handleSessionAction(item)}
-                        disabled={!!actioningId} // ← disable tất cả button khi đang action
-                        className="!shrink-0 !w-[52px] !text-xs !font-semibold !text-white !border-0 !cursor-pointer !transition-all"
-                        style={{
-                          background: item?._isInvalid ? "#1e88d8" : "#cf1322",
-                          borderRadius: "0 8px 8px 0",
-                          // eslint-disable-next-line no-extra-boolean-cast
-                          opacity: !!actioningId ? 0.5 : 1,
-                          // eslint-disable-next-line no-extra-boolean-cast
-                          cursor: !!actioningId ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {isActioning
-                          ? "..."
-                          : item?._isInvalid
-                            ? "Duyệt"
-                            : "Hủy"}
-                      </button>
-                    </div>
-                  </Card>
+                          <div className="!flex !items-center !justify-between !text-gray-500">
+                            <span>
+                              {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
+                              {end ? dayjs(end).format("HH:mm") : "--"}
+                            </span>
+                            <span className="!text-gray-400">
+                              {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
+                              {toNumber(item?.TongQuangDuong).toFixed(2)} km
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleSessionAction(item)}
+                          disabled={!!actioningId} // ← disable tất cả button khi đang action
+                          className="!shrink-0 !w-[52px] !text-xs !font-semibold !text-white !border-0 !cursor-pointer !transition-all"
+                          style={{
+                            background: item?._isInvalid
+                              ? "#1e88d8"
+                              : "#cf1322",
+                            borderRadius: "0 8px 8px 0",
+                            // eslint-disable-next-line no-extra-boolean-cast
+                            opacity: !!actioningId ? 0.5 : 1,
+                            // eslint-disable-next-line no-extra-boolean-cast
+                            cursor: !!actioningId ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isActioning
+                            ? "..."
+                            : item?._isInvalid
+                              ? "Duyệt"
+                              : "Hủy"}
+                        </button>
+                      </div>
+                    </Card>
+                    {/* {item?._isInvalid && (
+                      <div className="!mt-1.5 !space-y-0.5 !pt-1">
+                        {item?._isPlateMismatch && (
+                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
+                            <span className="text-xs font-medium">
+                              Sai xe đăng ký ({item?.BienSo})
+                            </span>
+                          </div>
+                        )}
+                        {item?._isTeacherMismatch && (
+                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
+                            <span className="text-xs font-medium">
+                              Sai giáo viên ({item?.HoTenGV || "--"})
+                            </span>
+                          </div>
+                        )}
+                        {item?._isSpeedInvalid && (
+                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
+                            <span className="text-xs font-medium">
+                              Tốc độ thấp (
+                              {(
+                                toNumber(item?.TongQuangDuong) /
+                                (toNumber(item?.TongThoiGian) / 3600)
+                              ).toFixed(1)}{" "}
+                              km/h &lt; {MIN_DAT_SPEED} km/h)
+                            </span>
+                          </div>
+                        )}
+                        {item?._isRestTooShort && (
+                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
+                            <span className="text-xs font-medium">
+                              Nghỉ chưa đủ 15 phút so với phiên trước
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )} */}
+                  </div>
                 );
               })}
             </div>
@@ -433,7 +481,7 @@ const TruyVetModal = ({
           <Empty description="Khong co du lieu DAT" />
         )}
       </Spin>
-    </Modal>
+    </Drawer>
   );
 };
 

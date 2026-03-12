@@ -17,17 +17,22 @@ import {
 } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { lopHocLyThuyet } from "../../apis/khoaHoc";
-import { hocVienTheoKhoa } from "../../apis/hocVien";
 import { getDuLieuCabin } from "../../apis/searchPublic";
-import { DangNhapLopLyThuyet } from "../../apis/auth";
 import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import CabinModal from "./CabinModal";
-import { DangNhapPublic, HanhTrinhPublic, hocVienKyDATPublic } from "../../apis/apiDeploy";
+import {
+  DangNhapPublic,
+  HanhTrinhPublic,
+  hocVienKyDATPublic,
+} from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
 import "./index.css";
+import {
+  hocVienTheoKhoaLocal,
+  optionLopLyThuyet,
+} from "../../apis/apiLyThuyetLocal";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -141,30 +146,27 @@ const KiemTraPublic = () => {
     retry: false,
   });
 
-  const { data: loginData, isLoading: loadingLogin } = useQuery({
-    queryKey: ["loginLyThuyet"],
-    queryFn: () => DangNhapLopLyThuyet(),
-    staleTime: Infinity,
-    select: (data) => data?.result,
-  });
-
-  const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
-    queryKey: ["lopHocLyThuyetPublic"],
-    queryFn: () => lopHocLyThuyet(loginData),
-    enabled: !!loginData,
+  const { data: khoaHocData, isLoading: isLoadingKhoaHoc } = useQuery({
+    queryKey: ["optionLopLyThuyet"],
+    queryFn: () => optionLopLyThuyet(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
 
   const sortedCourses = useMemo(() => {
-    const options = dataKhoaHoc?.result || [];
+    const rawOptions = khoaHocData?.data || khoaHocData?.result || [];
+    const options = Array.isArray(rawOptions) ? rawOptions : [];
 
     return [...options].sort((a, b) => {
       const tsA = a?.ts || 0;
       const tsB = b?.ts || 0;
-      return tsB - tsA;
+      if (tsA !== tsB) return tsB - tsA;
+
+      const iidA = Number(a?.iid || 0);
+      const iidB = Number(b?.iid || 0);
+      return iidB - iidA;
     });
-  }, [dataKhoaHoc]);
+  }, [khoaHocData]);
 
   const selectedCourse = useMemo(() => {
     return sortedCourses.find(
@@ -186,11 +188,11 @@ const KiemTraPublic = () => {
     refetch: refetchSearchHocVien,
   } = useQuery({
     queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
-    queryFn: () => hocVienTheoKhoa(selectedKhoaHoc, searchParams || {}),
+    queryFn: () => hocVienTheoKhoaLocal(selectedKhoaHoc, searchParams || {}),
     staleTime: 0,
     cacheTime: 0,
     retry: false,
-    enabled: !!searchParams && !!loginData,
+    enabled: !!searchParams,
   });
 
   const cabinKey =
@@ -313,17 +315,15 @@ const KiemTraPublic = () => {
 
   const khoaHocOptions = useMemo(() => {
     const options = sortedCourses || [];
+
     return options.map((kh) => ({
-      label:
-        kh?.suffix_name || kh?.name
-          ? `${kh?.suffix_name || kh?.name}`
-          : kh?.code || "Không có tên",
+      label: kh?.name,
       value: kh?.iid || "",
     }));
   }, [sortedCourses]);
 
   const results = useMemo(() => {
-    const list = danhSachHocVien?.result;
+    const list = danhSachHocVien?.data;
     return Array.isArray(list) ? list : [];
   }, [danhSachHocVien]);
 
@@ -353,17 +353,21 @@ const KiemTraPublic = () => {
   }, [selectedStudent]);
 
   const lyThuyetExtraStatus = useMemo(() => {
-    const raw =
-      chiTietLyThuyetData?.data ||
-      chiTietLyThuyetData?.result ||
-      chiTietLyThuyetData;
+    const raw = chiTietLyThuyetData?.data;
+
+    if (!raw || Object.keys(raw).length === 0) {
+      return {
+        loaiHetMon: "Đã làm bài hết môn",
+        loaiHetMonStatus: true,
+      };
+    }
 
     const loaiHetMon = raw?.loai_het_mon;
+    const loaiLyThuyet = raw?.loai_ly_thuyet;
 
     return {
-      loaiHetMon:
-        loaiHetMon === false ? "Đã làm bài hết môn" : "Chưa làm bài hết môn",
-      loaiHetMonStatus: !loaiHetMon,
+      loaiHetMon: loaiHetMon ? "Đã làm bài hết môn" : "Chưa làm bài hết môn",
+      loaiHetMonStatus: loaiLyThuyet,
     };
   }, [chiTietLyThuyetData]);
 
@@ -375,10 +379,6 @@ const KiemTraPublic = () => {
 
     if (keyword.trim().length < 2) {
       message.warning("Vui lòng nhập từ khóa ít nhất 2 ký tự.");
-      return;
-    }
-    if (!loginData) {
-      message.warning("Đang đăng nhập hệ thống lý thuyết, vui lòng thử lại.");
       return;
     }
 
@@ -487,7 +487,7 @@ const KiemTraPublic = () => {
                 <Select
                   className="w-full"
                   placeholder="-- Chọn khóa học --"
-                  loading={loadingKhoaHoc || loadingLogin}
+                  loading={isLoadingKhoaHoc}
                   value={selectedKhoaHoc || undefined}
                   style={{ fontSize: 13 }}
                   onChange={(value) => {
@@ -533,11 +533,7 @@ const KiemTraPublic = () => {
                   type="primary"
                   className="w-full"
                   onClick={handleSearch}
-                  disabled={
-                    !selectedKhoaHoc ||
-                    keyword.trim().length < 2 ||
-                    loadingLogin
-                  }
+                  disabled={!selectedKhoaHoc || keyword.trim().length < 2}
                 >
                   Tìm
                 </Button>

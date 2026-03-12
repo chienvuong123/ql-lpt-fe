@@ -9,9 +9,14 @@ import {
   Modal,
   Spin,
   Typography,
-  message,
 } from "antd";
 import { getPhienHocDATPublic } from "../../apis/apiDeploy";
+import {
+  evaluateNghiGiuaPhien,
+  evaluateSaiBienSo,
+  evaluateSaiGiaoVien,
+  evaluateTocDoPhien,
+} from "./DieuKienKiemTraPublic";
 
 const { Text } = Typography;
 
@@ -22,11 +27,11 @@ const toNumber = (value) => {
   return Number.isFinite(num) ? num : 0;
 };
 
-const normalizeName = (name) =>
-  String(name || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, " ");
+// const normalizeName = (name) =>
+//   String(name || "")
+//     .trim()
+//     .toUpperCase()
+//     .replace(/\s+/g, " ");
 
 const normalizePlate = (plate) =>
   String(plate || "")
@@ -63,12 +68,12 @@ const getSessionKeys = (item) => {
   return Array.from(keys);
 };
 
-const getAvgSpeed = (item) => {
-  const km = toNumber(item?.TongQuangDuong);
-  const seconds = toNumber(item?.TongThoiGian);
-  if (km <= 0 || seconds <= 0) return 0;
-  return km / (seconds / 3600);
-};
+// const getAvgSpeed = (item) => {
+//   const km = toNumber(item?.TongQuangDuong);
+//   const seconds = toNumber(item?.TongThoiGian);
+//   if (km <= 0 || seconds <= 0) return 0;
+//   return km / (seconds / 3600);
+// };
 
 const formatDurationFromSeconds = (seconds) => {
   const totalMinutes = Math.round(toNumber(seconds) / 60);
@@ -136,7 +141,7 @@ const ModalTest = ({
       const response = await getPhienHocDATPublic(maDk);
       setStatusMap(toStatusMap(response));
     } catch {
-      message.error("Khong lay duoc trang thai phien DAT.");
+      // message.error("Khong lay duoc trang thai phien DAT.");
     } finally {
       setLoadingStatus(false);
     }
@@ -148,60 +153,52 @@ const ModalTest = ({
     fetchSessionStatuses();
   }, [open, maDk]);
 
-  const rowsWithStatus = useMemo(
-    () =>
-      rows.map((item) => {
-        const avgSpeed = getAvgSpeed(item);
-        const isSpeedInvalid = avgSpeed > 0 && avgSpeed < MIN_DAT_SPEED;
+  const rowsWithStatus = useMemo(() => {
+    const sorted = [...rows].sort(
+      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
+    );
 
-        const registeredTeacher = normalizeName(studentCheckInfo?.giaoVien);
-        const sessionTeacher = normalizeName(item?.HoTenGV);
-        const isTeacherMismatch =
-          !!registeredTeacher && !!sessionTeacher
-            ? sessionTeacher !== registeredTeacher
-            : false;
+    // Chạy toàn bộ check từ evaluateUtils
+    const nghiErrors = evaluateNghiGiuaPhien(sorted);
+    const tocDoErrors = evaluateTocDoPhien(sorted);
+    const giaoVienErrors = evaluateSaiGiaoVien(sorted, studentCheckInfo);
+    const bienSoErrors = evaluateSaiBienSo(sorted, studentCheckInfo);
 
-        const registeredPlateB1 = normalizePlate(studentCheckInfo?.xeB1);
-        const registeredPlateB2 = normalizePlate(studentCheckInfo?.xeB2);
-        const sessionPlate = normalizePlate(item?.BienSo);
-        const allowedPlates = [registeredPlateB1, registeredPlateB2].filter(
-          Boolean,
-        );
-        const isPlateMismatch =
-          allowedPlates.length > 0 && sessionPlate
-            ? !allowedPlates.includes(sessionPlate)
-            : false;
+    // Gán lỗi vào từng phiên theo index
+    return sorted.map((item, index) => {
+      const phienLabel = `Phiên ${index + 1}`;
 
-        const isInvalidByRule =
-          isSpeedInvalid || isTeacherMismatch || isPlateMismatch;
+      const _isSpeedInvalid = tocDoErrors.some((e) =>
+        e.message.startsWith(phienLabel),
+      );
+      const _isTeacherMismatch = giaoVienErrors.some((e) =>
+        e.message.startsWith(phienLabel),
+      );
+      const _isPlateMismatch = bienSoErrors.some((e) =>
+        e.message.startsWith(phienLabel),
+      );
+      const _isRestTooShort = nghiErrors.some(
+        (e) =>
+          e.message.includes(`Phiên ${index + 1} và`) ||
+          e.message.includes(`và ${index + 1}:`),
+      );
 
-        const matchedStatusKey = getSessionKeys(item).find(
-          (key) => statusMap[key],
-        );
-        const serverStatus = matchedStatusKey
-          ? statusMap[matchedStatusKey]
-          : null;
+      const _isInvalid =
+        _isSpeedInvalid ||
+        _isTeacherMismatch ||
+        _isPlateMismatch ||
+        _isRestTooShort;
 
-        const isInvalid =
-          serverStatus === "DUYET"
-            ? false
-            : serverStatus === "HUY"
-              ? true
-              : isInvalidByRule;
-
-        return {
-          ...item,
-          _avgSpeed: avgSpeed,
-          _isSpeedInvalid: isSpeedInvalid,
-          _isTeacherMismatch: isTeacherMismatch,
-          _isPlateMismatch: isPlateMismatch,
-          _isInvalidByRule: isInvalidByRule,
-          _serverStatus: serverStatus,
-          _isInvalid: isInvalid,
-        };
-      }),
-    [rows, studentCheckInfo, statusMap],
-  );
+      return {
+        ...item,
+        _isSpeedInvalid,
+        _isTeacherMismatch,
+        _isPlateMismatch,
+        _isRestTooShort,
+        _isInvalid,
+      };
+    });
+  }, [rows, studentCheckInfo]);
 
   const totalDistance = useMemo(
     () =>

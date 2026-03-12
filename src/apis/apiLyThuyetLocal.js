@@ -8,8 +8,10 @@ export const optionLopLyThuyet = async () => {
   return response.data;
 };
 
-export const hocVienTheoKhoa = async (enrolmentPlanIid) => {
-  const response = await axios.get(`${url}/hoc-vien/${enrolmentPlanIid}`);
+export const hocVienTheoKhoaLocal = async (enrolmentPlanIid, params) => {
+  const response = await axios.get(`${url}/hoc-vien/${enrolmentPlanIid}`, {
+    params,
+  });
   return response.data;
 };
 

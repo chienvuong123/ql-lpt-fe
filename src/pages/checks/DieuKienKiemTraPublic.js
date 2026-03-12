@@ -29,7 +29,6 @@ export const HANG_DAO_TAO_CONFIG = {
   },
 };
 
-// ─── Bounding box các cung đường bắt buộc ────────────────────────────────────
 const CUNG_DUONG_CONFIG = [
   {
     id: "chi_linh",
@@ -43,22 +42,25 @@ const CUNG_DUONG_CONFIG = [
   },
 ];
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+export function normalizeName(str = "") {
+  return str.normalize("NFC").trim().replace(/\s+/g, " ");
+}
+
+export const normalizePlate = (plate) =>
+  String(plate || "")
+    .replace(/[-.\s]/g, "")
+    .toUpperCase()
+    .trim();
+
 function getCourseYearFromCode(courseCode = "") {
   const match = String(courseCode)
     .trim()
     .match(/^K(\d{2})/i);
   if (!match) return null;
-
   const year = Number(match[1]);
   return Number.isFinite(year) ? year : null;
-}
-
-function normalizePlate(plate) {
-  if (!plate) return "";
-  return plate
-    .replace(/[-.\s]/g, "")
-    .toUpperCase()
-    .trim();
 }
 
 function shouldCheckCungDuongByCourse(courseCode = "") {
@@ -66,15 +68,11 @@ function shouldCheckCungDuongByCourse(courseCode = "") {
   return year !== null && year >= 25;
 }
 
-/**
- * Kiểm tra xe có đi qua cung đường không
- * @param {Array} listCoordinate - ListCoordinate từ 1 phiên hành trình
- * @param {object} bounds - { latMin, latMax, lngMin, lngMax }
- */
+// ─── Check cung đường ────────────────────────────────────────────────────────
+
 export function checkCungDuong(listCoordinate, bounds) {
   if (!Array.isArray(listCoordinate) || listCoordinate.length === 0)
     return false;
-
   return listCoordinate.some(
     (point) =>
       point.Latitude >= bounds.latMin &&
@@ -84,17 +82,11 @@ export function checkCungDuong(listCoordinate, bounds) {
   );
 }
 
-/**
- * Kiểm tra toàn bộ danh sách hành trình có đi qua cung đường không
- * @param {Array} dataSource - Mảng phiên hành trình, mỗi phiên có ListCoordinate
- */
 export function evaluateCungDuong(dataSource) {
   const allCoords = dataSource?.flatMap((item) => item.ListCoordinate || []);
-
   const daDiQuaMotTrong = CUNG_DUONG_CONFIG.some(({ bounds }) =>
     checkCungDuong(allCoords, bounds),
   );
-
   if (!daDiQuaMotTrong) {
     return [
       {
@@ -104,136 +96,141 @@ export function evaluateCungDuong(dataSource) {
       },
     ];
   }
-
   return [];
 }
 
-/**
- * Kiểm tra thời gian nghỉ giữa các phiên (tối thiểu 15 phút)
- * @param {Array} dataSource - Mảng phiên hành trình, đã sắp xếp theo thời gian
- */
+// ─── Check thời gian nghỉ giữa phiên ────────────────────────────────────────
+
 export function evaluateNghiGiuaPhien(dataSource) {
   if (!dataSource || dataSource.length < 2) return [];
 
   const errors = [];
-
-  // Sắp xếp theo ThoiDiemDangNhap tăng dần
   const sorted = [...dataSource].sort(
     (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
   );
 
+  const formatTime = (d) =>
+    d.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
   for (let i = 1; i < sorted.length; i++) {
     const phienTruoc = sorted[i - 1];
     const phienSau = sorted[i];
-
     const thoiGianXuat = new Date(phienTruoc.ThoiDiemDangXuat);
     const thoiGianNhap = new Date(phienSau.ThoiDiemDangNhap);
-
     if (isNaN(thoiGianXuat) || isNaN(thoiGianNhap)) continue;
 
     const khoangCachPhut = (thoiGianNhap - thoiGianXuat) / 1000 / 60;
-
     if (khoangCachPhut < 15) {
-      const formatTime = (d) =>
-        d.toLocaleString("vi-VN", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-
       errors.push({
-        type: "error",
+        type: "warning",
         label: "Thời gian nghỉ giữa phiên",
-        message: `Phiên ${i} và ${i + 1}: thời gian nghỉ chỉ ${khoangCachPhut.toFixed(0)} phút (${formatTime(thoiGianXuat)} → ${formatTime(thoiGianNhap)}), yêu cầu tối thiểu 15 phút.`,
+        message: `Phiên ${i} và ${i + 1}: nghỉ chỉ ${khoangCachPhut.toFixed(0)} phút (${formatTime(thoiGianXuat)} → ${formatTime(thoiGianNhap)}), yêu cầu tối thiểu 15 phút.`,
       });
     }
   }
-
   return errors;
 }
 
-/**
- * Kiểm tra tốc độ trung bình từng phiên (tối thiểu 20 km/h)
- * Tính từ TongQuangDuong (km) / TongThoiGian (giây)
- */
+// ─── Check tốc độ trung bình từng phiên ─────────────────────────────────────
+
 export function evaluateTocDoPhien(dataSource) {
   if (!dataSource || dataSource.length === 0) return [];
 
   const errors = [];
-  const MIN_SPEED = 18; // km/h
+  const MIN_SPEED = 18;
+
+  const formatTime = (str) => {
+    if (!str) return "";
+    const d = new Date(str);
+    return isNaN(d)
+      ? str
+      : d.toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+  };
 
   dataSource.forEach((phien, idx) => {
     const km = phien.TongQuangDuong || phien.TongQD_raw || 0;
     const giay = phien.TongThoiGian || 0;
+    if (giay === 0 || km === 0) return;
 
-    if (giay === 0 || km === 0) return; // Bỏ qua phiên không có dữ liệu
-
-    const gioLai = giay / 3600;
-    const tocDoTrungBinh = km / gioLai;
-
+    const tocDoTrungBinh = km / (giay / 3600);
     if (tocDoTrungBinh < MIN_SPEED) {
-      const formatTime = (str) => {
-        if (!str) return `Phiên ${idx + 1}`;
-        const d = new Date(str);
-        return isNaN(d)
-          ? str
-          : d.toLocaleString("vi-VN", {
-              day: "2-digit",
-              month: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-      };
-
       errors.push({
-        type: "error",
+        type: "warning",
         label: "Tốc độ trung bình phiên",
-        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): tốc độ trung bình ${tocDoTrungBinh.toFixed(1)} km/h, yêu cầu tối thiểu ${MIN_SPEED} km/h.`,
+        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): tốc độ ${tocDoTrungBinh.toFixed(1)} km/h, yêu cầu tối thiểu ${MIN_SPEED} km/h.`,
       });
     }
   });
-
   return errors;
 }
 
-// ─── [MỚI] Check xe tự động phải bắt đầu sau 17h ────────────────────────────
+// ─── [MỚI] Check sai giáo viên ───────────────────────────────────────────────
 
 /**
- * Xác định biển số xe tự động trong danh sách phiên
- * (xe tự động = biển số xuất hiện ít nhất trong danh sách)
+ * @param {Array} dataSource - Mảng phiên hành trình
+ * @param {object} studentCheckInfo - Thông tin học viên đăng ký { giaoVien: string }
  */
-function getBienSoTuDong(dataSource) {
-  if (!dataSource || dataSource.length === 0) return null;
+export function evaluateSaiGiaoVien(dataSource, studentCheckInfo) {
+  if (!dataSource || dataSource.length === 0) return [];
+  if (!studentCheckInfo?.giaoVien) return [];
 
-  const bienSoCount = dataSource.reduce((acc, item) => {
-    if (item.BienSo) acc[item.BienSo] = (acc[item.BienSo] || 0) + 1;
-    return acc;
-  }, {});
+  const errors = [];
+  const registeredTeacher = normalizeName(studentCheckInfo.giaoVien);
 
-  const danhSachBienSo = Object.entries(bienSoCount);
-  if (danhSachBienSo.length <= 1) return null; // chỉ có 1 loại xe → không phân biệt được
+  const formatTime = (str) => {
+    if (!str) return "";
+    const d = new Date(str);
+    return isNaN(d)
+      ? str
+      : d.toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+  };
 
-  let bienSoTuDong = null;
-  let minCount = Infinity;
-  danhSachBienSo.forEach(([bs, count]) => {
-    if (count < minCount) {
-      minCount = count;
-      bienSoTuDong = bs;
+  dataSource.forEach((phien, idx) => {
+    const sessionTeacher = normalizeName(phien.HoTenGV);
+
+    if (!sessionTeacher) return;
+    if (sessionTeacher.toUpperCase() !== registeredTeacher.toUpperCase()) {
+      errors.push({
+        type: "warning",
+        label: "Sai giáo viên",
+        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): giáo viên "${phien.HoTenGV}" không khớp với đăng ký "${studentCheckInfo.giaoVien}".`,
+      });
     }
   });
-  return bienSoTuDong;
+  return errors;
 }
 
+// ─── [MỚI] Check sai biển số xe ──────────────────────────────────────────────
+
 /**
- * Check: phiên xe số tự động phải bắt đầu sau 17h
+ * @param {Array} dataSource - Mảng phiên hành trình
+ * @param {object} studentCheckInfo - Thông tin học viên đăng ký { xeB1: string, xeB2: string }
  */
-export function evaluateTuDongSau17h(dataSource) {
+export function evaluateSaiBienSo(dataSource, studentCheckInfo) {
   if (!dataSource || dataSource.length === 0) return [];
 
-  const bienSoTuDong = getBienSoTuDong(dataSource);
-  if (!bienSoTuDong) return [];
+  const allowedPlates = [
+    normalizePlate(studentCheckInfo?.xeB1),
+    normalizePlate(studentCheckInfo?.xeB2),
+  ].filter(Boolean);
+
+  if (allowedPlates.length === 0) return [];
 
   const errors = [];
 
@@ -251,29 +248,21 @@ export function evaluateTuDongSau17h(dataSource) {
   };
 
   dataSource.forEach((phien, idx) => {
-    if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) return;
-
-    const thoiDiem = new Date(phien.ThoiDiemDangNhap);
-    if (isNaN(thoiDiem)) return;
-
-    const hour = thoiDiem.getHours();
-    if (hour < 17) {
+    const sessionPlate = normalizePlate(phien.BienSo);
+    if (!sessionPlate) return;
+    if (!allowedPlates.includes(sessionPlate)) {
       errors.push({
-        type: "error",
-        label: "Xe tự động bắt đầu trước 17h",
-        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): xe tự động (${phien.BienSo}) phải bắt đầu sau 17:00, thực tế bắt đầu lúc ${hour}h.`,
+        type: "warning",
+        label: "Sai biển số xe",
+        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): biển số "${phien.BienSo}" không nằm trong danh sách xe đăng ký (${allowedPlates.join(", ")}).`,
       });
     }
   });
-
   return errors;
 }
 
-/**
- * Tính toán tổng hợp từ danh sách hành trình
- * @param {Array} dataSource - Mảng các phiên hành trình từ API
- * @param {string} hangDaoTao - Hạng đào tạo (B1, B11, B2, C)
- */
+// ─── computeSummary ───────────────────────────────────────────────────────────
+
 export function computeSummary(dataSource, hangDaoTao = "") {
   if (!dataSource || dataSource.length === 0) {
     return {
@@ -289,7 +278,6 @@ export function computeSummary(dataSource, hangDaoTao = "") {
     };
   }
 
-  // Đếm số lần xuất hiện của mỗi biển số để tìm xe tự động
   const bienSoCount = dataSource.reduce((acc, item) => {
     if (item.BienSo) acc[item.BienSo] = (acc[item.BienSo] || 0) + 1;
     return acc;
@@ -319,35 +307,20 @@ export function computeSummary(dataSource, hangDaoTao = "") {
       acc.thoiGianBanDemPhut += item.ThoiGianBanDem || 0;
       acc.quangDuongBanDem += item.QuangDuongBanDem || 0;
 
+      if (isTuDong) {
+        acc.thoiGianTuDongPhut += thoiGianPhut;
+        acc.quangDuongTuDong += quangDuong;
+      } else {
+        acc.thoiGianTuDongPhut += item.ThoiGianTuDong || 0;
+        acc.quangDuongTuDong += item.QuangDuongTuDong || 0;
+      }
+
       if (!item.ThoiGianBanDem && item.ThoiDiemDangNhap) {
         const hour = new Date(item.ThoiDiemDangNhap).getHours();
         if (hour >= 18) {
           acc.thoiGianBanDemPhut += thoiGianPhut;
           acc.quangDuongBanDem += quangDuong;
         }
-      }
-
-      if (isTuDong) {
-        acc.thoiGianTuDongPhut += thoiGianPhut;
-        acc.quangDuongTuDong += quangDuong;
-
-        //Ghi lại phần ban đêm của phiên tự động để trừ ra sau
-        const thoiGianDemTuDong = item.ThoiGianBanDem || 0;
-        const quangDuongDemTuDong = item.QuangDuongBanDem || 0;
-        acc.thoiGianDemTuDongPhut += thoiGianDemTuDong;
-        acc.quangDuongDemTuDong += quangDuongDemTuDong;
-
-        // Fallback nếu không có ThoiGianBanDem
-        if (!item.ThoiGianBanDem && item.ThoiDiemDangNhap) {
-          const hour = new Date(item.ThoiDiemDangNhap).getHours();
-          if (hour >= 18) {
-            acc.thoiGianDemTuDongPhut += thoiGianPhut;
-            acc.quangDuongDemTuDong += quangDuong;
-          }
-        }
-      } else {
-        acc.thoiGianTuDongPhut += item.ThoiGianTuDong || 0;
-        acc.quangDuongTuDong += item.QuangDuongTuDong || 0;
       }
 
       return acc;
@@ -359,24 +332,12 @@ export function computeSummary(dataSource, hangDaoTao = "") {
       quangDuongBanDem: 0,
       thoiGianTuDongPhut: 0,
       quangDuongTuDong: 0,
-      thoiGianDemTuDongPhut: 0,
-      quangDuongDemTuDong: 0,
     },
   );
 
-  const thoiGianBanDemPhutSauTru = Math.max(
-    totals.thoiGianBanDemPhut - totals.thoiGianDemTuDongPhut,
-    0,
-  );
-  const quangDuongBanDemSauTru = Math.max(
-    totals.quangDuongBanDem - totals.quangDuongDemTuDong,
-    0,
-  );
-
   const tongThoiGianGio = totals.tongThoiGianPhut / 60;
-  const thoiGianBanDemGio = thoiGianBanDemPhutSauTru / 60; //dùng giá trị đã trừ
+  const thoiGianBanDemGio = totals.thoiGianBanDemPhut / 60;
   const thoiGianTuDongGio = totals.thoiGianTuDongPhut / 60;
-
   const thoiGianBanNgayGio = Math.max(
     tongThoiGianGio - thoiGianBanDemGio - thoiGianTuDongGio,
     0,
@@ -392,7 +353,7 @@ export function computeSummary(dataSource, hangDaoTao = "") {
     tongThoiGianGio,
     tongQuangDuong: totals.tongQuangDuong,
     thoiGianBanDemGio,
-    quangDuongBanDem: quangDuongBanDemSauTru,
+    quangDuongBanDem: totals.quangDuongBanDem,
     thoiGianBanNgayGio,
     quangDuongBanNgay,
     thoiGianTuDongGio,
@@ -401,13 +362,20 @@ export function computeSummary(dataSource, hangDaoTao = "") {
   };
 }
 
+// ─── evaluate (tổng hợp) ──────────────────────────────────────────────────────
+
 /**
- * Đánh giá pass/fail và trả về danh sách lỗi + cảnh báo
- * @param {object} summaryData - Kết quả từ computeSummary
- * @param {Array} dataSource - Raw data để kiểm tra thêm
- * @param {Array} loTrinh - Dữ liệu lộ trình từ API LoTrinhOnline
+ * @param {object} summaryData     - Kết quả từ computeSummary
+ * @param {Array}  dataSource      - Raw data phiên hành trình
+ * @param {Array}  loTrinh         - Dữ liệu lộ trình từ API LoTrinhOnline
+ * @param {object} studentCheckInfo - Thông tin đăng ký: { giaoVien, xeB1, xeB2 }
  */
-export function evaluate(summaryData, dataSource = [], loTrinh = []) {
+export function evaluate(
+  summaryData,
+  dataSource = [],
+  loTrinh = [],
+  studentCheckInfo = null,
+) {
   const errors = [];
   const warnings = [];
 
@@ -534,16 +502,19 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
     }
   });
 
-  errors.push(...evaluateNghiGiuaPhien(dataSource)); // lỗi nếu có 2 phiên liên tiếp mà thời gian nghỉ < 15 phút
-  warnings.push(...evaluateTocDoPhien(dataSource)); // lỗi nếu có phiên nào đó tốc độ trung bình < 20 km/h
-  errors.push(...evaluateTuDongSau17h(dataSource)); //  xe tự động phải sau 17h
+  // ── Các check bổ sung ────────────────────────────────────────────────────
+  warnings.push(...evaluateNghiGiuaPhien(dataSource)); // nghỉ < 15 phút
+  warnings.push(...evaluateTocDoPhien(dataSource)); // tốc độ < 18 km/h
+  warnings.push(...evaluateSaiGiaoVien(dataSource, studentCheckInfo)); // ✅ sai giáo viên
+  warnings.push(...evaluateSaiBienSo(dataSource, studentCheckInfo)); // ✅ sai biển số xe
+
   const courseCode =
     dataSource?.[0]?.MaKhoaHoc ||
     dataSource?.[0]?.MaKhoa ||
     dataSource?.[0]?.KhoaHoc ||
     "";
   if (shouldCheckCungDuongByCourse(courseCode)) {
-    warnings.push(...evaluateCungDuong(loTrinh)); // check đường có đi qua Chí Linh hoặc Kinh Môn không
+    warnings.push(...evaluateCungDuong(loTrinh)); // check cung đường
   }
 
   return { status: errors.length === 0 ? "pass" : "fail", errors, warnings };

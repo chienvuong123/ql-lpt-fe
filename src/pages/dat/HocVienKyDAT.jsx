@@ -1,29 +1,24 @@
 import React, { useMemo, useState } from "react";
-import { Table, Button, Input, Space, Tag, Row, Col, Card, Select } from "antd";
+import {
+  Table,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Row,
+  Col,
+  Card,
+  Select,
+  message,
+} from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { courseOptions } from "../../apis/khoaHoc";
-import { danhSachHocVienKyDAT } from "../../apis/hocVien";
+import {
+  danhSachHocVienKyDAT,
+  exportDanhSachHocVienKyDAT,
+} from "../../apis/hocVien";
 import { formatLocalTime } from "../../util/helper";
 import dayjs from "dayjs";
-// import { getImageUrl } from "../../util/helperImage";
-
-// const renderAvatar = (url, alt) => {
-//   if (!url) {
-//     return (
-//       <div className="flex h-[44px] w-[44px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-100 text-[11px] text-gray-400">
-//         N/A
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <img
-//       src={getImageUrl(url)}
-//       alt={alt}
-//       className="h-[44px] w-[44px] rounded-lg border border-gray-200 object-cover"
-//     />
-//   );
-// };
 
 const renderEmpty = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -36,9 +31,12 @@ const renderEmpty = (value) => {
 const HocVienKyDAT = () => {
   const [searchName, setSearchName] = useState("");
   const [selectedCourse, setSelectedCourse] = useState(undefined);
+  const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState({
     keyword: "",
     maKhoa: undefined,
+    page: 1,
+    limit: 10,
   });
 
   const { data: khoaHocData, isLoading: isLoadingCourses } = useQuery({
@@ -74,11 +72,23 @@ const HocVienKyDAT = () => {
     return Array.isArray(list) ? list : [];
   }, [hocVienKyDatData]);
 
+  const totalItems = useMemo(() => {
+    return (
+      hocVienKyDatData?.total ||
+      hocVienKyDatData?.pagination?.total ||
+      hocVienKyDatData?.meta?.total ||
+      dataSource.length ||
+      0
+    );
+  }, [hocVienKyDatData, dataSource.length]);
+
   const handleFilter = () => {
-    setFilters({
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
       keyword: searchName.trim(),
       maKhoa: selectedCourse || undefined,
-    });
+    }));
   };
 
   const handleClearFilter = () => {
@@ -87,7 +97,40 @@ const HocVienKyDAT = () => {
     setFilters({
       keyword: "",
       maKhoa: undefined,
+      page: 1,
+      limit: 10,
     });
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      const exportCourse = selectedCourse || filters.maKhoa || "";
+      const exportStudentName = searchName.trim() || filters.keyword || "";
+
+      const blob = await exportDanhSachHocVienKyDAT({
+        ma_khoa: exportCourse,
+        ten_hoc_vien: exportStudentName,
+      });
+
+      const fileName = `hoc-vien-ky-dat-${exportCourse || "tat-ca"}.xlsx`;
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Xuất Excel thất bại",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const columns = [
@@ -96,17 +139,9 @@ const HocVienKyDAT = () => {
       key: "stt",
       width: 30,
       align: "center",
-      render: (_text, _record, index) => index + 1,
+      render: (_text, _record, index) =>
+        (filters.page - 1) * filters.limit + index + 1,
     },
-    // {
-    //   title: "Anh",
-    //   dataIndex: "anh",
-    //   key: "anh",
-    //   width: 80,
-    //   align: "center",
-    //   render: (_text, record) =>
-    //     renderAvatar(record?.anh, record?.ten_hoc_vien),
-    // },
     {
       title: "Mã học viên",
       dataIndex: "ma_dk",
@@ -119,7 +154,6 @@ const HocVienKyDAT = () => {
       key: "ten_hoc_vien",
       width: 200,
       render: (value) => <span className="font-medium">{value || ""}</span>,
-      align: "center",
     },
     {
       title: "Căn cước công dân",
@@ -127,7 +161,6 @@ const HocVienKyDAT = () => {
       key: "can_cuoc",
       width: 150,
       render: renderEmpty,
-      align: "center",
     },
     {
       title: "Ngày sinh",
@@ -190,20 +223,6 @@ const HocVienKyDAT = () => {
       width: 170,
       render: (value) => formatLocalTime(value, "YYYY-MM-DD HH:mm:ss"),
     },
-    // {
-    //   title: "Ghi chú nội bộ",
-    //   dataIndex: "ghi_chu_1",
-    //   key: "ghi_chu_1",
-    //   width: 160,
-    //   render: renderEmpty,
-    // },
-    // {
-    //   title: "Ghi chú công khai",
-    //   dataIndex: "ghi_chu_2",
-    //   key: "ghi_chu_2",
-    //   width: 160,
-    //   render: renderEmpty,
-    // },
   ];
 
   return (
@@ -256,6 +275,9 @@ const HocVienKyDAT = () => {
               >
                 Lọc
               </Button>
+              <Button loading={isExporting} onClick={handleExportExcel}>
+                Xuất Excel
+              </Button>
               <Button onClick={handleClearFilter}>Bỏ lọc</Button>
             </Space>
           </Col>
@@ -263,18 +285,24 @@ const HocVienKyDAT = () => {
       </Card>
 
       <div className="!mt-2 py-5">
-        <Row className="mb-3">
-          <span>
-            Tổng: <span className="font-bold">{dataSource.length || 0}</span>{" "}
-            học viên
-          </span>
-        </Row>
-
         <Table
           columns={columns}
           dataSource={dataSource}
           loading={isLoadingTable}
-          pagination={false}
+          pagination={{
+            current: filters.page,
+            pageSize: filters.limit,
+            total: totalItems,
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} học viên`,
+            onChange: (page, pageSize) => {
+              setFilters((prev) => ({
+                ...prev,
+                page,
+                limit: pageSize,
+              }));
+            },
+          }}
           rowKey={(record) => record?.id || record?.ma_dk}
           size="small"
           bordered
