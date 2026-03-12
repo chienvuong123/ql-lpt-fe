@@ -24,15 +24,13 @@ import {
   DangNhapPublic,
   HanhTrinhPublic,
   hocVienKyDATPublic,
+  hocVienTheoKhoaPublic,
+  optionLopLyThuyetPublic,
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
 import "./index.css";
-import {
-  hocVienTheoKhoaLocal,
-  optionLopLyThuyet,
-} from "../../apis/apiLyThuyetLocal";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -148,7 +146,7 @@ const KiemTraPublic = () => {
 
   const { data: khoaHocData, isLoading: isLoadingKhoaHoc } = useQuery({
     queryKey: ["optionLopLyThuyet"],
-    queryFn: () => optionLopLyThuyet(),
+    queryFn: () => optionLopLyThuyetPublic(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
@@ -188,7 +186,7 @@ const KiemTraPublic = () => {
     refetch: refetchSearchHocVien,
   } = useQuery({
     queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
-    queryFn: () => hocVienTheoKhoaLocal(selectedKhoaHoc, searchParams || {}),
+    queryFn: () => hocVienTheoKhoaPublic(selectedKhoaHoc, searchParams || {}),
     staleTime: 0,
     cacheTime: 0,
     retry: false,

@@ -105,3 +105,18 @@ export const hocVienKyDATPublic = async (maHocVien) => {
 
   return response.data;
 };
+
+export const hocVienTheoKhoaPublic = async (enrolmentPlanIid, params) => {
+  const response = await axios.get(
+    `${url}ly-thuyet/hoc-vien/${enrolmentPlanIid}`,
+    {
+      params,
+    },
+  );
+  return response.data;
+};
+
+export const optionLopLyThuyetPublic = async () => {
+  const response = await axios.get(`${url}ly-thuyet/lop-hoc`);
+  return response.data;
+};
