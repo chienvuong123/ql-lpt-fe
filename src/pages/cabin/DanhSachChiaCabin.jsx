@@ -1,19 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
   Col,
   Image,
   Input,
+  message,
   Row,
   Select,
+  Spin,
   Table,
   Tag,
   Typography,
 } from "antd";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { SearchOutlined } from "@ant-design/icons";
-import { danhSachHocVienCaBin } from "../../apis/apiCabinLocal";
+import { cabinNote, danhSachHocVienCaBin } from "../../apis/apiCabinLocal";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 
 const { Title } = Typography;
@@ -46,8 +48,11 @@ const secondsToHourMinute = (seconds) => {
 };
 
 const DanhSachChiaCabin = () => {
+  const queryClient = useQueryClient();
   const [selectedCourseIid, setSelectedCourseIid] = useState();
   const [selectedCabinStatus, setSelectedCabinStatus] = useState();
+  const [savingNoteKey, setSavingNoteKey] = useState("");
+  const [noteOverrides, setNoteOverrides] = useState({});
   const searchInputRef = useRef(null);
   const [searchParams, setSearchParams] = useState({
     page: 1,
@@ -119,6 +124,59 @@ const DanhSachChiaCabin = () => {
     );
   }, [danhSachHocVien, dataSource.length]);
 
+  const getStudentKey = useCallback((record) => {
+    return String(
+      record?.ma_dk || record?.user?.code || record?.user?.iid || "",
+    );
+  }, []);
+
+  const getResolvedNote = useCallback(
+    (record) => {
+      const key = getStudentKey(record);
+      if (Object.prototype.hasOwnProperty.call(noteOverrides, key)) {
+        return noteOverrides[key];
+      }
+      return record?.cabin?.note || record?.ghi_chu || "";
+    },
+    [getStudentKey, noteOverrides],
+  );
+
+  const { mutate: saveCabinNote } = useMutation({
+    mutationFn: (variables) =>
+      cabinNote({
+        ma_dk: variables?.ma_dk,
+        ma_khoa: variables?.ma_khoa,
+        ten_khoa: variables?.ten_khoa,
+        ten_hoc_vien: variables?.ten_hoc_vien,
+        ghi_chu: variables?.ghi_chu,
+      }),
+    onSuccess: (_response, variables) => {
+      message.success(
+        `Đã lưu ghi chú của ${variables?.ten_hoc_vien || "học viên"}`,
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["danhSachHocVienCaBin", activeCourseIid],
+      });
+    },
+    onError: (error, variables) => {
+      const key = variables?.ma_dk || "";
+      if (key) {
+        setNoteOverrides((prev) => ({
+          ...prev,
+          [key]: variables?.previousNote || "",
+        }));
+      }
+      message.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Lưu ghi chú thất bại",
+      );
+    },
+    onSettled: () => {
+      setSavingNoteKey("");
+    },
+  });
+
   const handleSearch = useCallback(() => {
     const nextSearchText = searchInputRef.current?.input?.value?.trim() || "";
     setSearchParams((prev) => ({
@@ -148,6 +206,43 @@ const DanhSachChiaCabin = () => {
       </Tag>
     );
   }, []);
+
+  const handleBlurNote = useCallback(
+    (record, value) => {
+      const maDk = String(record?.ma_dk || "").trim();
+      if (!maDk) {
+        message.warning("Không tìm thấy mã đăng ký để lưu ghi chú.");
+        return;
+      }
+
+      const previousNote = getResolvedNote(record);
+      const nextNote = typeof value === "string" ? value.trim() : "";
+
+      if ((previousNote || "").trim() === nextNote) return;
+
+      setNoteOverrides((prev) => ({
+        ...prev,
+        [maDk]: nextNote,
+      }));
+      setSavingNoteKey(maDk);
+
+      saveCabinNote({
+        ma_dk: maDk,
+        ma_khoa: activeCourseIid || "",
+        ten_khoa: selectedCourseName || selectedCourseCode || "",
+        ten_hoc_vien: record?.user?.name || "",
+        ghi_chu: nextNote,
+        previousNote,
+      });
+    },
+    [
+      activeCourseIid,
+      getResolvedNote,
+      saveCabinNote,
+      selectedCourseCode,
+      selectedCourseName,
+    ],
+  );
 
   const columns = useMemo(
     () => [
@@ -184,7 +279,7 @@ const DanhSachChiaCabin = () => {
         title: "Mã khóa",
         dataIndex: "user",
         key: "ma_khoa",
-        width: 120,
+        width: 90,
         render: () => selectedCourseName || "-",
       },
       {
@@ -242,7 +337,7 @@ const DanhSachChiaCabin = () => {
         title: "Phút cabin",
         dataIndex: "cabin",
         key: "thoi_gian_cabin_text",
-        width: 120,
+        width: 100,
         align: "center",
         render: (value) => secondsToHourMinute(value?.tong_thoi_gian || 0),
       },
@@ -250,7 +345,7 @@ const DanhSachChiaCabin = () => {
         title: "Bài cabin",
         dataIndex: "cabin",
         key: "so_bai_cabin",
-        width: 100,
+        width: 80,
         align: "center",
         render: (value) => `${value?.so_bai_hoc || 0} bài`,
       },
@@ -258,13 +353,32 @@ const DanhSachChiaCabin = () => {
         title: "Ghi chú",
         dataIndex: "ghi_chu",
         key: "ghi_chu",
-        width: 130,
+        width: 260,
         align: "center",
-        render: (value) => value || "-",
+        render: (_value, record) => {
+          const studentKey = getStudentKey(record);
+          const noteValue = getResolvedNote(record);
+          const isSaving = savingNoteKey === studentKey;
+
+          return (
+            <Spin spinning={isSaving} size="small">
+              <Input
+                key={`${studentKey}-${noteValue}`}
+                defaultValue={noteValue}
+                disabled={isSaving}
+                onBlur={(e) => handleBlurNote(record, e.target.value)}
+              />
+            </Spin>
+          );
+        },
       },
     ],
     [
+      getResolvedNote,
+      getStudentKey,
+      handleBlurNote,
       renderBooleanTag,
+      savingNoteKey,
       searchParams.limit,
       searchParams.page,
       selectedCourseName,

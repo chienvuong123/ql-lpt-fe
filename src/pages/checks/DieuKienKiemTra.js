@@ -269,6 +269,44 @@ export function evaluateTuDongSau17h(dataSource) {
   return errors;
 }
 
+// ─── Check phiên học dưới 5 phút ─────────────────────────────────────────────
+
+export function evaluatePhienDuoi5Phut(dataSource) {
+  if (!dataSource || dataSource.length === 0) return [];
+
+  const errors = [];
+  const MIN_MINUTES = 5;
+
+  const formatTime = (str) => {
+    if (!str) return "";
+    const d = new Date(str);
+    return isNaN(d)
+      ? str
+      : d.toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+  };
+
+  dataSource.forEach((phien, idx) => {
+    const giay = phien.TongThoiGian || 0;
+    if (giay === 0) return; // bỏ qua phiên không có dữ liệu
+
+    const phut = giay / 60;
+    if (phut < MIN_MINUTES) {
+      errors.push({
+        type: "warning",
+        label: "Phiên học quá ngắn",
+        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): tổng thời gian chỉ ${phut.toFixed(1)} phút, yêu cầu tối thiểu ${MIN_MINUTES} phút.`,
+      });
+    }
+  });
+
+  return errors;
+}
+
 /**
  * Tính toán tổng hợp từ danh sách hành trình
  * @param {Array} dataSource - Mảng các phiên hành trình từ API
@@ -537,6 +575,7 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
   errors.push(...evaluateNghiGiuaPhien(dataSource)); // lỗi nếu có 2 phiên liên tiếp mà thời gian nghỉ < 15 phút
   warnings.push(...evaluateTocDoPhien(dataSource)); // lỗi nếu có phiên nào đó tốc độ trung bình < 20 km/h
   errors.push(...evaluateTuDongSau17h(dataSource)); //  xe tự động phải sau 17h
+  warnings.push(...evaluatePhienDuoi5Phut(dataSource)); //thêm dòng này
   const courseCode =
     dataSource?.[0]?.MaKhoaHoc ||
     dataSource?.[0]?.MaKhoa ||

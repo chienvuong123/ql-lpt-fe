@@ -453,38 +453,38 @@ const QuanLyHocVienLyThuyet = () => {
         );
       },
     },
-    {
-      title: "Cabin",
-      key: "updated_ts",
-      width: 110,
-      align: "center",
-      render: (_, record) => {
-        const checked = resolveCheckState(record).cabinChecked;
-        return (
-          <span
-            className={checked ? "text-green-600 font-medium" : "text-gray-400"}
-          >
-            {checked ? "Đạt" : "Chưa đạt"}
-          </span>
-        );
-      },
-    },
-    {
-      title: "DAT",
-      key: "dat",
-      width: 90,
-      align: "center",
-      render: (_, record) => {
-        const checked = resolveCheckState(record).datChecked;
-        return (
-          <span
-            className={checked ? "text-green-600 font-medium" : "text-gray-400"}
-          >
-            {checked ? "Đã ký" : "Chưa kí"}
-          </span>
-        );
-      },
-    },
+    // {
+    //   title: "Cabin",
+    //   key: "updated_ts",
+    //   width: 110,
+    //   align: "center",
+    //   render: (_, record) => {
+    //     const checked = resolveCheckState(record).cabinChecked;
+    //     return (
+    //       <span
+    //         className={checked ? "text-green-600 font-medium" : "text-gray-400"}
+    //       >
+    //         {checked ? "Đạt" : "Chưa đạt"}
+    //       </span>
+    //     );
+    //   },
+    // },
+    // {
+    //   title: "DAT",
+    //   key: "dat",
+    //   width: 90,
+    //   align: "center",
+    //   render: (_, record) => {
+    //     const checked = resolveCheckState(record).datChecked;
+    //     return (
+    //       <span
+    //         className={checked ? "text-green-600 font-medium" : "text-gray-400"}
+    //       >
+    //         {checked ? "Đã ký" : "Chưa kí"}
+    //       </span>
+    //     );
+    //   },
+    // },
     {
       title: "Thời gian đổi trạng thái",
       key: "status_updated_at",
@@ -512,7 +512,7 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "Ghi chú",
       key: "ghi_chu",
-      width: 240,
+      width: 300,
       align: "center",
       render: (_, record) => {
         const state = resolveCheckState(record);

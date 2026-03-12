@@ -261,6 +261,44 @@ export function evaluateSaiBienSo(dataSource, studentCheckInfo) {
   return errors;
 }
 
+// ─── Check phiên học dưới 5 phút ─────────────────────────────────────────────
+
+export function evaluatePhienDuoi5Phut(dataSource) {
+  if (!dataSource || dataSource.length === 0) return [];
+
+  const errors = [];
+  const MIN_MINUTES = 5;
+
+  const formatTime = (str) => {
+    if (!str) return "";
+    const d = new Date(str);
+    return isNaN(d)
+      ? str
+      : d.toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+  };
+
+  dataSource.forEach((phien, idx) => {
+    const giay = phien.TongThoiGian || 0;
+    if (giay === 0) return; // bỏ qua phiên không có dữ liệu
+
+    const phut = giay / 60;
+    if (phut < MIN_MINUTES) {
+      errors.push({
+        type: "warning",
+        label: "Phiên học quá ngắn",
+        message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): tổng thời gian chỉ ${phut.toFixed(1)} phút, yêu cầu tối thiểu ${MIN_MINUTES} phút.`,
+      });
+    }
+  });
+
+  return errors;
+}
+
 // ─── computeSummary ───────────────────────────────────────────────────────────
 
 export function computeSummary(dataSource, hangDaoTao = "") {
@@ -505,8 +543,9 @@ export function evaluate(
   // ── Các check bổ sung ────────────────────────────────────────────────────
   warnings.push(...evaluateNghiGiuaPhien(dataSource)); // nghỉ < 15 phút
   warnings.push(...evaluateTocDoPhien(dataSource)); // tốc độ < 18 km/h
-  warnings.push(...evaluateSaiGiaoVien(dataSource, studentCheckInfo)); // ✅ sai giáo viên
-  warnings.push(...evaluateSaiBienSo(dataSource, studentCheckInfo)); // ✅ sai biển số xe
+  warnings.push(...evaluateSaiGiaoVien(dataSource, studentCheckInfo)); //sai giáo viên
+  warnings.push(...evaluateSaiBienSo(dataSource, studentCheckInfo)); //sai biển số xe
+  warnings.push(...evaluatePhienDuoi5Phut(dataSource)); //thêm dòng này
 
   const courseCode =
     dataSource?.[0]?.MaKhoaHoc ||

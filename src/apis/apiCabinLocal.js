@@ -9,3 +9,8 @@ export const danhSachHocVienCaBin = async (enrolmentPlanIid, params = {}) => {
   });
   return response.data;
 };
+
+export const cabinNote = async (params = {}) => {
+  const response = await axios.post(`${url}`, params);
+  return response.data;
+};
