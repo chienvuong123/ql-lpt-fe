@@ -275,10 +275,10 @@ const HocVienKyDAT = () => {
               >
                 Lọc
               </Button>
+              <Button onClick={handleClearFilter}>Bỏ lọc</Button>
               <Button loading={isExporting} onClick={handleExportExcel}>
                 Xuất Excel
               </Button>
-              <Button onClick={handleClearFilter}>Bỏ lọc</Button>
             </Space>
           </Col>
         </Row>
