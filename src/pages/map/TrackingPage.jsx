@@ -1,15 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import {
-  Button,
-  Card,
-  Progress,
-  Spin,
-  Row,
-  Col,
-  Table,
-  Flex,
-  Typography,
-} from "antd";
+import { Button, Card, Progress, Spin, Row, Col, Table, Flex } from "antd";
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -21,43 +11,39 @@ import {
 } from "@ant-design/icons";
 import { LoTringOnline } from "../../apis/xeOnline";
 import TrackingMap from ".";
-// import { useLocation } from "react-router-dom";
 import dayjs from "dayjs";
-
-const { Text } = Typography;
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
-/** Format mảng ListCoordinate thành dạng TrackingMap cần */
 const formatCoordinates = (listCoordinate = []) =>
   listCoordinate.map((point) => ({
     latitude: point.Latitude,
     longitude: point.Longitude,
-    speed: point.VanToc, // giữ nguyên string "0 Km/h"
+    speed: point.VanToc,
     timestamp: point.ThoiGian,
-    totalKm: point.TotalKm, // giữ nguyên string "0.001 Km"
+    totalKm: point.TotalKm,
     driverName: point.HoTen,
     direction: point.Huong,
   }));
 
-/**
- * Tìm route tương ứng với một phiên học.
- * So sánh StartTime của route (chuỗi ISO) với ThoiDiemDangNhap của phiên
- * theo độ chính xác đến phút (16 ký tự đầu: "2026-02-09T08:30").
- * Nếu không match chính xác → fallback theo index.
- */
 const findRouteForRecord = (allRoutes, record, fallbackIndex) => {
   if (!allRoutes?.length) return null;
 
-  const recordTime = record?.ThoiDiemDangNhap?.slice(0, 16); // "2026-02-09T08:30"
-
+  // Match đến phút
+  const recordTime = record?.ThoiDiemDangNhap?.slice(0, 16);
   const matched = allRoutes.find(
     (route) => route?.StartTime?.slice(0, 16) === recordTime,
   );
-
   if (matched) return matched;
 
-  // Fallback: dùng theo thứ tự index trong bảng phiên học
+  // Fallback: match đến giờ
+  const recordHour = record?.ThoiDiemDangNhap?.slice(0, 13);
+  const hourMatched = allRoutes.find(
+    (route) => route?.StartTime?.slice(0, 13) === recordHour,
+  );
+  if (hourMatched) return hourMatched;
+
+  // Fallback cuối: theo index
   return allRoutes[fallbackIndex] ?? allRoutes[0];
 };
 
@@ -65,14 +51,11 @@ const findRouteForRecord = (allRoutes, record, fallbackIndex) => {
 
 const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
   const [trackingData, setTrackingData] = useState([]);
-  const [allRoutes, setAllRoutes] = useState([]); // Toàn bộ data từ API (1 lần gọi)
+  const [allRoutes, setAllRoutes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedRowKey, setSelectedRowKey] = useState(null);
-
-  // const location = useLocation();
-  // const { duLieuPhienHoc = [], summaryData } = location.state || {};
 
   const timerRef = useRef(null);
   const hasFetched = useRef(false);
@@ -87,19 +70,19 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
         setLoading(true);
 
         const firstRecord = duLieuPhienHoc[0];
-        const datePart = firstRecord.ThoiDiemDangNhap.split("T")[0];
+        const lastRecord = duLieuPhienHoc[duLieuPhienHoc.length - 1];
 
-        const startDate = new Date(datePart);
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 1);
+        const startDateStr = firstRecord.ThoiDiemDangNhap.split("T")[0];
+        const endDateStr =
+          lastRecord.ThoiDiemDangXuat?.split("T")[0] ??
+          lastRecord.ThoiDiemDangNhap?.split("T")[0];
 
         const response = await LoTringOnline({
-          ngaybatdau: `2022-1-1T00:00:00`,
-          ngayketthuc: `${endDate.toISOString().split("T")[0]}T23:59:00`,
+          ngaybatdau: `${startDateStr}T00:00:00`,
+          ngayketthuc: `${endDateStr}T23:59:00`,
           madk: firstRecord.MaDK,
         });
 
-        // API trả về mảng [ { StartTime, EndTime, ListCoordinate, ... }, ... ]
         const data = response.data;
         const routes = Array.isArray(data) ? data : [data];
         setAllRoutes(routes);
@@ -112,7 +95,7 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
         setSelectedRowKey(firstRecord.ID ?? firstRecord.MaDK);
       } catch (err) {
         console.error("Lỗi tải lộ trình:", err);
-        hasFetched.current = false; // Cho phép retry nếu lỗi
+        hasFetched.current = false;
       } finally {
         setLoading(false);
       }
@@ -121,14 +104,19 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
     fetchAllRoutes();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [trackingData]);
+
   // ── 2. Click vào phiên → lấy từ allRoutes, KHÔNG gọi API ─────────────────
   const handleSelect = (record, rowIndex) => {
-    if (record.ID === selectedRowKey && record.MaDK === selectedRowKey) return; // Đã chọn rồi
+    const rowKey = record.ID ?? record.MaDK;
+    if (rowKey === selectedRowKey) return;
 
     setIsPlaying(false);
     clearInterval(timerRef.current);
-    setCurrentIndex(0);
-    setSelectedRowKey(record.ID ?? record.MaDK);
+    // setCurrentIndex(0);
+    setSelectedRowKey(rowKey);
 
     const route = findRouteForRecord(allRoutes, record, rowIndex);
 
@@ -217,11 +205,6 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
           <p className="text-[#64748b] text-sm">
             Quãng đường di chuyển của xe trong các phiên học viên đã tham gia.
           </p>
-          {/* <div className="pt-4">
-            <a href="/" className="text-blue-500 text-sm hover:text-blue-700">
-              ← Quay lại Dashboard
-            </a>
-          </div> */}
         </div>
 
         {/* Thông tin học viên */}

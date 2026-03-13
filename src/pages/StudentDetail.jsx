@@ -45,6 +45,8 @@ import { formatLocalTime } from "../util/helper";
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
+const today = new Date().toISOString().split("T")[0];
+
 const StudentDetail = ({ data }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckboxLoading, setIsCheckboxLoading] = useState(false);
@@ -97,7 +99,7 @@ const StudentDetail = ({ data }) => {
     queryFn: () =>
       HanhTrinh({
         ngaybatdau: "2020-01-01",
-        ngayketthuc: "2026-12-31",
+        ngayketthuc: today,
         ten: data?.MaDK,
         makhoahoc: data?.MaKhoaHoc,
         limit: 20,
