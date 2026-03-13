@@ -271,7 +271,7 @@ export function evaluateNghiGiuaPhien(dataSource) {
       errors.push({
         type: "warning",
         label: "Thời gian nghỉ giữa phiên",
-        message: `Phiên ${i} và ${i + 1}: nghỉ chỉ ${phut.toFixed(0)} phút (${fmt(tXuat)} → ${fmt(tNhap)}), yêu cầu ≥ 15 phút — phiên này đã bị loại khỏi tổng.`,
+        message: `Phiên ${i} và ${i + 1}: nghỉ chỉ ${phut.toFixed(0)} phút (${fmt(tXuat)} → ${fmt(tNhap)}), yêu cầu ≥ 15 phút.`,
       });
     }
   }
@@ -290,7 +290,7 @@ export function evaluateTocDoPhien(dataSource) {
       acc.push({
         type: "warning",
         label: "Tốc độ trung bình phiên",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): tốc độ TB ${v.toFixed(1)} km/h, yêu cầu ≥ ${MIN_SPEED} km/h — phiên này đã bị loại khỏi tổng.`,
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): tốc độ TB ${v.toFixed(1)} km/h, yêu cầu ≥ ${MIN_SPEED} km/h.`,
       });
     }
     return acc;
@@ -311,7 +311,7 @@ export function evaluateTuDongSau17h(dataSource) {
       acc.push({
         type: "warning",
         label: "Xe tự động bắt đầu trước 17h",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): xe tự động (${phien.BienSo}) bắt đầu lúc ${hour}h (trước 17:00) — phiên này đã bị loại khỏi tổng tự động.`,
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): xe tự động (${phien.BienSo}) bắt đầu lúc ${hour}h (trước 17:00).`,
       });
     }
     return acc;
@@ -339,13 +339,13 @@ export function evaluateSaiGiaoVien(dataSource) {
       acc.push({
         type: "warning",
         label: "Sai tên giáo viên",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): không có tên giáo viên (GV hợp lệ: "${tenGVHopLe}") — phiên này đã bị loại khỏi tổng.`,
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): không có tên giáo viên (GV hợp lệ: "${tenGVHopLe}").`,
       });
     } else if (ten !== tenGVHopLe) {
       acc.push({
         type: "warning",
         label: "Sai tên giáo viên",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): tên GV "${ten}" khác với GV hợp lệ "${tenGVHopLe}" — phiên này đã bị loại khỏi tổng.`,
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): tên GV "${ten}" khác với GV hợp lệ "${tenGVHopLe}".`,
       });
     }
     return acc;
@@ -550,11 +550,8 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
       getMessage: () => {
         const thieu =
           yeuCauHang.thoiGian.tuDong - summaryData.thoiGianTuDongGio;
-        const loiNote =
-          summaryData.tuDongLoiGio > 0
-            ? ` — đã loại ${fmtGio(summaryData.tuDongLoiGio)} (${summaryData.tuDongLoiKm.toFixed(2)} km) phiên tự động không hợp lệ.`
-            : ".";
-        return `Thời gian số tự động thiếu ${fmtGio(thieu)} (yêu cầu ${fmtGio(yeuCauHang.thoiGian.tuDong)}, thực tế ${fmtGio(summaryData.thoiGianTuDongGio)})${loiNote}`;
+
+        return `Thời gian số tự động thiếu ${fmtGio(thieu)} (thực tế ${fmtGio(summaryData.thoiGianTuDongGio)}, yêu cầu ${fmtGio(yeuCauHang.thoiGian.tuDong)}).`;
       },
     },
     {
@@ -564,11 +561,8 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
       getMessage: () => {
         const thieu =
           yeuCauHang.quangDuong.tuDong - summaryData.quangDuongTuDong;
-        const loiNote =
-          summaryData.tuDongLoiKm > 0
-            ? ` — đã loại ${summaryData.tuDongLoiKm.toFixed(2)} km phiên tự động không hợp lệ.`
-            : ".";
-        return `Quãng đường số tự động thiếu ${thieu.toFixed(2)} km (yêu cầu ${yeuCauHang.quangDuong.tuDong} km, thực tế ${summaryData.quangDuongTuDong.toFixed(2)} km)${loiNote}`;
+
+        return `Quãng đường số tự động thiếu ${thieu.toFixed(2)} km (thực tế ${summaryData.quangDuongTuDong.toFixed(2)} km, yêu cầu ${yeuCauHang.quangDuong.tuDong} km).`;
       },
     },
     {
@@ -577,11 +571,8 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
       condition: summaryData.tongThoiGianGio < yeuCauHang.thoiGian.tong,
       getMessage: () => {
         const thieu = yeuCauHang.thoiGian.tong - summaryData.tongThoiGianGio;
-        const loiNote =
-          summaryData.tongThoiGianLoiGio > 0
-            ? ` — đã loại ${fmtGio(summaryData.tongThoiGianLoiGio)} từ phiên không hợp lệ.`
-            : ".";
-        return `Tổng thời lượng thiếu ${fmtGio(thieu)} (yêu cầu ${fmtGio(yeuCauHang.thoiGian.tong)}, thực tế ${fmtGio(summaryData.tongThoiGianGio)})${loiNote}`;
+
+        return `Tổng thời lượng thiếu ${fmtGio(thieu)} (thực tế ${fmtGio(summaryData.tongThoiGianGio)}, yêu cầu ${fmtGio(yeuCauHang.thoiGian.tong)}).`;
       },
     },
     {
@@ -590,11 +581,8 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
       condition: summaryData.tongQuangDuong < yeuCauHang.quangDuong.tong,
       getMessage: () => {
         const thieu = yeuCauHang.quangDuong.tong - summaryData.tongQuangDuong;
-        const loiNote =
-          summaryData.tongQuangDuongLoi > 0
-            ? ` — đã loại ${summaryData.tongQuangDuongLoi.toFixed(2)} km từ phiên không hợp lệ.`
-            : ".";
-        return `Tổng quãng đường thiếu ${thieu.toFixed(2)} km (yêu cầu ${yeuCauHang.quangDuong.tong} km, thực tế ${summaryData.tongQuangDuong.toFixed(2)} km)${loiNote}`;
+
+        return `Tổng quãng đường thiếu ${thieu.toFixed(2)} km (thực tế ${summaryData.tongQuangDuong.toFixed(2)} km, yêu cầu ${yeuCauHang.quangDuong.tong} km).`;
       },
     },
 
@@ -669,9 +657,9 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
   // Các phiên vi phạm đã bị loại khỏi tổng → chỉ cảnh báo, không ảnh hưởng status
   warnings.push(...evaluateNghiGiuaPhien(dataSource));
   warnings.push(...evaluateTocDoPhien(dataSource));
-  // warnings.push(...evaluateTuDongSau17h(dataSource));
+  warnings.push(...evaluateTuDongSau17h(dataSource));
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
-  // warnings.push(...evaluateSaiGiaoVien(dataSource));
+  warnings.push(...evaluateSaiGiaoVien(dataSource));
 
   const courseCode =
     dataSource?.[0]?.MaKhoaHoc ||
