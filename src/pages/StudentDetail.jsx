@@ -31,6 +31,7 @@ import { LoTringOnline } from "../apis/xeOnline";
 import {
   computeSummary as computeSummaryHangLoat,
   evaluate as evaluateHangLoat,
+  fmtGio,
 } from "./checks/DieuKienKiemTra";
 import {
   computeSummary as computeSummaryHangNam,
@@ -411,21 +412,6 @@ const StudentDetail = ({ data }) => {
 
   const isPass = evaluationData.status === "pass";
 
-  const getBanNgayTime = (tongThoiGian = 0, thoiGianBanDem = 0) => {
-    const banNgayPhut = Math.max(tongThoiGian - thoiGianBanDem, 0);
-    const gio = Math.floor(banNgayPhut / 60);
-    const phut = banNgayPhut % 60;
-    return `${gio}h${phut}`;
-  };
-
-  const formatThoiGianFromHours = (hours) => {
-    const totalMinutes = Math.floor(Number(hours || 0));
-    const gio = Math.floor(totalMinutes / 60);
-    const phutDu = totalMinutes % 60;
-
-    return `${gio}h${phutDu.toString().padStart(2, "0")}`;
-  };
-
   const formatCabinDuration = (seconds = 0) => {
     const totalMinutes = Math.floor(Number(seconds || 0) / 60);
     const gio = Math.floor(totalMinutes / 60);
@@ -714,9 +700,12 @@ const StudentDetail = ({ data }) => {
                 <Title level={4}>Tổng hợp</Title>
                 <Col span={24} className="pl-20">
                   <Text>
-                    Tổng thời lượng: <Text strong>{data?.TongTGFont}'</Text> ·
+                    Tổng thời lượng:{" "}
+                    <Text strong>{fmtGio(summaryData.tongThoiGianGio)}</Text> ·
                     Tổng quãng đường:{" "}
-                    <Text strong>{data?.TongQD || 0.0} km</Text>
+                    <Text strong>
+                      {summaryData?.tongQuangDuong.toFixed(2) || 0.0} km
+                    </Text>
                   </Text>
                 </Col>
               </Row>
@@ -796,32 +785,44 @@ const StudentDetail = ({ data }) => {
                       {/* Summary */}
                       <Space direction="vertical" size={4}>
                         <Text className="text-[#888888] font-medium">
-                          Ban ngày:{" "}
-                          {getBanNgayTime(
-                            data?.TongThoiGian,
-                            data?.ThoiGianBanDem,
-                          )}
-                          ' -{" "}
-                          {(data?.TongQD - data?.QuangDuongBanDem).toFixed(2)}{" "}
-                          km
+                          Ban ngày: {fmtGio(summaryData.thoiGianBanNgayGio)}
+                          {" - "}
+                          {summaryData.quangDuongBanNgay.toFixed(2)} km
                         </Text>
+
                         <Text className="text-[#888888] font-medium">
-                          Ban đêm:{" "}
-                          {formatThoiGianFromHours(
-                            summaryData.thoiGianBanDemGio,
-                          )}
-                          ' - {summaryData?.quangDuongBanDem.toFixed(2)} km
+                          Ban đêm: {fmtGio(summaryData.thoiGianBanDemGio)}
+                          {" - "}
+                          {summaryData.quangDuongBanDem.toFixed(2)} km
                         </Text>
+
                         {dataSource[0]?.HangDaoTao !== "B1" &&
                         dataSource[0]?.HangDaoTao !== "B11" ? (
                           <Text className="text-[#888888] font-medium">
                             Trải nghiệm hộp số tự động (17h-7h):{" "}
-                            {formatThoiGianFromHours(
-                              summaryData.thoiGianTuDongGio,
+                            {fmtGio(summaryData.thoiGianTuDongGio)}
+                            {" - "}
+                            {summaryData.quangDuongTuDong.toFixed(2)} km
+                            {summaryData.tuDongLoiGio > 0 && (
+                              <Text className="!text-orange-500 ml-2">
+                                (đã loại {fmtGio(summaryData.tuDongLoiGio)} /{" "}
+                                {summaryData.tuDongLoiKm.toFixed(2)} km trước
+                                17h)
+                              </Text>
                             )}
-                            ' - {summaryData.quangDuongTuDong.toFixed(2)} km
                           </Text>
                         ) : null}
+
+                        {/* Tổng phiên không hợp lệ bị loại */}
+                        {(summaryData.tongThoiGianLoiGio > 0 ||
+                          summaryData.tongQuangDuongLoi > 0) && (
+                          <Text className="!text-red-500 font-medium">
+                            ⚠ Phiên không hợp lệ bị loại:{" "}
+                            {fmtGio(summaryData.tongThoiGianLoiGio)}
+                            {" - "}
+                            {summaryData.tongQuangDuongLoi.toFixed(2)} km
+                          </Text>
+                        )}
                       </Space>
                     </Space>
                   </Card>

@@ -88,8 +88,8 @@ export function evaluate(summary, dataSource, studentInfo) {
     const wrongNames = [
       ...new Set(wrongTeacherSessions.map((s) => s.HoTenGV || "(trống)")),
     ].join(", ");
-    errors.push({
-      type: "error",
+    warnings.push({
+      type: "warning",
       label: "Sai giáo viên",
       message: `Đăng ký với GV: "${studentInfo.giaoVien}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongTeacherSessions.length} phiên không khớp).`,
     });
@@ -132,8 +132,8 @@ export function evaluate(summary, dataSource, studentInfo) {
         .join(", ");
 
       // BÁO LỖI: Cập nhật nội dung theo yêu cầu của bạn
-      errors.push({
-        type: "error",
+      warnings.push({
+        type: "warning",
         label: "Sai biển số xe",
         message: `Xe đăng ký: "${allowedList}", nhưng hành trình có phiên dùng xe: "${wrongPlates}" (${wrongPlateSessions.length} phiên không đúng).`,
       });
