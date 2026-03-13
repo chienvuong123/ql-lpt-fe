@@ -1,17 +1,22 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import {
   Card,
   Drawer,
   Empty,
   Image,
-  Modal,
   Spin,
   Typography,
   message,
+  Button,
 } from "antd";
-import { getPhienHocDAT, updatePhienHocDAT } from "../../apis/hocVien";
 import {
+  getPhienHocDAT,
+  hocVienKyDAT,
+  updatePhienHocDAT,
+} from "../../apis/hocVien";
+import {
+  HANG_DAO_TAO_CONFIG,
   evaluateNghiGiuaPhien,
   evaluateSaiBienSo,
   evaluateSaiGiaoVien,
@@ -20,18 +25,10 @@ import {
 
 const { Text } = Typography;
 
-const MIN_DAT_SPEED = 18;
-
 const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
 };
-
-// const normalizeName = (name) =>
-//   String(name || "")
-//     .trim()
-//     .toUpperCase()
-//     .replace(/\s+/g, " ");
 
 const normalizePlate = (plate) =>
   String(plate || "")
@@ -60,23 +57,25 @@ const getSessionKeys = (item) => {
   const endTime = formatSessionTime(item?.gio_ra ?? item?.ThoiDiemDangXuat);
 
   if (sessionId) keys.add(`id:${String(sessionId)}`);
-  if (date && plate && startTime && endTime)
+  if (date && plate && startTime && endTime) {
     keys.add(`slot:${date}|${plate}|${startTime}|${endTime}`);
-  if (date && startTime && endTime)
+  }
+  if (date && startTime && endTime) {
     keys.add(`time:${date}|${startTime}|${endTime}`);
+  }
 
   return Array.from(keys);
 };
 
-// const getAvgSpeed = (item) => {
-//   const km = toNumber(item?.TongQuangDuong);
-//   const seconds = toNumber(item?.TongThoiGian);
-//   if (km <= 0 || seconds <= 0) return 0;
-//   return km / (seconds / 3600);
-// };
-
 const formatDurationFromSeconds = (seconds) => {
   const totalMinutes = Math.round(toNumber(seconds) / 60);
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  return `${hour}h ${String(minute).padStart(2, "0")}`;
+};
+
+const formatDurationFromHours = (hours) => {
+  const totalMinutes = Math.round(toNumber(hours) * 60);
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
   return `${hour}h ${String(minute).padStart(2, "0")}`;
@@ -100,7 +99,7 @@ const toStatusMap = (response) => {
       : Array.isArray(root?.Data)
         ? root.Data
         : Array.isArray(root?.phien_hoc_list)
-          ? root.phien_hoc_list // ← thêm case này khớp với response BE
+          ? root.phien_hoc_list
           : [];
 
   return list.reduce((map, item) => {
@@ -115,6 +114,44 @@ const toStatusMap = (response) => {
   }, {});
 };
 
+const getMappedStatus = (item, statusMap = {}) => {
+  const sessionKeys = getSessionKeys(item);
+  for (const key of sessionKeys) {
+    const status = statusMap[key];
+    if (status === "DUYET" || status === "HUY") {
+      return status;
+    }
+  }
+  return null;
+};
+
+const normalizeApproveState = (payload = {}) => ({
+  duyet_tong:
+    payload?.duyet_tong === true ||
+    payload?.duyet_tong === 1 ||
+    String(payload?.duyet_tong || "").toLowerCase() === "true",
+  duyet_tu_dong:
+    payload?.duyet_tu_dong === true ||
+    payload?.duyet_tu_dong === 1 ||
+    String(payload?.duyet_tu_dong || "").toLowerCase() === "true",
+  duyet_dem:
+    payload?.duyet_dem === true ||
+    payload?.duyet_dem === 1 ||
+    String(payload?.duyet_dem || "").toLowerCase() === "true",
+});
+
+const getAutoPlateFromRows = (rows = []) => {
+  const count = rows.reduce((acc, item) => {
+    const plate = normalizePlate(item?.BienSo);
+    if (!plate) return acc;
+    acc[plate] = (acc[plate] || 0) + 1;
+    return acc;
+  }, {});
+  const entries = Object.entries(count);
+  if (entries.length <= 1) return null;
+  return entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0];
+};
+
 const TruyVetModal = ({
   open,
   onCancel,
@@ -126,75 +163,95 @@ const TruyVetModal = ({
 }) => {
   const [statusMap, setStatusMap] = useState({});
   const [loadingStatus, setLoadingStatus] = useState(false);
-  const [actioningId, setActioningId] = useState(null); // ← id đang được action
+  const [actioningId, setActioningId] = useState(null);
+  const [approveState, setApproveState] = useState({
+    duyet_tong: false,
+    duyet_tu_dong: false,
+    duyet_dem: false,
+  });
+  const [approveLoadingKey, setApproveLoadingKey] = useState("");
 
   const maDk = String(student?.user?.admission_code || "").trim();
 
-  const fetchSessionStatuses = async () => {
+  const fetchSessionStatuses = useCallback(async () => {
     if (!maDk) return;
     setLoadingStatus(true);
     try {
       const response = await getPhienHocDAT(maDk);
       setStatusMap(toStatusMap(response));
-    } catch {
-      // message.error("Khong lay duoc trang thai phien DAT.");
     } finally {
       setLoadingStatus(false);
     }
-  };
+  }, [maDk]);
+
+  const fetchApproveStatuses = useCallback(async () => {
+    if (!maDk) return;
+    try {
+      const response = await hocVienKyDAT(maDk);
+      const payload = response?.data || response?.Data || response || {};
+      console.log("[TruyVetModal] fetch approve status:", payload);
+      setApproveState(normalizeApproveState(payload));
+    } catch (error) {
+      console.log("[TruyVetModal] fetch approve status error:", error);
+    }
+  }, [maDk]);
 
   useEffect(() => {
     if (!open) return;
-    setStatusMap({}); // ← reset khi mở modal mới
+    setStatusMap({});
+    setApproveLoadingKey("");
     fetchSessionStatuses();
-  }, [open, maDk]);
+    fetchApproveStatuses();
+  }, [open, fetchSessionStatuses, fetchApproveStatuses]);
 
   const rowsWithStatus = useMemo(() => {
     const sorted = [...rows].sort(
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
-    // Chạy toàn bộ check từ evaluateUtils
     const nghiErrors = evaluateNghiGiuaPhien(sorted);
     const tocDoErrors = evaluateTocDoPhien(sorted);
     const giaoVienErrors = evaluateSaiGiaoVien(sorted, studentCheckInfo);
     const bienSoErrors = evaluateSaiBienSo(sorted, studentCheckInfo);
 
-    // Gán lỗi vào từng phiên theo index
     return sorted.map((item, index) => {
       const phienLabel = `Phiên ${index + 1}`;
 
-      const _isSpeedInvalid = tocDoErrors.some((e) =>
+      const isSpeedInvalid = tocDoErrors.some((e) =>
         e.message.startsWith(phienLabel),
       );
-      const _isTeacherMismatch = giaoVienErrors.some((e) =>
+      const isTeacherMismatch = giaoVienErrors.some((e) =>
         e.message.startsWith(phienLabel),
       );
-      const _isPlateMismatch = bienSoErrors.some((e) =>
+      const isPlateMismatch = bienSoErrors.some((e) =>
         e.message.startsWith(phienLabel),
       );
-      const _isRestTooShort = nghiErrors.some(
+      const isRestTooShort = nghiErrors.some(
         (e) =>
           e.message.includes(`Phiên ${index + 1} và`) ||
           e.message.includes(`và ${index + 1}:`),
       );
 
-      const _isInvalid =
-        _isSpeedInvalid ||
-        _isTeacherMismatch ||
-        _isPlateMismatch ||
-        _isRestTooShort;
+      const derivedInvalid =
+        isSpeedInvalid ||
+        isTeacherMismatch ||
+        isPlateMismatch ||
+        isRestTooShort;
+      const persistedStatus = getMappedStatus(item, statusMap);
+      const effectiveStatus =
+        persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
 
       return {
         ...item,
-        _isSpeedInvalid,
-        _isTeacherMismatch,
-        _isPlateMismatch,
-        _isRestTooShort,
-        _isInvalid,
+        _isSpeedInvalid: isSpeedInvalid,
+        _isTeacherMismatch: isTeacherMismatch,
+        _isPlateMismatch: isPlateMismatch,
+        _isRestTooShort: isRestTooShort,
+        _status: effectiveStatus,
+        _isInvalid: effectiveStatus === "HUY",
       };
     });
-  }, [rows, studentCheckInfo]);
+  }, [rows, studentCheckInfo, statusMap]);
 
   const totalDistance = useMemo(
     () =>
@@ -216,10 +273,135 @@ const TruyVetModal = ({
     [rowsWithStatus],
   );
 
-  const invalidSessionCount = useMemo(
-    () => rowsWithStatus.filter((item) => item?._isInvalid).length,
-    [rowsWithStatus],
-  );
+  const summaryMissingCases = useMemo(() => {
+    const hangDaoTao =
+      rows?.[0]?.HangDaoTao ||
+      studentCheckInfo?.hangDaoTao ||
+      studentCheckInfo?.HangDaoTao ||
+      "B1";
+    const yeuCauHang =
+      HANG_DAO_TAO_CONFIG[hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
+    const validRows = rowsWithStatus.filter((item) => !item?._isInvalid);
+
+    const tongGio = validRows.reduce(
+      (sum, item) => sum + toNumber(item?.TongThoiGian) / 3600,
+      0,
+    );
+    const tongKm = validRows.reduce(
+      (sum, item) => sum + toNumber(item?.TongQuangDuong),
+      0,
+    );
+
+    const demTotals = validRows.reduce(
+      (acc, item) => {
+        const demGiay = toNumber(item?.ThoiGianBanDem);
+        const demKm = toNumber(item?.QuangDuongBanDem);
+        if (demGiay > 0 || demKm > 0) {
+          acc.gio += demGiay / 3600;
+          acc.km += demKm;
+          return acc;
+        }
+        if (item?.ThoiDiemDangNhap) {
+          const hour = new Date(item.ThoiDiemDangNhap).getHours();
+          if (hour >= 18 || hour < 5) {
+            acc.gio += toNumber(item?.TongThoiGian) / 3600;
+            acc.km += toNumber(item?.TongQuangDuong);
+          }
+        }
+        return acc;
+      },
+      { gio: 0, km: 0 },
+    );
+
+    const bienSoTuDong = getAutoPlateFromRows(validRows);
+    const tuDongTotals = validRows.reduce(
+      (acc, item) => {
+        if (!bienSoTuDong) return acc;
+        if (normalizePlate(item?.BienSo) !== bienSoTuDong) return acc;
+        acc.gio += toNumber(item?.TongThoiGian) / 3600;
+        acc.km += toNumber(item?.TongQuangDuong);
+        return acc;
+      },
+      { gio: 0, km: 0 },
+    );
+
+    const buildCase = (
+      key,
+      label,
+      currentHours,
+      currentKm,
+      requiredHours,
+      requiredKm,
+      approved,
+    ) => {
+      const thieuGio = Math.max(requiredHours - currentHours, 0);
+      const thieuKm = Math.max(requiredKm - currentKm, 0);
+      if (thieuGio <= 0 && thieuKm <= 0) return null;
+      return {
+        key,
+        label,
+        approved,
+        detail: `Thiếu ${formatDurationFromHours(thieuGio)} / ${thieuKm.toFixed(2)} km`,
+      };
+    };
+
+    return [
+      buildCase(
+        "duyet_tong",
+        "Thiếu tổng quãng đường/thời gian",
+        tongGio,
+        tongKm,
+        toNumber(yeuCauHang?.thoiGian?.tong),
+        toNumber(yeuCauHang?.quangDuong?.tong),
+        approveState.duyet_tong,
+      ),
+      buildCase(
+        "duyet_dem",
+        "Thiếu quãng đường/thời gian đêm",
+        demTotals.gio,
+        demTotals.km,
+        toNumber(yeuCauHang?.thoiGian?.banDem),
+        toNumber(yeuCauHang?.quangDuong?.banDem),
+        approveState.duyet_dem,
+      ),
+      buildCase(
+        "duyet_tu_dong",
+        "Thiếu quãng đường/thời gian số tự động",
+        tuDongTotals.gio,
+        tuDongTotals.km,
+        toNumber(yeuCauHang?.thoiGian?.tuDong),
+        toNumber(yeuCauHang?.quangDuong?.tuDong),
+        approveState.duyet_tu_dong,
+      ),
+    ].filter(Boolean);
+  }, [rows, rowsWithStatus, studentCheckInfo, approveState]);
+
+  const handleApproveMissingCase = async (caseKey, nextApproved) => {
+    if (!maDk || !caseKey) return;
+    setApproveLoadingKey(caseKey);
+    console.log("[TruyVetModal] approve toggle click:", {
+      ma_dk: maDk,
+      caseKey,
+      nextApproved,
+      action: nextApproved ? "duyet" : "huy_duyet",
+    });
+    try {
+      const payload = {
+        ma_dk: maDk,
+        [caseKey]: nextApproved,
+      };
+      const response = await updatePhienHocDAT(payload);
+      console.log("[TruyVetModal] approve toggle response:", response);
+      await fetchApproveStatuses();
+      setApproveState((prev) => ({ ...prev, [caseKey]: nextApproved }));
+      message.success(nextApproved ? "Đã duyệt." : "Đã hủy duyệt.");
+    } catch (error) {
+      console.log("[TruyVetModal] approve toggle error:", error);
+      message.error(error?.response?.data?.message || "Cập nhật thất bại.");
+    } finally {
+      setApproveLoadingKey("");
+    }
+  };
 
   const handleSessionAction = async (item) => {
     if (!item || !maDk) return;
@@ -227,7 +409,7 @@ const TruyVetModal = ({
     const sessionId = String(item?.ID || "");
     const start = item?.ThoiDiemDangNhap ? dayjs(item.ThoiDiemDangNhap) : null;
     const end = item?.ThoiDiemDangXuat ? dayjs(item.ThoiDiemDangXuat) : null;
-    const actionStatus = item?._isInvalid ? "DUYET" : "HUY";
+    const actionStatus = item?._status === "DUYET" ? "HUY" : "DUYET";
 
     const payload = {
       ngay: start?.isValid() ? start.format("YYYY-MM-DD") : null,
@@ -254,12 +436,9 @@ const TruyVetModal = ({
       phien_hoc_id: payload.phien_hoc_id,
     });
 
-    setActioningId(sessionId); // ← bật loading modal
-
+    setActioningId(sessionId);
     try {
       await updatePhienHocDAT(payload);
-
-      // Cập nhật statusMap ngay lập tức, không chờ fetch
       setStatusMap((prev) => {
         const next = { ...prev };
         sessionKeys.forEach((key) => {
@@ -267,24 +446,24 @@ const TruyVetModal = ({
         });
         return next;
       });
-
-      // Sau đó fetch lại để đồng bộ với BE
       await fetchSessionStatuses();
-
       message.success(
-        actionStatus === "DUYET" ? "Đã hủy phiên học." : "Đã duyệt phiên học.",
+        actionStatus === "DUYET" ? "Đã duyệt phiên học." : "Đã hủy phiên học.",
       );
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Cập nhập trạng thái thất bại.",
+        error?.response?.data?.message || "Cập nhật trạng thái thất bại.",
       );
     } finally {
-      setActioningId(null); // ← tắt loading modal
+      setActioningId(null);
     }
   };
 
-  // Modal đang loading khi: fetch lần đầu, hoặc đang xử lý action
-  const isModalLoading = loading || loadingStatus || actioningId !== null;
+  const isModalLoading =
+    loading ||
+    loadingStatus ||
+    actioningId !== null ||
+    approveLoadingKey !== "";
 
   return (
     <Drawer
@@ -325,18 +504,19 @@ const TruyVetModal = ({
             />
           </div>
         </Card>
+
         {rowsWithStatus.length > 0 ? (
           <>
             <Card bodyStyle={{ padding: 8 }} className="!mb-3 !bg-[#dff4f7]">
               <div className="!grid !grid-cols-2 !text-center">
                 <Text strong>Tổng Km: {totalDistance.toFixed(2)} km</Text>
                 <Text strong>
-                  Tổng giờ: {formatDurationFromSeconds(totalSeconds)}p
+                  Tổng giờ: {formatDurationFromSeconds(totalSeconds)}
                 </Text>
               </div>
             </Card>
 
-            {invalidSessionCount > 0 && (
+            {/* {invalidSessionCount > 0 && (
               <Card
                 bodyStyle={{ padding: 8 }}
                 className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
@@ -345,9 +525,44 @@ const TruyVetModal = ({
                   Có {invalidSessionCount} phiên lỗi. Bấm duyệt để tính.
                 </Text>
               </Card>
+            )} */}
+
+            {summaryMissingCases.length > 0 && (
+              <Card
+                bodyStyle={{ padding: 10 }}
+                className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
+              >
+                <div className="!space-y-2">
+                  {summaryMissingCases.map((item) => (
+                    <div
+                      key={item.key}
+                      className="!flex !items-center !justify-between !gap-2"
+                    >
+                      <div className="!text-xs">
+                        <div className="!font-semibold !text-[#cf1322]">
+                          {item.label}
+                        </div>
+                        <div className="!text-[#8c8c8c]">{item.detail}</div>
+                      </div>
+                      <Button
+                        type={item.approved ? "default" : "primary"}
+                        danger={item.approved}
+                        className="!w-[56px]"
+                        size="small"
+                        loading={approveLoadingKey === item.key}
+                        onClick={() =>
+                          handleApproveMissingCase(item.key, !item.approved)
+                        }
+                      >
+                        {item.approved ? "Hủy" : "Duyệt"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             )}
 
-            <div className="!space-y-2 !overflow-y-auto !max-h-[60vh]">
+            <div className="!space-y-2 !overflow-y-auto !max-h-[56vh]">
               {rowsWithStatus.map((item, index) => {
                 const start = item?.ThoiDiemDangNhap;
                 const end = item?.ThoiDiemDangXuat;
@@ -355,15 +570,13 @@ const TruyVetModal = ({
                 const isActioning = actioningId === sessionId;
 
                 return (
-                  <div>
+                  <div key={item?.ID || index}>
                     <Card
-                      key={item?.ID || index}
                       bodyStyle={{ padding: 0 }}
-                      className="!border-0 !shadow-sm !overflow-hidden"
+                      className="!border-0 !shadow-sm !overflow-hidden "
                       style={{
                         borderLeft: `3px solid ${item?._isInvalid ? "#cf1322" : "#52c41a"}`,
                         borderRadius: "8px",
-                        // ← dim card đang được xử lý
                         opacity: isActioning ? 0.6 : 1,
                         transition: "opacity 0.2s",
                       }}
@@ -414,64 +627,25 @@ const TruyVetModal = ({
 
                         <button
                           onClick={() => handleSessionAction(item)}
-                          disabled={!!actioningId} // ← disable tất cả button khi đang action
+                          disabled={Boolean(actioningId)}
                           className="!shrink-0 !w-[52px] !text-xs !font-semibold !text-white !border-0 !cursor-pointer !transition-all"
                           style={{
                             background: item?._isInvalid
                               ? "#1e88d8"
                               : "#cf1322",
                             borderRadius: "0 8px 8px 0",
-                            // eslint-disable-next-line no-extra-boolean-cast
-                            opacity: !!actioningId ? 0.5 : 1,
-                            // eslint-disable-next-line no-extra-boolean-cast
-                            cursor: !!actioningId ? "not-allowed" : "pointer",
+                            opacity: actioningId ? 0.5 : 1,
+                            cursor: actioningId ? "not-allowed" : "pointer",
                           }}
                         >
                           {isActioning
                             ? "..."
-                            : item?._isInvalid
+                            : item?._status === "HUY"
                               ? "Duyệt"
                               : "Hủy"}
                         </button>
                       </div>
                     </Card>
-                    {/* {item?._isInvalid && (
-                      <div className="!mt-1.5 !space-y-0.5 !pt-1">
-                        {item?._isPlateMismatch && (
-                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
-                            <span className="text-xs font-medium">
-                              Sai xe đăng ký ({item?.BienSo})
-                            </span>
-                          </div>
-                        )}
-                        {item?._isTeacherMismatch && (
-                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
-                            <span className="text-xs font-medium">
-                              Sai giáo viên ({item?.HoTenGV || "--"})
-                            </span>
-                          </div>
-                        )}
-                        {item?._isSpeedInvalid && (
-                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
-                            <span className="text-xs font-medium">
-                              Tốc độ thấp (
-                              {(
-                                toNumber(item?.TongQuangDuong) /
-                                (toNumber(item?.TongThoiGian) / 3600)
-                              ).toFixed(1)}{" "}
-                              km/h &lt; {MIN_DAT_SPEED} km/h)
-                            </span>
-                          </div>
-                        )}
-                        {item?._isRestTooShort && (
-                          <div className="!flex !items-center !gap-1 !text-[10px] !text-[#cf1322]">
-                            <span className="text-xs font-medium">
-                              Nghỉ chưa đủ 15 phút so với phiên trước
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )} */}
                   </div>
                 );
               })}

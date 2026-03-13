@@ -99,7 +99,7 @@ const StudentDetail = ({ data }) => {
     queryFn: () =>
       HanhTrinh({
         ngaybatdau: "2020-01-01",
-        ngayketthuc: today,
+        ngayketthuc: `${today}T23:59:00`,
         ten: data?.MaDK,
         makhoahoc: data?.MaKhoaHoc,
         limit: 20,

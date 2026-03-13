@@ -1,37 +1,24 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Card, Drawer, Empty, Grid, Image, Spin, Typography } from "antd";
 import {
-  Card,
-  Drawer,
-  Empty,
-  Grid,
-  Image,
-  Modal,
-  Spin,
-  Typography,
-} from "antd";
-import { getPhienHocDATPublic } from "../../apis/apiDeploy";
+  getPhienHocDATPublic,
+  hocVienKyDATPublic,
+} from "../../apis/apiDeploy";
 import {
   evaluateNghiGiuaPhien,
   evaluateSaiBienSo,
   evaluateSaiGiaoVien,
   evaluateTocDoPhien,
+  HANG_DAO_TAO_CONFIG,
 } from "./DieuKienKiemTraPublic";
 
 const { Text } = Typography;
-
-const MIN_DAT_SPEED = 18;
 
 const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
 };
-
-// const normalizeName = (name) =>
-//   String(name || "")
-//     .trim()
-//     .toUpperCase()
-//     .replace(/\s+/g, " ");
 
 const normalizePlate = (plate) =>
   String(plate || "")
@@ -68,18 +55,11 @@ const getSessionKeys = (item) => {
   return Array.from(keys);
 };
 
-// const getAvgSpeed = (item) => {
-//   const km = toNumber(item?.TongQuangDuong);
-//   const seconds = toNumber(item?.TongThoiGian);
-//   if (km <= 0 || seconds <= 0) return 0;
-//   return km / (seconds / 3600);
-// };
-
 const formatDurationFromSeconds = (seconds) => {
   const totalMinutes = Math.round(toNumber(seconds) / 60);
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
-  return `${hour}h ${String(minute).padStart(2, "0")}`;
+  return `${hour}h ${String(minute).padStart(2, "0")}'`;
 };
 
 const normalizeStatus = (value) => {
@@ -100,7 +80,7 @@ const toStatusMap = (response) => {
       : Array.isArray(root?.Data)
         ? root.Data
         : Array.isArray(root?.phien_hoc_list)
-          ? root.phien_hoc_list // ← thêm case này khớp với response BE
+          ? root.phien_hoc_list
           : [];
 
   return list.reduce((map, item) => {
@@ -115,6 +95,147 @@ const toStatusMap = (response) => {
   }, {});
 };
 
+const getMappedStatus = (item, statusMap = {}) => {
+  const sessionKeys = getSessionKeys(item);
+  for (const key of sessionKeys) {
+    const status = statusMap[key];
+    if (status === "DUYET" || status === "HUY") {
+      return status;
+    }
+  }
+  return null;
+};
+
+const normalizeApproveState = (payload = {}) => ({
+  duyet_tong:
+    payload?.duyet_tong === true ||
+    payload?.duyet_tong === 1 ||
+    String(payload?.duyet_tong || "").toLowerCase() === "true",
+  duyet_tu_dong:
+    payload?.duyet_tu_dong === true ||
+    payload?.duyet_tu_dong === 1 ||
+    String(payload?.duyet_tu_dong || "").toLowerCase() === "true",
+  duyet_dem:
+    payload?.duyet_dem === true ||
+    payload?.duyet_dem === 1 ||
+    String(payload?.duyet_dem || "").toLowerCase() === "true",
+});
+
+// ─── Summary Check ────────────────────────────────────────────────────────────
+
+/**
+ * Tính tổng hợp đơn giản từ rowsWithStatus (đã lọc phiên lỗi)
+ * để kiểm tra thiếu km/giờ so với yêu cầu hạng đào tạo
+ */
+const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
+  const yeuCau = HANG_DAO_TAO_CONFIG[hangDaoTao];
+  if (!yeuCau) return null;
+
+  // Chỉ tính phiên hợp lệ
+  const validRows = rowsWithStatus.filter((r) => !r._isInvalid);
+
+  let tongGiay = 0;
+  let tongKm = 0;
+  let demGiay = 0;
+  let demKm = 0;
+  let tuDongGiay = 0;
+  let tuDongKm = 0;
+
+  // Tìm biển số tự động (xuất hiện ít nhất)
+  const bienSoCount = {};
+  validRows.forEach((item) => {
+    if (item.BienSo)
+      bienSoCount[item.BienSo] = (bienSoCount[item.BienSo] || 0) + 1;
+  });
+  const bienSoEntries = Object.entries(bienSoCount);
+  const bienSoTuDong =
+    bienSoEntries.length > 1
+      ? bienSoEntries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0]
+      : null;
+
+  validRows.forEach((item) => {
+    const giay = toNumber(item.TongThoiGian);
+    const km = toNumber(item.TongQuangDuong);
+    const isTuDong =
+      bienSoTuDong &&
+      normalizePlate(item.BienSo) === normalizePlate(bienSoTuDong);
+
+    tongGiay += giay;
+    tongKm += km;
+
+    // Ban đêm: có field ThoiGianBanDem hoặc fallback theo giờ bắt đầu >= 18h
+    const demGiayAPI = toNumber(item.ThoiGianBanDem);
+    if (demGiayAPI > 0) {
+      demGiay += demGiayAPI;
+      demKm += toNumber(item.QuangDuongBanDem);
+    } else if (item.ThoiDiemDangNhap) {
+      const hour = new Date(item.ThoiDiemDangNhap).getHours();
+      if (hour >= 18) {
+        demGiay += giay;
+        demKm += km;
+      }
+    }
+
+    if (isTuDong) {
+      tuDongGiay += giay;
+      tuDongKm += km;
+    }
+  });
+
+  const tongGio = tongGiay / 3600;
+  const demGio = demGiay / 3600;
+  const tuDongGio = tuDongGiay / 3600;
+
+  const warnings = [];
+
+  // 1. Tổng thời gian + quãng đường
+  const thieu_tongGio = yeuCau.thoiGian.tong - tongGio;
+  const thieu_tongKm = yeuCau.quangDuong.tong - tongKm;
+  if (thieu_tongGio > 0 || thieu_tongKm > 0) {
+    const parts = [];
+    warnings.push({
+      key: "duyet_tong",
+      color: "#FF0000",
+      label: "Tổng km và thời gian chưa đạt, liên hệ phòng DAT để kiểm tra.",
+      detail: parts.join(", "),
+    });
+  }
+
+  // 2. Ban đêm
+  const thieu_demGio = yeuCau.thoiGian.banDem - demGio;
+  const thieu_demKm = yeuCau.quangDuong.banDem - demKm;
+  if (thieu_demGio > 0 || thieu_demKm > 0) {
+    const parts = [];
+    warnings.push({
+      key: "duyet_dem",
+      color: "#FF0000",
+      label:
+        "Thời gian và quãng đường ban đêm chưa đạt, liên hệ phòng DAT để kiểm tra.",
+      detail: parts.join(", "),
+    });
+  }
+
+  // 3. Số tự động (chỉ check nếu yêu cầu > 0)
+  if (yeuCau.thoiGian.tuDong > 0 || yeuCau.quangDuong.tuDong > 0) {
+    const thieu_tuDongGio = yeuCau.thoiGian.tuDong - tuDongGio;
+    const thieu_tuDongKm = yeuCau.quangDuong.tuDong - tuDongKm;
+    if (thieu_tuDongGio > 0 || thieu_tuDongKm > 0) {
+      const parts = [];
+      warnings.push({
+        key: "duyet_tu_dong",
+        color: "#FF0000",
+        label:
+          "Thời gian và quãng đường số tự động chưa đạt, liên hệ phòng DAT để kiểm tra.",
+        detail: parts.join(", "),
+      });
+    }
+  }
+
+  return warnings;
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const ModalTest = ({
   open,
   onCancel,
@@ -126,45 +247,65 @@ const ModalTest = ({
 }) => {
   const [statusMap, setStatusMap] = useState({});
   const [loadingStatus, setLoadingStatus] = useState(false);
-  const [actioningId, setActioningId] = useState(null); // ← id đang được action
+  const [approveState, setApproveState] = useState({
+    duyet_tong: false,
+    duyet_tu_dong: false,
+    duyet_dem: false,
+  });
 
   const { useBreakpoint } = Grid;
-
   const screens = useBreakpoint();
 
   const maDk = String(student?.user?.admission_code || "").trim();
 
-  const fetchSessionStatuses = async () => {
+  const fetchSessionStatuses = useCallback(async () => {
     if (!maDk) return;
     setLoadingStatus(true);
     try {
       const response = await getPhienHocDATPublic(maDk);
       setStatusMap(toStatusMap(response));
     } catch {
-      // message.error("Khong lay duoc trang thai phien DAT.");
+      // silent
     } finally {
       setLoadingStatus(false);
     }
-  };
+  }, [maDk]);
+
+  const fetchApproveStatuses = useCallback(async () => {
+    if (!maDk) return;
+    try {
+      const response = await hocVienKyDATPublic(maDk);
+      const payload = response?.data || response?.Data || response || {};
+      setApproveState(normalizeApproveState(payload));
+    } catch {
+      // silent
+    }
+  }, [maDk]);
 
   useEffect(() => {
     if (!open) return;
-    setStatusMap({}); // ← reset khi mở modal mới
+    setStatusMap({});
+    setApproveState({
+      duyet_tong: false,
+      duyet_tu_dong: false,
+      duyet_dem: false,
+    });
     fetchSessionStatuses();
-  }, [open, maDk]);
+    fetchApproveStatuses();
+  }, [open, fetchSessionStatuses, fetchApproveStatuses]);
 
   const rowsWithStatus = useMemo(() => {
     const sorted = [...rows].sort(
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
-    // Chạy toàn bộ check từ evaluateUtils
     const nghiErrors = evaluateNghiGiuaPhien(sorted);
     const tocDoErrors = evaluateTocDoPhien(sorted);
     const giaoVienErrors = evaluateSaiGiaoVien(sorted, studentCheckInfo);
-    const bienSoErrors = evaluateSaiBienSo(sorted, studentCheckInfo);
+    const bienSoErrors = evaluateSaiBienSo
+      ? evaluateSaiBienSo(sorted, studentCheckInfo)
+      : [];
 
-    // Gán lỗi vào từng phiên theo index
     return sorted.map((item, index) => {
       const phienLabel = `Phiên ${index + 1}`;
 
@@ -183,11 +324,14 @@ const ModalTest = ({
           e.message.includes(`và ${index + 1}:`),
       );
 
-      const _isInvalid =
+      const derivedInvalid =
         _isSpeedInvalid ||
         _isTeacherMismatch ||
         _isPlateMismatch ||
         _isRestTooShort;
+      const persistedStatus = getMappedStatus(item, statusMap);
+      const effectiveStatus =
+        persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
 
       return {
         ...item,
@@ -195,10 +339,11 @@ const ModalTest = ({
         _isTeacherMismatch,
         _isPlateMismatch,
         _isRestTooShort,
-        _isInvalid,
+        _status: effectiveStatus,
+        _isInvalid: effectiveStatus === "HUY",
       };
     });
-  }, [rows, studentCheckInfo]);
+  }, [rows, studentCheckInfo, statusMap]);
 
   const totalDistance = useMemo(
     () =>
@@ -225,8 +370,32 @@ const ModalTest = ({
     [rowsWithStatus],
   );
 
-  // Modal đang loading khi: fetch lần đầu, hoặc đang xử lý action
-  const isModalLoading = loading || loadingStatus || actioningId !== null;
+  // Lấy hạng đào tạo từ row đầu tiên hoặc student
+  const hangDaoTao = useMemo(() => {
+    return (
+      rows[0]?.HangDaoTao ||
+      studentCheckInfo?.HangDaoTao ||
+      student?.hang_dao_tao ||
+      ""
+    );
+  }, [rows, studentCheckInfo, student]);
+
+  // Tính các warning thiếu km/giờ
+  const summaryWarnings = useMemo(
+    () => computeQuickSummary(rowsWithStatus, hangDaoTao),
+    [rowsWithStatus, hangDaoTao],
+  );
+
+  const filteredSummaryWarnings = useMemo(
+    () =>
+      (summaryWarnings || []).filter((item) => {
+        if (!item?.key) return true;
+        return !approveState[item.key];
+      }),
+    [summaryWarnings, approveState],
+  );
+
+  const isModalLoading = loading || loadingStatus;
 
   return (
     <Drawer
@@ -238,8 +407,7 @@ const ModalTest = ({
       destroyOnClose
     >
       <Spin spinning={isModalLoading}>
-        {" "}
-        {/* ← spin toàn modal */}
+        {/* Thông tin học viên */}
         <Card
           bodyStyle={{ padding: 12 }}
           className="!mb-3 !rounded-xl !border-0 !bg-[linear-gradient(120deg,#1e7ec8,#1aa0dd)]"
@@ -249,7 +417,7 @@ const ModalTest = ({
               <div className="!mb-1 !text-xs">
                 Họ tên:{" "}
                 <span className="!font-bold">
-                  {student?.user?.name || "Khong ro ten"}
+                  {student?.user?.name || "Không rõ tên"}
                 </span>
               </div>
               <div className="!mb-1 !text-xs">
@@ -269,21 +437,24 @@ const ModalTest = ({
             />
           </div>
         </Card>
+
         {rowsWithStatus.length > 0 ? (
           <>
+            {/* Tổng km + giờ */}
             <Card bodyStyle={{ padding: 8 }} className="!mb-3 !bg-[#dff4f7]">
               <div className="!grid !grid-cols-2 !text-center">
                 <Text strong>Tổng Km: {totalDistance.toFixed(2)} km</Text>
                 <Text strong>
-                  Tổng giờ: {formatDurationFromSeconds(totalSeconds)}p
+                  Tổng giờ: {formatDurationFromSeconds(totalSeconds)}
                 </Text>
               </div>
             </Card>
 
+            {/* Cảnh báo phiên lỗi */}
             {invalidSessionCount > 0 && (
               <Card
                 bodyStyle={{ padding: 8 }}
-                className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
+                className="!mb-2 !bg-[#fff1f0] !border-[#ffa39e]"
               >
                 <Text className="!text-[#cf1322] !text-xs !font-semibold">
                   Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để kiểm
@@ -292,12 +463,53 @@ const ModalTest = ({
               </Card>
             )}
 
+            {/* Cảnh báo thiếu km/giờ */}
+            {filteredSummaryWarnings.length > 0 && (
+              <div className="!mb-3 !space-y-1.5">
+                {filteredSummaryWarnings.map((w, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: w.bg,
+                      border: `1px solid ${w.border}`,
+                      borderRadius: 8,
+                      padding: "7px 10px",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                    }}
+                  >
+                    <span
+                      style={{ color: w.color, marginTop: 1, flexShrink: 0 }}
+                    >
+                      {w.icon}
+                    </span>
+                    <div>
+                      <div
+                        style={{
+                          color: w.color,
+                          fontWeight: 600,
+                          fontSize: 12,
+                        }}
+                      >
+                        {w.label}
+                      </div>
+                      <div
+                        style={{ color: "#374151", fontSize: 11, marginTop: 1 }}
+                      >
+                        {w.detail}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Danh sách phiên */}
             <div className="!space-y-2 !overflow-y-auto !max-h-[60vh]">
               {rowsWithStatus.map((item, index) => {
                 const start = item?.ThoiDiemDangNhap;
                 const end = item?.ThoiDiemDangXuat;
-                const sessionId = String(item?.ID || "");
-                const isActioning = actioningId === sessionId;
 
                 return (
                   <Card
@@ -307,9 +519,6 @@ const ModalTest = ({
                     style={{
                       borderLeft: `3px solid ${item?._isInvalid ? "#cf1322" : "#52c41a"}`,
                       borderRadius: "8px",
-                      // ← dim card đang được xử lý
-                      opacity: isActioning ? 0.6 : 1,
-                      transition: "opacity 0.2s",
                     }}
                   >
                     <div className="!flex !items-stretch">
@@ -360,7 +569,7 @@ const ModalTest = ({
             </div>
           </>
         ) : (
-          <Empty description="Khong co du lieu DAT" />
+          <Empty description="Không có dữ liệu DAT" />
         )}
       </Spin>
     </Drawer>
