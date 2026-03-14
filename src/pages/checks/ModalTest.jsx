@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Card, Drawer, Empty, Grid, Image, Spin, Typography } from "antd";
-import {
-  getPhienHocDATPublic,
-  hocVienKyDATPublic,
-} from "../../apis/apiDeploy";
+import { getPhienHocDATPublic, hocVienKyDATPublic } from "../../apis/apiDeploy";
 import {
   evaluateNghiGiuaPhien,
   evaluateSaiBienSo,
@@ -12,6 +9,7 @@ import {
   evaluateTocDoPhien,
   HANG_DAO_TAO_CONFIG,
 } from "./DieuKienKiemTraPublic";
+import { getPhienHocDAT } from "../../apis/hocVien";
 
 const { Text } = Typography;
 
@@ -121,6 +119,12 @@ const normalizeApproveState = (payload = {}) => ({
     String(payload?.duyet_dem || "").toLowerCase() === "true",
 });
 
+const INITIAL_APPROVE_STATE = {
+  duyet_tong: false,
+  duyet_tu_dong: false,
+  duyet_dem: false,
+};
+
 // ─── Summary Check ────────────────────────────────────────────────────────────
 
 /**
@@ -196,7 +200,7 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     warnings.push({
       key: "duyet_tong",
       color: "#FF0000",
-      label: "Tổng km và thời gian chưa đạt, liên hệ phòng DAT để kiểm tra.",
+      label: "Tổng km và thời gian chưa đạt.",
       detail: parts.join(", "),
     });
   }
@@ -209,8 +213,7 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     warnings.push({
       key: "duyet_dem",
       color: "#FF0000",
-      label:
-        "Thời gian và quãng đường ban đêm chưa đạt, liên hệ phòng DAT để kiểm tra.",
+      label: "Thời gian và quãng đường ban đêm chưa đạt.",
       detail: parts.join(", "),
     });
   }
@@ -224,8 +227,7 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
       warnings.push({
         key: "duyet_tu_dong",
         color: "#FF0000",
-        label:
-          "Thời gian và quãng đường số tự động chưa đạt, liên hệ phòng DAT để kiểm tra.",
+        label: "Thời gian và quãng đường số tự động chưa đạt.",
         detail: parts.join(", "),
       });
     }
@@ -247,11 +249,7 @@ const ModalTest = ({
 }) => {
   const [statusMap, setStatusMap] = useState({});
   const [loadingStatus, setLoadingStatus] = useState(false);
-  const [approveState, setApproveState] = useState({
-    duyet_tong: false,
-    duyet_tu_dong: false,
-    duyet_dem: false,
-  });
+  const [approveState, setApproveState] = useState(INITIAL_APPROVE_STATE);
 
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
@@ -263,6 +261,7 @@ const ModalTest = ({
     setLoadingStatus(true);
     try {
       const response = await getPhienHocDATPublic(maDk);
+      // const response = await getPhienHocDAT(maDk);
       setStatusMap(toStatusMap(response));
     } catch {
       // silent
@@ -285,11 +284,7 @@ const ModalTest = ({
   useEffect(() => {
     if (!open) return;
     setStatusMap({});
-    setApproveState({
-      duyet_tong: false,
-      duyet_tu_dong: false,
-      duyet_dem: false,
-    });
+    setApproveState(INITIAL_APPROVE_STATE);
     fetchSessionStatuses();
     fetchApproveStatuses();
   }, [open, fetchSessionStatuses, fetchApproveStatuses]);
@@ -396,6 +391,7 @@ const ModalTest = ({
   );
 
   const isModalLoading = loading || loadingStatus;
+  console.log(approveState);
 
   return (
     <Drawer
@@ -451,62 +447,48 @@ const ModalTest = ({
             </Card>
 
             {/* Cảnh báo phiên lỗi */}
-            {invalidSessionCount > 0 && (
+            {(invalidSessionCount > 0 ||
+              filteredSummaryWarnings.length > 0) && (
               <Card
                 bodyStyle={{ padding: 8 }}
                 className="!mb-2 !bg-[#fff1f0] !border-[#ffa39e]"
               >
-                <Text className="!text-[#cf1322] !text-xs !font-semibold">
-                  Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để kiểm
-                  tra chi tiết.
-                </Text>
+                <div className="!space-y-2">
+                  {/* Cảnh báo phiên lỗi */}
+                  {invalidSessionCount > 0 && (
+                    <Text className="!text-[#cf1322] !text-xs !font-semibold">
+                      Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để
+                      kiểm tra chi tiết.
+                    </Text>
+                  )}
+
+                  {/* Cảnh báo thiếu km/giờ */}
+                  {filteredSummaryWarnings.length > 0 && (
+                    <div>
+                      {filteredSummaryWarnings.map((w, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start pb-0 text-[#cf1322]"
+                        >
+                          <div>
+                            <div className="text-[12px] font-semibold">
+                              {w.label}
+                            </div>
+
+                            <div className="text-[11px] text-gray-700">
+                              {w.detail}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </Card>
             )}
 
-            {/* Cảnh báo thiếu km/giờ */}
-            {filteredSummaryWarnings.length > 0 && (
-              <div className="!mb-3 !space-y-1.5">
-                {filteredSummaryWarnings.map((w, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: w.bg,
-                      border: `1px solid ${w.border}`,
-                      borderRadius: 8,
-                      padding: "7px 10px",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 8,
-                    }}
-                  >
-                    <span
-                      style={{ color: w.color, marginTop: 1, flexShrink: 0 }}
-                    >
-                      {w.icon}
-                    </span>
-                    <div>
-                      <div
-                        style={{
-                          color: w.color,
-                          fontWeight: 600,
-                          fontSize: 12,
-                        }}
-                      >
-                        {w.label}
-                      </div>
-                      <div
-                        style={{ color: "#374151", fontSize: 11, marginTop: 1 }}
-                      >
-                        {w.detail}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* Danh sách phiên */}
-            <div className="!space-y-2 !overflow-y-auto !max-h-[60vh]">
+            <div className="!space-y-2 !overflow-y-auto !max-h-[56vh]">
               {rowsWithStatus.map((item, index) => {
                 const start = item?.ThoiDiemDangNhap;
                 const end = item?.ThoiDiemDangXuat;

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { ClockCircleOutlined } from "@ant-design/icons";
 import {
   Card,
   Drawer,
@@ -13,6 +14,7 @@ import {
 import {
   getPhienHocDAT,
   hocVienKyDAT,
+  updateDuyetTheoMaDK,
   updatePhienHocDAT,
 } from "../../apis/hocVien";
 import {
@@ -22,6 +24,7 @@ import {
   evaluateSaiGiaoVien,
   evaluateTocDoPhien,
 } from "../checks/DieuKienKiemTraPublic";
+import ConfigModal from "./ConfigModal";
 
 const { Text } = Typography;
 
@@ -140,6 +143,50 @@ const normalizeApproveState = (payload = {}) => ({
     String(payload?.duyet_dem || "").toLowerCase() === "true",
 });
 
+const hasApproveField = (payload = {}) =>
+  payload?.duyet_tong !== undefined ||
+  payload?.duyet_tu_dong !== undefined ||
+  payload?.duyet_dem !== undefined;
+
+const normalizeApproveReasons = (payload = {}) => ({
+  duyet_tong: payload?.ly_do_tong || "",
+  duyet_tu_dong: payload?.ly_do_td || "",
+  duyet_dem: payload?.ly_do_dem || "",
+});
+
+const normalizeApproveMeta = (payload = {}) => ({
+  duyet_tong: {
+    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
+    updatedBy: payload?.nguoi_thay_doi || "",
+  },
+  duyet_tu_dong: {
+    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
+    updatedBy: payload?.nguoi_thay_doi || "",
+  },
+  duyet_dem: {
+    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
+    updatedBy: payload?.nguoi_thay_doi || "",
+  },
+});
+
+const INITIAL_APPROVE_STATE = {
+  duyet_tong: false,
+  duyet_tu_dong: false,
+  duyet_dem: false,
+};
+
+const INITIAL_APPROVE_REASONS = {
+  duyet_tong: "",
+  duyet_tu_dong: "",
+  duyet_dem: "",
+};
+
+const INITIAL_APPROVE_META = {
+  duyet_tong: { updatedAt: "", updatedBy: "" },
+  duyet_tu_dong: { updatedAt: "", updatedBy: "" },
+  duyet_dem: { updatedAt: "", updatedBy: "" },
+};
+
 const getAutoPlateFromRows = (rows = []) => {
   const count = rows.reduce((acc, item) => {
     const plate = normalizePlate(item?.BienSo);
@@ -164,12 +211,14 @@ const TruyVetModal = ({
   const [statusMap, setStatusMap] = useState({});
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [actioningId, setActioningId] = useState(null);
-  const [approveState, setApproveState] = useState({
-    duyet_tong: false,
-    duyet_tu_dong: false,
-    duyet_dem: false,
-  });
+  const [approveState, setApproveState] = useState(INITIAL_APPROVE_STATE);
+  const [approveReasons, setApproveReasons] = useState(INITIAL_APPROVE_REASONS);
+  const [approveMeta, setApproveMeta] = useState(INITIAL_APPROVE_META);
   const [approveLoadingKey, setApproveLoadingKey] = useState("");
+  const [openConfigModal, setOpenConfigModal] = useState(false);
+  const [actionType, setActionType] = useState("approve");
+  const [configMode, setConfigMode] = useState("edit");
+  const [payloadConfig, setPayloadConfig] = useState({});
 
   const maDk = String(student?.user?.admission_code || "").trim();
 
@@ -179,6 +228,24 @@ const TruyVetModal = ({
     try {
       const response = await getPhienHocDAT(maDk);
       setStatusMap(toStatusMap(response));
+
+      const root = response?.data ?? response?.Data ?? response ?? {};
+      const list = Array.isArray(root?.phien_hoc_list)
+        ? root.phien_hoc_list
+        : Array.isArray(root)
+          ? root
+          : Array.isArray(root?.data)
+            ? root.data
+            : Array.isArray(root?.Data)
+              ? root.Data
+              : [];
+
+      const firstItem = list.find((item) => hasApproveField(item));
+      if (firstItem) {
+        setApproveState(normalizeApproveState(firstItem));
+        setApproveReasons(normalizeApproveReasons(firstItem));
+        setApproveMeta(normalizeApproveMeta(firstItem));
+      }
     } finally {
       setLoadingStatus(false);
     }
@@ -189,8 +256,9 @@ const TruyVetModal = ({
     try {
       const response = await hocVienKyDAT(maDk);
       const payload = response?.data || response?.Data || response || {};
-      console.log("[TruyVetModal] fetch approve status:", payload);
       setApproveState(normalizeApproveState(payload));
+      setApproveReasons(normalizeApproveReasons(payload));
+      setApproveMeta(normalizeApproveMeta(payload));
     } catch (error) {
       console.log("[TruyVetModal] fetch approve status error:", error);
     }
@@ -199,9 +267,15 @@ const TruyVetModal = ({
   useEffect(() => {
     if (!open) return;
     setStatusMap({});
+    setApproveState(INITIAL_APPROVE_STATE);
+    setApproveReasons(INITIAL_APPROVE_REASONS);
+    setApproveMeta(INITIAL_APPROVE_META);
     setApproveLoadingKey("");
-    fetchSessionStatuses();
-    fetchApproveStatuses();
+    const run = async () => {
+      await fetchApproveStatuses();
+      await fetchSessionStatuses();
+    };
+    run();
   }, [open, fetchSessionStatuses, fetchApproveStatuses]);
 
   const rowsWithStatus = useMemo(() => {
@@ -333,6 +407,7 @@ const TruyVetModal = ({
       requiredHours,
       requiredKm,
       approved,
+      reason,
     ) => {
       const thieuGio = Math.max(requiredHours - currentHours, 0);
       const thieuKm = Math.max(requiredKm - currentKm, 0);
@@ -341,6 +416,7 @@ const TruyVetModal = ({
         key,
         label,
         approved,
+        reason,
         detail: `Thiếu ${formatDurationFromHours(thieuGio)} / ${thieuKm.toFixed(2)} km`,
       };
     };
@@ -354,6 +430,7 @@ const TruyVetModal = ({
         toNumber(yeuCauHang?.thoiGian?.tong),
         toNumber(yeuCauHang?.quangDuong?.tong),
         approveState.duyet_tong,
+        approveReasons.duyet_tong,
       ),
       buildCase(
         "duyet_dem",
@@ -363,6 +440,7 @@ const TruyVetModal = ({
         toNumber(yeuCauHang?.thoiGian?.banDem),
         toNumber(yeuCauHang?.quangDuong?.banDem),
         approveState.duyet_dem,
+        approveReasons.duyet_dem,
       ),
       buildCase(
         "duyet_tu_dong",
@@ -372,35 +450,35 @@ const TruyVetModal = ({
         toNumber(yeuCauHang?.thoiGian?.tuDong),
         toNumber(yeuCauHang?.quangDuong?.tuDong),
         approveState.duyet_tu_dong,
+        approveReasons.duyet_tu_dong,
       ),
     ].filter(Boolean);
-  }, [rows, rowsWithStatus, studentCheckInfo, approveState]);
+  }, [rows, rowsWithStatus, studentCheckInfo, approveReasons, approveState]);
 
   const handleApproveMissingCase = async (caseKey, nextApproved) => {
     if (!maDk || !caseKey) return;
+
+    setConfigMode("edit");
+    setActionType(nextApproved ? "approve" : "reject");
+    setOpenConfigModal(true);
     setApproveLoadingKey(caseKey);
-    console.log("[TruyVetModal] approve toggle click:", {
+
+    const payload = {
       ma_dk: maDk,
-      caseKey,
-      nextApproved,
-      action: nextApproved ? "duyet" : "huy_duyet",
+      [caseKey]: nextApproved,
+    };
+
+    setPayloadConfig(payload);
+  };
+
+  const handleViewApproveReason = (caseKey) => {
+    if (!caseKey) return;
+    setConfigMode("view");
+    setActionType("approve");
+    setPayloadConfig({
+      [caseKey]: approveReasons[caseKey] || "",
     });
-    try {
-      const payload = {
-        ma_dk: maDk,
-        [caseKey]: nextApproved,
-      };
-      const response = await updatePhienHocDAT(payload);
-      console.log("[TruyVetModal] approve toggle response:", response);
-      await fetchApproveStatuses();
-      setApproveState((prev) => ({ ...prev, [caseKey]: nextApproved }));
-      message.success(nextApproved ? "Đã duyệt." : "Đã hủy duyệt.");
-    } catch (error) {
-      console.log("[TruyVetModal] approve toggle error:", error);
-      message.error(error?.response?.data?.message || "Cập nhật thất bại.");
-    } finally {
-      setApproveLoadingKey("");
-    }
+    setOpenConfigModal(true);
   };
 
   const handleSessionAction = async (item) => {
@@ -420,10 +498,7 @@ const TruyVetModal = ({
       tong_km: Number(toNumber(item?.TongQuangDuong).toFixed(2)),
       ma_dk: maDk,
       trang_thai: actionStatus,
-      nguoi_thay_doi:
-        sessionStorage.getItem("name") ||
-        sessionStorage.getItem("username") ||
-        "unknown",
+      nguoi_thay_doi: sessionStorage.getItem("name"),
       phien_hoc_id: item?.ID || null,
     };
 
@@ -459,11 +534,78 @@ const TruyVetModal = ({
     }
   };
 
-  const isModalLoading =
-    loading ||
-    loadingStatus ||
-    actioningId !== null ||
-    approveLoadingKey !== "";
+  const isModalLoading = loading || loadingStatus || actioningId !== null;
+
+  const handleSubmitConfig = async (value) => {
+    const reasonMap = {
+      duyet_tong: "ly_do_tong",
+      duyet_dem: "ly_do_dem",
+      duyet_tu_dong: "ly_do_td",
+    };
+
+    const payload = {
+      ...payloadConfig,
+      value,
+    };
+
+    Object.keys(reasonMap).forEach((key) => {
+      if (payloadConfig[key] !== undefined) {
+        payload[reasonMap[key]] = value;
+      }
+    });
+
+    try {
+      const res = await updateDuyetTheoMaDK(payload);
+
+      if (res?.success) {
+        message.success("Thành công.");
+        setOpenConfigModal(false);
+        setApproveLoadingKey("");
+        setPayloadConfig({});
+
+        setApproveState((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            Object.keys(reasonMap)
+              .filter((key) => payload[key] !== undefined)
+              .map((key) => [key, payload[key]]),
+          ),
+        }));
+        setApproveReasons((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            Object.entries(reasonMap)
+              .filter(([key]) => payload[key] !== undefined)
+              .map(([key]) => [key, payload[key] ? value : ""]),
+          ),
+        }));
+        setApproveMeta((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            Object.keys(reasonMap)
+              .filter((key) => payload[key] !== undefined)
+              .map((key) => [
+                key,
+                {
+                  updatedAt: new Date().toISOString(),
+                  updatedBy:
+                    sessionStorage.getItem("name") ||
+                    sessionStorage.getItem("username") ||
+                    "unknown",
+                },
+              ]),
+          ),
+        }));
+      }
+    } catch (error) {
+      console.log(error);
+      setApproveLoadingKey("");
+      message.error("Thất bại.");
+    }
+  };
+
+  const selectedApproveKey =
+    Object.keys(payloadConfig).find((key) => key !== "ma_dk") || "";
 
   return (
     <Drawer
@@ -515,51 +657,58 @@ const TruyVetModal = ({
                 </Text>
               </div>
             </Card>
-
-            {/* {invalidSessionCount > 0 && (
-              <Card
-                bodyStyle={{ padding: 8 }}
-                className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
-              >
-                <Text className="!text-[#cf1322] !text-xs !font-semibold">
-                  Có {invalidSessionCount} phiên lỗi. Bấm duyệt để tính.
-                </Text>
-              </Card>
-            )} */}
-
             {summaryMissingCases.length > 0 && (
-              <Card
-                bodyStyle={{ padding: 10 }}
-                className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
-              >
-                <div className="!space-y-2">
-                  {summaryMissingCases.map((item) => (
-                    <div
-                      key={item.key}
-                      className="!flex !items-center !justify-between !gap-2"
-                    >
-                      <div className="!text-xs">
-                        <div className="!font-semibold !text-[#cf1322]">
-                          {item.label}
-                        </div>
-                        <div className="!text-[#8c8c8c]">{item.detail}</div>
+              <div className="!space-y-2 mb-3 w-[98%]">
+                {summaryMissingCases.map((item) => (
+                  <div
+                    key={item.key}
+                    className={`!flex !items-center !justify-between !gap-3 !rounded-lg !border  ${
+                      item.approved
+                        ? "!border-[#b7eb8f] !bg-[#f6ffed]"
+                        : "!border-[#ffccc7] !bg-white"
+                    }`}
+                  >
+                    <div className="!text-xs px-2">
+                      <div
+                        className={`!font-semibold ${
+                          item.approved ? "!text-[#389e0d]" : "!text-[#cf1322]"
+                        }`}
+                      >
+                        {item.label} (
+                        <span className="!text-[#8c8c8c]">{item.detail}</span>)
                       </div>
-                      <Button
-                        type={item.approved ? "default" : "primary"}
+                    </div>
+                    <div className="!flex !items-center !gap-2">
+                      {item.reason ? (
+                        <Button
+                          type="text"
+                          size="small"
+                          className="!text-[#1d39c4]"
+                          icon={<ClockCircleOutlined />}
+                          onClick={() => handleViewApproveReason(item.key)}
+                        />
+                      ) : null}
+                      <button
+                        type={"primary"}
                         danger={item.approved}
-                        className="!w-[56px]"
-                        size="small"
+                        className="!w-[52px] !rounded-none !rounded-r-lg !self-stretch h-[30px] !text-white !text-xs !font-blod"
+                        style={{
+                          background: !item?.approved ? "#1e88d8" : "#cf1322",
+                          borderRadius: "0 8px 8px 0",
+                          opacity: actioningId ? 0.5 : 1,
+                          cursor: actioningId ? "not-allowed" : "pointer",
+                        }}
                         loading={approveLoadingKey === item.key}
                         onClick={() =>
                           handleApproveMissingCase(item.key, !item.approved)
                         }
                       >
                         {item.approved ? "Hủy" : "Duyệt"}
-                      </Button>
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </Card>
+                  </div>
+                ))}
+              </div>
             )}
 
             <div className="!space-y-2 !overflow-y-auto !max-h-[56vh]">
@@ -583,7 +732,7 @@ const TruyVetModal = ({
                     >
                       <div className="!flex !items-stretch">
                         <div
-                          className="!w-8 !shrink-0 !flex !items-center !justify-center !text-xs !font-bold"
+                          className="!w-8 !shrink-0 !flex !items-center !justify-center !text-xs !font-semibold"
                           style={{
                             color: item?._isInvalid ? "#cf1322" : "#52c41a",
                             background: item?._isInvalid
@@ -654,6 +803,32 @@ const TruyVetModal = ({
         ) : (
           <Empty description="Khong co du lieu DAT" />
         )}
+        <ConfigModal
+          open={openConfigModal}
+          actionType={actionType}
+          mode={configMode}
+          initialReason={
+            configMode === "view"
+              ? approveReasons[selectedApproveKey] || ""
+              : ""
+          }
+          updatedAt={
+            configMode === "view"
+              ? approveMeta[selectedApproveKey]?.updatedAt
+              : ""
+          }
+          updatedBy={
+            configMode === "view"
+              ? approveMeta[selectedApproveKey]?.updatedBy
+              : ""
+          }
+          onCancel={() => {
+            setOpenConfigModal(false);
+            setApproveLoadingKey("");
+            setConfigMode("edit");
+          }}
+          onSubmit={handleSubmitConfig}
+        />
       </Spin>
     </Drawer>
   );

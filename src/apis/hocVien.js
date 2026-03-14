@@ -71,6 +71,15 @@ export const updatePhienHocDAT = async (payload) => {
   return response.data;
 };
 
+export const updateDuyetTheoMaDK = async (payload) => {
+  const response = await axios.post(
+    `${baseURL}/phien-hoc-dat/duyet-theo-ma-dk`,
+    payload,
+  );
+
+  return response.data;
+};
+
 export const hocVienTheoKhoa = async (enrolment_plan_iid, extraParams = {}) => {
   const callApi = async () => {
     const userInfoString = sessionStorage.getItem("user_info");
