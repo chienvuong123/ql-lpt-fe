@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Card, Drawer, Empty, Grid, Image, Spin, Typography } from "antd";
-import { getPhienHocDATPublic, hocVienKyDATPublic } from "../../apis/apiDeploy";
 import {
   evaluateNghiGiuaPhien,
   evaluateSaiBienSo,
@@ -9,7 +8,7 @@ import {
   evaluateTocDoPhien,
   HANG_DAO_TAO_CONFIG,
 } from "./DieuKienKiemTraPublic";
-import { getPhienHocDAT } from "../../apis/hocVien";
+import { getPhienHocDATPublic } from "../../apis/apiDeploy";
 
 const { Text } = Typography;
 
@@ -261,23 +260,33 @@ const ModalTest = ({
     setLoadingStatus(true);
     try {
       const response = await getPhienHocDATPublic(maDk);
-      // const response = await getPhienHocDAT(maDk);
       setStatusMap(toStatusMap(response));
+
+      const root = response?.data ?? response?.Data ?? response ?? {};
+      const list = Array.isArray(root?.phien_hoc_list)
+        ? root.phien_hoc_list
+        : Array.isArray(root)
+          ? root
+          : Array.isArray(root?.data)
+            ? root.data
+            : Array.isArray(root?.Data)
+              ? root.Data
+              : [];
+
+      const firstItem = list.find(
+        (item) =>
+          item?.duyet_tong !== undefined ||
+          item?.duyet_tu_dong !== undefined ||
+          item?.duyet_dem !== undefined,
+      );
+
+      if (firstItem) {
+        setApproveState(normalizeApproveState(firstItem));
+      }
     } catch {
       // silent
     } finally {
       setLoadingStatus(false);
-    }
-  }, [maDk]);
-
-  const fetchApproveStatuses = useCallback(async () => {
-    if (!maDk) return;
-    try {
-      const response = await hocVienKyDATPublic(maDk);
-      const payload = response?.data || response?.Data || response || {};
-      setApproveState(normalizeApproveState(payload));
-    } catch {
-      // silent
     }
   }, [maDk]);
 
@@ -286,8 +295,7 @@ const ModalTest = ({
     setStatusMap({});
     setApproveState(INITIAL_APPROVE_STATE);
     fetchSessionStatuses();
-    fetchApproveStatuses();
-  }, [open, fetchSessionStatuses, fetchApproveStatuses]);
+  }, [open, fetchSessionStatuses]);
 
   const rowsWithStatus = useMemo(() => {
     const sorted = [...rows].sort(
