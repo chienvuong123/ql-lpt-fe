@@ -1,4 +1,6 @@
-import { Card, Row, Col } from "antd";
+import { useEffect, useState } from "react";
+import { Alert, Card, Col, Row, Spin, Tabs } from "antd";
+import dayjs from "dayjs";
 import {
   PieChart,
   Pie,
@@ -12,21 +14,161 @@ import {
   ResponsiveContainer,
   LabelList,
 } from "recharts";
+import { loggerApi } from "../../apis/apiLog";
 import { ThiPhanChart } from "./ThiPhanChart";
 
 const BLUE_DARK = "#1a3fa8";
 const BLUE_LIGHT = "#a8c8f0";
 
-// --- Fake Data ---
 const duNoData = [
   { name: "MB", value: 6853, percent: "15.0%" },
   { name: "Ngân hàng khác", value: 4018, percent: "40.0%" },
   { name: "Khác", value: 3693, percent: "35.0%" },
 ];
 
-// --- Donut Chart ---
+const normalizeLogData = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
+const getNestedValue = (record, path) =>
+  path.split(".").reduce((current, key) => current?.[key], record);
+
+const pickFirstValue = (record, paths) => {
+  for (const path of paths) {
+    const value = getNestedValue(record, path);
+    if (value !== null && value !== undefined && value !== "") {
+      return value;
+    }
+  }
+  return "";
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  if (dayjs(value).isValid()) {
+    return dayjs(value).format("DD/MM/YYYY HH:mm:ss");
+  }
+  return String(value);
+};
+
+const formatCompactValue = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "boolean") return value ? "Có" : "Không";
+  return String(value);
+};
+
+const normalizeGiaTriMoi = (value) => {
+  const rawValue = formatCompactValue(value);
+  const normalizedValue = String(rawValue).trim().toLowerCase();
+
+  if (
+    normalizedValue === "duyet" ||
+    normalizedValue === "duyệt" ||
+    normalizedValue === "1"
+  ) {
+    return { text: "Duyệt", color: "#22c55e" };
+  }
+
+  if (
+    normalizedValue === "huy" ||
+    normalizedValue === "hủy" ||
+    normalizedValue === "0"
+  ) {
+    return { text: "Hủy", color: "#ef4444" };
+  }
+
+  return { text: rawValue, color: "#f59e0b" };
+};
+
+const mapLogItem = (record) => ({
+  id:
+    record?.id ||
+    record?.iid ||
+    record?._id ||
+    `${pickFirstValue(record, ["ma_dk", "maDk", "user.code", "code"])}-${pickFirstValue(
+      record,
+      ["createdAt", "updatedAt", "timestamp", "thoi_gian_thay_doi", "thoiGian"],
+    )}`,
+  maDk: formatCompactValue(
+    pickFirstValue(record, [
+      "ma_dk",
+      "maDk",
+      "ma_dang_ky",
+      "maDangKy",
+      "user.admission_code",
+      "user.code",
+      "admission_code",
+      "code",
+    ]),
+  ),
+  nguoiThayDoi: formatCompactValue(
+    pickFirstValue(record, [
+      "nguoi_thay_doi",
+      "nguoiThayDoi",
+      "updatedBy",
+      "updated_by",
+      "createdBy",
+      "created_by",
+      "username",
+      "user.name",
+      "user.username",
+      "user.code",
+    ]),
+  ),
+  giaTriMoi: pickFirstValue(record, [
+    "gia_tri_moi",
+    "giaTriMoi",
+    "new_value",
+    "newValue",
+    "value",
+    "currentValue",
+    "payload.value",
+    "payload.newValue",
+  ]),
+  truongThayDoi: formatCompactValue(
+    pickFirstValue(record, [
+      "truong_thay_doi",
+      "truongThayDoi",
+      "field",
+      "fieldName",
+      "ten_truong",
+      "key",
+      "column",
+      "attribute",
+    ]),
+  ),
+  loai: formatCompactValue(
+    pickFirstValue(record, [
+      "loai",
+      "type",
+      "log_type",
+      "logType",
+      "module",
+      "phan_he",
+      "phanHe",
+      "category",
+    ]),
+  ),
+  thoiGian: formatDateTime(
+    pickFirstValue(record, [
+      "thoi_gian_thay_doi",
+      "thoiGianThayDoi",
+      "createdAt",
+      "updatedAt",
+      "timestamp",
+      "thoiGian",
+    ]),
+  ),
+});
+
 const DonutChart = ({ data, total }) => {
-  const COLORS = [BLUE_DARK, BLUE_LIGHT, "#d6e8fb"];
+  const colors = [BLUE_DARK, BLUE_LIGHT, "#d6e8fb"];
+
   return (
     <div
       className="relative flex items-center justify-center"
@@ -45,14 +187,14 @@ const DonutChart = ({ data, total }) => {
             endAngle={-270}
             stroke="none"
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((_, index) => (
+              <Cell key={index} fill={colors[index % colors.length]} />
             ))}
           </Pie>
-          <Tooltip formatter={(v) => v.toLocaleString()} />
+          <Tooltip formatter={(value) => value.toLocaleString()} />
         </PieChart>
       </ResponsiveContainer>
-      {/* Center label */}
+
       <div className="absolute flex flex-col items-center justify-center pointer-events-none">
         <span
           style={{
@@ -65,112 +207,24 @@ const DonutChart = ({ data, total }) => {
           {total}
         </span>
       </div>
-      {/* Side labels */}
+
       <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col items-start pl-1">
         <span style={{ color: BLUE_LIGHT, fontWeight: 700, fontSize: 13 }}>
-          {data[1].value.toLocaleString()}
+          {data[1]?.value?.toLocaleString?.() ?? data[1]?.value}
         </span>
-        <span style={{ color: BLUE_LIGHT, fontSize: 11 }}>
-          {data[1].percent}
-        </span>
+        <span style={{ color: BLUE_LIGHT, fontSize: 11 }}>{data[1]?.percent}</span>
       </div>
+
       <div className="absolute right-0 top-1/3 flex flex-col items-end pr-1">
         <span style={{ color: BLUE_DARK, fontWeight: 700, fontSize: 13 }}>
-          {data[0].value.toLocaleString()}
+          {data[0]?.value?.toLocaleString?.() ?? data[0]?.value}
         </span>
-        <span style={{ color: BLUE_DARK, fontSize: 11 }}>
-          {data[0].percent}
-        </span>
+        <span style={{ color: BLUE_DARK, fontSize: 11 }}>{data[0]?.percent}</span>
       </div>
     </div>
   );
 };
 
-// --- Custom Dot for scatter ---
-const DiamondDot = (props) => {
-  const { cx, cy } = props;
-  return (
-    <polygon
-      points={`${cx},${cy - 6} ${cx + 5},${cy} ${cx},${cy + 6} ${cx - 5},${cy}`}
-      fill="#6b7fc4"
-      stroke="#6b7fc4"
-    />
-  );
-};
-
-// --- Chat Luong No Bar + Scatter ---
-const ChatLuongNoChart = () => {
-  const data = [
-    { name: "Địa bàn", quyMo: 88328, tyLe: 15 },
-    { name: "MB", quyMo: 13783, tyLe: 7 },
-  ];
-
-  const CustomBar = (props) => {
-    const { x, y, width, height } = props;
-    return (
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={BLUE_LIGHT}
-        rx={2}
-      />
-    );
-  };
-
-  return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart
-        data={data}
-        margin={{ top: 30, right: 20, left: 10, bottom: 5 }}
-        barSize={48}
-      >
-        <CartesianGrid vertical={false} stroke="#e8eef6" />
-        <XAxis
-          dataKey="name"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 12, fill: "#666" }}
-        />
-        <YAxis
-          yAxisId="left"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 11, fill: "#aaa" }}
-        />
-        <YAxis
-          yAxisId="right"
-          orientation="right"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 11, fill: "#aaa" }}
-          domain={[0, 25]}
-        />
-        <Tooltip />
-        <Bar yAxisId="left" dataKey="quyMo">
-          <LabelList
-            dataKey="quyMo"
-            position="top"
-            style={{ fontSize: 12, fontWeight: 600, fill: "#333" }}
-            formatter={(v) => v.toLocaleString()}
-          />
-        </Bar>
-        {/* Diamonds as scatter overlay */}
-        {data.map((entry, i) => (
-          <g key={i}>
-            <DiamondDot
-              cx={i === 0 ? 130 : 310}
-              cy={entry.tyLe === 15 ? 40 : 70}
-            />
-          </g>
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
-  );
-};
-
-// --- Du No Khach Hang ---
 const DuNoChart = () => {
   const data = [
     { name: "Chưa đạt", value: 1.5, color: BLUE_LIGHT },
@@ -199,8 +253,8 @@ const DuNoChart = () => {
         />
         <Tooltip />
         <Bar dataKey="value" radius={[2, 2, 0, 0]}>
-          {data.map((entry, i) => (
-            <Cell key={i} fill={entry.color} />
+          {data.map((entry, index) => (
+            <Cell key={index} fill={entry.color} />
           ))}
           <LabelList
             dataKey="value"
@@ -213,7 +267,6 @@ const DuNoChart = () => {
   );
 };
 
-// --- Card wrapper ---
 const ChartCard = ({ title, date, unit, children }) => (
   <Card
     className="h-full"
@@ -244,11 +297,10 @@ const ChartCard = ({ title, date, unit, children }) => (
   </Card>
 );
 
-// --- Legend row ---
 const LegendRow = ({ items }) => (
   <div className="flex gap-4 mt-2">
-    {items.map((item, i) => (
-      <div key={i} className="flex items-center gap-1.5">
+    {items.map((item, index) => (
+      <div key={index} className="flex items-center gap-1.5">
         <div
           style={{
             width: 10,
@@ -263,7 +315,184 @@ const LegendRow = ({ items }) => (
   </div>
 );
 
-// --- Main Dashboard ---
+const DashboardOverview = () => (
+  <Row gutter={[20, 20]}>
+    <Col xs={24} md={10}>
+      <ChartCard title="Tiến trình hoàn thành" date="02/2026" unit="tỷ đồng">
+        <LegendRow items={[]} />
+        <ThiPhanChart />
+      </ChartCard>
+    </Col>
+
+    <Col xs={24} md={7}>
+      <ChartCard title="Học viên chạy Cabin" date="27/02/2026" unit="người">
+        <DonutChart data={duNoData} total="42" />
+        <LegendRow
+          items={[
+            { color: BLUE_DARK, label: "Thiếu giờ Cabin" },
+            { color: BLUE_LIGHT, label: "Đủ giờ Cabin" },
+          ]}
+        />
+      </ChartCard>
+    </Col>
+
+    <Col xs={24} md={7}>
+      <ChartCard title="Học viên học lý thuyết" date="27/02/2026" unit="người">
+        <DuNoChart />
+      </ChartCard>
+    </Col>
+  </Row>
+);
+
+const DashboardLogs = () => {
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchLogs = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const response = await loggerApi();
+        if (!isMounted) return;
+        setLogs(normalizeLogData(response));
+      } catch (error) {
+        if (!isMounted) return;
+        setErrorMessage(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Không tải được lịch sử phần mềm.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchLogs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const logItems = logs.map(mapLogItem);
+
+  return (
+    <div className="bg-[#0f172a]">
+      {errorMessage ? (
+        <Alert
+          type="error"
+          showIcon
+          message="Không thể tải lịch sử log"
+          description={errorMessage}
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
+
+      {isLoading ? (
+        <div style={{ textAlign: "center", padding: 24 }}>
+          <Spin />
+        </div>
+      ) : logItems.length === 0 ? (
+        <div style={{ textAlign: "center", color: "#64748b", padding: 24 }}>
+          Không có dữ liệu lịch sử log
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {logItems.map((item) => {
+            const giaTriMoi = normalizeGiaTriMoi(item.giaTriMoi);
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  width: "100%",
+                  padding: "3px 2px",
+                  borderRadius: 8,
+                  background: "#0f172a",
+                  color: "#e2e8f0",
+                  fontFamily: "Consolas, 'Courier New', monospace",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  overflowX: "auto",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ color: "#94a3b8", fontFamily: "inherit" }}>
+                  {item.thoiGian}
+                </span>{" "}
+                <span
+                  style={{
+                    color: "#38bdf8",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                  }}
+                >
+                  ma_dk={item.maDk}
+                </span>{" "}
+                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
+                  được
+                </span>{" "}
+                <span
+                  style={{
+                    color: "#22c55e",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.nguoiThayDoi}
+                </span>{" "}
+                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
+                  thay đổi
+                </span>{" "}
+                <span
+                  style={{
+                    color: giaTriMoi.color,
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                  }}
+                >
+                  giá trị mới={giaTriMoi.text}
+                </span>{" "}
+                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
+                  trường
+                </span>{" "}
+                <span
+                  style={{
+                    color: "#a78bfa",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.truongThayDoi}
+                </span>{" "}
+                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
+                  loại
+                </span>{" "}
+                <span
+                  style={{
+                    color: "#60a5fa",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.loai}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Dashboard() {
   return (
     <div
@@ -273,63 +502,21 @@ export default function Dashboard() {
         fontFamily: "'Segoe UI', sans-serif",
       }}
     >
-      {/* Header */}
-      <div className="mb-6">
-        <h1
-          style={{
-            fontFamily: "'Georgia', serif",
-            fontWeight: 800,
-            fontSize: 26,
-            color: "#1a1a2e",
-            letterSpacing: 1,
-            margin: 0,
-          }}
-        >
-          DASHBOARD
-        </h1>
-      </div>
-
-      <Row gutter={[20, 20]}>
-        <Col xs={24} md={10}>
-          <ChartCard
-            title="Tiến trình hoàn thành"
-            date="02/2026"
-            unit="tỷ đồng"
-          >
-            <LegendRow
-              items={
-                [
-                  // { color: BLUE_DARK, label: "MB" },
-                  // { color: BLUE_LIGHT, label: "Địa bàn" },
-                ]
-              }
-              extraDiamond="Thị phần MB"
-            />
-            <ThiPhanChart />
-          </ChartCard>
-        </Col>
-        <Col xs={24} md={7}>
-          <ChartCard title="Học viên chạy Cabin" date="27/02/2026" unit="người">
-            <DonutChart data={duNoData} total="42" />
-            <LegendRow
-              items={[
-                { color: BLUE_DARK, label: "Thiếu giờ Cabin" },
-                { color: BLUE_LIGHT, label: "Đủ giờ Cabin" },
-              ]}
-            />
-          </ChartCard>
-        </Col>
-
-        <Col xs={24} md={7}>
-          <ChartCard
-            title="Học viên học lý thuyết"
-            date="27/02/2026"
-            unit="người"
-          >
-            <DuNoChart />
-          </ChartCard>
-        </Col>
-      </Row>
+      <Tabs
+        defaultActiveKey="dashboard"
+        items={[
+          {
+            key: "dashboard",
+            label: "Dashboard",
+            children: <DashboardOverview />,
+          },
+          {
+            key: "logs",
+            label: "Logs",
+            children: <DashboardLogs />,
+          },
+        ]}
+      />
     </div>
   );
 }

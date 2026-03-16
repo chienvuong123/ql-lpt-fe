@@ -115,7 +115,7 @@ const LayoutTest = () => {
       icon: <BarChartOutlined />,
       label: "DAT",
       children: [
-        // { key: "dashboard-dat", label: "Dashboard DAT" },
+        { key: "dashboard-dat", label: "Dashboard DAT" },
         { key: "student-report", label: "Báo cáo học viên" },
         { key: "check-full-course", label: "Báo cáo học viên hàng loạt" },
         { key: "hoc-vien-ky-dat", label: "Danh sách học viên kí DAT" },

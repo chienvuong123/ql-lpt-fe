@@ -167,10 +167,23 @@ export function getInvalidSessionIndexes(dataSource) {
       if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) return;
       const thoiDiem = new Date(phien.ThoiDiemDangNhap);
       if (isNaN(thoiDiem)) return;
-      if (thoiDiem.getHours() < 17) {
+
+      const hour = thoiDiem.getHours();
+      const minute = thoiDiem.getMinutes();
+      const totalMinutes = hour * 60 + minute;
+
+      const SANG_START = 4 * 60 + 45; // 04:45
+      const SANG_END = 6 * 60 + 59; // 06:59
+      const CHIEU_START = 17 * 60; // 17:00
+
+      const inSangWindow =
+        totalMinutes >= SANG_START && totalMinutes <= SANG_END;
+      const inChieuWindow = totalMinutes >= CHIEU_START;
+
+      if (!inSangWindow && !inChieuWindow) {
         addReason(
           idx,
-          `Xe tự động bắt đầu lúc ${thoiDiem.getHours()}h (< 17h)`,
+          `Xe tự động bắt đầu lúc ${hour}h${String(minute).padStart(2, "0")} — không thuộc khung hợp lệ (04:45–06:59 hoặc từ 17:00)`,
         );
         tuDongLoiIndexes.add(idx);
       }
