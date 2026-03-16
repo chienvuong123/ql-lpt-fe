@@ -26,6 +26,8 @@ import KiemTraPublic from "./pages/checks/KiemTraPublic";
 import QuanLyHocVienLyThuyet from "./pages/class/QuanLyHocVienLyThuyet";
 import TruyXuatLoi from "./pages/dat/TruyXuatLoi";
 import { GiaoVienGuard } from "./components/RoleGuard";
+import DashboardDAT from "./pages/dat/DashboardDAT";
+import DashboardLYThuyet from "./pages/class/DashboardLYThuyet";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -169,6 +171,24 @@ function App() {
                   <GuardedRoute
                     path="/truy-vet-loi"
                     element={<TruyXuatLoi />}
+                  />
+                }
+              />
+              <Route
+                path="dashboard-dat"
+                element={
+                  <GuardedRoute
+                    path="/dashboard-dat"
+                    element={<DashboardDAT />}
+                  />
+                }
+              />
+              <Route
+                path="dashboard-ly-thuyet"
+                element={
+                  <GuardedRoute
+                    path="/dashboard-ly-thuyet"
+                    element={<DashboardLYThuyet />}
                   />
                 }
               />

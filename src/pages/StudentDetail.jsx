@@ -808,8 +808,9 @@ const StudentDetail = ({ data }) => {
                             {summaryData.tuDongLoiGio > 0 && (
                               <Text className="!text-orange-500 ml-2">
                                 (đã loại {fmtGio(summaryData.tuDongLoiGio)} /{" "}
-                                {summaryData.tuDongLoiKm.toFixed(2)} km trước
-                                17h)
+                                {summaryData.tuDongLoiKm.toFixed(2)} km phiên
+                                không hợp lệ - phiên hợp lệ từ sau 4h45 - 6h59
+                                và sau 17h )
                               </Text>
                             )}
                           </Text>

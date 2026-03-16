@@ -299,21 +299,61 @@ export function evaluateTocDoPhien(dataSource) {
 
 export function evaluateTuDongSau17h(dataSource) {
   if (!dataSource || dataSource.length === 0) return [];
+
   const bienSoTuDong = getBienSoTuDong(dataSource);
   if (!bienSoTuDong) return [];
+
   return dataSource.reduce((acc, phien, idx) => {
-    if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong))
+    if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) {
       return acc;
+    }
+
     const thoiDiem = new Date(phien.ThoiDiemDangNhap);
     if (isNaN(thoiDiem)) return acc;
+
     const hour = thoiDiem.getHours();
-    if (hour < 17) {
-      acc.push({
-        type: "warning",
-        label: "Xe tự động bắt đầu trước 17h",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): xe tự động (${phien.BienSo}) bắt đầu lúc ${hour}h (trước 17:00).`,
-      });
+    const minute = thoiDiem.getMinutes();
+    const totalMinutes = hour * 60 + minute;
+    const timeStr = `${hour}h${String(minute).padStart(2, "0")}`;
+    const dateStr = fmtDateStr(phien.ThoiDiemDangNhap);
+    const bienSo = phien.BienSo;
+
+    const SANG_START = 4 * 60 + 45; // 04:45
+    const SANG_END = 7 * 60; // 07:00
+    const CHIEU_START = 17 * 60; // 17:00
+
+    const loaiPhien = phien.LoaiPhien; // "SANG" | "CHIEU"
+
+    const inSangWindow = totalMinutes >= SANG_START && totalMinutes <= SANG_END;
+    const inChieuWindow = totalMinutes >= CHIEU_START;
+
+    if (loaiPhien === "SANG") {
+      if (!inSangWindow) {
+        acc.push({
+          type: "warning",
+          label: "Xe tự động chạy sai giờ phiên sáng",
+          message: `Phiên ${idx + 1} (${dateStr}): xe tự động (${bienSo}) bắt đầu lúc ${timeStr} — phiên sáng chỉ hợp lệ từ 04:45 đến 07:00.`,
+        });
+      }
+    } else if (loaiPhien === "CHIEU") {
+      if (!inChieuWindow) {
+        acc.push({
+          type: "warning",
+          label: "Xe tự động chạy sai giờ phiên chiều",
+          message: `Phiên ${idx + 1} (${dateStr}): xe tự động (${bienSo}) bắt đầu lúc ${timeStr} — phiên chiều chỉ hợp lệ từ 17:00 trở đi.`,
+        });
+      }
+    } else {
+      // LoaiPhien không xác định — check xem có rơi vào khung hợp lệ nào không
+      if (!inSangWindow && !inChieuWindow) {
+        acc.push({
+          type: "warning",
+          label: "Xe tự động chạy ngoài giờ cho phép",
+          message: `Phiên ${idx + 1} (${dateStr}): xe tự động (${bienSo}) bắt đầu lúc ${timeStr} — không thuộc khung sáng (04:45–07:00) hoặc chiều (từ 17:00).`,
+        });
+      }
     }
+
     return acc;
   }, []);
 }

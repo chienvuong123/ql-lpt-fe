@@ -42,6 +42,8 @@ const menuPathMap = {
   "kiem-tra-hoc-vien": "/kiem-tra-hoc-vien",
   "quan-ly-hoc-vien-ly-thuyet": "/quan-ly-hoc-vien-ly-thuyet",
   "truy-vet-loi": "/truy-vet-loi",
+  "dashboard-dat": "/dashboard-dat",
+  "dashboard-ly-thuyet": "/dashboard-ly-thuyet",
 };
 
 const LayoutTest = () => {
@@ -103,6 +105,7 @@ const LayoutTest = () => {
       icon: <BookOutlined />,
       label: "Lý thuyết",
       children: [
+        // { key: "dashboard-ly-thuyet", label: "Dashboard lý thuyết" },
         { key: "class-management", label: "Lớp học lý thuyết" },
         { key: "quan-ly-hoc-vien-ly-thuyet", label: "Quản lý học viên" },
       ],
@@ -112,6 +115,7 @@ const LayoutTest = () => {
       icon: <BarChartOutlined />,
       label: "DAT",
       children: [
+        // { key: "dashboard-dat", label: "Dashboard DAT" },
         { key: "student-report", label: "Báo cáo học viên" },
         { key: "check-full-course", label: "Báo cáo học viên hàng loạt" },
         { key: "hoc-vien-ky-dat", label: "Danh sách học viên kí DAT" },
