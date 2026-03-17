@@ -131,7 +131,7 @@ const KiemTraPublic = () => {
   const [isCabinModalOpen, setIsCabinModalOpen] = useState(false);
   const [isDatModalOpen, setIsDatModalOpen] = useState(false);
 
-  useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ["loginPublicCheck"],
     queryFn: async () => {
       const res = await DangNhapPublic({
@@ -140,9 +140,16 @@ const KiemTraPublic = () => {
       });
       return res?.data;
     },
-    staleTime: Infinity,
-    retry: false,
+    enabled: true,
   });
+
+  useEffect(() => {
+    console.log(data);
+
+    for (let i = 0; i < 3; i++) {
+      refetch();
+    }
+  }, [refetch, data]);
 
   const { data: khoaHocData, isLoading: isLoadingKhoaHoc } = useQuery({
     queryKey: ["optionLopLyThuyet"],

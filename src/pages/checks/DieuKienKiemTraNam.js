@@ -24,6 +24,13 @@ export function normalizeName(str = "") {
   return str.normalize("NFC").trim().replace(/\s+/g, " ").toUpperCase();
 }
 
+const normalizeNameBirth = (name = "") =>
+  name
+    .replace(/\(\d{4}\)/g, "") // bỏ (1985)
+    .trim()
+    .toLowerCase();
+
+const removeBirthYear = (name = "") => name.replace(/\(\d{4}\)/g, "").trim();
 /**
  * computeSummary: tổng hợp thông tin từ danh sách phiên học
  * @param {Array} dataSource  - mảng phiên học từ API HanhTrinh
@@ -79,19 +86,28 @@ export function evaluate(summary, dataSource, studentInfo) {
   // ══════════════════════════════════════════════════════════════════════════════
   // KIỂM TRA 1: Tên giáo viên
   // Tất cả phiên học phải có HoTenGV khớp với giaoVien đã đăng ký
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════════════
+
   const wrongTeacherSessions = dataSource.filter(
-    (s) => normalizeName(s.HoTenGV) !== registeredTeacher,
+    (s) =>
+      normalizeNameBirth(s.HoTenGV) !== normalizeNameBirth(registeredTeacher),
   );
+  console.log(normalizeNameBirth(registeredTeacher));
+  console.log(wrongTeacherSessions);
 
   if (wrongTeacherSessions.length > 0) {
     const wrongNames = [
-      ...new Set(wrongTeacherSessions.map((s) => s.HoTenGV || "(trống)")),
+      ...new Set(
+        wrongTeacherSessions.map((s) =>
+          removeBirthYear(s.HoTenGV || "(trống)"),
+        ),
+      ),
     ].join(", ");
+
     warnings.push({
       type: "warning",
       label: "Sai giáo viên",
-      message: `Đăng ký với GV: "${studentInfo.giaoVien}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongTeacherSessions.length} phiên không khớp).`,
+      message: `Đăng ký với GV: "${removeBirthYear(studentInfo.giaoVien)}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongTeacherSessions.length} phiên không khớp).`,
     });
   }
 

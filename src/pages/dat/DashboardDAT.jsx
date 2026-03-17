@@ -2,13 +2,25 @@ import { useMemo, useState } from "react";
 import { Button, Card, Col, Row, Select, Space, Tag, Typography } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { courseOptions } from "../../apis/khoaHoc";
-import { HanhTrinh } from "../../apis/hocVien";
+import { danhSachDashboardDAT } from "../../apis/evaluateApi";
 
 const { Title, Text } = Typography;
 
-const extractKhoaPrefix = (value) => {
-  const text = String(value || "").toUpperCase();
+const normalizeApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.data?.Data)) return payload.data.Data;
+  if (Array.isArray(payload?.result)) return payload.result;
+  if (Array.isArray(payload?.data?.result)) return payload.data.result;
+  if (Array.isArray(payload?.Data)) return payload.Data;
+  return [];
+};
+
+const extractKhoaPrefix = (source) => {
+  const text = String(source || "").toUpperCase();
   const match = text.match(/K(\d{2})(?!\d)/);
 
   if (!match) return "";
@@ -21,111 +33,192 @@ const getYearFromKhoa = (khoa) => {
   return Number(`20${match[1]}`);
 };
 
+const getRangeByMonth = (khoa, month) => {
+  const year = getYearFromKhoa(khoa);
+  if (!year || !month) {
+    return {
+      ngaybatdau: "",
+      ngayketthuc: "",
+    };
+  }
+
+  const end = dayjs(`${year}-${String(month).padStart(2, "0")}-01`)
+    .endOf("month")
+    .format("YYYY-MM-DDTHH:mm:ss");
+
+  return {
+    ngaybatdau: "2022-01-01",
+    ngayketthuc: end,
+  };
+};
+
 const DashboardDAT = () => {
   const currentDate = dayjs();
-  const defaultKhoa = `K${String(currentDate.year()).slice(-2)}`;
   const defaultMonth = currentDate.month() + 1;
+  const defaultKhoa = `K${String(currentDate.year()).slice(-2)}`;
   const [selectedKhoa, setSelectedKhoa] = useState(defaultKhoa);
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [appliedFilter, setAppliedFilter] = useState({
+    khoa: defaultKhoa,
+    month: defaultMonth,
+  });
 
-  const { data: khoaHocData, isLoading: isLoadingCourses } = useQuery({
+  const { data: khoaHocSourceData, isLoading: isLoadingKhoaSource } = useQuery({
     queryKey: ["courseOptionsDashboardDAT"],
     queryFn: () => courseOptions(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
   });
 
-  const rawCourses = useMemo(
-    () => khoaHocData?.data?.Data || [],
-    [khoaHocData],
+  const { data: lopLyThuyetData, isLoading: isLoadingLopLyThuyet } = useQuery({
+    queryKey: ["optionLopLyThuyetDashboardDAT"],
+    queryFn: () => optionLopLyThuyet(),
+    staleTime: 1000 * 60 * 5,
+    keepPreviousData: true,
+  });
+
+  const courseSourceList = useMemo(
+    () => normalizeApiList(khoaHocSourceData),
+    [khoaHocSourceData],
   );
 
-  const khoaOptions = useMemo(() => {
-    const khoaMap = new Map();
+  const lopLyThuyetList = useMemo(
+    () => normalizeApiList(lopLyThuyetData),
+    [lopLyThuyetData],
+  );
 
-    rawCourses.forEach((item) => {
-      const maKhoaHoc = String(item?.MaKhoaHoc || item?.Ten || "").trim();
-      const prefix = extractKhoaPrefix(maKhoaHoc);
+  const sourceKhoaSet = useMemo(() => {
+    const prefixes = courseSourceList
+      .map((item) => extractKhoaPrefix(item?.MaKhoaHoc || item?.Ten || ""))
+      .filter(Boolean);
+
+    return new Set(prefixes);
+  }, [courseSourceList]);
+
+  const lopLyThuyetGroupMap = useMemo(() => {
+    const groupMap = new Map();
+
+    lopLyThuyetList.forEach((item) => {
+      const prefix = extractKhoaPrefix(
+        item?.suffix_name || item?.name || item?.code || "",
+      );
 
       if (!prefix) return;
 
-      if (!khoaMap.has(prefix)) {
-        khoaMap.set(prefix, []);
+      if (!groupMap.has(prefix)) {
+        groupMap.set(prefix, []);
       }
 
-      khoaMap.get(prefix).push(maKhoaHoc);
+      groupMap.get(prefix).push(item);
     });
 
-    return Array.from(khoaMap.entries())
+    return groupMap;
+  }, [lopLyThuyetList]);
+
+  const khoaOptions = useMemo(() => {
+    return Array.from(lopLyThuyetGroupMap.entries())
+      .filter(([prefix]) => sourceKhoaSet.has(prefix))
       .sort((left, right) => right[0].localeCompare(left[0]))
       .map(([prefix, courses]) => ({
         label: `Khóa ${prefix.slice(1)}`,
         value: prefix,
-        courses,
+        count: courses.length,
       }));
-  }, [rawCourses]);
+  }, [lopLyThuyetGroupMap, sourceKhoaSet]);
 
-  const monthOptions = useMemo(() => {
-    return Array.from({ length: 12 }, (_, index) => {
-      const month = index + 1;
-      return { label: `Tháng ${month}`, value: month };
-    });
-  }, []);
+  const activeSelectedKhoa =
+    selectedKhoa && khoaOptions.some((item) => item.value === selectedKhoa)
+      ? selectedKhoa
+      : (khoaOptions.find((item) => item.value === defaultKhoa)?.value ??
+        khoaOptions[0]?.value);
 
-  const filteredCourses = useMemo(() => {
-    const selectedYear = getYearFromKhoa(selectedKhoa);
+  const activeAppliedKhoa =
+    appliedFilter.khoa &&
+    khoaOptions.some((item) => item.value === appliedFilter.khoa)
+      ? appliedFilter.khoa
+      : activeSelectedKhoa;
 
-    return rawCourses.filter((item) => {
-      const maKhoaHoc = String(item?.MaKhoaHoc || item?.Ten || "").trim();
-      const khoaPrefix = extractKhoaPrefix(maKhoaHoc);
-      const ngayTao = item?.NgayTao;
+  const matchedCourses = useMemo(() => {
+    const yearFromKhoa = getYearFromKhoa(activeAppliedKhoa);
+    const matchedGroup = lopLyThuyetGroupMap.get(activeAppliedKhoa) || [];
 
-      if (selectedKhoa && khoaPrefix !== selectedKhoa) {
+    return matchedGroup.filter((course) => {
+      if (!course?.start_date || !yearFromKhoa) {
         return false;
       }
 
-      if (selectedMonth) {
-        if (!selectedYear || !ngayTao || !dayjs(ngayTao).isValid()) {
-          return false;
-        }
+      const startDate = dayjs.unix(Number(course.start_date));
+      if (!startDate.isValid()) {
+        return false;
+      }
 
-        const createdDate = dayjs(ngayTao);
+      if (startDate.year() !== yearFromKhoa) {
+        return false;
+      }
 
-        if (createdDate.year() !== selectedYear) {
-          return false;
-        }
-
-        if (createdDate.month() + 1 !== selectedMonth) {
-          return false;
-        }
+      if (
+        appliedFilter.month &&
+        startDate.month() + 1 !== Number(appliedFilter.month)
+      ) {
+        return false;
       }
 
       return true;
     });
-  }, [rawCourses, selectedKhoa, selectedMonth]);
+  }, [activeAppliedKhoa, appliedFilter.month, lopLyThuyetGroupMap]);
 
-  const appliedFilters = useMemo(() => {
-    const yearFromKhoa = getYearFromKhoa(selectedKhoa);
-    const matchedCourses = filteredCourses.map(
-      (item) => item?.MaKhoaHoc || item?.Ten || "",
-    );
+  const selectedPlanIds = useMemo(() => {
+    return matchedCourses
+      .map((course) => course?.iid)
+      .filter((iid) => iid !== null && iid !== undefined);
+  }, [matchedCourses]);
 
-    return {
-      khoa: selectedKhoa,
-      month: selectedMonth,
-      yearFromKhoa,
-      matchedCourses,
-    };
-  }, [filteredCourses, selectedKhoa, selectedMonth]);
+  const dateRange = useMemo(() => {
+    return getRangeByMonth(activeAppliedKhoa, appliedFilter.month);
+  }, [activeAppliedKhoa, appliedFilter.month]);
+
+  const { data: listDashboardDAT, isLoading: isLoadingDashboard } = useQuery({
+    queryKey: [
+      "danhSachDashboardDAT",
+      activeAppliedKhoa,
+      appliedFilter.month,
+      selectedPlanIds.join(","),
+      dateRange.ngaybatdau,
+      dateRange.ngayketthuc,
+    ],
+    queryFn: () =>
+      danhSachDashboardDAT({
+        enrolmentPlanIids: ["25906493"],
+        ngaybatdau: dateRange.ngaybatdau,
+        ngayketthuc: dateRange.ngayketthuc,
+      }),
+    staleTime: 1000 * 60 * 5,
+    keepPreviousData: true,
+    enabled:
+      Boolean(activeAppliedKhoa) &&
+      Boolean(appliedFilter.month) &&
+      selectedPlanIds.length > 0,
+  });
+
+  const dashboardList = useMemo(
+    () => normalizeApiList(listDashboardDAT),
+    [listDashboardDAT],
+  );
 
   const handleApplyFilter = () => {
-    setSelectedKhoa((prev) => prev || defaultKhoa);
-    setSelectedMonth((prev) => prev || defaultMonth);
+    setAppliedFilter({
+      khoa: activeSelectedKhoa,
+      month: selectedMonth || defaultMonth,
+    });
   };
 
   const handleClearFilter = () => {
     setSelectedKhoa(defaultKhoa);
     setSelectedMonth(defaultMonth);
+    setAppliedFilter({
+      khoa: defaultKhoa,
+      month: defaultMonth,
+    });
   };
 
   return (
@@ -143,13 +236,12 @@ const DashboardDAT = () => {
           <Col xs={24} md={10}>
             <Text strong>Khóa</Text>
             <Select
-              allowClear
               className="!mt-2 !w-full"
               placeholder="Chọn khóa"
-              value={selectedKhoa}
+              value={activeSelectedKhoa}
               onChange={(value) => setSelectedKhoa(value)}
               options={khoaOptions}
-              loading={isLoadingCourses}
+              loading={isLoadingKhoaSource || isLoadingLopLyThuyet}
               showSearch
               filterOption={(input, option) =>
                 String(option?.label || "")
@@ -162,13 +254,14 @@ const DashboardDAT = () => {
           <Col xs={24} md={8}>
             <Text strong>Tháng</Text>
             <Select
-              allowClear
               className="!mt-2 !w-full"
               placeholder="Chọn tháng"
               value={selectedMonth}
               onChange={(value) => setSelectedMonth(value)}
-              options={monthOptions}
-              disabled={!selectedKhoa}
+              options={Array.from({ length: 12 }, (_, index) => ({
+                label: `Tháng ${index + 1}`,
+                value: index + 1,
+              }))}
             />
           </Col>
 
@@ -186,30 +279,50 @@ const DashboardDAT = () => {
       <Card className="!mt-4">
         <Space size={[8, 8]} wrap>
           <Text strong>Bộ lọc đang áp dụng:</Text>
-          <Tag color="blue">Khóa: {appliedFilters.khoa || "Tất cả"}</Tag>
-          <Tag color="geekblue">
-            Năm từ khóa: {appliedFilters.yearFromKhoa || "Chưa xác định"}
-          </Tag>
-          <Tag color="purple">Tháng: {appliedFilters.month || "Tất cả"}</Tag>
+          <Tag color="blue">Khóa: {activeAppliedKhoa || "-"}</Tag>
+          <Tag color="purple">Tháng: {appliedFilter.month || "-"}</Tag>
           <Tag color="cyan">
-            Số khóa học khớp: {appliedFilters.matchedCourses.length}
+            Năm theo khóa: {getYearFromKhoa(activeAppliedKhoa) || "-"}
           </Tag>
+          <Tag color="green">Số lớp khớp: {matchedCourses.length}</Tag>
+          <Tag color="gold">Số IID gửi lên: {selectedPlanIds.length}</Tag>
         </Space>
 
-        {appliedFilters.matchedCourses.length > 0 ? (
+        {matchedCourses.length > 0 ? (
           <div className="!mt-3">
             <Text type="secondary">
-              {appliedFilters.month
-                ? `Các khóa thuộc ${appliedFilters.khoa} được tạo trong tháng ${appliedFilters.month}/${appliedFilters.yearFromKhoa}:`
-                : `Nhóm ${appliedFilters.khoa} đang bao gồm:`}
+              Các lớp của {activeAppliedKhoa} có `start_date` trong tháng{" "}
+              {appliedFilter.month}/{getYearFromKhoa(activeAppliedKhoa)}:
             </Text>
             <div className="!mt-2 flex flex-wrap gap-2">
-              {appliedFilters.matchedCourses.map((course) => (
-                <Tag key={course}>{course}</Tag>
+              {matchedCourses.map((course) => (
+                <Tag key={course?.iid}>
+                  {(course?.name || course?.suffix_name || course?.code || "") +
+                    ` (#${course?.iid})`}
+                </Tag>
               ))}
             </div>
           </div>
         ) : null}
+
+        <div className="!mt-4">
+          <Text strong>Payload gửi API:</Text>
+          <div className="!mt-2 flex flex-wrap gap-2">
+            <Tag color="geekblue">
+              ngaybatdau: {dateRange.ngaybatdau || "-"}
+            </Tag>
+            <Tag color="geekblue">
+              ngayketthuc: {dateRange.ngayketthuc || "-"}
+            </Tag>
+          </div>
+        </div>
+
+        <div className="!mt-4">
+          <Text strong>
+            Kết quả `danhSachDashboardDAT`:{" "}
+            {isLoadingDashboard ? "Đang tải..." : dashboardList.length}
+          </Text>
+        </div>
       </Card>
     </div>
   );
