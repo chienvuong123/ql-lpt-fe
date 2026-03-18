@@ -206,14 +206,18 @@ const KiemTraPublic = () => {
     selectedStudent?.MaDK ||
     "";
 
-  const { data: chiTietLyThuyetData, isLoading: loadingChiTietLyThuyet } =
-    useQuery({
-      queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
-      queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
-      // queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
-      staleTime: 1000 * 60 * 5,
-      retry: false,
-    });
+  const {
+    data: chiTietLyThuyetData,
+    isLoading: loadingChiTietLyThuyet,
+    refetch: refetchChiTietLyThuyet,
+  } = useQuery({
+    queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
+    queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
+    // queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
+    staleTime: 0,
+    retry: false,
+    // enabled: !!searchParams,
+  });
 
   const { data: dataCabin, isLoading: loadingCabin } = useQuery({
     queryKey: ["cabin", cabinKey],
@@ -361,6 +365,8 @@ const KiemTraPublic = () => {
     const raw = chiTietLyThuyetData?.data;
 
     if (!raw || Object.keys(raw).length === 0) {
+      console.log("1");
+
       return {
         loaiHetMon: "Đã làm bài hết môn",
         loaiHetMonStatus: true,
@@ -368,11 +374,11 @@ const KiemTraPublic = () => {
     }
 
     const loaiHetMon = raw?.loai_het_mon;
-    const loaiLyThuyet = raw?.loai_ly_thuyet;
+    // const loaiLyThuyet = raw?.loai_ly_thuyet;
 
     return {
       loaiHetMon: loaiHetMon ? "Đã làm bài hết môn" : "Chưa làm bài hết môn",
-      loaiHetMonStatus: loaiLyThuyet,
+      loaiHetMonStatus: loaiHetMon,
     };
   }, [chiTietLyThuyetData]);
 
@@ -396,6 +402,7 @@ const KiemTraPublic = () => {
       text: keyword.trim(),
     });
     refetchSearchHocVien();
+    refetchChiTietLyThuyet();
   };
 
   const soMonLyThuyetDat = scoreRows.filter((item) => item.passed).length;

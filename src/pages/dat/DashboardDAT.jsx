@@ -1,10 +1,20 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Col, Row, Select, Space, Tag, Typography } from "antd";
+import {
+  Button,
+  Card,
+  Col,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
-import { courseOptions } from "../../apis/khoaHoc";
 import { danhSachDashboardDAT } from "../../apis/evaluateApi";
+import FailRecordDetailModal from "./FailRecordDetailModal";
 
 const { Title, Text } = Typography;
 
@@ -33,23 +43,50 @@ const getYearFromKhoa = (khoa) => {
   return Number(`20${match[1]}`);
 };
 
-const getRangeByMonth = (khoa, month) => {
-  const year = getYearFromKhoa(khoa);
-  if (!year || !month) {
-    return {
-      ngaybatdau: "",
-      ngayketthuc: "",
-    };
+const getCourseCode = (course) =>
+  course?.code || course?.suffix_name || course?.name || "";
+
+const getCourseLabel = (course) =>
+  course?.suffix_name || course?.name || course?.code || "";
+
+const getCourseIid = (course) =>
+  course?.iid ?? course?.Iid ?? course?.IID ?? course?.ID ?? course?.id;
+
+const getCourseStartDate = (course) => {
+  const rawValue =
+    course?.start_date ??
+    course?.StartDate ??
+    course?.NgayKhaiGiang ??
+    course?.ngay_khai_giang ??
+    course?.NgayBatDau ??
+    course?.ngay_bat_dau;
+
+  if (rawValue === null || rawValue === undefined || rawValue === "") {
+    return null;
   }
 
-  const end = dayjs(`${year}-${String(month).padStart(2, "0")}-01`)
-    .endOf("month")
-    .format("YYYY-MM-DDTHH:mm:ss");
+  const numericValue = Number(rawValue);
+  if (Number.isFinite(numericValue) && String(rawValue).trim() !== "") {
+    const unixDate = dayjs.unix(numericValue);
+    if (unixDate.isValid()) return unixDate;
+  }
 
+  const parsedDate = dayjs(rawValue);
+  return parsedDate.isValid() ? parsedDate : null;
+};
+
+const getRangeByMonth = () => {
   return {
-    ngaybatdau: "2022-01-01",
-    ngayketthuc: end,
+    ngaybatdau: "2020-01-01",
+    ngayketthuc: `${dayjs().format("YYYY-MM-DD")}T23:59:00`,
   };
+};
+
+const getFailNotes = (record) => {
+  return (record?.errors || [])
+    .map((item) => item?.message || item?.label || "")
+    .filter(Boolean)
+    .join(", ");
 };
 
 const DashboardDAT = () => {
@@ -62,13 +99,7 @@ const DashboardDAT = () => {
     khoa: defaultKhoa,
     month: defaultMonth,
   });
-
-  const { data: khoaHocSourceData, isLoading: isLoadingKhoaSource } = useQuery({
-    queryKey: ["courseOptionsDashboardDAT"],
-    queryFn: () => courseOptions(),
-    staleTime: 1000 * 60 * 5,
-    keepPreviousData: true,
-  });
+  const [selectedFailRecord, setSelectedFailRecord] = useState(null);
 
   const { data: lopLyThuyetData, isLoading: isLoadingLopLyThuyet } = useQuery({
     queryKey: ["optionLopLyThuyetDashboardDAT"],
@@ -77,32 +108,16 @@ const DashboardDAT = () => {
     keepPreviousData: true,
   });
 
-  const courseSourceList = useMemo(
-    () => normalizeApiList(khoaHocSourceData),
-    [khoaHocSourceData],
-  );
-
-  const lopLyThuyetList = useMemo(
+  const courseList = useMemo(
     () => normalizeApiList(lopLyThuyetData),
     [lopLyThuyetData],
   );
 
-  const sourceKhoaSet = useMemo(() => {
-    const prefixes = courseSourceList
-      .map((item) => extractKhoaPrefix(item?.MaKhoaHoc || item?.Ten || ""))
-      .filter(Boolean);
-
-    return new Set(prefixes);
-  }, [courseSourceList]);
-
-  const lopLyThuyetGroupMap = useMemo(() => {
+  const courseGroupMap = useMemo(() => {
     const groupMap = new Map();
 
-    lopLyThuyetList.forEach((item) => {
-      const prefix = extractKhoaPrefix(
-        item?.suffix_name || item?.name || item?.code || "",
-      );
-
+    courseList.forEach((item) => {
+      const prefix = extractKhoaPrefix(getCourseLabel(item));
       if (!prefix) return;
 
       if (!groupMap.has(prefix)) {
@@ -113,18 +128,17 @@ const DashboardDAT = () => {
     });
 
     return groupMap;
-  }, [lopLyThuyetList]);
+  }, [courseList]);
 
   const khoaOptions = useMemo(() => {
-    return Array.from(lopLyThuyetGroupMap.entries())
-      .filter(([prefix]) => sourceKhoaSet.has(prefix))
+    return Array.from(courseGroupMap.entries())
       .sort((left, right) => right[0].localeCompare(left[0]))
       .map(([prefix, courses]) => ({
         label: `Khóa ${prefix.slice(1)}`,
         value: prefix,
         count: courses.length,
       }));
-  }, [lopLyThuyetGroupMap, sourceKhoaSet]);
+  }, [courseGroupMap]);
 
   const activeSelectedKhoa =
     selectedKhoa && khoaOptions.some((item) => item.value === selectedKhoa)
@@ -132,23 +146,67 @@ const DashboardDAT = () => {
       : (khoaOptions.find((item) => item.value === defaultKhoa)?.value ??
         khoaOptions[0]?.value);
 
+  const monthOptions = useMemo(() => {
+    const courses = courseGroupMap.get(activeSelectedKhoa) || [];
+    const availableMonths = new Set(
+      courses
+        .map((course) => {
+          const startDate = getCourseStartDate(course);
+          return startDate ? startDate.month() + 1 : null;
+        })
+        .filter((month) => Number.isFinite(month)),
+    );
+
+    return Array.from({ length: 12 }, (_, index) => index + 1)
+      .filter((month) => availableMonths.has(month))
+      .map((month) => ({
+        label: `Tháng ${month}`,
+        value: month,
+      }));
+  }, [activeSelectedKhoa, courseGroupMap]);
+
+  const activeSelectedMonth =
+    selectedMonth && monthOptions.some((item) => item.value === selectedMonth)
+      ? selectedMonth
+      : (monthOptions.find((item) => item.value === defaultMonth)?.value ??
+        monthOptions[0]?.value);
+
   const activeAppliedKhoa =
     appliedFilter.khoa &&
     khoaOptions.some((item) => item.value === appliedFilter.khoa)
       ? appliedFilter.khoa
       : activeSelectedKhoa;
 
+  const appliedMonthOptions = useMemo(() => {
+    const courses = courseGroupMap.get(activeAppliedKhoa) || [];
+
+    return Array.from(
+      new Set(
+        courses
+          .map((course) => {
+            const startDate = getCourseStartDate(course);
+            return startDate ? startDate.month() + 1 : null;
+          })
+          .filter((month) => Number.isFinite(month)),
+      ),
+    ).sort((left, right) => left - right);
+  }, [activeAppliedKhoa, courseGroupMap]);
+
+  const activeAppliedMonth =
+    appliedFilter.month && appliedMonthOptions.includes(appliedFilter.month)
+      ? appliedFilter.month
+      : activeSelectedMonth;
+
   const matchedCourses = useMemo(() => {
     const yearFromKhoa = getYearFromKhoa(activeAppliedKhoa);
-    const matchedGroup = lopLyThuyetGroupMap.get(activeAppliedKhoa) || [];
+    const courses = courseGroupMap.get(activeAppliedKhoa) || [];
 
-    return matchedGroup.filter((course) => {
-      if (!course?.start_date || !yearFromKhoa) {
-        return false;
-      }
+    return courses.filter((course) => {
+      const startDate = getCourseStartDate(course);
+      const iid = getCourseIid(course);
+      const code = getCourseCode(course);
 
-      const startDate = dayjs.unix(Number(course.start_date));
-      if (!startDate.isValid()) {
+      if (!startDate || !iid || !code || !yearFromKhoa) {
         return false;
       }
 
@@ -157,47 +215,56 @@ const DashboardDAT = () => {
       }
 
       if (
-        appliedFilter.month &&
-        startDate.month() + 1 !== Number(appliedFilter.month)
+        activeAppliedMonth &&
+        startDate.month() + 1 !== Number(activeAppliedMonth)
       ) {
         return false;
       }
 
       return true;
     });
-  }, [activeAppliedKhoa, appliedFilter.month, lopLyThuyetGroupMap]);
+  }, [activeAppliedKhoa, activeAppliedMonth, courseGroupMap]);
 
   const selectedPlanIds = useMemo(() => {
     return matchedCourses
-      .map((course) => course?.iid)
-      .filter((iid) => iid !== null && iid !== undefined);
+      .map((course) => getCourseIid(course))
+      .filter((iid) => iid !== null && iid !== undefined && iid !== "");
+  }, [matchedCourses]);
+
+  const selectedMaKhoaHocList = useMemo(() => {
+    return matchedCourses
+      .map((course) => getCourseCode(course))
+      .filter(Boolean);
   }, [matchedCourses]);
 
   const dateRange = useMemo(() => {
-    return getRangeByMonth(activeAppliedKhoa, appliedFilter.month);
-  }, [activeAppliedKhoa, appliedFilter.month]);
+    return getRangeByMonth(activeAppliedKhoa, activeAppliedMonth);
+  }, [activeAppliedKhoa, activeAppliedMonth]);
 
-  const { data: listDashboardDAT, isLoading: isLoadingDashboard } = useQuery({
+  const { data: listDashboardDAT, isLoading: isLoadingDashboard, refetch: refetchDashboardDAT } = useQuery({
     queryKey: [
-      "danhSachDashboardDAT",
+      "danhSachDashboardDAT2",
       activeAppliedKhoa,
-      appliedFilter.month,
+      activeAppliedMonth,
       selectedPlanIds.join(","),
+      selectedMaKhoaHocList.join(","),
       dateRange.ngaybatdau,
       dateRange.ngayketthuc,
     ],
     queryFn: () =>
       danhSachDashboardDAT({
-        enrolmentPlanIids: ["25906493"],
+        enrolmentPlanIids: selectedPlanIds,
         ngaybatdau: dateRange.ngaybatdau,
         ngayketthuc: dateRange.ngayketthuc,
+        maKhoaHoc: selectedMaKhoaHocList,
       }),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
     enabled:
       Boolean(activeAppliedKhoa) &&
-      Boolean(appliedFilter.month) &&
-      selectedPlanIds.length > 0,
+      Boolean(activeAppliedMonth) &&
+      selectedPlanIds.length > 0 &&
+      selectedPlanIds.length === selectedMaKhoaHocList.length,
   });
 
   const dashboardList = useMemo(
@@ -205,10 +272,103 @@ const DashboardDAT = () => {
     [listDashboardDAT],
   );
 
+  const failRecords = useMemo(() => {
+    return dashboardList.filter(
+      (item) => String(item?.status || "").toLowerCase() === "fail",
+    );
+  }, [dashboardList]);
+
+  const failColumns = [
+    {
+      title: "#",
+      key: "stt",
+      width: 40,
+      align: "center",
+      render: (_value, _record, index) => index + 1,
+    },
+    {
+      title: "Mã ĐK",
+      dataIndex: "maDK",
+      key: "maDK",
+      width: 190,
+    },
+    {
+      title: "Họ tên",
+      dataIndex: "hoTen",
+      key: "hoTen",
+      width: 220,
+    },
+    {
+      title: "Tên khóa học",
+      key: "khoaHoc",
+      width: 120,
+      render: (_, record) => record?.studentInfo?.khoaHoc || "-",
+    },
+    {
+      title: "Hạng",
+      dataIndex: "hangDaoTao",
+      key: "hangDaoTao",
+      width: 80,
+      align: "center",
+    },
+    {
+      title: "Giáo viên",
+      key: "giaoVien",
+      width: 180,
+      render: (_, record) => record?.studentInfo?.giaoVien || "-",
+    },
+    {
+      title: "Biển số xe",
+      key: "bienSoXe",
+      width: 220,
+      render: (_, record) => {
+        const xeB1 = record?.studentInfo?.xeB1;
+        const xeB2 = record?.studentInfo?.xeB2;
+        return [xeB1, xeB2].filter(Boolean).join(" / ") || "-";
+      },
+    },
+    {
+      title: "Ghi chú",
+      key: "ghiChu",
+      width: 420,
+      render: (_, record) => getFailNotes(record) || "-",
+    },
+    {
+      title: "Lỗi",
+      key: "errorCount",
+      width: 90,
+      align: "center",
+      render: (_, record) => record?.errors?.length || 0,
+    },
+    {
+      title: "Cảnh báo",
+      key: "warningCount",
+      width: 120,
+      align: "center",
+      render: (_, record) => record?.warnings?.length || 0,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 100,
+      align: "center",
+      render: (value) => (
+        <Tag
+          color={
+            String(value || "").toLowerCase() === "fail" ? "red" : "default"
+          }
+        >
+          {String(value || "-").toUpperCase()}
+        </Tag>
+      ),
+    },
+  ];
+
   const handleApplyFilter = () => {
     setAppliedFilter({
       khoa: activeSelectedKhoa,
-      month: selectedMonth || defaultMonth,
+      month: activeSelectedMonth || defaultMonth,
     });
   };
 
@@ -241,7 +401,7 @@ const DashboardDAT = () => {
               value={activeSelectedKhoa}
               onChange={(value) => setSelectedKhoa(value)}
               options={khoaOptions}
-              loading={isLoadingKhoaSource || isLoadingLopLyThuyet}
+              loading={isLoadingLopLyThuyet}
               showSearch
               filterOption={(input, option) =>
                 String(option?.label || "")
@@ -256,12 +416,10 @@ const DashboardDAT = () => {
             <Select
               className="!mt-2 !w-full"
               placeholder="Chọn tháng"
-              value={selectedMonth}
+              value={activeSelectedMonth}
               onChange={(value) => setSelectedMonth(value)}
-              options={Array.from({ length: 12 }, (_, index) => ({
-                label: `Tháng ${index + 1}`,
-                value: index + 1,
-              }))}
+              options={monthOptions}
+              disabled={monthOptions.length === 0}
             />
           </Col>
 
@@ -278,52 +436,52 @@ const DashboardDAT = () => {
 
       <Card className="!mt-4">
         <Space size={[8, 8]} wrap>
-          <Text strong>Bộ lọc đang áp dụng:</Text>
-          <Tag color="blue">Khóa: {activeAppliedKhoa || "-"}</Tag>
-          <Tag color="purple">Tháng: {appliedFilter.month || "-"}</Tag>
-          <Tag color="cyan">
-            Năm theo khóa: {getYearFromKhoa(activeAppliedKhoa) || "-"}
-          </Tag>
-          <Tag color="green">Số lớp khớp: {matchedCourses.length}</Tag>
-          <Tag color="gold">Số IID gửi lên: {selectedPlanIds.length}</Tag>
-        </Space>
-
-        {matchedCourses.length > 0 ? (
-          <div className="!mt-3">
-            <Text type="secondary">
-              Các lớp của {activeAppliedKhoa} có `start_date` trong tháng{" "}
-              {appliedFilter.month}/{getYearFromKhoa(activeAppliedKhoa)}:
+          <div className="flex items-center">
+            <Text strong>
+              Bộ lọc đang áp dụng tháng {activeAppliedMonth}/
+              {getYearFromKhoa(activeAppliedKhoa)}:{" "}
             </Text>
-            <div className="!mt-2 flex flex-wrap gap-2">
-              {matchedCourses.map((course) => (
-                <Tag key={course?.iid}>
-                  {(course?.name || course?.suffix_name || course?.code || "") +
-                    ` (#${course?.iid})`}
-                </Tag>
-              ))}
-            </div>
+            {matchedCourses.length > 0 ? (
+              <div className="pl-3">
+                <div className="flex flex-wrap gap-2">
+                  {matchedCourses.map((course) => (
+                    <Tag
+                      color="blue"
+                      key={`${getCourseCode(course)}-${getCourseIid(course)}`}
+                    >
+                      {getCourseLabel(course)}
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-
-        <div className="!mt-4">
-          <Text strong>Payload gửi API:</Text>
-          <div className="!mt-2 flex flex-wrap gap-2">
-            <Tag color="geekblue">
-              ngaybatdau: {dateRange.ngaybatdau || "-"}
-            </Tag>
-            <Tag color="geekblue">
-              ngayketthuc: {dateRange.ngayketthuc || "-"}
-            </Tag>
-          </div>
-        </div>
-
-        <div className="!mt-4">
-          <Text strong>
-            Kết quả `danhSachDashboardDAT`:{" "}
-            {isLoadingDashboard ? "Đang tải..." : dashboardList.length}
-          </Text>
-        </div>
+        </Space>
       </Card>
+
+      <div className="!mt-4">
+        <Table
+          columns={failColumns}
+          dataSource={failRecords}
+          loading={isLoadingDashboard}
+          rowKey={(record) => record?.maDK || record?.planIid}
+          size="small"
+          className="overflow-hidden table-blue-header"
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 1600 }}
+          onRow={(record) => ({
+            onClick: () => setSelectedFailRecord(record),
+            className: "cursor-pointer",
+          })}
+        />
+      </div>
+
+      <FailRecordDetailModal
+        open={Boolean(selectedFailRecord)}
+        record={selectedFailRecord}
+        onCancel={() => setSelectedFailRecord(null)}
+        onUpdated={() => refetchDashboardDAT()}
+      />
     </div>
   );
 };

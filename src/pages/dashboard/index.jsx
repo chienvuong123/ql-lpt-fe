@@ -212,14 +212,18 @@ const DonutChart = ({ data, total }) => {
         <span style={{ color: BLUE_LIGHT, fontWeight: 700, fontSize: 13 }}>
           {data[1]?.value?.toLocaleString?.() ?? data[1]?.value}
         </span>
-        <span style={{ color: BLUE_LIGHT, fontSize: 11 }}>{data[1]?.percent}</span>
+        <span style={{ color: BLUE_LIGHT, fontSize: 11 }}>
+          {data[1]?.percent}
+        </span>
       </div>
 
       <div className="absolute right-0 top-1/3 flex flex-col items-end pr-1">
         <span style={{ color: BLUE_DARK, fontWeight: 700, fontSize: 13 }}>
           {data[0]?.value?.toLocaleString?.() ?? data[0]?.value}
         </span>
-        <span style={{ color: BLUE_DARK, fontSize: 11 }}>{data[0]?.percent}</span>
+        <span style={{ color: BLUE_DARK, fontSize: 11 }}>
+          {data[0]?.percent}
+        </span>
       </div>
     </div>
   );
@@ -384,7 +388,7 @@ const DashboardLogs = () => {
   const logItems = logs.map(mapLogItem);
 
   return (
-    <div className="bg-[#0f172a]">
+    <div className="bg-[#0f172a]  h-[80vh] overflow-y-auto">
       {errorMessage ? (
         <Alert
           type="error"
@@ -396,92 +400,46 @@ const DashboardLogs = () => {
       ) : null}
 
       {isLoading ? (
-        <div style={{ textAlign: "center", padding: 24 }}>
+        <div className="p-6 text-center">
           <Spin />
         </div>
       ) : logItems.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#64748b", padding: 24 }}>
+        <div className="p-6 text-center text-slate-500">
           Không có dữ liệu lịch sử log
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div className="flex flex-col gap-1">
           {logItems.map((item) => {
             const giaTriMoi = normalizeGiaTriMoi(item.giaTriMoi);
 
             return (
               <div
                 key={item.id}
-                style={{
-                  width: "100%",
-                  padding: "3px 2px",
-                  borderRadius: 8,
-                  background: "#0f172a",
-                  color: "#e2e8f0",
-                  fontFamily: "Consolas, 'Courier New', monospace",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  overflowX: "auto",
-                  whiteSpace: "nowrap",
-                }}
+                className="w-full overflow-x-auto whitespace-nowrap rounded-lg bg-[#0f172a] px-[2px] py-[3px] font-mono text-[13px] leading-[1.6] text-slate-200"
               >
-                <span style={{ color: "#94a3b8", fontFamily: "inherit" }}>
+                <span className="font-inherit text-slate-400">
                   {item.thoiGian}
                 </span>{" "}
-                <span
-                  style={{
-                    color: "#38bdf8",
-                    fontFamily: "inherit",
-                    fontWeight: 700,
-                  }}
-                >
+                <span className="font-inherit font-bold text-sky-400">
                   ma_dk={item.maDk}
                 </span>{" "}
-                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
-                  được
-                </span>{" "}
-                <span
-                  style={{
-                    color: "#22c55e",
-                    fontFamily: "inherit",
-                    fontWeight: 700,
-                  }}
-                >
+                <span className="font-inherit text-slate-50">được</span>{" "}
+                <span className="font-inherit font-bold text-green-500">
                   {item.nguoiThayDoi}
                 </span>{" "}
-                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
-                  thay đổi
-                </span>{" "}
+                <span className="font-inherit text-slate-50">thay đổi</span>{" "}
                 <span
-                  style={{
-                    color: giaTriMoi.color,
-                    fontFamily: "inherit",
-                    fontWeight: 700,
-                  }}
+                  className="font-inherit font-bold"
+                  style={{ color: giaTriMoi.color }}
                 >
                   giá trị mới={giaTriMoi.text}
                 </span>{" "}
-                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
-                  trường
-                </span>{" "}
-                <span
-                  style={{
-                    color: "#a78bfa",
-                    fontFamily: "inherit",
-                    fontWeight: 700,
-                  }}
-                >
+                <span className="font-inherit text-slate-50">trường</span>{" "}
+                <span className="font-inherit font-bold text-violet-400">
                   {item.truongThayDoi}
                 </span>{" "}
-                <span style={{ color: "#f8fafc", fontFamily: "inherit" }}>
-                  loại
-                </span>{" "}
-                <span
-                  style={{
-                    color: "#60a5fa",
-                    fontFamily: "inherit",
-                    fontWeight: 700,
-                  }}
-                >
+                <span className="font-inherit text-slate-50">loại</span>{" "}
+                <span className="font-inherit font-bold text-blue-400">
                   {item.loai}
                 </span>
               </div>

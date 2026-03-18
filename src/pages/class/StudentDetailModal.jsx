@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Modal, Progress, Table, Card, Row, Col, Flex, Image } from "antd";
 import {
   CheckCircleFilled,
@@ -12,9 +12,6 @@ const StudentDetailModal = ({
   visible,
   onClose,
   studentData,
-  progress,
-  passed,
-  total,
   program_code,
   program_name,
   maKhoaHoc,
@@ -48,12 +45,12 @@ const StudentDetailModal = ({
     },
   ];
 
-  const transformDataForTable = (apiData) => {
-    if (!apiData) return [];
+  const rubricRows = useMemo(() => {
+    if (!studentData) return [];
 
-    const rubricList = Array.isArray(apiData?.learning_progress)
-      ? apiData.learning_progress
-      : apiData?.learning_progress?.score_by_rubrik || [];
+    const rubricList = Array.isArray(studentData?.learning)
+      ? studentData.learning
+      : studentData?.learning?.score_by_rubrik || [];
 
     return rubricList.map((item, index) => ({
       key: item?.iid || `${index}`,
@@ -61,11 +58,33 @@ const StudentDetailModal = ({
       score: item?.score ?? 0,
       passed: Number(item?.passed) === 1,
     }));
-  };
+  }, [studentData]);
+
+  const { progress, passed, total } = useMemo(() => {
+    const eligibleRows = rubricRows.filter((item) => {
+      const tenChiTieu = String(item?.rubricName || "");
+      return (
+        !tenChiTieu.includes("Bảng tổng hợp") &&
+        !tenChiTieu.includes("Điểm kiểm tra tổng hợp") &&
+        !tenChiTieu.includes("Tổng thời gian học")
+      );
+    });
+
+    const totalRubric = eligibleRows.length;
+    const passedRubric = eligibleRows.filter((item) => item.passed).length;
+    const progressPercent =
+      totalRubric > 0 ? Math.round((passedRubric / totalRubric) * 100) : 0;
+
+    return {
+      progress: progressPercent,
+      passed: passedRubric,
+      total: totalRubric,
+    };
+  }, [rubricRows]);
 
   return (
     <Modal
-      title="Chi tiet"
+      title="Chi tiết học viên"
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -87,9 +106,7 @@ const StudentDetailModal = ({
               ){" "}
             </span>
             - Chương trình:{" "}
-            <span className="font-medium">
-              {program_name || ""} - Hạng {program_code || ""}
-            </span>{" "}
+            <span className="font-medium">{program_name || ""}</span>{" "}
             {LICENSE_PLATE_LABEL[studentData?.khoaHoc?.hangDaoTao]}
           </p>
         </div>
@@ -103,9 +120,9 @@ const StudentDetailModal = ({
                 strokeWidth={11}
               />
               <p className="text-xs text-gray-600 mt-1">
-                Tien do:{" "}
+                Tiến độ:{" "}
                 <span className="!font-semibold text-black">{progress}%</span> (
-                {passed}/{total} chi tieu dat)
+                {passed}/{total} chỉ tiêu đạt)
               </p>
 
               <Row gutter={12} className="!text-[13px]">
@@ -141,7 +158,7 @@ const StudentDetailModal = ({
                       {dayjs(studentData?.user?.birth_date).format("YYYY")}
                     </span>
                     <span className="!text-[13px] text-gray-600">
-                      {studentData?.user?.sex || ""}
+                      {studentData?.user?.sex === "1" ? "Nam" : "Nữ"}
                     </span>
                     <span className="!text-[13px] text-gray-600 !break-words !whitespace-normal">
                       {studentData?.user?.organization_name}
@@ -169,7 +186,7 @@ const StudentDetailModal = ({
               <Table
                 rowKey="key"
                 columns={columns}
-                dataSource={transformDataForTable(studentData)}
+                dataSource={rubricRows}
                 pagination={false}
                 size="small"
                 className="[&_.ant-table-cell]:text-[13px]"

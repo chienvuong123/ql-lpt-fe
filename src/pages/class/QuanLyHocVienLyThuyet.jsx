@@ -15,10 +15,12 @@ import {
   Tag,
 } from "antd";
 import { useLocation } from "react-router-dom";
+import { EyeOutlined } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { capNhatTrangThaiHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
 import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
+import StudentDetailModal from "./StudentDetailModal";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -56,15 +58,27 @@ const normalizeBoolean = (value, fallback = false) => {
   return Boolean(value);
 };
 
+const secondsToHourMinute = (seconds) => {
+  const total = Number(seconds || 0);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+
+  return `${hours}h${minutes}p`;
+};
+
 const QuanLyHocVienLyThuyet = () => {
   const [selectedClassIid, setSelectedClassIid] = useState("");
   const [savingStudentCode, setSavingStudentCode] = useState("");
   const [studentStatusOverrides, setStudentStatusOverrides] = useState({});
+  const [trangThaiLamBaiHetMon, setTrangThaiLamBaiHetMon] = useState(null);
+  const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const keywordInputRef = useRef(null);
   const [params, setParams] = useState({
     page: 1,
     limit: 10,
     text: "",
+    loai_het_mon: null,
   });
 
   const location = useLocation();
@@ -107,12 +121,17 @@ const QuanLyHocVienLyThuyet = () => {
         params.page,
         params.limit,
         params.text,
+        params.loai_het_mon,
       ],
       queryFn: () =>
         ketQuaKiemTra(enrolmentPlanIid, {
           page: params.page,
           limit: params.limit,
           text: params.text,
+          maKhoa: selectedClass?.code || "",
+          ...(params.loai_het_mon === null
+            ? {}
+            : { loai_het_mon: params.loai_het_mon }),
         }),
       staleTime: 1000 * 60 * 5,
       retry: false,
@@ -162,6 +181,52 @@ const QuanLyHocVienLyThuyet = () => {
     } catch {
       return value;
     }
+  };
+
+  const getCompletionStats = (record) => {
+    const scoreByRubrik = record?.learning?.learning_progress || [];
+
+    const monHoc = scoreByRubrik.filter((mon) => {
+      const tenMon = String(mon?.name || "");
+      return (
+        !tenMon.includes("Bảng tổng hợp") &&
+        !tenMon.includes("Điểm kiểm tra tổng hợp") &&
+        !tenMon.includes("Tổng thời gian học")
+      );
+    });
+
+    const tongSoMon = monHoc.length;
+    const soMonDat = monHoc.filter((mon) => Number(mon?.passed) === 1).length;
+    const phanTramHoanThanh =
+      tongSoMon > 0 ? Math.round((soMonDat / tongSoMon) * 100) : 0;
+
+    return {
+      soMonDat,
+      tongSoMon,
+      phanTramHoanThanh,
+    };
+  };
+
+  const buildStudentDetailData = (record) => ({
+    ...record,
+    learning_progress: {
+      score_by_rubrik: record?.learning?.learning_progress || [],
+      item_iid: record?.learning?.item_iid || record?.learning?.iid || "",
+    },
+    khoaHoc: {
+      ...(record?.khoaHoc || {}),
+      hangDaoTao: record?.khoaHoc?.hangDaoTao || program_code,
+    },
+  });
+
+  const handleOpenStudentDetail = (record) => {
+    setSelectedStudent(buildStudentDetailData(record));
+    setIsStudentDetailOpen(true);
+  };
+
+  const handleCloseStudentDetail = () => {
+    setIsStudentDetailOpen(false);
+    setSelectedStudent(null);
   };
 
   const resolveCheckState = (record) => {
@@ -332,6 +397,7 @@ const QuanLyHocVienLyThuyet = () => {
       page: 1,
       limit: params.limit,
       text,
+      loai_het_mon: trangThaiLamBaiHetMon,
     });
   };
 
@@ -339,10 +405,12 @@ const QuanLyHocVienLyThuyet = () => {
     if (keywordInputRef.current?.input) {
       keywordInputRef.current.input.value = "";
     }
+    setTrangThaiLamBaiHetMon(null);
     setParams({
       page: 1,
       limit: params.limit,
       text: "",
+      loai_het_mon: null,
     });
   };
 
@@ -445,6 +513,7 @@ const QuanLyHocVienLyThuyet = () => {
             <Checkbox
               checked={checked}
               disabled={isSaving}
+              onClick={(e) => e.stopPropagation()}
               onChange={(e) =>
                 handleToggleCheckbox(record, "loai_het_mon", e.target.checked)
               }
@@ -486,6 +555,22 @@ const QuanLyHocVienLyThuyet = () => {
     //   },
     // },
     {
+      title: "Phút cabin",
+      dataIndex: "cabin",
+      key: "thoi_gian_cabin_text",
+      width: 100,
+      align: "center",
+      render: (value) => secondsToHourMinute(value?.tong_thoi_gian || 0),
+    },
+    {
+      title: "Bài cabin",
+      dataIndex: "cabin",
+      key: "so_bai_cabin",
+      width: 90,
+      align: "center",
+      render: (value) => `${value?.so_bai_hoc || 0} bài`,
+    },
+    {
       title: "Thời gian đổi trạng thái",
       key: "status_updated_at",
       width: 180,
@@ -493,6 +578,26 @@ const QuanLyHocVienLyThuyet = () => {
       render: (_, record) =>
         formatDateTime(resolveCheckState(record).statusUpdatedAt),
     },
+    // {
+    //   title: "Tiến trình học tập",
+    //   key: "chi_tiet_tien_trinh",
+    //   width: 140,
+    //   align: "center",
+    //   render: (_, record) => (
+    //     <Button
+    //       type="primary"
+    //       size="small"
+    //       className="!bg-[#3366cc]"
+    //       onClick={(e) => {
+    //         e.stopPropagation();
+    //         handleOpenStudentDetail(record);
+    //       }}
+    //     >
+    //       <EyeOutlined />
+    //       Xem
+    //     </Button>
+    //   ),
+    // },
     // {
     //   title: "Tốt nghiệp",
     //   key: "detail",
@@ -512,7 +617,7 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "Ghi chú",
       key: "ghi_chu",
-      width: 300,
+      width: 280,
       align: "center",
       render: (_, record) => {
         const state = resolveCheckState(record);
@@ -522,6 +627,7 @@ const QuanLyHocVienLyThuyet = () => {
             key={`${maDk}-${state.ghiChu}`}
             defaultValue={state.ghiChu}
             disabled={savingStudentCode === maDk}
+            onClick={(e) => e.stopPropagation()}
             onBlur={(e) => handleBlurGhiChu(record, e.target.value)}
           />
         );
@@ -570,6 +676,32 @@ const QuanLyHocVienLyThuyet = () => {
               onPressEnter={handleFilter}
             />
           </Col>
+          <Col span={7}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Trạng thái làm bài hết môn
+            </label>
+            <Select
+              className="w-full"
+              placeholder="--Chọn trạng thái--"
+              value={
+                trangThaiLamBaiHetMon === null
+                  ? undefined
+                  : trangThaiLamBaiHetMon
+              }
+              onChange={(value) => setTrangThaiLamBaiHetMon(value ?? null)}
+              options={[
+                {
+                  label: "Chưa làm bài hết môn",
+                  value: false,
+                },
+                {
+                  label: "Đã làm bài hết môn",
+                  value: true,
+                },
+              ]}
+              allowClear
+            />
+          </Col>
           <Col>
             <Space>
               <Button
@@ -588,6 +720,10 @@ const QuanLyHocVienLyThuyet = () => {
       <Table
         columns={columns}
         dataSource={students}
+        onRow={(record) => ({
+          onClick: () => handleOpenStudentDetail(record),
+          style: { cursor: "pointer" },
+        })}
         pagination={{
           current: params.page,
           pageSize: params.limit,
@@ -607,6 +743,18 @@ const QuanLyHocVienLyThuyet = () => {
         bordered
         scroll={{ x: 1200 }}
         className="overflow-hidden table-blue-header"
+      />
+
+      <StudentDetailModal
+        studentData={selectedStudent}
+        visible={isStudentDetailOpen}
+        onClose={handleCloseStudentDetail}
+        progress={getCompletionStats(selectedStudent).phanTramHoanThanh}
+        passed={getCompletionStats(selectedStudent).soMonDat}
+        total={getCompletionStats(selectedStudent).tongSoMon}
+        program_code={program_code}
+        program_name={selectedClass?.name || selectedClass?.suffix_name || ""}
+        maKhoaHoc={selectedClass?.code || selectedClass?.name || ""}
       />
     </Spin>
   );
