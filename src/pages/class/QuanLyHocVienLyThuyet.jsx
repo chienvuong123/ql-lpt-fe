@@ -15,7 +15,6 @@ import {
   Tag,
 } from "antd";
 import { useLocation } from "react-router-dom";
-import { EyeOutlined } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { capNhatTrangThaiHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
 import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
@@ -76,7 +75,7 @@ const QuanLyHocVienLyThuyet = () => {
   const keywordInputRef = useRef(null);
   const [params, setParams] = useState({
     page: 1,
-    limit: 10,
+    limit: 50,
     text: "",
     loai_het_mon: null,
   });
@@ -492,9 +491,26 @@ const QuanLyHocVienLyThuyet = () => {
         const { lyThuyetDat } = resolveCheckState(record);
 
         return (
-          <Tag color={lyThuyetDat ? "green" : "error"} variant="solid">
-            {lyThuyetDat ? "Đạt" : "Chưa đạt"}
-          </Tag>
+          <div
+            role="button"
+            tabIndex={0}
+            className="w-full h-full cursor-pointer flex items-center justify-center"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenStudentDetail(record);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleOpenStudentDetail(record);
+              }
+            }}
+          >
+            <Tag color={lyThuyetDat ? "green" : "error"} variant="solid">
+              {lyThuyetDat ? "Đạt" : "Chưa đạt"}
+            </Tag>
+          </div>
         );
       },
     },
@@ -720,10 +736,6 @@ const QuanLyHocVienLyThuyet = () => {
       <Table
         columns={columns}
         dataSource={students}
-        onRow={(record) => ({
-          onClick: () => handleOpenStudentDetail(record),
-          style: { cursor: "pointer" },
-        })}
         pagination={{
           current: params.page,
           pageSize: params.limit,

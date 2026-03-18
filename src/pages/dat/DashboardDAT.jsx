@@ -241,7 +241,11 @@ const DashboardDAT = () => {
     return getRangeByMonth(activeAppliedKhoa, activeAppliedMonth);
   }, [activeAppliedKhoa, activeAppliedMonth]);
 
-  const { data: listDashboardDAT, isLoading: isLoadingDashboard, refetch: refetchDashboardDAT } = useQuery({
+  const {
+    data: listDashboardDAT,
+    isLoading: isLoadingDashboard,
+    refetch: refetchDashboardDAT,
+  } = useQuery({
     queryKey: [
       "danhSachDashboardDAT2",
       activeAppliedKhoa,
@@ -327,12 +331,7 @@ const DashboardDAT = () => {
         return [xeB1, xeB2].filter(Boolean).join(" / ") || "-";
       },
     },
-    {
-      title: "Ghi chú",
-      key: "ghiChu",
-      width: 420,
-      render: (_, record) => getFailNotes(record) || "-",
-    },
+
     {
       title: "Lỗi",
       key: "errorCount",
@@ -362,6 +361,15 @@ const DashboardDAT = () => {
           {String(value || "-").toUpperCase()}
         </Tag>
       ),
+    },
+    {
+      title: "Danh sách lỗi",
+      key: "errorSummary",
+      width: 420,
+      render: (value) => {
+        console.log(value);
+        return value?.errorSummary;
+      },
     },
   ];
 
