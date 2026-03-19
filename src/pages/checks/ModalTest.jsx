@@ -399,7 +399,6 @@ const ModalTest = ({
   );
 
   const isModalLoading = loading || loadingStatus;
-  console.log(approveState);
 
   return (
     <Drawer

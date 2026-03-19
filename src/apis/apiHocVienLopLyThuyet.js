@@ -28,6 +28,14 @@ export const capNhatTrangThaiHocVienLyThuyet = async (
   return response.data;
 };
 
+export const capNhatTrangThaiTatCaHocVienLyThuyet = async (payload) => {
+  const response = await axios.patch(
+    `${hocVienLyThuyetBaseUrl}/trang-thai/tat-ca`,
+    payload,
+  );
+  return response.data;
+};
+
 export const getLichSuHocVienLyThuyet = async (maDk) => {
   const response = await axios.get(`${hocVienLyThuyetBaseUrl}/${maDk}/lich-su`);
   return response.data;

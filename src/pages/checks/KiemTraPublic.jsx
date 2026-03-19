@@ -31,6 +31,7 @@ import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
 import "./index.css";
+import { getChiTietHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -212,8 +213,8 @@ const KiemTraPublic = () => {
     refetch: refetchChiTietLyThuyet,
   } = useQuery({
     queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
-    queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
-    // queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
+    // queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
+    queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
     staleTime: 0,
     retry: false,
     // enabled: !!searchParams,
@@ -364,14 +365,14 @@ const KiemTraPublic = () => {
   const lyThuyetExtraStatus = useMemo(() => {
     const raw = chiTietLyThuyetData?.data;
 
-    if (!raw || Object.keys(raw).length === 0) {
-      console.log("1");
+    // if (!raw || Object.keys(raw).length === 0) {
+    //   console.log("1");
 
-      return {
-        loaiHetMon: "Đã làm bài hết môn",
-        loaiHetMonStatus: true,
-      };
-    }
+    //   return {
+    //     loaiHetMon: "Đã làm bài hết môn",
+    //     loaiHetMonStatus: true,
+    //   };
+    // }
 
     const loaiHetMon = raw?.loai_het_mon;
     // const loaiLyThuyet = raw?.loai_ly_thuyet;
@@ -420,6 +421,8 @@ const KiemTraPublic = () => {
     lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
       ? "#1b8a35"
       : "#ff0000";
+  const isLyThuyetPassed =
+    lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus;
 
   const totalCabinSeconds = useMemo(
     () =>
@@ -727,73 +730,87 @@ const KiemTraPublic = () => {
                     </Card>
                   </Col>
 
-                  <Col span={8}>
-                    <Card
-                      bordered={false}
-                      bodyStyle={{ padding: 10 }}
-                      className="!h-full !rounded-xl !bg-[#edf1f7]"
-                    >
-                      <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
-                        Cabin
-                      </Text>
-                      <Progress
-                        percent={loadingCabin ? 0 : cabinProgressPercent}
-                        showInfo={false}
-                        strokeColor="#2f6ce0"
-                        size={[110, 8]}
-                        className="!mt-1"
-                      />
-                      <Flex
-                        align="center"
-                        justify="space-between"
-                        className="!mt-2"
+                  {isLyThuyetPassed ? (
+                    <Col span={8}>
+                      <Card
+                        bordered={false}
+                        bodyStyle={{ padding: 10 }}
+                        className="!h-full !rounded-xl !bg-[#edf1f7]"
                       >
-                        <Text
-                          className={`!text-xs !font-bold ${
-                            isCabinPassed
+                        <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
+                          Cabin
+                        </Text>
+                        <Progress
+                          percent={loadingCabin ? 0 : cabinProgressPercent}
+                          showInfo={false}
+                          strokeColor="#2f6ce0"
+                          size={[110, 8]}
+                          className="!mt-1"
+                        />
+                        <Flex
+                          align="center"
+                          justify="space-between"
+                          className="!mt-2"
+                        >
+                          <Text
+                            className={`!text-xs !font-bold ${
+                              isCabinPassed
+                                ? "!text-[#1b8a35]"
+                                : "!text-[#dc2626]"
+                            }`}
+                          >
+                            {cabinText}
+                          </Text>
+                          <Button
+                            className="!rounded-xl !px-3 !text-xs"
+                            size="small"
+                            onClick={() => {
+                              if (isLyThuyetPassed) {
+                                setIsCabinModalOpen(true);
+                              }
+                            }}
+                          >
+                            Xem
+                          </Button>
+                        </Flex>
+                      </Card>
+                    </Col>
+                  ) : null}
+
+                  {isLyThuyetPassed && isCabinPassed ? (
+                    <Col span={8}>
+                      <Card
+                        bordered={false}
+                        bodyStyle={{ padding: 10 }}
+                        className="!h-full !rounded-xl !bg-[#edf1f7]"
+                      >
+                        <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
+                          DAT
+                        </Text>
+                        <div
+                          className={`!font-semibold text-[13px] flex justify-center ${
+                            trangThaiKyDAT
                               ? "!text-[#1b8a35]"
-                              : "!text-[#dc2626]"
+                              : "!text-[#ff0000]"
                           }`}
                         >
-                          {cabinText}
-                        </Text>
+                          {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
+                        </div>
                         <Button
-                          className="!rounded-xl !px-3 !text-xs"
+                          type="primary"
+                          className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
                           size="small"
-                          onClick={() => setIsCabinModalOpen(true)}
+                          onClick={() => {
+                            if (isCabinPassed) {
+                              setIsDatModalOpen(true);
+                            }
+                          }}
                         >
-                          Xem
+                          Chi tiết
                         </Button>
-                      </Flex>
-                    </Card>
-                  </Col>
-
-                  <Col span={8}>
-                    <Card
-                      bordered={false}
-                      bodyStyle={{ padding: 10 }}
-                      className="!h-full !rounded-xl !bg-[#edf1f7]"
-                    >
-                      <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
-                        DAT
-                      </Text>
-                      <div
-                        className={`!font-semibold text-[13px] flex justify-center ${
-                          trangThaiKyDAT ? "!text-[#1b8a35]" : "!text-[#ff0000]"
-                        }`}
-                      >
-                        {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
-                      </div>
-                      <Button
-                        type="primary"
-                        className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
-                        size="small"
-                        onClick={() => setIsDatModalOpen(true)}
-                      >
-                        Chi tiết
-                      </Button>
-                    </Card>
-                  </Col>
+                      </Card>
+                    </Col>
+                  ) : null}
                 </Row>
               </Card>
             ) : null}
@@ -814,7 +831,7 @@ const KiemTraPublic = () => {
       />
 
       <ModalTest
-        open={isDatModalOpen}
+        open={isCabinPassed && isDatModalOpen}
         onCancel={() => setIsDatModalOpen(false)}
         loading={loadingDat}
         student={selectedStudent}
@@ -823,7 +840,7 @@ const KiemTraPublic = () => {
         rows={datJourneyList}
       />
       <CabinModal
-        open={isCabinModalOpen}
+        open={isLyThuyetPassed && isCabinModalOpen}
         onCancel={() => setIsCabinModalOpen(false)}
         loading={loadingCabin}
         cabinGroupedByRule={cabinGroupedByRule}

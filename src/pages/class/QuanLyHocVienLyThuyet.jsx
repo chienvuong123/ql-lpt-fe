@@ -13,10 +13,14 @@ import {
   Checkbox,
   message,
   Tag,
+  Modal,
 } from "antd";
 import { useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { capNhatTrangThaiHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
+import {
+  capNhatTrangThaiHocVienLyThuyet,
+  capNhatTrangThaiTatCaHocVienLyThuyet,
+} from "../../apis/apiHocVienLopLyThuyet";
 import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
 import StudentDetailModal from "./StudentDetailModal";
@@ -68,6 +72,10 @@ const secondsToHourMinute = (seconds) => {
 const QuanLyHocVienLyThuyet = () => {
   const [selectedClassIid, setSelectedClassIid] = useState("");
   const [savingStudentCode, setSavingStudentCode] = useState("");
+  const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+  const [isSelectingAllPages, setIsSelectingAllPages] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [selectedStudentMap, setSelectedStudentMap] = useState({});
   const [studentStatusOverrides, setStudentStatusOverrides] = useState({});
   const [trangThaiLamBaiHetMon, setTrangThaiLamBaiHetMon] = useState(null);
   const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false);
@@ -150,6 +158,8 @@ const QuanLyHocVienLyThuyet = () => {
       0,
   );
 
+  const totalSelectableStudents = totalStudents || students.length;
+
   const getStudentCode = (record) =>
     String(
       record?.ma_dk ||
@@ -158,6 +168,9 @@ const QuanLyHocVienLyThuyet = () => {
         record?.id ||
         "",
     );
+
+  const getRowKey = (record) =>
+    String(record?.user?.iid || record?.ma_dk || record?.id || "");
 
   const isPassAllLyThuyet = (record) => {
     const scoreByRubrik = record?.learning?.learning_progress || [];
@@ -245,7 +258,7 @@ const QuanLyHocVienLyThuyet = () => {
 
     const hetMonChecked =
       savedData?.loai_het_mon === undefined
-        ? true
+        ? false
         : normalizeBoolean(savedData?.loai_het_mon, true);
 
     const cabinChecked = normalizeBoolean(
@@ -319,7 +332,7 @@ const QuanLyHocVienLyThuyet = () => {
     },
   });
 
-  const buildPayload = (record, overrides = {}) => {
+  const buildPayload = (record, overrides = {}, isAll = false) => {
     const currentState = resolveCheckState(record);
     const loaiLyThuyet = overrides.loai_ly_thuyet ?? currentState.loaiLyThuyet;
     const loaiHetMon = overrides.loai_het_mon ?? currentState.hetMonChecked;
@@ -337,7 +350,51 @@ const QuanLyHocVienLyThuyet = () => {
       can_cuoc: record?.user?.identification_card,
       nam_sinh: record?.user?.birth_year,
       dat_cabin: loaiLyThuyet === true && loaiHetMon === true,
+      ...(isAll && { ma_dk: currentState?.maDk }),
     };
+  };
+
+  const applySavedOverride = (maDk, payload) => {
+    setStudentStatusOverrides((prev) => ({
+      ...prev,
+      [maDk]: {
+        ...(prev[maDk] || {}),
+        loai_het_mon: payload.loai_het_mon,
+        ghi_chu: payload.ghi_chu,
+        status_updated_at: payload.status_updated_at,
+        dat_cabin: payload.dat_cabin,
+        is_du_dieu_kien:
+          payload.loai_ly_thuyet === true && payload.loai_het_mon === true,
+      },
+    }));
+  };
+
+  const clearSelectedStudents = () => {
+    setSelectedRowKeys([]);
+    setSelectedStudentMap({});
+  };
+
+  const upsertSelectedStudents = (records = []) => {
+    setSelectedStudentMap((prev) => {
+      const next = { ...prev };
+      records.forEach((record) => {
+        const rowKey = getRowKey(record);
+        if (rowKey) {
+          next[rowKey] = record;
+        }
+      });
+      return next;
+    });
+  };
+
+  const removeSelectedStudents = (records = []) => {
+    setSelectedStudentMap((prev) => {
+      const next = { ...prev };
+      records.forEach((record) => {
+        delete next[getRowKey(record)];
+      });
+      return next;
+    });
   };
 
   const handleToggleCheckbox = (record, fieldName, checkedValue) => {
@@ -374,6 +431,68 @@ const QuanLyHocVienLyThuyet = () => {
     saveStudentCheck({ maDk, payload, rollbackState });
   };
 
+  const handleSubmitChonTatCa = async () => {
+    const selectedStudents = Object.values(selectedStudentMap);
+
+    if (selectedStudents.length === 0) {
+      message.warning("Vui lòng chọn ít nhất một học viên.");
+      return;
+    }
+
+    setIsSubmittingAll(true);
+
+    try {
+      const payloads = selectedStudents.map((record) => {
+        const fullPayload = buildPayload(record, { loai_het_mon: true }, true);
+        console.log(fullPayload);
+
+        return {
+          loai_ly_thuyet: fullPayload.loai_ly_thuyet,
+          loai_het_mon: fullPayload.loai_het_mon,
+          ghi_chu: fullPayload.ghi_chu,
+          ma_khoa: fullPayload.ma_khoa,
+          ten_khoa: fullPayload.ten_khoa,
+          status_updated_at: fullPayload.status_updated_at,
+          ho_ten: fullPayload.ho_ten,
+          can_cuoc: fullPayload.can_cuoc,
+          nam_sinh: fullPayload.nam_sinh,
+          dat_cabin: fullPayload.dat_cabin,
+          ma_dk: fullPayload?.ma_dk,
+        };
+      });
+
+      await capNhatTrangThaiTatCaHocVienLyThuyet(payloads);
+
+      selectedStudents.forEach((record, index) => {
+        const maDk = getStudentCode(record);
+        if (maDk) {
+          applySavedOverride(maDk, payloads[index]);
+        }
+      });
+
+      message.success(
+        `Đã cập nhật làm bài hết môn cho ${payloads.length} học viên.`,
+      );
+      clearSelectedStudents();
+    } catch (error) {
+      message.error(
+        `Cập nhật hàng loạt thất bại: ${error?.response?.data?.message || error?.message || "Có lỗi xảy ra"}`,
+      );
+    } finally {
+      setIsSubmittingAll(false);
+    }
+  };
+
+  const handleConfirmSubmitChonTatCa = () => {
+    Modal.confirm({
+      title: "Xác nhận duyệt học viên đã chọn",
+      content: `Bạn có muốn duyệt ${selectedRowKeys.length} học viên đã làm bài hết hôm không?`,
+      okText: "Có, duyệt",
+      cancelText: "Không",
+      onOk: handleSubmitChonTatCa,
+    });
+  };
+
   const handleBlurGhiChu = (record, value) => {
     const maDk = getStudentCode(record);
     if (!maDk) return;
@@ -404,6 +523,7 @@ const QuanLyHocVienLyThuyet = () => {
     if (keywordInputRef.current?.input) {
       keywordInputRef.current.input.value = "";
     }
+    clearSelectedStudents();
     setTrangThaiLamBaiHetMon(null);
     setParams({
       page: 1,
@@ -413,7 +533,91 @@ const QuanLyHocVienLyThuyet = () => {
     });
   };
 
+  const handleToggleSelectRecord = (record, checked) => {
+    const rowKey = getRowKey(record);
+    if (!rowKey) return;
+
+    setSelectedRowKeys((prev) =>
+      checked
+        ? Array.from(new Set([...prev, rowKey]))
+        : prev.filter((key) => key !== rowKey),
+    );
+
+    if (checked) {
+      upsertSelectedStudents([record]);
+      return;
+    }
+
+    removeSelectedStudents([record]);
+  };
+
+  const handleToggleSelectAllPages = async (checked) => {
+    if (!checked) {
+      clearSelectedStudents();
+      return;
+    }
+
+    if (!enrolmentPlanIid) {
+      message.warning("Không tìm thấy khóa học để tải danh sách.");
+      return;
+    }
+
+    setIsSelectingAllPages(true);
+
+    try {
+      const response = await ketQuaKiemTra(enrolmentPlanIid, {
+        page: 1,
+        limit: totalSelectableStudents || 1000,
+        text: params.text,
+        maKhoa: selectedClass?.code || "",
+        ...(params.loai_het_mon === null
+          ? {}
+          : { loai_het_mon: params.loai_het_mon }),
+      });
+
+      const allStudents = normalizeApiList(response);
+      const allKeys = allStudents.map(getRowKey).filter(Boolean);
+
+      setSelectedRowKeys(allKeys);
+      upsertSelectedStudents(allStudents);
+    } catch (error) {
+      message.error(
+        `Không thể chọn tất cả học viên: ${error?.response?.data?.message || error?.message || "Có lỗi xảy ra"}`,
+      );
+    } finally {
+      setIsSelectingAllPages(false);
+    }
+  };
+
+  const isAllSelected =
+    totalSelectableStudents > 0 &&
+    selectedRowKeys.length === totalSelectableStudents;
+  const isIndeterminate =
+    selectedRowKeys.length > 0 &&
+    selectedRowKeys.length < totalSelectableStudents;
+
   const columns = [
+    {
+      title: (
+        <Checkbox
+          checked={isAllSelected}
+          indeterminate={isIndeterminate}
+          disabled={isSubmittingAll || isLoadingHocVien || isSelectingAllPages}
+          onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
+        />
+      ),
+      key: "select_all",
+      width: 52,
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={selectedRowKeys.includes(getRowKey(record))}
+          disabled={isSubmittingAll || isSelectingAllPages}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
+        />
+      ),
+    },
     {
       title: "#",
       key: "stt",
@@ -589,7 +793,7 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "Thời gian đổi trạng thái",
       key: "status_updated_at",
-      width: 180,
+      width: 190,
       align: "center",
       render: (_, record) =>
         formatDateTime(resolveCheckState(record).statusUpdatedAt),
@@ -659,7 +863,7 @@ const QuanLyHocVienLyThuyet = () => {
 
       <Card className="!mt-5 !mb-4">
         <Row gutter={[12, 12]} align="bottom">
-          <Col span={7}>
+          <Col span={6}>
             <label className="block text-xs text-gray-500 uppercase">
               Khóa Học
             </label>
@@ -681,7 +885,7 @@ const QuanLyHocVienLyThuyet = () => {
             />
           </Col>
 
-          <Col span={7}>
+          <Col span={6}>
             <label className="block text-xs text-gray-500 uppercase">
               Từ khóa
             </label>
@@ -692,7 +896,7 @@ const QuanLyHocVienLyThuyet = () => {
               onPressEnter={handleFilter}
             />
           </Col>
-          <Col span={7}>
+          <Col span={6}>
             <label className="block text-xs text-gray-500 uppercase">
               Trạng thái làm bài hết môn
             </label>
@@ -730,6 +934,16 @@ const QuanLyHocVienLyThuyet = () => {
               <Button onClick={handleReset}>Bỏ Lọc</Button>
             </Space>
           </Col>
+          <Col>
+            <Button
+              type="primary"
+              loading={isSubmittingAll}
+              disabled={selectedRowKeys.length === 0 || isLoadingHocVien}
+              onClick={handleConfirmSubmitChonTatCa}
+            >
+              Duyệt học viên đã chọn
+            </Button>
+          </Col>
         </Row>
       </Card>
 
@@ -750,7 +964,7 @@ const QuanLyHocVienLyThuyet = () => {
           showSizeChanger: false,
           showTotal: (total) => `Tổng ${total} học viên`,
         }}
-        rowKey={(record) => record?.user?.iid || record?.ma_dk || record?.id}
+        rowKey={getRowKey}
         size="small"
         bordered
         scroll={{ x: 1200 }}
