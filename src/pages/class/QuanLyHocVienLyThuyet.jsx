@@ -16,7 +16,7 @@ import {
   Modal,
 } from "antd";
 import { useLocation } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   capNhatTrangThaiHocVienLyThuyet,
   capNhatTrangThaiTatCaHocVienLyThuyet,
@@ -90,6 +90,8 @@ const QuanLyHocVienLyThuyet = () => {
 
   const location = useLocation();
   const { program_code } = location?.state || {};
+
+  const queryClient = useQueryClient();
 
   const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
     queryKey: ["optionLopLyThuyet"],
@@ -398,9 +400,16 @@ const QuanLyHocVienLyThuyet = () => {
   };
 
   const handleToggleCheckbox = (record, fieldName, checkedValue) => {
+    const isCheck = resolveCheckState(record);
     const maDk = getStudentCode(record);
+
     if (!maDk) {
       message.warning("Không tìm thấy mã học viên để lưu dữ liệu.");
+      return;
+    }
+
+    if (!isCheck.lyThuyetDat) {
+      message.warning("Học viên chưa đạt lý thuyết online.");
       return;
     }
 
@@ -444,8 +453,6 @@ const QuanLyHocVienLyThuyet = () => {
     try {
       const payloads = selectedStudents.map((record) => {
         const fullPayload = buildPayload(record, { loai_het_mon: true }, true);
-        console.log(fullPayload);
-
         return {
           loai_ly_thuyet: fullPayload.loai_ly_thuyet,
           loai_het_mon: fullPayload.loai_het_mon,
@@ -463,17 +470,38 @@ const QuanLyHocVienLyThuyet = () => {
 
       await capNhatTrangThaiTatCaHocVienLyThuyet(payloads);
 
+      // Tách ra 2 nhóm
+      const notApproved = payloads.filter((p) => !p.loai_ly_thuyet);
+      const approved = payloads.filter((p) => p.loai_ly_thuyet);
+
+      if (notApproved.length > 0) {
+        message.warning(
+          `${notApproved.length} học viên chưa được duyệt do chưa đạt lý thuyết`,
+        );
+      }
+
+      if (approved.length > 0) {
+        message.success(`Đã cập nhật hết môn cho ${approved.length} học viên.`);
+      }
+
+      // Chỉ apply override cho học viên được duyệt
       selectedStudents.forEach((record, index) => {
         const maDk = getStudentCode(record);
-        if (maDk) {
+        if (!maDk) return;
+
+        if (payloads[index].loai_ly_thuyet) {
           applySavedOverride(maDk, payloads[index]);
+        } else {
+          // Không đạt lý thuyết → giữ nguyên, không tick loai_het_mon
+          applySavedOverride(maDk, { ...payloads[index], loai_het_mon: false });
         }
       });
 
-      message.success(
-        `Đã cập nhật làm bài hết môn cho ${payloads.length} học viên.`,
-      );
-      clearSelectedStudents();
+      clearSelectedStudents(); // Bỏ chọn tất cả
+
+      await queryClient.invalidateQueries({
+        queryKey: ["ketQuaKiemTra", enrolmentPlanIid],
+      });
     } catch (error) {
       message.error(
         `Cập nhật hàng loạt thất bại: ${error?.response?.data?.message || error?.message || "Có lỗi xảy ra"}`,
@@ -742,38 +770,6 @@ const QuanLyHocVienLyThuyet = () => {
         );
       },
     },
-    // {
-    //   title: "Cabin",
-    //   key: "updated_ts",
-    //   width: 110,
-    //   align: "center",
-    //   render: (_, record) => {
-    //     const checked = resolveCheckState(record).cabinChecked;
-    //     return (
-    //       <span
-    //         className={checked ? "text-green-600 font-medium" : "text-gray-400"}
-    //       >
-    //         {checked ? "Đạt" : "Chưa đạt"}
-    //       </span>
-    //     );
-    //   },
-    // },
-    // {
-    //   title: "DAT",
-    //   key: "dat",
-    //   width: 90,
-    //   align: "center",
-    //   render: (_, record) => {
-    //     const checked = resolveCheckState(record).datChecked;
-    //     return (
-    //       <span
-    //         className={checked ? "text-green-600 font-medium" : "text-gray-400"}
-    //       >
-    //         {checked ? "Đã ký" : "Chưa kí"}
-    //       </span>
-    //     );
-    //   },
-    // },
     {
       title: "Phút cabin",
       dataIndex: "cabin",
@@ -798,26 +794,6 @@ const QuanLyHocVienLyThuyet = () => {
       render: (_, record) =>
         formatDateTime(resolveCheckState(record).statusUpdatedAt),
     },
-    // {
-    //   title: "Tiến trình học tập",
-    //   key: "chi_tiet_tien_trinh",
-    //   width: 140,
-    //   align: "center",
-    //   render: (_, record) => (
-    //     <Button
-    //       type="primary"
-    //       size="small"
-    //       className="!bg-[#3366cc]"
-    //       onClick={(e) => {
-    //         e.stopPropagation();
-    //         handleOpenStudentDetail(record);
-    //       }}
-    //     >
-    //       <EyeOutlined />
-    //       Xem
-    //     </Button>
-    //   ),
-    // },
     // {
     //   title: "Tốt nghiệp",
     //   key: "detail",
