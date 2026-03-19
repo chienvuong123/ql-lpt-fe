@@ -213,8 +213,8 @@ const KiemTraPublic = () => {
     refetch: refetchChiTietLyThuyet,
   } = useQuery({
     queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
-    // queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
-    queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
+    queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
+    // queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
     staleTime: 0,
     retry: false,
     // enabled: !!searchParams,
