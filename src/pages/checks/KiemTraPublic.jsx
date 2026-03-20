@@ -31,7 +31,7 @@ import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
 import "./index.css";
-import { getChiTietHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
+// import { getChiTietHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -145,8 +145,6 @@ const KiemTraPublic = () => {
   });
 
   useEffect(() => {
-    console.log(data);
-
     for (let i = 0; i < 3; i++) {
       refetch();
     }

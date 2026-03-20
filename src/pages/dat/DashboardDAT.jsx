@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EyeOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -13,7 +14,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
-import { danhSachDashboardDAT } from "../../apis/evaluateApi";
+import { danhSachDashboardDAT, evaluateOne } from "../../apis/evaluateApi";
 import FailRecordDetailModal from "./FailRecordDetailModal";
 
 const { Title, Text } = Typography;
@@ -80,13 +81,6 @@ const getRangeByMonth = () => {
     ngaybatdau: "2020-01-01",
     ngayketthuc: `${dayjs().format("YYYY-MM-DD")}T23:59:00`,
   };
-};
-
-const getFailNotes = (record) => {
-  return (record?.errors || [])
-    .map((item) => item?.message || item?.label || "")
-    .filter(Boolean)
-    .join(", ");
 };
 
 const DashboardDAT = () => {
@@ -166,10 +160,14 @@ const DashboardDAT = () => {
   }, [activeSelectedKhoa, courseGroupMap]);
 
   const activeSelectedMonth =
-    selectedMonth && monthOptions.some((item) => item.value === selectedMonth)
-      ? selectedMonth
-      : (monthOptions.find((item) => item.value === defaultMonth)?.value ??
-        monthOptions[0]?.value);
+    selectedMonth === null
+      ? null
+      : selectedMonth &&
+          monthOptions.some((item) => item.value === selectedMonth)
+        ? selectedMonth
+        : (monthOptions.find((item) => item.value === defaultMonth)?.value ??
+          monthOptions[0]?.value ??
+          null);
 
   const activeAppliedKhoa =
     appliedFilter.khoa &&
@@ -193,9 +191,11 @@ const DashboardDAT = () => {
   }, [activeAppliedKhoa, courseGroupMap]);
 
   const activeAppliedMonth =
-    appliedFilter.month && appliedMonthOptions.includes(appliedFilter.month)
-      ? appliedFilter.month
-      : activeSelectedMonth;
+    appliedFilter.month === null
+      ? null
+      : appliedFilter.month && appliedMonthOptions.includes(appliedFilter.month)
+        ? appliedFilter.month
+        : activeSelectedMonth;
 
   const matchedCourses = useMemo(() => {
     const yearFromKhoa = getYearFromKhoa(activeAppliedKhoa);
@@ -266,10 +266,16 @@ const DashboardDAT = () => {
     keepPreviousData: true,
     enabled:
       Boolean(activeAppliedKhoa) &&
-      Boolean(activeAppliedMonth) &&
       selectedPlanIds.length > 0 &&
       selectedPlanIds.length === selectedMaKhoaHocList.length,
   });
+
+  // useEffect(() => {
+  //   evaluateOne({
+  //     ma_dk: "30004-20251210094948873",
+  //     ma_khoa_hoc: "30004K25B027",
+  //   });
+  // }, []);
 
   const dashboardList = useMemo(
     () => normalizeApiList(listDashboardDAT),
@@ -332,19 +338,33 @@ const DashboardDAT = () => {
       },
     },
 
+    // {
+    //   title: "Lỗi",
+    //   key: "errorCount",
+    //   width: 90,
+    //   align: "center",
+    //   render: (_, record) => record?.errors?.length || 0,
+    // },
+    // {
+    //   title: "Cảnh báo",
+    //   key: "warningCount",
+    //   width: 120,
+    //   align: "center",
+    //   render: (_, record) => record?.warnings?.length || 0,
+    // },
     {
-      title: "Lỗi",
-      key: "errorCount",
-      width: 90,
-      align: "center",
-      render: (_, record) => record?.errors?.length || 0,
-    },
-    {
-      title: "Cảnh báo",
-      key: "warningCount",
+      title: "Tổng km",
+      key: "summary",
       width: 120,
       align: "center",
-      render: (_, record) => record?.warnings?.length || 0,
+      render: (value) => `${value?.summary?.tongQuangDuong || 0} km`,
+    },
+    {
+      title: "Tổng thời gian",
+      key: "summary",
+      width: 140,
+      align: "center",
+      render: (value) => `${value?.summary?.tongThoiGianGio || 0}h`,
     },
     {
       title: "Trạng thái",
@@ -367,16 +387,29 @@ const DashboardDAT = () => {
       key: "errorSummary",
       width: 420,
       render: (value) => {
-        console.log(value);
         return value?.errorSummary;
       },
+    },
+    {
+      title: "Chi tiết",
+      key: "detail",
+      width: 80,
+      align: "center",
+      render: (_, record) => (
+        <Button
+          type="link"
+          size="large"
+          icon={<EyeOutlined />}
+          onClick={() => setSelectedFailRecord(record)}
+        />
+      ),
     },
   ];
 
   const handleApplyFilter = () => {
     setAppliedFilter({
       khoa: activeSelectedKhoa,
-      month: activeSelectedMonth || defaultMonth,
+      month: activeSelectedMonth ?? null,
     });
   };
 
@@ -425,9 +458,10 @@ const DashboardDAT = () => {
               className="!mt-2 !w-full"
               placeholder="Chọn tháng"
               value={activeSelectedMonth}
-              onChange={(value) => setSelectedMonth(value)}
+              onChange={(value) => setSelectedMonth(value ?? null)}
               options={monthOptions}
               disabled={monthOptions.length === 0}
+              allowClear
             />
           </Col>
 
@@ -477,10 +511,6 @@ const DashboardDAT = () => {
           className="overflow-hidden table-blue-header"
           pagination={{ pageSize: 10 }}
           scroll={{ x: 1600 }}
-          onRow={(record) => ({
-            onClick: () => setSelectedFailRecord(record),
-            className: "cursor-pointer",
-          })}
         />
       </div>
 

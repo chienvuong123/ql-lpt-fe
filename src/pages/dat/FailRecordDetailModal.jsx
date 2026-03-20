@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClockCircleOutlined } from "@ant-design/icons";
-import { Button, Card, Modal, Space, Typography, message } from "antd";
+import { Button, Card, Modal, Typography, message } from "antd";
 import ConfigModal from "./ConfigModal";
 import { updateDuyetTheoMaDK } from "../../apis/hocVien";
 
@@ -35,6 +35,37 @@ const normalizeApproveMeta = (payload = {}) => ({
   },
 });
 
+const normalizeSessionIssues = (payload = {}) => {
+  const candidates = [
+    payload?.sessionErrors,
+    payload?.session_errors,
+    payload?.invalidSessions,
+    payload?.invalid_sessions,
+    payload?.sessionIssues,
+    payload?.session_issues,
+    payload?.phienLoi,
+    payload?.loiPhien,
+  ];
+
+  const list = candidates.find((item) => Array.isArray(item)) || [];
+
+  return list.map((item, index) => ({
+    key:
+      item?.id ||
+      item?.ID ||
+      item?.phien_hoc_id ||
+      item?.sessionId ||
+      `session-issue-${index}`,
+    label:
+      item?.label ||
+      item?.title ||
+      item?.ten_loi ||
+      item?.error ||
+      `Phiên ${index + 1}`,
+    message: item?.message || item?.detail || item?.mo_ta || item?.reason || "",
+  }));
+};
+
 const ACTIONS = [
   { key: "duyet_tong", label: "Tổng" },
   { key: "duyet_dem", label: "Đêm" },
@@ -45,6 +76,33 @@ const reasonFieldMap = {
   duyet_tong: "ly_do_tong",
   duyet_dem: "ly_do_dem",
   duyet_tu_dong: "ly_do_td",
+};
+
+const getApproveKeyForError = (item = {}) => {
+  const normalizedKey = String(item?.key || item?.type || "").toLowerCase();
+  const normalizedText =
+    `${item?.label || ""} ${item?.message || ""}`.toLowerCase();
+
+  if (
+    normalizedKey.includes("tu_dong") ||
+    normalizedKey.includes("tudong") ||
+    normalizedText.includes("tự động") ||
+    normalizedText.includes("tu dong")
+  ) {
+    return "duyet_tu_dong";
+  }
+
+  if (
+    normalizedKey.includes("dem") ||
+    normalizedText.includes("ban đêm") ||
+    normalizedText.includes("ban dem") ||
+    normalizedText.includes("đêm") ||
+    normalizedText.includes("dem")
+  ) {
+    return "duyet_dem";
+  }
+
+  return "duyet_tong";
 };
 
 const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
@@ -69,29 +127,22 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
     [currentRecord],
   );
 
-  const handleOpenApproveModal = (key) => {
-    const approved = normalizeApproveFlag(currentRecord?.[key]);
-    setSelectedApproveKey(key);
-    setActionType(approved ? "reject" : "approve");
-    setConfigMode("edit");
-    setConfigOpen(true);
-  };
+  const sessionIssues = useMemo(
+    () => normalizeSessionIssues(currentRecord),
+    [currentRecord],
+  );
 
-  const handleViewApproveReason = (key) => {
+  const handleOpenApproveModal = (key, nextActionType) => {
     setSelectedApproveKey(key);
-    setActionType(
-      normalizeApproveFlag(currentRecord?.[key]) ? "reject" : "approve",
-    );
-    setConfigMode("view");
+    setActionType(nextActionType);
+    setConfigMode("edit");
     setConfigOpen(true);
   };
 
   const handleSubmitConfig = async (value) => {
     if (!currentRecord?.maDK || !selectedApproveKey) return;
 
-    const nextApproved = !normalizeApproveFlag(
-      currentRecord?.[selectedApproveKey],
-    );
+    const nextApproved = actionType === "approve";
     const reasonField = reasonFieldMap[selectedApproveKey];
 
     try {
@@ -137,7 +188,7 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
   return (
     <>
       <Modal
-        title={"Chi tiết lỗi DAT"}
+        title="Chi tiết học viên"
         open={open}
         onCancel={onCancel}
         footer={null}
@@ -183,52 +234,71 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
             </Card>
 
             <Card size="small" title="Lỗi" className="!mb-3">
-              <div className="!mb-3 flex flex-wrap gap-2">
-                {ACTIONS.map((item) => {
-                  const approved = normalizeApproveFlag(
-                    currentRecord?.[item.key],
-                  );
-                  const reason = approveReasons[item.key];
-                  const meta = approveMeta[item.key];
-
-                  return (
-                    <div key={item.key} className="flex items-center gap-1">
-                      <Button
-                        size="small"
-                        type={approved ? "default" : "primary"}
-                        danger={approved}
-                        loading={actionKey === item.key}
-                        onClick={() => handleOpenApproveModal(item.key)}
-                      >
-                        {approved ? `Hủy ${item.label}` : `Duyệt ${item.label}`}
-                      </Button>
-                      {reason || meta?.updatedAt || meta?.updatedBy ? (
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<ClockCircleOutlined />}
-                          onClick={() => handleViewApproveReason(item.key)}
-                        />
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-
               {currentRecord?.errors?.length > 0 ? (
                 <div className="space-y-2">
                   {currentRecord.errors.map((item, index) => (
                     <div
                       key={`${item?.label}-${index}`}
-                      className="rounded border border-red-200 bg-red-50 px-3 py-2"
+                      className="flex items-start justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2"
                     >
-                      <Text strong>{item?.label || "Lỗi"}: </Text>
-                      <Text>{item?.message || "-"}</Text>
+                      <div className="flex-1">
+                        <Text strong>{item?.label || "Lỗi"}: </Text>
+                        <Text>{item?.message || "-"}</Text>
+                      </div>
+                      <Button
+                        size="small"
+                        type={
+                          normalizeApproveFlag(
+                            currentRecord?.[getApproveKeyForError(item)],
+                          )
+                            ? "default"
+                            : "primary"
+                        }
+                        danger={normalizeApproveFlag(
+                          currentRecord?.[getApproveKeyForError(item)],
+                        )}
+                        loading={actionKey === getApproveKeyForError(item)}
+                        onClick={() => {
+                          const approveKey = getApproveKeyForError(item);
+                          const isApproved = normalizeApproveFlag(
+                            currentRecord?.[approveKey],
+                          );
+
+                          handleOpenApproveModal(
+                            approveKey,
+                            isApproved ? "reject" : "approve",
+                          );
+                        }}
+                      >
+                        {normalizeApproveFlag(
+                          currentRecord?.[getApproveKeyForError(item)],
+                        )
+                          ? "Hủy"
+                          : "Duyệt"}
+                      </Button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <Text type="secondary">Không có lỗi.</Text>
+              )}
+            </Card>
+
+            <Card size="small" title="Lỗi phiên" className="!mb-3">
+              {sessionIssues.length > 0 ? (
+                <div className="space-y-2">
+                  {sessionIssues.map((item) => (
+                    <div
+                      key={item.key}
+                      className="rounded border border-orange-200 bg-orange-50 px-3 py-2"
+                    >
+                      <Text strong>{item.label}: </Text>
+                      <Text>{item.message || "-"}</Text>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Text type="secondary">Không có lỗi phiên.</Text>
               )}
             </Card>
 

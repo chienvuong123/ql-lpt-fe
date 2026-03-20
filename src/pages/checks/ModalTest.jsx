@@ -321,10 +321,8 @@ const ModalTest = ({
       const _isPlateMismatch = bienSoErrors.some((e) =>
         e.message.startsWith(phienLabel),
       );
-      const _isRestTooShort = nghiErrors.some(
-        (e) =>
-          e.message.includes(`Phiên ${index + 1} và`) ||
-          e.message.includes(`và ${index + 1}:`),
+      const _isRestTooShort = nghiErrors.some((e) =>
+        e.message.startsWith(`Phiên ${index} `),
       );
 
       const derivedInvalid =
@@ -372,6 +370,7 @@ const ModalTest = ({
     () => rowsWithStatus.filter((item) => item?._isInvalid).length,
     [rowsWithStatus],
   );
+  console.log(rowsWithStatus);
 
   // Lấy hạng đào tạo từ row đầu tiên hoặc student
   const hangDaoTao = useMemo(() => {

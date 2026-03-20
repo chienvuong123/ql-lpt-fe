@@ -284,7 +284,7 @@ export function evaluateNghiGiuaPhien(dataSource) {
       errors.push({
         type: "warning",
         label: "Thời gian nghỉ giữa phiên",
-        message: `Phiên ${i} và ${i + 1}: nghỉ chỉ ${phut.toFixed(0)} phút (${fmt(tXuat)} → ${fmt(tNhap)}), yêu cầu ≥ 15 phút.`,
+        message: `Phiên ${i + 1} nghỉ chỉ ${phut.toFixed(0)} phút (${fmt(tXuat)} → ${fmt(tNhap)}), yêu cầu ≥ 15 phút.`,
       });
     }
   }

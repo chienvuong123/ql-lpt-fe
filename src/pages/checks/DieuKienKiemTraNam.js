@@ -90,10 +90,9 @@ export function evaluate(summary, dataSource, studentInfo) {
 
   const wrongTeacherSessions = dataSource.filter(
     (s) =>
-      normalizeNameBirth(s.HoTenGV) !== normalizeNameBirth(registeredTeacher),
+      normalizeNameBirth(s.HoTenGV).toLocaleUpperCase !==
+      normalizeNameBirth(registeredTeacher).toLocaleUpperCase,
   );
-  console.log(normalizeNameBirth(registeredTeacher));
-  console.log(wrongTeacherSessions);
 
   if (wrongTeacherSessions.length > 0) {
     const wrongNames = [
