@@ -87,3 +87,17 @@ export const toTitleCase = (str = "") =>
     .filter(Boolean)
     .map((word) => word.charAt(0).toLocaleUpperCase("vi-VN") + word.slice(1))
     .join(" ");
+
+export const formatHoursToHM = (hours = 0) => {
+  if (!hours || isNaN(hours)) return "0h 0'";
+
+  let h = Math.floor(hours);
+  let m = Math.round((hours - h) * 60);
+
+  if (m === 60) {
+    h += 1;
+    m = 0;
+  }
+
+  return `${h}h ${m}'`;
+};

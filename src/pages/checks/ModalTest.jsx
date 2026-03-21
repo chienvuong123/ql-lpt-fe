@@ -370,7 +370,6 @@ const ModalTest = ({
     () => rowsWithStatus.filter((item) => item?._isInvalid).length,
     [rowsWithStatus],
   );
-  console.log(rowsWithStatus);
 
   // Lấy hạng đào tạo từ row đầu tiên hoặc student
   const hangDaoTao = useMemo(() => {

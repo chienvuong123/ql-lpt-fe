@@ -33,10 +33,7 @@ import {
   evaluate as evaluateHangLoat,
   fmtGio,
 } from "./checks/DieuKienKiemTra";
-import {
-  computeSummary as computeSummaryHangNam,
-  evaluate as evaluateHangNam,
-} from "./checks/DieuKienKiemTraNam";
+
 import TrackingPage from "./map/TrackingPage";
 import { fetchCheckStudents } from "../apis/kiemTra";
 import { getDuLieuCabin } from "../apis/searchPublic";
@@ -355,17 +352,22 @@ const StudentDetail = ({ data }) => {
 
   const hasJourneyData = dataSource.length > 0;
 
-  const summaryData = useMemo(
-    () => computeSummaryHangLoat(dataSource, data?.HangDaoTao || ""),
-    [dataSource, data],
-  );
-
   const admissionCode = data?.MaDK ?? "";
   const annualStudentInfo = useMemo(() => {
     const code = String(admissionCode).trim();
     if (!code) return null;
     return studentMap.get(code) || null;
   }, [studentMap, admissionCode]);
+
+  const summaryData = useMemo(
+    () =>
+      computeSummaryHangLoat(
+        dataSource,
+        data?.HangDaoTao || "",
+        annualStudentInfo,
+      ),
+    [dataSource, data, annualStudentInfo],
+  );
 
   const evaluationData = useMemo(() => {
     if (!hasJourneyData) {
@@ -376,32 +378,14 @@ const StudentDetail = ({ data }) => {
       summaryData,
       dataSource,
       loTrinhResults?.data || [],
+      annualStudentInfo,
     );
 
-    const hasAnnualSource =
-      !!annualStudentInfo &&
-      (!!annualStudentInfo.giaoVien ||
-        !!annualStudentInfo.xeB1 ||
-        !!annualStudentInfo.xeB2);
-
-    const annualEvaluation = hasAnnualSource
-      ? evaluateHangNam(
-          computeSummaryHangNam(dataSource),
-          dataSource,
-          annualStudentInfo,
-        )
-      : { status: "pass", errors: [], warnings: [] };
-
-    const errors = [
-      ...(fullCourseEvaluation?.errors || []),
-      ...(annualEvaluation?.errors || []),
-    ];
-    const warnings = [
-      ...(fullCourseEvaluation?.warnings || []),
-      ...(annualEvaluation?.warnings || []),
-    ];
-
-    return { status: errors.length === 0 ? "pass" : "fail", errors, warnings };
+    return {
+      status: fullCourseEvaluation.status,
+      errors: fullCourseEvaluation.errors || [],
+      warnings: fullCourseEvaluation.warnings || [],
+    };
   }, [
     dataSource,
     hasJourneyData,

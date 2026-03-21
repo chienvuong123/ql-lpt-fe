@@ -609,7 +609,7 @@ const TruyVetModal = ({
 
   return (
     <Drawer
-      title="Chi tiết DAT"
+      title="Chi tiết truy vết DAT"
       open={open}
       onClose={onCancel}
       footer={null}

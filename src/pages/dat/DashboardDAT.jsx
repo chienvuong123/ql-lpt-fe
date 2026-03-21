@@ -262,6 +262,12 @@ const DashboardDAT = () => {
         ngayketthuc: dateRange.ngayketthuc,
         maKhoaHoc: selectedMaKhoaHocList,
       }),
+    // danhSachDashboardDAT({
+    //   enrolmentPlanIids: ["32138723"],
+    //   ngaybatdau: dateRange.ngaybatdau,
+    //   ngayketthuc: dateRange.ngayketthuc,
+    //   maKhoaHoc: ["30004K26B002"],
+    // }),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
     enabled:
@@ -270,12 +276,12 @@ const DashboardDAT = () => {
       selectedPlanIds.length === selectedMaKhoaHocList.length,
   });
 
-  // useEffect(() => {
-  //   evaluateOne({
-  //     ma_dk: "30004-20251210094948873",
-  //     ma_khoa_hoc: "30004K25B027",
-  //   });
-  // }, []);
+  useEffect(() => {
+    evaluateOne({
+      ma_dk: "30004-20260106145921283",
+      ma_khoa_hoc: "30004K26B002",
+    });
+  }, []);
 
   const dashboardList = useMemo(
     () => normalizeApiList(listDashboardDAT),
@@ -357,14 +363,14 @@ const DashboardDAT = () => {
       key: "summary",
       width: 120,
       align: "center",
-      render: (value) => `${value?.summary?.tongQuangDuong || 0} km`,
+      render: (value) => `${value?.summary?.tongQuangDuongChuaLoai || 0} km`,
     },
     {
       title: "Tổng thời gian",
       key: "summary",
       width: 140,
       align: "center",
-      render: (value) => `${value?.summary?.tongThoiGianGio || 0}h`,
+      render: (value) => `${value?.summary?.tongThoiGianChuaLoaiGio || 0}h`,
     },
     {
       title: "Trạng thái",

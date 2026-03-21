@@ -91,20 +91,48 @@ const fmtDateStr = (str) => {
       });
 };
 
+const removeBirthYear = (name = "") => name.replace(/\(\d{4}\)/g, "").trim();
+
+const normalizeForCompare = (name = "") =>
+  removeBirthYear(name).replace(/\s+/g, " ").trim().toUpperCase();
+
 // ─── Xác định biển số xe tự động ─────────────────────────────────────────────
 
 /**
  * Biển số xuất hiện ít nhất = xe tự động.
  * Chỉ có 1 loại biển → trả null.
  */
-function getBienSoTuDong(dataSource) {
+function getBienSoTuDong(dataSource, studentInfo = null) {
   if (!dataSource || dataSource.length === 0) return null;
+
   const count = {};
   dataSource.forEach((item) => {
-    if (item.BienSo) count[item.BienSo] = (count[item.BienSo] || 0) + 1;
+    const bs = normalizePlate(item.BienSo);
+    if (bs) count[bs] = (count[bs] || 0) + 1;
   });
+
   const entries = Object.entries(count);
   if (entries.length <= 1) return null;
+
+  // Ưu tiên: dùng thông tin đăng ký từ studentInfo
+  if (studentInfo) {
+    const bs1 = normalizePlate(studentInfo.xeB1);
+    const bs2 = normalizePlate(studentInfo.xeB2);
+
+    if (bs1 && bs2) {
+      const cnt1 = count[bs1] || 0;
+      const cnt2 = count[bs2] || 0;
+      if (cnt1 === 0 && cnt2 === 0) return null;
+      if (cnt1 === 0) return bs2;
+      if (cnt2 === 0) return bs1;
+      return cnt1 <= cnt2 ? bs1 : bs2;
+    }
+
+    // Chỉ có xeB2 → đó là xe tự động
+    if (bs2 && count[bs2]) return bs2;
+  }
+
+  // Fallback: biển số xuất hiện ít nhất
   return entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0];
 }
 
@@ -121,7 +149,9 @@ function getBienSoTuDong(dataSource) {
  *   2. Xe tự động bắt đầu trước 17h  → thêm vào tuDongLoiIndexes
  *   3. Nghỉ giữa phiên < 15 phút → phiên SAU bị loại
  */
-export function getInvalidSessionIndexes(dataSource) {
+// ─── Đánh dấu phiên lỗi ──────────────────────────────────────────────────────
+
+export function getInvalidSessionIndexes(dataSource, studentInfo = null) {
   const invalidIndexes = new Set();
   const tuDongLoiIndexes = new Set();
   const invalidReasons = new Map();
@@ -136,19 +166,25 @@ export function getInvalidSessionIndexes(dataSource) {
   };
 
   const MIN_SPEED = 18;
-  const bienSoTuDong = getBienSoTuDong(dataSource);
+  const bienSoTuDong = getBienSoTuDong(dataSource, studentInfo);
 
-  // 0. Xác định tên giáo viên hợp lệ = tên xuất hiện nhiều nhất
-  const gvCount = {};
-  dataSource.forEach((item) => {
-    const ten = (item.HoTenGV || "").trim();
-    if (ten) gvCount[ten] = (gvCount[ten] || 0) + 1;
-  });
-  const gvEntries = Object.entries(gvCount);
-  const tenGVHopLe =
-    gvEntries.length > 0
-      ? gvEntries.reduce((max, cur) => (cur[1] > max[1] ? cur : max))[0]
-      : null;
+  // 0. Xác định tên GV hợp lệ
+  //    Ưu tiên: dùng studentInfo nếu có, fallback: tên xuất hiện nhiều nhất
+  let tenGVHopLe = null;
+  if (studentInfo?.giaoVien) {
+    tenGVHopLe = normalizeForCompare(studentInfo.giaoVien);
+  } else {
+    const gvCount = {};
+    dataSource.forEach((item) => {
+      const ten = (item.HoTenGV || "").trim();
+      if (ten) gvCount[ten] = (gvCount[ten] || 0) + 1;
+    });
+    const gvEntries = Object.entries(gvCount);
+    tenGVHopLe =
+      gvEntries.length > 0
+        ? gvEntries.reduce((max, cur) => (cur[1] > max[1] ? cur : max))[0]
+        : null;
+  }
 
   // 1. Tốc độ TB < 18 km/h
   dataSource.forEach((phien, idx) => {
@@ -161,7 +197,7 @@ export function getInvalidSessionIndexes(dataSource) {
     }
   });
 
-  // 2. Xe tự động bắt đầu trước 17h
+  // 2. Xe tự động bắt đầu ngoài khung giờ hợp lệ
   if (bienSoTuDong) {
     dataSource.forEach((phien, idx) => {
       if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) return;
@@ -172,9 +208,9 @@ export function getInvalidSessionIndexes(dataSource) {
       const minute = thoiDiem.getMinutes();
       const totalMinutes = hour * 60 + minute;
 
-      const SANG_START = 4 * 60 + 45; // 04:45
-      const SANG_END = 6 * 60 + 59; // 06:59
-      const CHIEU_START = 17 * 60; // 17:00
+      const SANG_START = 4 * 60 + 45;
+      const SANG_END = 6 * 60 + 59;
+      const CHIEU_START = 17 * 60;
 
       const inSangWindow =
         totalMinutes >= SANG_START && totalMinutes <= SANG_END;
@@ -183,7 +219,7 @@ export function getInvalidSessionIndexes(dataSource) {
       if (!inSangWindow && !inChieuWindow) {
         addReason(
           idx,
-          `Xe tự động bắt đầu lúc ${hour}h${String(minute).padStart(2, "0")} — không thuộc khung hợp lệ (04:45–06:59 hoặc từ 17:00)`,
+          `Xe tự động bắt đầu lúc ${hour}h${String(minute).padStart(2, "0")} — không thuộc khung hợp lệ (04:45–06:59 hoặc từ sau 17:00)`,
         );
         tuDongLoiIndexes.add(idx);
       }
@@ -213,16 +249,39 @@ export function getInvalidSessionIndexes(dataSource) {
     }
   }
 
-  // 4. Sai tên giáo viên (khác hoặc không có tên GV so với tên xuất hiện nhiều nhất)
+  // 4. Sai tên giáo viên
   if (tenGVHopLe) {
     dataSource.forEach((phien, idx) => {
-      const ten = (phien.HoTenGV || "").trim();
+      const ten = normalizeForCompare(phien.HoTenGV || "");
+      const hopLe = normalizeForCompare(tenGVHopLe);
       if (!ten) {
-        addReason(idx, `Không có tên giáo viên (GV hợp lệ: "${tenGVHopLe}")`);
-      } else if (ten !== tenGVHopLe) {
         addReason(
           idx,
-          `Tên giáo viên "${ten}" khác với GV hợp lệ "${tenGVHopLe}"`,
+          `Không có tên giáo viên (GV hợp lệ: "${removeBirthYear(tenGVHopLe)}")`,
+        );
+      } else if (ten !== hopLe) {
+        addReason(
+          idx,
+          `Tên giáo viên "${removeBirthYear(phien.HoTenGV)}" khác với GV hợp lệ "${removeBirthYear(tenGVHopLe)}"`,
+        );
+      }
+    });
+  }
+
+  // 5. Sai biển số xe (không phải xeB1 cũng không phải xeB2)
+  if (studentInfo?.xeB1 || studentInfo?.xeB2) {
+    const allowedPlates = new Set(
+      [
+        normalizePlate(studentInfo.xeB1),
+        normalizePlate(studentInfo.xeB2),
+      ].filter(Boolean),
+    );
+    dataSource.forEach((phien, idx) => {
+      const bs = normalizePlate(phien.BienSo);
+      if (bs && !allowedPlates.has(bs)) {
+        addReason(
+          idx,
+          `Biển số xe "${phien.BienSo}" không thuộc xe đăng ký (${[studentInfo.xeB1, studentInfo.xeB2].filter(Boolean).join(", ")})`,
         );
       }
     });
@@ -423,6 +482,86 @@ export function evaluatePhienDuoi5Phut(dataSource) {
   }, []);
 }
 
+function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
+  const registeredTeacherNorm = normalizeForCompare(studentInfo.giaoVien || "");
+  if (!registeredTeacherNorm) {
+    return [
+      {
+        type: "warning",
+        label: "Không có thông tin giáo viên đăng ký",
+        message:
+          "Học viên không có thông tin giáo viên đăng ký. Không thể kiểm tra tên GV.",
+      },
+    ];
+  }
+
+  const wrongSessions = dataSource.filter(
+    (s) => normalizeForCompare(s.HoTenGV || "") !== registeredTeacherNorm,
+  );
+
+  if (wrongSessions.length === 0) return [];
+
+  const wrongNames = [
+    ...new Set(
+      wrongSessions.map((s) => removeBirthYear(s.HoTenGV || "(trống)")),
+    ),
+  ].join(", ");
+
+  return [
+    {
+      type: "warning",
+      label: "Sai giáo viên (theo đăng ký)",
+      message: `Đăng ký với GV: "${removeBirthYear(studentInfo.giaoVien)}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongSessions.length} phiên không khớp).`,
+    },
+  ];
+}
+
+// ─── Check xe sang theo studentInfo ──────────────────────────────────────────
+
+function evaluateSaiXeSangTheoStudentInfo(dataSource, studentInfo) {
+  const registeredPlateB2 = normalizePlate(studentInfo.xeB2 || "");
+  if (!registeredPlateB2) return [];
+
+  // Xác định xe tự động trong hành trình = biển số xuất hiện ít nhất
+  const plateCount = {};
+  dataSource.forEach((s) => {
+    const p = normalizePlate(s.BienSo);
+    if (p) plateCount[p] = (plateCount[p] || 0) + 1;
+  });
+  const plateEntries = Object.entries(plateCount);
+  const detectedTuDong =
+    plateEntries.length > 1
+      ? plateEntries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0]
+      : null;
+
+  const tuDongSessions = detectedTuDong
+    ? dataSource.filter((s) => normalizePlate(s.BienSo) === detectedTuDong)
+    : [];
+
+  if (tuDongSessions.length === 0) {
+    return [
+      {
+        type: "warning",
+        label: "Chưa có phiên xe sang",
+        message: `Học viên đăng ký xe sang: "${studentInfo.xeB2}" nhưng chưa có phiên học nào trên xe sang.`,
+      },
+    ];
+  }
+
+  if (detectedTuDong !== registeredPlateB2) {
+    const displayPlate = tuDongSessions[0]?.BienSo || detectedTuDong;
+    return [
+      {
+        type: "warning",
+        label: "Sai biển số xe sang (theo đăng ký)",
+        message: `Xe sang đăng ký: "${studentInfo.xeB2}", nhưng hành trình dùng xe sang: "${displayPlate}" (${tuDongSessions.length} phiên không khớp).`,
+      },
+    ];
+  }
+
+  return [];
+}
+
 // ─── computeSummary ───────────────────────────────────────────────────────────
 
 /**
@@ -434,7 +573,11 @@ export function evaluatePhienDuoi5Phut(dataSource) {
  *   tuDongLoiGio        — tổng giờ của các phiên TỰ ĐỘNG lỗi (trước 17h)
  *   tuDongLoiKm         — tổng km  của các phiên TỰ ĐỘNG lỗi
  */
-export function computeSummary(dataSource, hangDaoTao = "") {
+export function computeSummary(
+  dataSource,
+  hangDaoTao = "",
+  studentInfo = null,
+) {
   const empty = {
     tongThoiGianGio: 0,
     tongQuangDuong: 0,
@@ -452,9 +595,11 @@ export function computeSummary(dataSource, hangDaoTao = "") {
   };
   if (!dataSource || dataSource.length === 0) return empty;
 
-  const bienSoTuDong = getBienSoTuDong(dataSource);
-  const { invalidIndexes, tuDongLoiIndexes } =
-    getInvalidSessionIndexes(dataSource);
+  const bienSoTuDong = getBienSoTuDong(dataSource, studentInfo);
+  const { invalidIndexes, tuDongLoiIndexes } = getInvalidSessionIndexes(
+    dataSource,
+    studentInfo,
+  );
 
   const t = dataSource.reduce(
     (acc, item, idx) => {
@@ -567,7 +712,12 @@ export function computeSummary(dataSource, hangDaoTao = "") {
 
 // ─── evaluate ─────────────────────────────────────────────────────────────────
 
-export function evaluate(summaryData, dataSource = [], loTrinh = []) {
+export function evaluate(
+  summaryData,
+  dataSource = [],
+  loTrinh = [],
+  studentInfo,
+) {
   const errors = [];
   const warnings = [];
 
@@ -676,6 +826,19 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
         return `Quãng đường ban ngày thiếu ${pct}% (thiếu ${(yc - tt).toFixed(2)} km, yêu cầu ${yc} km).`;
       },
     },
+    {
+      type: "warning",
+      label: "Thời gian số tự động vượt mức",
+      condition: (() => {
+        const MAX_GIO = 2 + 10 / 60; // 2h10'
+        return summaryData.thoiGianTuDongGio > MAX_GIO;
+      })(),
+      getMessage: () => {
+        const MAX_GIO = 2 + 10 / 60;
+        const vuot = summaryData.thoiGianTuDongGio - MAX_GIO;
+        return `Thời gian số tự động vượt ${fmtGio(vuot)} so với mức tối đa cho phép (thực tế ${fmtGio(summaryData.thoiGianTuDongGio)}, tối đa 2h 10').`;
+      },
+    },
     // {
     //   type: "warning",
     //   label: "Phiên không hợp lệ bị loại khỏi tổng",
@@ -706,6 +869,13 @@ export function evaluate(summaryData, dataSource = [], loTrinh = []) {
       else warnings.push(issue);
     }
   });
+
+  if (studentInfo) {
+    warnings.push(
+      ...evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo),
+    );
+    warnings.push(...evaluateSaiXeSangTheoStudentInfo(dataSource, studentInfo));
+  }
 
   // Các phiên vi phạm đã bị loại khỏi tổng → chỉ cảnh báo, không ảnh hưởng status
   warnings.push(...evaluateNghiGiuaPhien(dataSource));

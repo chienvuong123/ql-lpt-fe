@@ -78,7 +78,7 @@ export default function TruyXuatLoi() {
   const khoaHocOptions = useMemo(() => {
     const options = dataKhoaHoc?.data?.Data || [];
     return [
-      { label: "Tat ca khoa hoc", value: "" },
+      { label: "Tất cả khóa học", value: "" },
       ...options.map((kh) => ({
         label: kh.Ten || kh.MaKhoaHoc || "Khong co ten",
         value: kh.ID || "",
@@ -264,7 +264,7 @@ export default function TruyXuatLoi() {
                 }
               }}
             >
-              Tim kiem
+              Tìm kiếm
             </Button>
           </Col>
         </Row>
