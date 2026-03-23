@@ -519,8 +519,8 @@ function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
 // ─── Check xe sang theo studentInfo ──────────────────────────────────────────
 
 function evaluateSaiXeSangTheoStudentInfo(dataSource, studentInfo) {
-  const registeredPlateB2 = normalizePlate(studentInfo.xeB2 || "");
-  if (!registeredPlateB2) return [];
+  const registeredPlateB1 = normalizePlate(studentInfo.xeB1 || "");
+  if (!registeredPlateB1) return [];
 
   // Xác định xe tự động trong hành trình = biển số xuất hiện ít nhất
   const plateCount = {};
@@ -548,13 +548,14 @@ function evaluateSaiXeSangTheoStudentInfo(dataSource, studentInfo) {
     ];
   }
 
-  if (detectedTuDong !== registeredPlateB2) {
+  if (detectedTuDong !== registeredPlateB1) {
     const displayPlate = tuDongSessions[0]?.BienSo || detectedTuDong;
+
     return [
       {
         type: "warning",
         label: "Sai biển số xe sang (theo đăng ký)",
-        message: `Xe sang đăng ký: "${studentInfo.xeB2}", nhưng hành trình dùng xe sang: "${displayPlate}" (${tuDongSessions.length} phiên không khớp).`,
+        message: `Xe sang đăng ký: "${studentInfo.xeB1}", nhưng hành trình dùng xe sang: "${displayPlate}" (${tuDongSessions.length} phiên không khớp).`,
       },
     ];
   }

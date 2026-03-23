@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
   Button,
@@ -12,6 +13,9 @@ import {
 } from "antd";
 import { AiOutlineSelect } from "react-icons/ai";
 import { formatHoursToHM } from "../../util/helper";
+import { HanhTrinh } from "../../apis/hocVien";
+import { fetchCheckStudents } from "../../apis/kiemTra";
+import TruyVetModal from "./TruyVetModal";
 
 const { Text } = Typography;
 
@@ -24,8 +28,89 @@ const normalizeApproveFlag = (value) => {
 };
 
 const FailRecordDetailModal = ({ open, record, onCancel }) => {
-  const navigate = useNavigate();
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const currentRecord = record || null;
+
+  const maDK = currentRecord?.maDK || "";
+  const maKhoaHoc =
+    currentRecord?.studentInfo?.maKhoaHoc || currentRecord?.maKhoaHoc || "";
+
+  // Fetch hành trình (sessions) từ API — giống TruyXuatLoi
+  const { data: dataDat, isLoading: loadingDat } = useQuery({
+    queryKey: ["hanhTrinhFailRecord", maDK, maKhoaHoc],
+    queryFn: () =>
+      HanhTrinh({
+        ngaybatdau: "2020-01-01",
+        ngayketthuc: "2026-12-31",
+        ten: maDK,
+        makhoahoc: maKhoaHoc,
+        limit: 20,
+        page: 1,
+      }),
+    enabled: isTraceModalOpen && !!maDK,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  // Fetch thông tin kiểm tra học viên — giống TruyXuatLoi
+  const { data: dataCheckStudents = {} } = useQuery({
+    queryKey: ["checkStudentFailRecord", maDK],
+    queryFn: () => fetchCheckStudents(),
+    enabled: isTraceModalOpen && !!maDK,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  // Rows từ API (ưu tiên), fallback về sessions tĩnh từ record
+  const datJourneyRows = useMemo(() => {
+    const apiList = dataDat?.data?.Data || dataDat?.data || [];
+    if (Array.isArray(apiList) && apiList.length > 0) return apiList;
+
+    // Fallback: map từ currentRecord.sessions nếu API chưa có data
+    if (!Array.isArray(currentRecord?.sessions)) return [];
+    return currentRecord.sessions.map((session, index) => ({
+      ID: session?.ID || session?.id || index + 1,
+      BienSo: session?.bienSo || session?.BienSo || "",
+      TongQuangDuong: session?.tongQuangDuongKm ?? session?.TongQuangDuong ?? 0,
+      TongThoiGian: session?.tongThoiGianGiay ?? session?.TongThoiGian ?? 0,
+      ThoiDiemDangNhap:
+        session?.thoiDiemDangNhap || session?.ThoiDiemDangNhap || null,
+      ThoiDiemDangXuat:
+        session?.thoiDiemDangXuat || session?.ThoiDiemDangXuat || null,
+      ThoiGianBanDem:
+        session?.thoiGianBanDemGiay ?? session?.ThoiGianBanDem ?? 0,
+      QuangDuongBanDem:
+        session?.quangDuongBanDemKm ?? session?.QuangDuongBanDem ?? 0,
+      GiaoVien:
+        session?.giaoVien ||
+        session?.GiaoVien ||
+        currentRecord?.studentInfo?.giaoVien ||
+        "",
+      HangDaoTao:
+        session?.hangDaoTao || session?.HangDaoTao || currentRecord?.hangDaoTao,
+    }));
+  }, [dataDat, currentRecord]);
+
+  const studentCheckInfo = useMemo(() => {
+    const list = dataCheckStudents?.data || [];
+    if (!Array.isArray(list) || !maDK) return null;
+    const code = String(maDK).trim();
+    return (
+      list.find((item) => String(item?.maDangKy || "").trim() === code) || null
+    );
+  }, [dataCheckStudents, maDK]);
+
+  const traceStudent = useMemo(() => {
+    if (!currentRecord) return null;
+    return {
+      user: {
+        name: currentRecord?.hoTen || "",
+        admission_code: currentRecord?.maDK || "",
+        birth_year: currentRecord?.namSinh || null,
+        avatar: currentRecord?.avatar || "",
+      },
+    };
+  }, [currentRecord]);
 
   const errorCount = currentRecord?.errors?.length ?? 0;
   const warningCount = currentRecord?.warnings?.length ?? 0;
@@ -47,7 +132,7 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
                 className="flex items-start justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2"
               >
                 <div className="flex gap-1">
-                  <Text strong>{item?.label || "Lỗi"}</Text>
+                  <Text strong>{item?.label || "Lỗi"}:</Text>
                   <Text>{item?.message || "-"}</Text>
                 </div>
               </div>
@@ -85,7 +170,6 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
     },
   ];
 
-  // Sessions table columns
   const sessionColumns = [
     {
       title: "#",
@@ -169,7 +253,6 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
         const total = value.tongThoiGianGiay || 0;
         const h = Math.floor(total / 3600);
         const m = Math.floor((total % 3600) / 60);
-
         return `${h ? `${h}h ` : ""}${m}'`;
       },
     },
@@ -194,27 +277,25 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
       key: "action",
       width: 80,
       align: "center",
-      render: () => {
-        return (
-          <Space>
-            <Button
-              type="primary"
-              className="!w-10"
-              size="small"
-              onClick={() => navigate("/truy-vet-loi")}
-            >
-              <AiOutlineSelect />
-            </Button>
-          </Space>
-        );
-      },
+      render: () => (
+        <Space>
+          <Button
+            type="primary"
+            className="!w-10"
+            size="small"
+            onClick={() => setIsTraceModalOpen(true)}
+          >
+            <AiOutlineSelect />
+          </Button>
+        </Space>
+      ),
     },
   ];
 
   return (
     <>
       <Drawer
-        title="Chi tiết học viên"
+        title="Chi tiết học viên s"
         open={open}
         onClose={onCancel}
         footer={null}
@@ -229,8 +310,8 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
                   <Text>{currentRecord?.hoTen || "-"}</Text>
                 </div>
                 <div>
-                  <Text strong>Mã ĐK: </Text>
-                  <Text>{currentRecord?.maDK || "-"}</Text>
+                  <Text strong>Mã Học viên: </Text>
+                  <Text copyable>{currentRecord?.maDK || "-"}</Text>
                 </div>
                 <div>
                   <Text strong>Tên khóa học: </Text>
@@ -273,12 +354,10 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
               </div>
             </Card>
 
-            {/* ─── Tab Lỗi / Cảnh báo ─── */}
             <Card size="small" className="!mb-0">
               <Tabs defaultActiveKey="errors" size="small" items={tabItems} />
             </Card>
 
-            {/* ─── Các phiên học (Table) ─── */}
             <Card size="small" title="Các phiên học" className="!mb-0">
               <Table
                 columns={sessionColumns}
@@ -292,6 +371,16 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
           </Space>
         ) : null}
       </Drawer>
+
+      <TruyVetModal
+        open={isTraceModalOpen}
+        onCancel={() => setIsTraceModalOpen(false)}
+        loading={loadingDat}
+        student={traceStudent}
+        courseLabel={currentRecord?.studentInfo?.khoaHoc || ""}
+        studentCheckInfo={studentCheckInfo}
+        rows={datJourneyRows}
+      />
     </>
   );
 };

@@ -507,7 +507,7 @@ const StudentDetail = ({ data }) => {
                       <Text>GV DAT:</Text>
                     </Col>
                     <Col span={16}>
-                      <Text strong>{dataSource[0]?.HoTenGV}</Text>
+                      <Text strong>{annualStudentInfo?.giaoVien}</Text>
                     </Col>
                   </Row>
                 )}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { EyeOutlined } from "@ant-design/icons";
 import {
   Button,
@@ -14,7 +14,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
-import { danhSachDashboardDAT, evaluateOne } from "../../apis/evaluateApi";
+import { danhSachDashboardDAT } from "../../apis/evaluateApi";
 import FailRecordDetailModal from "./FailRecordDetailModal";
 
 const { Title, Text } = Typography;
@@ -275,13 +275,6 @@ const DashboardDAT = () => {
       selectedPlanIds.length > 0 &&
       selectedPlanIds.length === selectedMaKhoaHocList.length,
   });
-
-  useEffect(() => {
-    evaluateOne({
-      ma_dk: "30004-20260106145921283",
-      ma_khoa_hoc: "30004K26B002",
-    });
-  }, []);
 
   const dashboardList = useMemo(
     () => normalizeApiList(listDashboardDAT),

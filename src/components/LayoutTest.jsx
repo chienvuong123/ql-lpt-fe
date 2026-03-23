@@ -117,6 +117,10 @@ const LayoutTest = () => {
       children: [
         { key: "dashboard-dat", label: "Dashboard DAT" },
         { key: "student-report", label: "Báo cáo học viên" },
+        {
+          key: "hoc-vien-theo-giao-vien",
+          label: "DS học viên theo GV",
+        },
         { key: "check-full-course", label: "Báo cáo học viên hàng loạt" },
         { key: "hoc-vien-ky-dat", label: "Danh sách học viên kí DAT" },
         { key: "truy-vet-loi", label: "Truy vết lỗi" },
