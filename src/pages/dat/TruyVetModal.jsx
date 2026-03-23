@@ -224,6 +224,7 @@ const isNightSession = (item) => {
 const TruyVetModal = ({
   open,
   onCancel,
+  onClose,
   loading,
   student,
   courseLabel,
@@ -839,11 +840,16 @@ const TruyVetModal = ({
   const selectedApproveKey =
     Object.keys(payloadConfig).find((key) => key !== "ma_dk") || "";
 
+  const handleClose = () => {
+    onCancel?.();
+    onClose?.();
+  };
+
   return (
     <Drawer
       title="Chi tiết truy vết DAT"
       open={open}
-      onClose={onCancel}
+      onClose={handleClose}
       footer={null}
       width={680}
       destroyOnClose

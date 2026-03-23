@@ -518,49 +518,68 @@ function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
 
 // ─── Check xe sang theo studentInfo ──────────────────────────────────────────
 
-function evaluateSaiXeSangTheoStudentInfo(dataSource, studentInfo) {
-  const registeredPlateB1 = normalizePlate(studentInfo.xeB1 || "");
-  if (!registeredPlateB1) return [];
+function evaluateSaiXe(dataSource, studentInfo) {
+  if (!studentInfo) return [];
 
-  // Xác định xe tự động trong hành trình = biển số xuất hiện ít nhất
-  const plateCount = {};
-  dataSource.forEach((s) => {
-    const p = normalizePlate(s.BienSo);
-    if (p) plateCount[p] = (plateCount[p] || 0) + 1;
-  });
-  const plateEntries = Object.entries(plateCount);
-  const detectedTuDong =
-    plateEntries.length > 1
-      ? plateEntries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0]
-      : null;
+  const registeredPlateB1 = normalizePlate(studentInfo.xeB1);
+  const registeredPlateB2 = normalizePlate(studentInfo.xeB2);
+  const hasTwoPlates = !!registeredPlateB2;
+  const warnings = [];
 
-  const tuDongSessions = detectedTuDong
-    ? dataSource.filter((s) => normalizePlate(s.BienSo) === detectedTuDong)
-    : [];
-
-  if (tuDongSessions.length === 0) {
-    return [
-      {
-        type: "warning",
-        label: "Chưa có phiên xe sang",
-        message: `Học viên đăng ký xe sang: "${studentInfo.xeB2}" nhưng chưa có phiên học nào trên xe sang.`,
-      },
-    ];
+  if (!registeredPlateB1 && !registeredPlateB2) {
+    warnings.push({
+      type: "warning",
+      label: "Không có thông tin xe",
+      message:
+        "Học viên không có thông tin biển số xe đăng ký. Không thể kiểm tra biển số.",
+    });
+    return warnings;
   }
 
-  if (detectedTuDong !== registeredPlateB1) {
-    const displayPlate = tuDongSessions[0]?.BienSo || detectedTuDong;
+  const allowedPlates = new Set(
+    [registeredPlateB1, registeredPlateB2].filter(Boolean),
+  );
 
-    return [
-      {
-        type: "warning",
-        label: "Sai biển số xe sang (theo đăng ký)",
-        message: `Xe sang đăng ký: "${studentInfo.xeB1}", nhưng hành trình dùng xe sang: "${displayPlate}" (${tuDongSessions.length} phiên không khớp).`,
-      },
-    ];
+  const wrongPlateSessions = dataSource.filter(
+    (s) => !allowedPlates.has(normalizePlate(s.BienSo)),
+  );
+
+  if (wrongPlateSessions.length > 0) {
+    const wrongPlates = [
+      ...new Set(wrongPlateSessions.map((s) => s.BienSo || "(trống)")),
+    ].join(", ");
+    const allowedList = [studentInfo.xeB1, studentInfo.xeB2]
+      .filter(Boolean)
+      .join(", ");
+
+    warnings.push({
+      type: "warning",
+      label: "Sai biển số xe",
+      message: `Xe đăng ký: "${allowedList}", nhưng hành trình có phiên dùng xe: "${wrongPlates}" (${wrongPlateSessions.length} phiên không đúng).`,
+    });
   }
 
-  return [];
+  if (hasTwoPlates) {
+    const platesUsed = new Set(
+      dataSource.map((s) => normalizePlate(s.BienSo)).filter(Boolean),
+    );
+    if (!platesUsed.has(registeredPlateB1)) {
+      warnings.push({
+        type: "warning",
+        label: "Thiếu phiên xe B1",
+        message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B1: "${studentInfo.xeB1}".`,
+      });
+    }
+    if (!platesUsed.has(registeredPlateB2)) {
+      warnings.push({
+        type: "warning",
+        label: "Thiếu phiên xe B2",
+        message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B2: "${studentInfo.xeB2}".`,
+      });
+    }
+  }
+
+  return warnings;
 }
 
 // ─── computeSummary ───────────────────────────────────────────────────────────
@@ -875,7 +894,7 @@ export function evaluate(
     warnings.push(
       ...evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo),
     );
-    warnings.push(...evaluateSaiXeSangTheoStudentInfo(dataSource, studentInfo));
+    warnings.push(...evaluateSaiXe(dataSource, studentInfo));
   }
 
   // Các phiên vi phạm đã bị loại khỏi tổng → chỉ cảnh báo, không ảnh hưởng status

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
@@ -13,9 +13,10 @@ import {
 } from "antd";
 import { AiOutlineSelect } from "react-icons/ai";
 import { formatHoursToHM } from "../../util/helper";
-import { HanhTrinh } from "../../apis/hocVien";
+import { getPhienHocDAT, HanhTrinh } from "../../apis/hocVien";
 import { fetchCheckStudents } from "../../apis/kiemTra";
 import TruyVetModal from "./TruyVetModal";
+import dayjs from "dayjs";
 
 const { Text } = Typography;
 
@@ -27,8 +28,26 @@ const normalizeApproveFlag = (value) => {
   );
 };
 
+const buildPhienHocStatusMap = (list = []) => {
+  const map = {};
+  list.forEach((item) => {
+    const key = `${item.ngay}|${item.gio_vao}|${item.gio_ra}`;
+    map[key] = item.trang_thai;
+  });
+  return map;
+};
+
+const getSessionKey = (session) => {
+  if (!session?.thoiDiemDangNhap || !session?.thoiDiemDangXuat) return null;
+  const vao = dayjs(session.thoiDiemDangNhap);
+  const ra = dayjs(session.thoiDiemDangXuat);
+  if (!vao.isValid() || !ra.isValid()) return null;
+  return `${vao.format("YYYY-MM-DD")}|${vao.format("HH:mm:ss")}|${ra.format("HH:mm:ss")}`;
+};
+
 const FailRecordDetailModal = ({ open, record, onCancel }) => {
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [phienHocStatusMap, setPhienHocStatusMap] = useState({});
   const currentRecord = record || null;
 
   const maDK = currentRecord?.maDK || "";
@@ -111,6 +130,36 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
       },
     };
   }, [currentRecord]);
+
+  const sortedSessions = useMemo(
+    () =>
+      [...(currentRecord?.sessions || [])].sort(
+        (a, b) => new Date(a.thoiDiemDangNhap) - new Date(b.thoiDiemDangNhap),
+      ),
+    [currentRecord?.sessions],
+  );
+
+  const fetchAndSyncPhienHocStatus = useCallback(async () => {
+    if (!maDK) return;
+    try {
+      const response = await getPhienHocDAT(maDK);
+      const list =
+        response?.data?.phien_hoc_list ||
+        response?.phien_hoc_list ||
+        response?.data ||
+        [];
+      if (!Array.isArray(list)) return;
+
+      setPhienHocStatusMap(buildPhienHocStatusMap(list)); // ✅ dùng ở đây
+    } catch (err) {
+      console.error("[FailRecordDetailModal] fetchAndSyncPhienHocStatus:", err);
+    }
+  }, [maDK]);
+
+  const handleTraceModalClose = useCallback(() => {
+    setIsTraceModalOpen(false);
+    fetchAndSyncPhienHocStatus();
+  }, [fetchAndSyncPhienHocStatus]);
 
   const errorCount = currentRecord?.errors?.length ?? 0;
   const warningCount = currentRecord?.warnings?.length ?? 0;
@@ -202,29 +251,28 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
       width: 95,
       align: "center",
       render: (_, session) => {
-        const invalid = session.isValid === false;
-        const isApproved = normalizeApproveFlag(session?.duyet) || !invalid;
+        const sessionKey = getSessionKey(session);
+
+        const trangThai = sessionKey
+          ? phienHocStatusMap[sessionKey]
+          : undefined;
+        const invalid = session?.isValid === false;
+
+        const isDuyet = trangThai
+          ? trangThai === "DUYET"
+          : normalizeApproveFlag(session?.duyet) || !invalid;
 
         let statusColor, statusText;
         if (!invalid) {
-          if (isApproved) {
-            statusColor = "success";
-            statusText = "Hợp lệ";
-          } else {
-            statusColor = "warning";
-            statusText = "Đã hủy";
-          }
+          statusColor = isDuyet ? "success" : "warning";
+          statusText = isDuyet ? "Hợp lệ" : "Đã hủy";
         } else {
-          if (isApproved) {
-            statusColor = "processing";
-            statusText = "Đã duyệt";
-          } else {
-            statusColor = "error";
-            statusText = "Bị loại";
-          }
+          statusColor = isDuyet ? "processing" : "error";
+          statusText = isDuyet ? "Đã duyệt" : "Bị loại";
         }
+
         return (
-          <Tag variant={"outlined"} color={statusColor}>
+          <Tag variant="outlined" color={statusColor}>
             {statusText}
           </Tag>
         );
@@ -361,7 +409,7 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
             <Card size="small" title="Các phiên học" className="!mb-0">
               <Table
                 columns={sessionColumns}
-                dataSource={currentRecord?.sessions || []}
+                dataSource={sortedSessions}
                 rowKey={(_, index) => index}
                 pagination={false}
                 bordered
@@ -375,6 +423,7 @@ const FailRecordDetailModal = ({ open, record, onCancel }) => {
       <TruyVetModal
         open={isTraceModalOpen}
         onCancel={() => setIsTraceModalOpen(false)}
+        onClose={handleTraceModalClose}
         loading={loadingDat}
         student={traceStudent}
         courseLabel={currentRecord?.studentInfo?.khoaHoc || ""}
