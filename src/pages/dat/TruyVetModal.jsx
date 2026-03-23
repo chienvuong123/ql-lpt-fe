@@ -19,11 +19,12 @@ import {
 } from "../../apis/hocVien";
 import {
   HANG_DAO_TAO_CONFIG,
+  getInvalidSessionIndexes,
   evaluateNghiGiuaPhien,
-  evaluateSaiBienSo,
   evaluateSaiGiaoVien,
   evaluateTocDoPhien,
-} from "../checks/DieuKienKiemTraPublic";
+  evaluateTuDongSau17h,
+} from "../checks/DieuKienKiemTra";
 import ConfigModal from "./ConfigModal";
 
 const { Text } = Typography;
@@ -207,7 +208,10 @@ const getAutoPlateFromRows = (rows = []) => {
  * Lỗi tốc độ (_isSpeedInvalid) KHÔNG thuộc nhóm này → có thể duyệt tổng
  */
 const isHardError = (item) =>
-  item?._isRestTooShort || item?._isTeacherMismatch || item?._isPlateMismatch;
+  item?._isRestTooShort ||
+  item?._isTeacherMismatch ||
+  item?._isPlateMismatch ||
+  item?._isTuDongInvalid;
 
 // ─── Helper kiểm tra phiên đêm ───────────────────────────────────────────────
 const isNightSession = (item) => {
@@ -307,10 +311,18 @@ const TruyVetModal = ({
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
+    // Dùng getInvalidSessionIndexes để lấy tất cả lỗi cứng:
+    // tốc độ, xe tự động sai giờ, nghỉ giữa phiên, sai GV, sai biển số
+    const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
+      sorted,
+      studentCheckInfo,
+    );
+
+    // Các evaluate riêng lẻ chỉ dùng để gắn flag chi tiết cho UI
     const nghiErrors = evaluateNghiGiuaPhien(sorted);
     const tocDoErrors = evaluateTocDoPhien(sorted);
-    const giaoVienErrors = evaluateSaiGiaoVien(sorted, studentCheckInfo);
-    const bienSoErrors = evaluateSaiBienSo(sorted, studentCheckInfo);
+    const giaoVienErrors = evaluateSaiGiaoVien(sorted);
+    const tuDongErrors = evaluateTuDongSau17h(sorted);
 
     return sorted.map((item, index) => {
       const phienLabel = `Phiên ${index + 1}`;
@@ -321,20 +333,26 @@ const TruyVetModal = ({
       const isTeacherMismatch = giaoVienErrors.some((e) =>
         e.message.startsWith(phienLabel),
       );
-      const isPlateMismatch = bienSoErrors.some((e) =>
-        e.message.startsWith(phienLabel),
-      );
+      // isPlateMismatch: lấy từ invalidReasons của getInvalidSessionIndexes
+      // (lỗi biển số không có hàm evaluate riêng trả về per-phiên)
+      const isPlateMismatch =
+        invalidIndexes.has(index) &&
+        (invalidReasons.get(index) || []).some(
+          (r) =>
+            r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
+        );
       const isRestTooShort = nghiErrors.some(
         (e) =>
           e.message.includes(`Phiên ${index + 1} và`) ||
-          e.message.includes(`và ${index + 1}:`),
+          e.message.includes(`và Phiên ${index + 1}`),
+      );
+      const isTuDongInvalid = tuDongErrors.some((e) =>
+        e.message.startsWith(phienLabel),
       );
 
-      const derivedInvalid =
-        isSpeedInvalid ||
-        isTeacherMismatch ||
-        isPlateMismatch ||
-        isRestTooShort;
+      // derivedInvalid dựa trên invalidIndexes từ getInvalidSessionIndexes
+      // để đồng nhất với computeSummary
+      const derivedInvalid = invalidIndexes.has(index);
       const persistedStatus = getMappedStatus(item, statusMap);
       const effectiveStatus =
         persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
@@ -345,6 +363,7 @@ const TruyVetModal = ({
         _isTeacherMismatch: isTeacherMismatch,
         _isPlateMismatch: isPlateMismatch,
         _isRestTooShort: isRestTooShort,
+        _isTuDongInvalid: isTuDongInvalid,
         _status: effectiveStatus,
         _isInvalid: effectiveStatus === "HUY",
       };
@@ -429,15 +448,7 @@ const TruyVetModal = ({
       { gio: 0, km: 0 },
     );
 
-    // ── Kiểm tra có phiên hợp lệ theo loại không ──
-    const hasAnySessionAction = Object.keys(statusMap).length > 0;
-
-    const hasValidNightSession = validRows.some((item) => isNightSession(item));
-
-    const hasValidAutoSession =
-      !!bienSoTuDong &&
-      validRows.some((item) => normalizePlate(item?.BienSo) === bienSoTuDong);
-
+    // ── buildCase: bỏ hoàn toàn disableAction / disableReason ──
     const buildCase = (
       key,
       label,
@@ -452,34 +463,12 @@ const TruyVetModal = ({
       const thieuKm = Math.max(requiredKm - currentKm, 0);
       if (thieuGio <= 0 && thieuKm <= 0) return null;
 
-      // ── Tính disableAction + disableReason theo từng loại ──
-      let disableAction = false;
-      let disableReason = "";
-
-      if (key === "duyet_tong") {
-        // Disable nếu chưa có phiên nào được thao tác
-        disableAction = !hasAnySessionAction;
-        disableReason = "Chưa có phiên nào được thao tác";
-      } else if (key === "duyet_dem") {
-        if (!hasValidNightSession) {
-          disableAction = true;
-          disableReason = "Không có phiên ban đêm hợp lệ";
-        }
-      } else if (key === "duyet_tu_dong") {
-        if (!hasValidAutoSession) {
-          disableAction = true;
-          disableReason = "Không có phiên số tự động hợp lệ";
-        }
-      }
-
       return {
         key,
         label,
         approved,
         reason,
         detail: `Thiếu ${formatDurationFromHours(thieuGio)} / ${thieuKm.toFixed(2)} km`,
-        disableAction,
-        disableReason,
       };
     };
 
@@ -521,7 +510,6 @@ const TruyVetModal = ({
     studentCheckInfo,
     approveReasons,
     approveState,
-    statusMap,
     bienSoTuDong,
   ]);
 
@@ -548,6 +536,7 @@ const TruyVetModal = ({
     if (!maDk) return 0;
     const actionStatus = nextApproved ? "DUYET" : "HUY";
 
+    // Chỉ xử lý phiên không có hard error, bỏ qua phiên sai
     const targetRows = rowsWithStatus.filter((item) => {
       if (isHardError(item)) return false;
       return nextApproved ? item._status === "HUY" : item._status === "DUYET";
@@ -583,6 +572,7 @@ const TruyVetModal = ({
     if (!maDk) return 0;
     const actionStatus = nextApproved ? "DUYET" : "HUY";
 
+    // Chỉ xử lý phiên không có hard error, bỏ qua phiên sai
     const targetRows = rowsWithStatus.filter((item) => {
       if (isHardError(item)) return false;
 
@@ -595,7 +585,6 @@ const TruyVetModal = ({
         return false;
       }
 
-      // Chỉ xử lý phiên có trạng thái ngược với mục tiêu
       return nextApproved ? item._status === "HUY" : item._status === "DUYET";
     });
 
@@ -735,28 +724,25 @@ const TruyVetModal = ({
     const isDuyetTuDong = payloadConfig?.duyet_tu_dong !== undefined;
 
     try {
-      // ── Duyệt tổng: bulk action toàn bộ phiên + update flag ──
+      // ── Duyệt tổng: bulk action toàn bộ phiên hợp lệ + update flag ──
       if (isDuyetTong) {
         const nextApproved = Boolean(payloadConfig.duyet_tong);
 
         setOpenConfigModal(false);
         setPayloadConfig({});
 
-        // Bước 1: bulk action — nhận về số phiên đã xử lý
         const processedCount = await handleBulkSessionAction(nextApproved);
 
-        // Không có phiên nào hợp lệ → dừng, không gọi updateDuyetTheoMaDK
         if (processedCount === 0) {
           message.warning(
             nextApproved
-              ? "Không có phiên nào hợp lệ để duyệt."
-              : "Không có phiên nào hợp lệ để hủy.",
+              ? "Không có phiên hợp lệ nào để duyệt."
+              : "Không có phiên hợp lệ nào để hủy.",
           );
           setApproveLoadingKey("");
           return;
         }
 
-        // Bước 2: có ít nhất 1 phiên được xử lý → mới gọi API duyệt tổng
         const res = await updateDuyetTheoMaDK(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_tong", nextApproved, value);
@@ -767,7 +753,7 @@ const TruyVetModal = ({
         return;
       }
 
-      // ── Duyệt đêm: bulk action phiên đêm + update flag ──
+      // ── Duyệt đêm: bulk action phiên đêm hợp lệ + update flag ──
       if (isDuyetDem) {
         const nextApproved = Boolean(payloadConfig.duyet_dem);
 
@@ -782,8 +768,8 @@ const TruyVetModal = ({
         if (processedCount === 0) {
           message.warning(
             nextApproved
-              ? "Không có phiên ban đêm nào hợp lệ để duyệt."
-              : "Không có phiên ban đêm nào hợp lệ để hủy.",
+              ? "Không có phiên ban đêm hợp lệ nào để duyệt."
+              : "Không có phiên ban đêm hợp lệ nào để hủy.",
           );
           setApproveLoadingKey("");
           return;
@@ -799,7 +785,7 @@ const TruyVetModal = ({
         return;
       }
 
-      // ── Duyệt tự động: bulk action phiên tự động + update flag ──
+      // ── Duyệt tự động: bulk action phiên tự động hợp lệ + update flag ──
       if (isDuyetTuDong) {
         const nextApproved = Boolean(payloadConfig.duyet_tu_dong);
 
@@ -814,8 +800,8 @@ const TruyVetModal = ({
         if (processedCount === 0) {
           message.warning(
             nextApproved
-              ? "Không có phiên số tự động nào hợp lệ để duyệt."
-              : "Không có phiên số tự động nào hợp lệ để hủy.",
+              ? "Không có phiên số tự động hợp lệ nào để duyệt."
+              : "Không có phiên số tự động hợp lệ nào để hủy.",
           );
           setApproveLoadingKey("");
           return;
@@ -930,28 +916,18 @@ const TruyVetModal = ({
                       <button
                         type="primary"
                         danger={item.approved}
-                        title={
-                          item.disableAction ? item.disableReason : undefined
-                        }
                         className="!w-[52px] !rounded-none !rounded-r-lg !self-stretch h-[30px] !text-white !text-xs !font-bold"
                         style={{
                           background: !item?.approved ? "#1e88d8" : "#cf1322",
                           borderRadius: "0 8px 8px 0",
-                          opacity:
-                            actioningId || bulkActioning || item.disableAction
-                              ? 0.5
-                              : 1,
+                          opacity: actioningId || bulkActioning ? 0.5 : 1,
                           cursor:
-                            actioningId || bulkActioning || item.disableAction
+                            actioningId || bulkActioning
                               ? "not-allowed"
                               : "pointer",
                         }}
                         loading={approveLoadingKey === item.key}
-                        disabled={
-                          Boolean(actioningId) ||
-                          bulkActioning ||
-                          item.disableAction
-                        }
+                        disabled={Boolean(actioningId) || bulkActioning}
                         onClick={() =>
                           handleApproveMissingCase(item.key, !item.approved)
                         }

@@ -175,7 +175,7 @@ const QuanLyHocVienLyThuyet = () => {
     String(record?.user?.iid || record?.ma_dk || record?.id || "");
 
   const isPassAllLyThuyet = (record) => {
-    const scoreByRubrik = record?.learning?.learning_progress || [];
+    const scoreByRubrik = record?.learning?.score_by_rubrik;
     if (!Array.isArray(scoreByRubrik) || scoreByRubrik.length === 0) {
       return Boolean(record?.learning?.passed);
     }
@@ -252,10 +252,9 @@ const QuanLyHocVienLyThuyet = () => {
     };
     const autoLyThuyetPassed = isPassAllLyThuyet(record);
 
-    const lyThuyetDat =
-      savedData?.loai_ly_thuyet === undefined
-        ? autoLyThuyetPassed
-        : normalizeBoolean(savedData?.loai_ly_thuyet);
+    const lyThuyetDat = autoLyThuyetPassed
+      ? true
+      : normalizeBoolean(savedData?.loai_ly_thuyet);
     const loaiLyThuyet = lyThuyetDat;
 
     const hetMonChecked =
