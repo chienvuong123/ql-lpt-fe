@@ -78,6 +78,7 @@ const QuanLyHocVienLyThuyet = () => {
   const [selectedStudentMap, setSelectedStudentMap] = useState({});
   const [studentStatusOverrides, setStudentStatusOverrides] = useState({});
   const [trangThaiLamBaiHetMon, setTrangThaiLamBaiHetMon] = useState(null);
+  const [locBatThuong, setLocBatThuong] = useState(false);
   const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const keywordInputRef = useRef(null);
@@ -86,6 +87,7 @@ const QuanLyHocVienLyThuyet = () => {
     limit: 50,
     text: "",
     loai_het_mon: null,
+    loc_bat_thuong: false,
   });
 
   const location = useLocation();
@@ -131,6 +133,7 @@ const QuanLyHocVienLyThuyet = () => {
         params.limit,
         params.text,
         params.loai_het_mon,
+        params.loc_bat_thuong,
       ],
       queryFn: () =>
         ketQuaKiemTra(enrolmentPlanIid, {
@@ -141,6 +144,7 @@ const QuanLyHocVienLyThuyet = () => {
           ...(params.loai_het_mon === null
             ? {}
             : { loai_het_mon: params.loai_het_mon }),
+          ...(params.loc_bat_thuong ? { loc_bat_thuong: true } : {}),
         }),
       staleTime: 1000 * 60 * 5,
       retry: false,
@@ -543,6 +547,7 @@ const QuanLyHocVienLyThuyet = () => {
       limit: params.limit,
       text,
       loai_het_mon: trangThaiLamBaiHetMon,
+      loc_bat_thuong: locBatThuong,
     });
   };
 
@@ -552,11 +557,13 @@ const QuanLyHocVienLyThuyet = () => {
     }
     clearSelectedStudents();
     setTrangThaiLamBaiHetMon(null);
+    setLocBatThuong(false);
     setParams({
       page: 1,
       limit: params.limit,
       text: "",
       loai_het_mon: null,
+      loc_bat_thuong: false,
     });
   };
 
@@ -600,6 +607,7 @@ const QuanLyHocVienLyThuyet = () => {
         ...(params.loai_het_mon === null
           ? {}
           : { loai_het_mon: params.loai_het_mon }),
+        ...(params.loc_bat_thuong ? { loc_bat_thuong: true } : {}),
       });
 
       const allStudents = normalizeApiList(response);
@@ -891,6 +899,24 @@ const QuanLyHocVienLyThuyet = () => {
                 },
                 {
                   label: "Đã làm bài hết môn",
+                  value: true,
+                },
+              ]}
+              allowClear
+            />
+          </Col>
+          <Col span={6}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Lọc bất thường
+            </label>
+            <Select
+              className="w-full"
+              placeholder="--Chọn lọc--"
+              value={locBatThuong ? true : undefined}
+              onChange={(value) => setLocBatThuong(value === true)}
+              options={[
+                {
+                  label: "Chỉ hiển thị học viên bất thường",
                   value: true,
                 },
               ]}
