@@ -20,10 +20,6 @@ import {
 import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
-  evaluateNghiGiuaPhien,
-  evaluateSaiGiaoVien,
-  evaluateTocDoPhien,
-  evaluateTuDongSau17h,
 } from "../checks/DieuKienKiemTra";
 import ConfigModal from "./ConfigModal";
 
@@ -200,19 +196,6 @@ const getAutoPlateFromRows = (rows = []) => {
   return entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0];
 };
 
-/**
- * Kiểm tra phiên có lỗi "cứng" không thể duyệt tổng:
- * - Nghỉ giữa phiên chưa đủ 15p
- * - Sai giáo viên
- * - Sai biển số (sai xe)
- * Lỗi tốc độ (_isSpeedInvalid) KHÔNG thuộc nhóm này → có thể duyệt tổng
- */
-const isHardError = (item) =>
-  item?._isRestTooShort ||
-  item?._isTeacherMismatch ||
-  item?._isPlateMismatch ||
-  item?._isTuDongInvalid;
-
 // ─── Helper kiểm tra phiên đêm ───────────────────────────────────────────────
 const isNightSession = (item) => {
   const demGiay = toNumber(item?.ThoiGianBanDem);
@@ -224,6 +207,24 @@ const isNightSession = (item) => {
   }
   return false;
 };
+
+/**
+ * Kiểm tra phiên có lỗi "cứng" không thể duyệt tổng:
+ * - Nghỉ giữa phiên chưa đủ 15p       → _isRestTooShort
+ * - Sai giáo viên                      → _isTeacherMismatch
+ * - Sai biển số (sai xe)               → _isPlateMismatch
+ * - Xe tự động sai giờ                 → _isTuDongInvalid
+ * - Tốc độ TB ≤ 18 km/h               → _isSpeedInvalid   ← BỎ QUA khi duyệt tổng
+ * - Phiên dưới 5 phút                  → _isTooShort       ← BỎ QUA khi duyệt tổng
+ *
+ * Lưu ý: _isSpeedInvalid và _isTooShort KHÔNG thuộc hard error
+ * → vẫn được duyệt tổng bình thường.
+ */
+const isHardError = (item) =>
+  item?._isRestTooShort ||
+  item?._isTeacherMismatch ||
+  item?._isPlateMismatch ||
+  item?._isTuDongInvalid;
 
 const TruyVetModal = ({
   open,
@@ -311,47 +312,42 @@ const TruyVetModal = ({
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
-    // Dùng getInvalidSessionIndexes để lấy tất cả lỗi cứng:
-    // tốc độ, xe tự động sai giờ, nghỉ giữa phiên, sai GV, sai biển số
+    // Nguồn duy nhất để xác định phiên lỗi — tất cả flag đều lấy từ đây
+    // để đảm bảo nhất quán với derivedInvalid / _status
     const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
       sorted,
       studentCheckInfo,
     );
 
-    // Các evaluate riêng lẻ chỉ dùng để gắn flag chi tiết cho UI
-    const nghiErrors = evaluateNghiGiuaPhien(sorted);
-    const tocDoErrors = evaluateTocDoPhien(sorted);
-    const giaoVienErrors = evaluateSaiGiaoVien(sorted);
-    const tuDongErrors = evaluateTuDongSau17h(sorted);
-
     return sorted.map((item, index) => {
-      const phienLabel = `Phiên ${index + 1}`;
+      const reasons = invalidReasons.get(index) || [];
 
-      const isSpeedInvalid = tocDoErrors.some((e) =>
-        e.message.startsWith(phienLabel),
-      );
-      const isTeacherMismatch = giaoVienErrors.some((e) =>
-        e.message.startsWith(phienLabel),
-      );
-      // isPlateMismatch: lấy từ invalidReasons của getInvalidSessionIndexes
-      // (lỗi biển số không có hàm evaluate riêng trả về per-phiên)
-      const isPlateMismatch =
-        invalidIndexes.has(index) &&
-        (invalidReasons.get(index) || []).some(
-          (r) =>
-            r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
-        );
-      const isRestTooShort = nghiErrors.some(
-        (e) =>
-          e.message.includes(`Phiên ${index + 1} và`) ||
-          e.message.includes(`và Phiên ${index + 1}`),
-      );
-      const isTuDongInvalid = tuDongErrors.some((e) =>
-        e.message.startsWith(phienLabel),
+      // Tốc độ TB < 18 km/h
+      const isSpeedInvalid = reasons.some((r) => r.includes("Tốc độ TB"));
+
+      // Sai tên giáo viên (cả "Tên giáo viên" lẫn "Không có tên giáo viên")
+      const isTeacherMismatch = reasons.some(
+        (r) =>
+          r.includes("Tên giáo viên") || r.includes("Không có tên giáo viên"),
       );
 
-      // derivedInvalid dựa trên invalidIndexes từ getInvalidSessionIndexes
-      // để đồng nhất với computeSummary
+      // Sai biển số xe
+      const isPlateMismatch = reasons.some(
+        (r) => r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
+      );
+
+      // Nghỉ giữa phiên < 15 phút
+      const isRestTooShort = reasons.some((r) => r.includes("Nghỉ giữa phiên"));
+
+      // Xe tự động sai khung giờ
+      const isTuDongInvalid = reasons.some((r) =>
+        r.includes("Xe tự động bắt đầu"),
+      );
+
+      // Phiên dưới 5 phút (không có trong getInvalidSessionIndexes, check riêng)
+      const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
+      const isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
+
       const derivedInvalid = invalidIndexes.has(index);
       const persistedStatus = getMappedStatus(item, statusMap);
       const effectiveStatus =
@@ -364,6 +360,7 @@ const TruyVetModal = ({
         _isPlateMismatch: isPlateMismatch,
         _isRestTooShort: isRestTooShort,
         _isTuDongInvalid: isTuDongInvalid,
+        _isTooShort: isTooShort,
         _status: effectiveStatus,
         _isInvalid: effectiveStatus === "HUY",
       };
@@ -390,21 +387,14 @@ const TruyVetModal = ({
     [rowsWithStatus],
   );
 
-  // ─── Tính bienSoTuDong một lần, dùng chung ───────────────────────────────
   const bienSoTuDong = useMemo(
     () =>
       getAutoPlateFromRows(rowsWithStatus.filter((item) => !item._isInvalid)),
     [rowsWithStatus],
   );
 
-  const summaryMissingCases = useMemo(() => {
-    const hangDaoTao =
-      rows?.[0]?.HangDaoTao ||
-      studentCheckInfo?.hangDaoTao ||
-      studentCheckInfo?.HangDaoTao ||
-      "B1";
-    const yeuCauHang =
-      HANG_DAO_TAO_CONFIG[hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
+  // ─── Tính toán thực tế tổng / đêm / tự động từ phiên hợp lệ ─────────────
+  const actualTotals = useMemo(() => {
     const validRows = rowsWithStatus.filter((item) => !item?._isInvalid);
 
     const tongGio = validRows.reduce(
@@ -416,7 +406,7 @@ const TruyVetModal = ({
       0,
     );
 
-    const demTotals = validRows.reduce(
+    const dem = validRows.reduce(
       (acc, item) => {
         const demGiay = toNumber(item?.ThoiGianBanDem);
         const demKm = toNumber(item?.QuangDuongBanDem);
@@ -437,7 +427,7 @@ const TruyVetModal = ({
       { gio: 0, km: 0 },
     );
 
-    const tuDongTotals = validRows.reduce(
+    const tuDong = validRows.reduce(
       (acc, item) => {
         if (!bienSoTuDong) return acc;
         if (normalizePlate(item?.BienSo) !== bienSoTuDong) return acc;
@@ -448,7 +438,44 @@ const TruyVetModal = ({
       { gio: 0, km: 0 },
     );
 
-    // ── buildCase: bỏ hoàn toàn disableAction / disableReason ──
+    return { tongGio, tongKm, dem, tuDong };
+  }, [rowsWithStatus, bienSoTuDong]);
+
+  // ─── Lấy yêu cầu hạng đào tạo ────────────────────────────────────────────
+  const yeuCauHang = useMemo(() => {
+    const hangDaoTao =
+      rows?.[0]?.HangDaoTao ||
+      studentCheckInfo?.hangDaoTao ||
+      studentCheckInfo?.HangDaoTao ||
+      "B1";
+    return HANG_DAO_TAO_CONFIG[hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
+  }, [rows, studentCheckInfo]);
+
+  // ─── Kiểm tra từng điều kiện đã đủ chưa ──────────────────────────────────
+  const conditionMet = useMemo(() => {
+    const { tongGio, tongKm, dem, tuDong } = actualTotals;
+    return {
+      // Đủ tổng = đủ cả thời gian lẫn quãng đường tổng
+      tong:
+        tongGio >= toNumber(yeuCauHang?.thoiGian?.tong) &&
+        tongKm >= toNumber(yeuCauHang?.quangDuong?.tong),
+      // Đủ đêm
+      dem:
+        dem.gio >= toNumber(yeuCauHang?.thoiGian?.banDem) &&
+        dem.km >= toNumber(yeuCauHang?.quangDuong?.banDem),
+      // Đủ tự động (chỉ cần kiểm tra nếu hạng có yêu cầu tự động)
+      tuDong:
+        toNumber(yeuCauHang?.thoiGian?.tuDong) === 0 &&
+        toNumber(yeuCauHang?.quangDuong?.tuDong) === 0
+          ? true // hạng không yêu cầu tự động → coi là đủ (không hiện nút)
+          : tuDong.gio >= toNumber(yeuCauHang?.thoiGian?.tuDong) &&
+            tuDong.km >= toNumber(yeuCauHang?.quangDuong?.tuDong),
+    };
+  }, [actualTotals, yeuCauHang]);
+
+  const summaryMissingCases = useMemo(() => {
+    const { tongGio, tongKm, dem, tuDong } = actualTotals;
+
     const buildCase = (
       key,
       label,
@@ -486,8 +513,8 @@ const TruyVetModal = ({
       buildCase(
         "duyet_dem",
         "Thiếu quãng đường/thời gian đêm",
-        demTotals.gio,
-        demTotals.km,
+        dem.gio,
+        dem.km,
         toNumber(yeuCauHang?.thoiGian?.banDem),
         toNumber(yeuCauHang?.quangDuong?.banDem),
         approveState.duyet_dem,
@@ -496,22 +523,15 @@ const TruyVetModal = ({
       buildCase(
         "duyet_tu_dong",
         "Thiếu quãng đường/thời gian số tự động",
-        tuDongTotals.gio,
-        tuDongTotals.km,
+        tuDong.gio,
+        tuDong.km,
         toNumber(yeuCauHang?.thoiGian?.tuDong),
         toNumber(yeuCauHang?.quangDuong?.tuDong),
         approveState.duyet_tu_dong,
         approveReasons.duyet_tu_dong,
       ),
     ].filter(Boolean);
-  }, [
-    rows,
-    rowsWithStatus,
-    studentCheckInfo,
-    approveReasons,
-    approveState,
-    bienSoTuDong,
-  ]);
+  }, [actualTotals, yeuCauHang, approveReasons, approveState]);
 
   // ─── Build payload cho updatePhienHocDAT ─────────────────────────────────
   const buildSessionPayload = (item, actionStatus) => {
@@ -532,11 +552,12 @@ const TruyVetModal = ({
   };
 
   // ─── Bulk action toàn bộ phiên hợp lệ (dùng cho duyệt tổng) ─────────────
+  // Bỏ qua phiên có hard error: sai GV, sai xe, nghỉ <15p, xe tự động sai giờ
+  // Tốc độ ≤18 km/h và phiên <5p KHÔNG phải hard error → vẫn được duyệt tổng
   const handleBulkSessionAction = async (nextApproved) => {
     if (!maDk) return 0;
     const actionStatus = nextApproved ? "DUYET" : "HUY";
 
-    // Chỉ xử lý phiên không có hard error, bỏ qua phiên sai
     const targetRows = rowsWithStatus.filter((item) => {
       if (isHardError(item)) return false;
       return nextApproved ? item._status === "HUY" : item._status === "DUYET";
@@ -572,7 +593,6 @@ const TruyVetModal = ({
     if (!maDk) return 0;
     const actionStatus = nextApproved ? "DUYET" : "HUY";
 
-    // Chỉ xử lý phiên không có hard error, bỏ qua phiên sai
     const targetRows = rowsWithStatus.filter((item) => {
       if (isHardError(item)) return false;
 
@@ -831,6 +851,40 @@ const TruyVetModal = ({
     onClose?.();
   };
 
+  // ─── Render badge lỗi trên từng phiên ────────────────────────────────────
+  const renderSessionErrorBadges = (item) => {
+    const badges = [];
+    if (item._isSpeedInvalid)
+      badges.push({ label: "Tốc độ thấp", color: "#fa8c16" });
+    if (item._isTeacherMismatch)
+      badges.push({ label: "Sai GV", color: "#cf1322" });
+    if (item._isPlateMismatch)
+      badges.push({ label: "Sai xe", color: "#cf1322" });
+    if (item._isRestTooShort)
+      badges.push({ label: "Nghỉ <15p", color: "#d46b08" });
+    if (item._isTuDongInvalid)
+      badges.push({ label: "TĐ sai giờ", color: "#722ed1" });
+    if (item._isTooShort) badges.push({ label: "<5 phút", color: "#fa541c" });
+    if (badges.length === 0) return null;
+    return (
+      <div className="!flex !flex-wrap !gap-1 !mt-1">
+        {badges.map((b) => (
+          <span
+            key={b.label}
+            className="!text-[10px] !px-1.5 !py-0.5 !rounded-full !font-medium"
+            style={{
+              background: `${b.color}18`,
+              color: b.color,
+              border: `1px solid ${b.color}40`,
+            }}
+          >
+            {b.label}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Drawer
       title="Chi tiết truy vết DAT"
@@ -884,59 +938,104 @@ const TruyVetModal = ({
 
             {summaryMissingCases.length > 0 && (
               <div className="!space-y-2 mb-3 w-[98%]">
-                {summaryMissingCases.map((item) => (
-                  <div
-                    key={item.key}
-                    className={`!flex !items-center !justify-between !gap-3 !rounded-lg !border ${
-                      item.approved
-                        ? "!border-[#b7eb8f] !bg-[#f6ffed]"
-                        : "!border-[#ffccc7] !bg-white"
-                    }`}
-                  >
-                    <div className="!text-xs px-2">
-                      <div
-                        className={`!font-semibold ${
-                          item.approved ? "!text-[#389e0d]" : "!text-[#cf1322]"
-                        }`}
-                      >
-                        {item.label} (
-                        <span className="!text-[#8c8c8c]">{item.detail}</span>)
+                {summaryMissingCases.map((item) => {
+                  // ── Xác định nút có bị disabled vì điều kiện đã đủ không ──
+                  // conditionMet[key] = true khi thực tế đã đủ yêu cầu
+                  // → Nếu đủ rồi thì không cần duyệt tổng/đêm/tự động nữa,
+                  //   chỉ cho duyệt từng phiên thôi.
+                  // Lưu ý: summaryMissingCases chỉ trả về những case ĐANG THIẾU
+                  // (thieuGio > 0 hoặc thieuKm > 0), nên conditionMet[key]
+                  // sẽ là false ở đây trong mọi trường hợp bình thường.
+                  // Tuy nhiên vẫn kiểm tra để an toàn.
+                  const metKey =
+                    item.key === "duyet_tong"
+                      ? "tong"
+                      : item.key === "duyet_dem"
+                        ? "dem"
+                        : "tuDong";
+                  const isConditionAlreadyMet = conditionMet[metKey];
+
+                  return (
+                    <div
+                      key={item.key}
+                      className={`!flex !items-center !justify-between !gap-3 !rounded-lg !border ${
+                        item.approved
+                          ? "!border-[#b7eb8f] !bg-[#f6ffed]"
+                          : "!border-[#ffccc7] !bg-white"
+                      }`}
+                    >
+                      <div className="!text-xs px-2">
+                        <div
+                          className={`!font-semibold ${
+                            item.approved
+                              ? "!text-[#389e0d]"
+                              : "!text-[#cf1322]"
+                          }`}
+                        >
+                          {item.label} (
+                          <span className="!text-[#8c8c8c]">{item.detail}</span>
+                          )
+                        </div>
+                        {isConditionAlreadyMet && (
+                          <div className="!text-[10px] !text-[#8c8c8c] !mt-0.5">
+                            Đã đủ điều kiện — chỉ duyệt từng phiên
+                          </div>
+                        )}
+                      </div>
+                      <div className="!flex !items-center !gap-2">
+                        {item.reason ? (
+                          <Button
+                            type="text"
+                            size="small"
+                            className="!text-[#1d39c4]"
+                            icon={<ClockCircleOutlined />}
+                            onClick={() => handleViewApproveReason(item.key)}
+                          />
+                        ) : null}
+                        <button
+                          type="button"
+                          className="!w-[52px] !rounded-none !rounded-r-lg !self-stretch h-[30px] !text-white !text-xs !font-bold"
+                          style={{
+                            background: isConditionAlreadyMet
+                              ? "#d9d9d9"
+                              : !item?.approved
+                                ? "#1e88d8"
+                                : "#cf1322",
+                            borderRadius: "0 8px 8px 0",
+                            opacity:
+                              actioningId ||
+                              bulkActioning ||
+                              isConditionAlreadyMet
+                                ? 0.5
+                                : 1,
+                            cursor:
+                              actioningId ||
+                              bulkActioning ||
+                              isConditionAlreadyMet
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                          loading={approveLoadingKey === item.key}
+                          disabled={
+                            Boolean(actioningId) ||
+                            bulkActioning ||
+                            isConditionAlreadyMet
+                          }
+                          onClick={() => {
+                            if (isConditionAlreadyMet) return;
+                            handleApproveMissingCase(item.key, !item.approved);
+                          }}
+                        >
+                          {isConditionAlreadyMet
+                            ? "—"
+                            : item.approved
+                              ? "Hủy"
+                              : "Duyệt"}
+                        </button>
                       </div>
                     </div>
-                    <div className="!flex !items-center !gap-2">
-                      {item.reason ? (
-                        <Button
-                          type="text"
-                          size="small"
-                          className="!text-[#1d39c4]"
-                          icon={<ClockCircleOutlined />}
-                          onClick={() => handleViewApproveReason(item.key)}
-                        />
-                      ) : null}
-                      <button
-                        type="primary"
-                        danger={item.approved}
-                        className="!w-[52px] !rounded-none !rounded-r-lg !self-stretch h-[30px] !text-white !text-xs !font-bold"
-                        style={{
-                          background: !item?.approved ? "#1e88d8" : "#cf1322",
-                          borderRadius: "0 8px 8px 0",
-                          opacity: actioningId || bulkActioning ? 0.5 : 1,
-                          cursor:
-                            actioningId || bulkActioning
-                              ? "not-allowed"
-                              : "pointer",
-                        }}
-                        loading={approveLoadingKey === item.key}
-                        disabled={Boolean(actioningId) || bulkActioning}
-                        onClick={() =>
-                          handleApproveMissingCase(item.key, !item.approved)
-                        }
-                      >
-                        {item.approved ? "Hủy" : "Duyệt"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -974,8 +1073,11 @@ const TruyVetModal = ({
 
                         <div className="!flex-1 !px-3 !py-2 !text-xs">
                           <div className="!flex !items-center !justify-between !mb-1">
-                            <span className="!font-semibold !text-gray-800 !text-sm">
+                            <span className="!font-semibold !text-gray-800 !text-sm flex items-center gap-3">
                               {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
+                              <span className="flex items-center">
+                                {renderSessionErrorBadges(item)}
+                              </span>
                             </span>
                             <span
                               className="!text-xs !font-semibold !px-2 !py-0.5 !rounded-full"
@@ -990,12 +1092,12 @@ const TruyVetModal = ({
                               {item?.BienSo || "--"}
                             </span>
                           </div>
-
                           <div className="!flex !items-center !justify-between !text-gray-500">
                             <span>
                               {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
                               {end ? dayjs(end).format("HH:mm") : "--"}
                             </span>
+
                             <span className="!text-gray-400">
                               {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
                               {toNumber(item?.TongQuangDuong).toFixed(2)} km

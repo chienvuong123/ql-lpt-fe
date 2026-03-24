@@ -2,12 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Card, Drawer, Empty, Grid, Image, Spin, Typography } from "antd";
 import {
-  evaluateNghiGiuaPhien,
-  evaluateSaiBienSo,
-  evaluateSaiGiaoVien,
-  evaluateTocDoPhien,
   HANG_DAO_TAO_CONFIG,
-} from "./DieuKienKiemTraPublic";
+  getInvalidSessionIndexes,
+} from "./DieuKienKiemTra";
 import { getPhienHocDATPublic } from "../../apis/apiDeploy";
 
 const { Text } = Typography;
@@ -126,15 +123,10 @@ const INITIAL_APPROVE_STATE = {
 
 // ─── Summary Check ────────────────────────────────────────────────────────────
 
-/**
- * Tính tổng hợp đơn giản từ rowsWithStatus (đã lọc phiên lỗi)
- * để kiểm tra thiếu km/giờ so với yêu cầu hạng đào tạo
- */
 const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
   const yeuCau = HANG_DAO_TAO_CONFIG[hangDaoTao];
   if (!yeuCau) return null;
 
-  // Chỉ tính phiên hợp lệ
   const validRows = rowsWithStatus.filter((r) => !r._isInvalid);
 
   let tongGiay = 0;
@@ -144,7 +136,6 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
   let tuDongGiay = 0;
   let tuDongKm = 0;
 
-  // Tìm biển số tự động (xuất hiện ít nhất)
   const bienSoCount = {};
   validRows.forEach((item) => {
     if (item.BienSo)
@@ -166,7 +157,6 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     tongGiay += giay;
     tongKm += km;
 
-    // Ban đêm: có field ThoiGianBanDem hoặc fallback theo giờ bắt đầu >= 18h
     const demGiayAPI = toNumber(item.ThoiGianBanDem);
     if (demGiayAPI > 0) {
       demGiay += demGiayAPI;
@@ -191,43 +181,37 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
 
   const warnings = [];
 
-  // 1. Tổng thời gian + quãng đường
   const thieu_tongGio = yeuCau.thoiGian.tong - tongGio;
   const thieu_tongKm = yeuCau.quangDuong.tong - tongKm;
   if (thieu_tongGio > 0 || thieu_tongKm > 0) {
-    const parts = [];
     warnings.push({
       key: "duyet_tong",
       color: "#FF0000",
       label: "Tổng km và thời gian chưa đạt.",
-      detail: parts.join(", "),
+      detail: "",
     });
   }
 
-  // 2. Ban đêm
   const thieu_demGio = yeuCau.thoiGian.banDem - demGio;
   const thieu_demKm = yeuCau.quangDuong.banDem - demKm;
   if (thieu_demGio > 0 || thieu_demKm > 0) {
-    const parts = [];
     warnings.push({
       key: "duyet_dem",
       color: "#FF0000",
       label: "Thời gian và quãng đường ban đêm chưa đạt.",
-      detail: parts.join(", "),
+      detail: "",
     });
   }
 
-  // 3. Số tự động (chỉ check nếu yêu cầu > 0)
   if (yeuCau.thoiGian.tuDong > 0 || yeuCau.quangDuong.tuDong > 0) {
     const thieu_tuDongGio = yeuCau.thoiGian.tuDong - tuDongGio;
     const thieu_tuDongKm = yeuCau.quangDuong.tuDong - tuDongKm;
     if (thieu_tuDongGio > 0 || thieu_tuDongKm > 0) {
-      const parts = [];
       warnings.push({
         key: "duyet_tu_dong",
         color: "#FF0000",
         label: "Thời gian và quãng đường số tự động chưa đạt.",
-        detail: parts.join(", "),
+        detail: "",
       });
     }
   }
@@ -302,34 +286,44 @@ const ModalTest = ({
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
-    const nghiErrors = evaluateNghiGiuaPhien(sorted);
-    const tocDoErrors = evaluateTocDoPhien(sorted);
-    const giaoVienErrors = evaluateSaiGiaoVien(sorted, studentCheckInfo);
-    const bienSoErrors = evaluateSaiBienSo
-      ? evaluateSaiBienSo(sorted, studentCheckInfo)
-      : [];
+    // Nguồn duy nhất — nhất quán với derivedInvalid/_status
+    const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
+      sorted,
+      studentCheckInfo,
+    );
 
     return sorted.map((item, index) => {
-      const phienLabel = `Phiên ${index + 1}`;
+      const reasons = invalidReasons.get(index) || [];
 
-      const _isSpeedInvalid = tocDoErrors.some((e) =>
-        e.message.startsWith(phienLabel),
-      );
-      const _isTeacherMismatch = giaoVienErrors.some((e) =>
-        e.message.startsWith(phienLabel),
-      );
-      const _isPlateMismatch = bienSoErrors.some((e) =>
-        e.message.startsWith(phienLabel),
-      );
-      const _isRestTooShort = nghiErrors.some((e) =>
-        e.message.startsWith(`Phiên ${index} `),
+      // Tốc độ TB < 18 km/h
+      const _isSpeedInvalid = reasons.some((r) => r.includes("Tốc độ TB"));
+
+      // Sai tên giáo viên
+      const _isTeacherMismatch = reasons.some(
+        (r) =>
+          r.includes("Tên giáo viên") || r.includes("Không có tên giáo viên"),
       );
 
-      const derivedInvalid =
-        _isSpeedInvalid ||
-        _isTeacherMismatch ||
-        _isPlateMismatch ||
-        _isRestTooShort;
+      // Sai biển số xe
+      const _isPlateMismatch = reasons.some(
+        (r) => r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
+      );
+
+      // Nghỉ giữa phiên < 15 phút
+      const _isRestTooShort = reasons.some((r) =>
+        r.includes("Nghỉ giữa phiên"),
+      );
+
+      // Xe tự động sai khung giờ
+      const _isTuDongInvalid = reasons.some((r) =>
+        r.includes("Xe tự động bắt đầu"),
+      );
+
+      // Phiên dưới 5 phút (check riêng, không có trong getInvalidSessionIndexes)
+      const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
+      const _isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
+
+      const derivedInvalid = invalidIndexes.has(index);
       const persistedStatus = getMappedStatus(item, statusMap);
       const effectiveStatus =
         persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
@@ -340,6 +334,8 @@ const ModalTest = ({
         _isTeacherMismatch,
         _isPlateMismatch,
         _isRestTooShort,
+        _isTuDongInvalid,
+        _isTooShort,
         _status: effectiveStatus,
         _isInvalid: effectiveStatus === "HUY",
       };
@@ -371,7 +367,6 @@ const ModalTest = ({
     [rowsWithStatus],
   );
 
-  // Lấy hạng đào tạo từ row đầu tiên hoặc student
   const hangDaoTao = useMemo(() => {
     return (
       rows[0]?.HangDaoTao ||
@@ -381,7 +376,6 @@ const ModalTest = ({
     );
   }, [rows, studentCheckInfo, student]);
 
-  // Tính các warning thiếu km/giờ
   const summaryWarnings = useMemo(
     () => computeQuickSummary(rowsWithStatus, hangDaoTao),
     [rowsWithStatus, hangDaoTao],
@@ -451,7 +445,7 @@ const ModalTest = ({
               </div>
             </Card>
 
-            {/* Cảnh báo phiên lỗi */}
+            {/* Cảnh báo */}
             {(invalidSessionCount > 0 ||
               filteredSummaryWarnings.length > 0) && (
               <Card
@@ -459,15 +453,12 @@ const ModalTest = ({
                 className="!mb-2 !bg-[#fff1f0] !border-[#ffa39e]"
               >
                 <div className="!space-y-2">
-                  {/* Cảnh báo phiên lỗi */}
                   {invalidSessionCount > 0 && (
                     <Text className="!text-[#cf1322] !text-xs !font-semibold">
                       Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để
                       kiểm tra chi tiết.
                     </Text>
                   )}
-
-                  {/* Cảnh báo thiếu km/giờ */}
                   {filteredSummaryWarnings.length > 0 && (
                     <div>
                       {filteredSummaryWarnings.map((w, i) => (
@@ -479,7 +470,6 @@ const ModalTest = ({
                             <div className="text-[12px] font-semibold">
                               {w.label}
                             </div>
-
                             <div className="text-[11px] text-gray-700">
                               {w.detail}
                             </div>
