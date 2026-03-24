@@ -370,8 +370,6 @@ export function evaluateTocDoPhien(dataSource) {
 }
 
 export function evaluateTuDongSau17h(dataSource) {
-  console.log("runn");
-
   if (!dataSource || dataSource.length === 0) return [];
 
   const bienSoTuDong = getBienSoTuDong(dataSource);
@@ -400,7 +398,6 @@ export function evaluateTuDongSau17h(dataSource) {
 
     const inSangWindow = totalMinutes >= SANG_START && totalMinutes <= SANG_END;
     const inChieuWindow = totalMinutes >= CHIEU_START;
-    console.log(loaiPhien);
 
     if (loaiPhien === "SANG") {
       if (!inSangWindow) {

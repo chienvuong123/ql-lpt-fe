@@ -479,8 +479,8 @@ const DashboardDAT = () => {
         <Space size={[8, 8]} wrap>
           <div className="flex items-center">
             <Text strong>
-              Bộ lọc đang áp dụng tháng {activeAppliedMonth}/
-              {getYearFromKhoa(activeAppliedKhoa)}:{" "}
+              Bộ lọc {activeAppliedMonth}/{getYearFromKhoa(activeAppliedKhoa)}
+              :{" "}
             </Text>
             {matchedCourses.length > 0 ? (
               <div className="pl-3">

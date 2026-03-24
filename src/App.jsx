@@ -28,6 +28,8 @@ import TruyXuatLoi from "./pages/dat/TruyXuatLoi";
 import { GiaoVienGuard } from "./components/RoleGuard";
 import DashboardDAT from "./pages/dat/DashboardDAT";
 import DashboardLYThuyet from "./pages/class/DashboardLYThuyet";
+import HocVienTheoGiaoVien from "./pages/dat/HocVienTheoGiaoVien";
+import ThemDuLieuVaoHeThong from "./pages/add-data/ThemDuLieuVaoHeThong";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -184,6 +186,15 @@ function App() {
                 }
               />
               <Route
+                path="hoc-vien-theo-giao-vien"
+                element={
+                  <GuardedRoute
+                    path="/hoc-vien-theo-giao-vien"
+                    element={<HocVienTheoGiaoVien />}
+                  />
+                }
+              />
+              <Route
                 path="dashboard-ly-thuyet"
                 element={
                   <GuardedRoute
@@ -194,6 +205,10 @@ function App() {
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
+            <Route
+              path="them-du-lieu-vao-he-thong"
+              element={<ThemDuLieuVaoHeThong />}
+            />
           </Routes>
         </BrowserRouter>
       </ConfigProvider>

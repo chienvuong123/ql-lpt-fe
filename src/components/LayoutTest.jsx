@@ -44,6 +44,8 @@ const menuPathMap = {
   "truy-vet-loi": "/truy-vet-loi",
   "dashboard-dat": "/dashboard-dat",
   "dashboard-ly-thuyet": "/dashboard-ly-thuyet",
+  "hoc-vien-theo-giao-vien": "/hoc-vien-theo-giao-vien",
+  "them-du-lieu": "/them-du-lieu",
 };
 
 const LayoutTest = () => {
