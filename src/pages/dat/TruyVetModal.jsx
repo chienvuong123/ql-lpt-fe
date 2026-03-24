@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import {
@@ -208,24 +208,6 @@ const isNightSession = (item) => {
   return false;
 };
 
-/**
- * Kiểm tra phiên có lỗi "cứng" không thể duyệt tổng:
- * - Nghỉ giữa phiên chưa đủ 15p       → _isRestTooShort
- * - Sai giáo viên                      → _isTeacherMismatch
- * - Sai biển số (sai xe)               → _isPlateMismatch
- * - Xe tự động sai giờ                 → _isTuDongInvalid
- * - Tốc độ TB ≤ 18 km/h               → _isSpeedInvalid   ← BỎ QUA khi duyệt tổng
- * - Phiên dưới 5 phút                  → _isTooShort       ← BỎ QUA khi duyệt tổng
- *
- * Lưu ý: _isSpeedInvalid và _isTooShort KHÔNG thuộc hard error
- * → vẫn được duyệt tổng bình thường.
- */
-const isHardError = (item) =>
-  item?._isRestTooShort ||
-  item?._isTeacherMismatch ||
-  item?._isPlateMismatch ||
-  item?._isTuDongInvalid;
-
 const TruyVetModal = ({
   open,
   onCancel,
@@ -312,8 +294,6 @@ const TruyVetModal = ({
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
-    // Nguồn duy nhất để xác định phiên lỗi — tất cả flag đều lấy từ đây
-    // để đảm bảo nhất quán với derivedInvalid / _status
     const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
       sorted,
       studentCheckInfo,
@@ -452,27 +432,6 @@ const TruyVetModal = ({
   }, [rows, studentCheckInfo]);
 
   // ─── Kiểm tra từng điều kiện đã đủ chưa ──────────────────────────────────
-  const conditionMet = useMemo(() => {
-    const { tongGio, tongKm, dem, tuDong } = actualTotals;
-    return {
-      // Đủ tổng = đủ cả thời gian lẫn quãng đường tổng
-      tong:
-        tongGio >= toNumber(yeuCauHang?.thoiGian?.tong) &&
-        tongKm >= toNumber(yeuCauHang?.quangDuong?.tong),
-      // Đủ đêm
-      dem:
-        dem.gio >= toNumber(yeuCauHang?.thoiGian?.banDem) &&
-        dem.km >= toNumber(yeuCauHang?.quangDuong?.banDem),
-      // Đủ tự động (chỉ cần kiểm tra nếu hạng có yêu cầu tự động)
-      tuDong:
-        toNumber(yeuCauHang?.thoiGian?.tuDong) === 0 &&
-        toNumber(yeuCauHang?.quangDuong?.tuDong) === 0
-          ? true // hạng không yêu cầu tự động → coi là đủ (không hiện nút)
-          : tuDong.gio >= toNumber(yeuCauHang?.thoiGian?.tuDong) &&
-            tuDong.km >= toNumber(yeuCauHang?.quangDuong?.tuDong),
-    };
-  }, [actualTotals, yeuCauHang]);
-
   const summaryMissingCases = useMemo(() => {
     const { tongGio, tongKm, dem, tuDong } = actualTotals;
 
@@ -558,10 +517,9 @@ const TruyVetModal = ({
     if (!maDk) return 0;
     const actionStatus = nextApproved ? "DUYET" : "HUY";
 
-    const targetRows = rowsWithStatus.filter((item) => {
-      if (isHardError(item)) return false;
-      return nextApproved ? item._status === "HUY" : item._status === "DUYET";
-    });
+    const targetRows = rowsWithStatus.filter((item) =>
+      nextApproved ? item._status === "HUY" : item._status === "DUYET",
+    );
 
     if (targetRows.length === 0) return 0;
 
@@ -571,16 +529,20 @@ const TruyVetModal = ({
         const payload = buildSessionPayload(item, actionStatus);
         await updatePhienHocDAT(payload);
       }
+
       await fetchSessionStatuses();
+
       message.success(
         nextApproved
           ? `Đã duyệt ${targetRows.length} phiên học.`
           : `Đã hủy ${targetRows.length} phiên học.`,
       );
+
       return targetRows.length;
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Cập nhật hàng loạt thất bại.",
+        error?.response?.data?.message ||
+          "Cập nhập trạng thái hàng loạt thất bại.",
       );
       return 0;
     } finally {
@@ -588,14 +550,11 @@ const TruyVetModal = ({
     }
   };
 
-  // ─── Bulk action theo loại phiên: "dem" | "tuDong" ───────────────────────
   const handleBulkSessionActionByType = async (type, nextApproved) => {
     if (!maDk) return 0;
     const actionStatus = nextApproved ? "DUYET" : "HUY";
 
     const targetRows = rowsWithStatus.filter((item) => {
-      if (isHardError(item)) return false;
-
       if (type === "dem") {
         if (!isNightSession(item)) return false;
       } else if (type === "tuDong") {
@@ -625,7 +584,7 @@ const TruyVetModal = ({
       return targetRows.length;
     } catch (error) {
       message.error(
-        error?.response?.data?.message || "Cập nhật hàng loạt thất bại.",
+        error?.response?.data?.message || "Cập nhập hàng loạt thất bại.",
       );
       return 0;
     } finally {
@@ -744,93 +703,54 @@ const TruyVetModal = ({
     const isDuyetTuDong = payloadConfig?.duyet_tu_dong !== undefined;
 
     try {
-      // ── Duyệt tổng: bulk action toàn bộ phiên hợp lệ + update flag ──
       if (isDuyetTong) {
         const nextApproved = Boolean(payloadConfig.duyet_tong);
 
         setOpenConfigModal(false);
         setPayloadConfig({});
 
-        const processedCount = await handleBulkSessionAction(nextApproved);
-
-        if (processedCount === 0) {
-          message.warning(
-            nextApproved
-              ? "Không có phiên hợp lệ nào để duyệt."
-              : "Không có phiên hợp lệ nào để hủy.",
-          );
-          setApproveLoadingKey("");
-          return;
-        }
+        await handleBulkSessionAction(nextApproved);
 
         const res = await updateDuyetTheoMaDK(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_tong", nextApproved, value);
-          message.success("Đã cập nhật duyệt tổng thành công.");
+          message.success("Đã duyệt tổng thành công.");
         }
 
         setApproveLoadingKey("");
         return;
       }
 
-      // ── Duyệt đêm: bulk action phiên đêm hợp lệ + update flag ──
       if (isDuyetDem) {
         const nextApproved = Boolean(payloadConfig.duyet_dem);
 
         setOpenConfigModal(false);
         setPayloadConfig({});
 
-        const processedCount = await handleBulkSessionActionByType(
-          "dem",
-          nextApproved,
-        );
-
-        if (processedCount === 0) {
-          message.warning(
-            nextApproved
-              ? "Không có phiên ban đêm hợp lệ nào để duyệt."
-              : "Không có phiên ban đêm hợp lệ nào để hủy.",
-          );
-          setApproveLoadingKey("");
-          return;
-        }
+        await handleBulkSessionActionByType("dem", nextApproved);
 
         const res = await updateDuyetTheoMaDK(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_dem", nextApproved, value);
-          message.success("Đã cập nhật duyệt ban đêm thành công.");
+          message.success("Đã duyệt ban đêm thành công.");
         }
 
         setApproveLoadingKey("");
         return;
       }
 
-      // ── Duyệt tự động: bulk action phiên tự động hợp lệ + update flag ──
       if (isDuyetTuDong) {
         const nextApproved = Boolean(payloadConfig.duyet_tu_dong);
 
         setOpenConfigModal(false);
         setPayloadConfig({});
 
-        const processedCount = await handleBulkSessionActionByType(
-          "tuDong",
-          nextApproved,
-        );
-
-        if (processedCount === 0) {
-          message.warning(
-            nextApproved
-              ? "Không có phiên số tự động hợp lệ nào để duyệt."
-              : "Không có phiên số tự động hợp lệ nào để hủy.",
-          );
-          setApproveLoadingKey("");
-          return;
-        }
+        await handleBulkSessionActionByType("tuDong", nextApproved);
 
         const res = await updateDuyetTheoMaDK(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_tu_dong", nextApproved, value);
-          message.success("Đã cập nhật duyệt số tự động thành công.");
+          message.success("Đã duyệt tự động thành công.");
         }
 
         setApproveLoadingKey("");
@@ -939,22 +859,6 @@ const TruyVetModal = ({
             {summaryMissingCases.length > 0 && (
               <div className="!space-y-2 mb-3 w-[98%]">
                 {summaryMissingCases.map((item) => {
-                  // ── Xác định nút có bị disabled vì điều kiện đã đủ không ──
-                  // conditionMet[key] = true khi thực tế đã đủ yêu cầu
-                  // → Nếu đủ rồi thì không cần duyệt tổng/đêm/tự động nữa,
-                  //   chỉ cho duyệt từng phiên thôi.
-                  // Lưu ý: summaryMissingCases chỉ trả về những case ĐANG THIẾU
-                  // (thieuGio > 0 hoặc thieuKm > 0), nên conditionMet[key]
-                  // sẽ là false ở đây trong mọi trường hợp bình thường.
-                  // Tuy nhiên vẫn kiểm tra để an toàn.
-                  const metKey =
-                    item.key === "duyet_tong"
-                      ? "tong"
-                      : item.key === "duyet_dem"
-                        ? "dem"
-                        : "tuDong";
-                  const isConditionAlreadyMet = conditionMet[metKey];
-
                   return (
                     <div
                       key={item.key}
@@ -976,11 +880,6 @@ const TruyVetModal = ({
                           <span className="!text-[#8c8c8c]">{item.detail}</span>
                           )
                         </div>
-                        {isConditionAlreadyMet && (
-                          <div className="!text-[10px] !text-[#8c8c8c] !mt-0.5">
-                            Đã đủ điều kiện — chỉ duyệt từng phiên
-                          </div>
-                        )}
                       </div>
                       <div className="!flex !items-center !gap-2">
                         {item.reason ? (
@@ -996,41 +895,21 @@ const TruyVetModal = ({
                           type="button"
                           className="!w-[52px] !rounded-none !rounded-r-lg !self-stretch h-[30px] !text-white !text-xs !font-bold"
                           style={{
-                            background: isConditionAlreadyMet
-                              ? "#d9d9d9"
-                              : !item?.approved
-                                ? "#1e88d8"
-                                : "#cf1322",
+                            background: !item?.approved ? "#1e88d8" : "#cf1322",
                             borderRadius: "0 8px 8px 0",
-                            opacity:
-                              actioningId ||
-                              bulkActioning ||
-                              isConditionAlreadyMet
-                                ? 0.5
-                                : 1,
+                            opacity: actioningId || bulkActioning ? 0.5 : 1,
                             cursor:
-                              actioningId ||
-                              bulkActioning ||
-                              isConditionAlreadyMet
+                              actioningId || bulkActioning
                                 ? "not-allowed"
                                 : "pointer",
                           }}
                           loading={approveLoadingKey === item.key}
-                          disabled={
-                            Boolean(actioningId) ||
-                            bulkActioning ||
-                            isConditionAlreadyMet
-                          }
+                          disabled={Boolean(actioningId) || bulkActioning}
                           onClick={() => {
-                            if (isConditionAlreadyMet) return;
                             handleApproveMissingCase(item.key, !item.approved);
                           }}
                         >
-                          {isConditionAlreadyMet
-                            ? "—"
-                            : item.approved
-                              ? "Hủy"
-                              : "Duyệt"}
+                          {item.approved ? "Hủy" : "Duyệt"}
                         </button>
                       </div>
                     </div>
