@@ -203,12 +203,9 @@ function App() {
                   />
                 }
               />
+              <Route path="them-du-lieu" element={<ThemDuLieuVaoHeThong />} />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
-            <Route
-              path="them-du-lieu-vao-he-thong"
-              element={<ThemDuLieuVaoHeThong />}
-            />
           </Routes>
         </BrowserRouter>
       </ConfigProvider>
