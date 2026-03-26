@@ -30,6 +30,7 @@ import DashboardDAT from "./pages/dat/DashboardDAT";
 import HocVienTheoGiaoVien from "./pages/dat/HocVienTheoGiaoVien";
 import ThemDuLieuVaoHeThong from "./pages/add-data/ThemDuLieuVaoHeThong";
 import DashboardLyThuyet from "./pages/class/DashboardLYThuyet";
+import KiemTraTrungXeGiaoVien from "./pages/dat/KiemTraTrungXeGiaoVien";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -191,6 +192,15 @@ function App() {
                   <GuardedRoute
                     path="/hoc-vien-theo-giao-vien"
                     element={<HocVienTheoGiaoVien />}
+                  />
+                }
+              />
+              <Route
+                path="kiem-tra-trung-xe-giao-vien"
+                element={
+                  <GuardedRoute
+                    path="/kiem-tra-trung-xe-giao-vien"
+                    element={<KiemTraTrungXeGiaoVien />}
                   />
                 }
               />

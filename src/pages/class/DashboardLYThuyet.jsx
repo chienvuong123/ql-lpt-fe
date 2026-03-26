@@ -593,6 +593,14 @@ const DashboardLyThuyet = () => {
       render: (_, record) =>
         formatDateTime(resolveCheckState(record).statusUpdatedAt),
     },
+    {
+      title: "Ghi chú",
+      key: "status_updated_at",
+      width: 180,
+      align: "center",
+      render: (_, record) =>
+        formatDateTime(resolveCheckState(record).statusUpdatedAt),
+    },
   ];
 
   return (

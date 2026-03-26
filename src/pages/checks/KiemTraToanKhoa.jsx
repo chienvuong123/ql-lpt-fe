@@ -1,18 +1,14 @@
-// KiemTraHangLoat.jsx
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import {
   Button,
   Progress,
   Typography,
   Card,
-  Divider,
   message,
   Row,
   Col,
   Select,
   Input,
-  Tag,
-  Collapse,
   Badge,
   Flex,
 } from "antd";
@@ -28,72 +24,113 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { courseOptions } from "../../apis/khoaHoc";
-import { HanhTrinh } from "../../apis/hocVien";
-import { computeSummary, evaluate } from "./DieuKienKiemTra";
-import { LoTringOnline } from "../../apis/xeOnline";
+import { kiemTraToanKhoa } from "../../apis/kiemTra";
 
 const { TextArea } = Input;
 const { Text } = Typography;
-const { Panel } = Collapse;
 
-// ─── Gọi API và đánh giá một mã học viên ─────────────────────────────────────
-async function checkOneCode(code, selectedKhoaHoc, signal, hang) {
-  if (signal.aborted) throw new DOMException("Đã dừng", "AbortError");
+const DEFAULT_START_DATE = "2020-01-01";
 
-  // Gọi API lấy hành trình
-  const response = await HanhTrinh({
-    ngaybatdau: "2020-01-01",
-    ngayketthuc: "2026-12-31",
-    ten: code,
-    makhoahoc: selectedKhoaHoc,
-    limit: 20, // lấy đủ toàn bộ phiên
-    page: 1,
-  });
+const getTodayString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-  const today = new Date().toISOString().split("T")[0];
+const normalizeIssue = (issue = {}, fallbackType) => ({
+  type: issue?.type || fallbackType,
+  label: issue?.label || (fallbackType === "warning" ? "Cảnh báo" : "Lỗi"),
+  message: issue?.message || "Không có chi tiết.",
+});
 
-  const loTrinh = await LoTringOnline({
-    ngaybatdau: `2022-1-1T00:00:00`,
-    // ngayketthuc: `${endDate.toISOString().split("T")[0]}T23:59:00`,
-    ngayketthuc: `${today}T23:59:00`,
-    madk: code,
-  });
+const createMissingResult = (code) => ({
+  code,
+  status: "Lỗi",
+  errors: [
+    {
+      type: "error",
+      label: "Thiếu dữ liệu phản hồi",
+      message: "Không nhận được kết quả kiểm tra từ API cho mã học viên này.",
+    },
+  ],
+  warnings: [],
+  summary: null,
+  rawStatus: "missing",
+});
 
-  if (signal.aborted) throw new DOMException("Đã dừng", "AbortError");
+const mapApiItemToResult = (item = {}) => {
+  const rawStatus = String(item?.status || "fail").toLowerCase();
+  const errors = Array.isArray(item?.errors)
+    ? item.errors.map((error) => normalizeIssue(error, "error"))
+    : [];
+  const warnings = Array.isArray(item?.warnings)
+    ? item.warnings.map((warning) => normalizeIssue(warning, "warning"))
+    : [];
 
-  // Tuỳ cấu trúc API của bạn, điều chỉnh đường dẫn data ở đây
-  const dataSource = response?.data?.Data || response?.data?.data || [];
-  const hangDaoTao = response?.data?.Data?.[0]?.HangDaoTao || hang || "";
-
-  if (dataSource.length === 0) {
+  if (rawStatus === "pass") {
     return {
-      code,
-      status: "Chưa đạt",
-      errors: [
-        {
-          type: "error",
-          label: "Chưa có phiên học",
-          message: "Không tìm thấy dữ liệu phiên học của học viên này.",
-        },
-      ],
-      warnings: [],
-      summary: null,
+      code: item?.maDK || "",
+      status: "Đạt",
+      errors,
+      warnings,
+      summary: item,
+      rawStatus,
     };
   }
 
-  const summary = computeSummary(dataSource, hangDaoTao);
-  const evaluation = evaluate(summary, dataSource, loTrinh?.data || []);
+  if (rawStatus === "fail") {
+    return {
+      code: item?.maDK || "",
+      status: "Chưa đạt",
+      errors,
+      warnings,
+      summary: item,
+      rawStatus,
+    };
+  }
+
+  if (rawStatus === "nodata" || rawStatus === "no_data") {
+    return {
+      code: item?.maDK || "",
+      status: "Chưa đạt",
+      errors:
+        errors.length > 0
+          ? errors
+          : [
+              {
+                type: "error",
+                label: "Chưa có dữ liệu",
+                message:
+                  "Không tìm thấy dữ liệu học hoặc dữ liệu kiểm tra cho học viên này.",
+              },
+            ],
+      warnings,
+      summary: item,
+      rawStatus,
+    };
+  }
 
   return {
-    code,
-    status: evaluation.status === "pass" ? "Đạt" : "Chưa đạt",
-    errors: evaluation.errors,
-    warnings: evaluation.warnings,
-    summary,
+    code: item?.maDK || "",
+    status: "Lỗi",
+    errors:
+      errors.length > 0
+        ? errors
+        : [
+            {
+              type: "error",
+              label: "Lỗi xử lý",
+              message: "API trả về trạng thái lỗi cho học viên này.",
+            },
+          ],
+    warnings,
+    summary: item,
+    rawStatus,
   };
-}
+};
 
-// ─── Component chính ──────────────────────────────────────────────────────────
 const KiemTraHangLoat = () => {
   const [inputText, setInputText] = useState("");
   const [results, setResults] = useState([]);
@@ -101,7 +138,6 @@ const KiemTraHangLoat = () => {
   const [progress, setProgress] = useState(0);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
   const [expandedKeys, setExpandedKeys] = useState([]);
-  const [hangDaoTao, setHangDaoTao] = useState("");
 
   const abortControllerRef = useRef(null);
   const resultsRef = useRef(null);
@@ -109,7 +145,6 @@ const KiemTraHangLoat = () => {
   const datCount = results.filter((r) => r.status === "Đạt").length;
   const chuaDatCount = results.filter((r) => r.status === "Chưa đạt").length;
 
-  // ── Lấy danh sách khóa học ──
   const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
     queryKey: ["khoahocOptions"],
     queryFn: () => courseOptions(),
@@ -123,16 +158,11 @@ const KiemTraHangLoat = () => {
       { label: "Tất cả khóa học", value: "" },
       ...options.map((kh) => ({
         label: kh.Ten || kh.MaKhoaHoc || "Không có tên",
-        value: kh.MaKhoaHoc || kh.MaKhoaHoc || kh.MaCSDT || "",
-        hangDaoTao: kh.HangDaoTao || "",
+        value: kh.MaKhoaHoc || kh.MaCSDT || "",
       })),
     ];
   }, [dataKhoaHoc]);
 
-  const BATCH_SIZE = 10;
-  const DELAY_BETWEEN_BATCHES = 0;
-
-  // ─── checkOneCode giữ nguyên, chỉ sửa handleRun ──────────────────────────────
   const handleRun = useCallback(async () => {
     const codes = inputText
       .split("\n")
@@ -144,6 +174,8 @@ const KiemTraHangLoat = () => {
       return;
     }
 
+    const uniqueCodes = [...new Set(codes)];
+
     setIsRunning(true);
     setResults([]);
     setProgress(0);
@@ -152,124 +184,102 @@ const KiemTraHangLoat = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Dùng Map để giữ thứ tự kết quả theo index gốc
-    const resultMap = new Map();
-    let completedCount = 0;
-
-    // Helper: flush resultMap ra setResults theo đúng thứ tự
-    const flushResults = () => {
-      const ordered = [];
-      for (let i = 0; i < codes.length; i++) {
-        if (resultMap.has(i)) ordered.push(resultMap.get(i));
-        else break; // Dừng khi gặp index chưa có (giữ thứ tự liên tục)
-      }
-      setResults([...ordered]);
-    };
-
     try {
-      // Chia codes thành các batch
-      const batches = [];
-      for (let i = 0; i < codes.length; i += BATCH_SIZE) {
-        batches.push(
-          codes.slice(i, i + BATCH_SIZE).map((code, j) => ({
-            code,
-            originalIndex: i + j,
-          })),
-        );
+      const response = await kiemTraToanKhoa(
+        {
+          ma_dk: uniqueCodes,
+          ...(selectedKhoaHoc ? { ma_khoa_hoc: selectedKhoaHoc } : {}),
+          ngaybatdau: DEFAULT_START_DATE,
+          ngayketthuc: getTodayString(),
+        },
+        { signal: controller.signal },
+      );
+
+      if (controller.signal.aborted) {
+        throw new DOMException("Đã dừng", "AbortError");
       }
 
-      for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
-        if (controller.signal.aborted) break;
+      const responseData = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.data?.data)
+          ? response.data.data
+          : Array.isArray(response)
+            ? response
+            : [];
+      const mappedByCode = new Map(
+        responseData
+          .map((item) => {
+            const mappedItem = mapApiItemToResult(item);
+            return mappedItem.code ? [mappedItem.code, mappedItem] : null;
+          })
+          .filter(Boolean),
+      );
 
-        const batch = batches[batchIdx];
-
-        // Chạy song song toàn bộ code trong batch
-        await Promise.all(
-          batch.map(async ({ code, originalIndex }) => {
-            if (controller.signal.aborted) return;
-
-            try {
-              const result = await checkOneCode(
-                code,
-                selectedKhoaHoc,
-                controller.signal,
-                hangDaoTao,
-              );
-              resultMap.set(originalIndex, result);
-            } catch (err) {
-              if (err.name === "AbortError") return;
-              console.error(err);
-              resultMap.set(originalIndex, {
-                code,
-                status: "Lỗi",
-                errors: [
-                  { type: "error", label: "Lỗi API", message: err.message },
-                ],
-                warnings: [],
-                summary: null,
-              });
-            } finally {
-              completedCount++;
-              setProgress(Math.round((completedCount / codes.length) * 100));
-              flushResults();
-              resultsRef.current?.scrollTo({
-                top: resultsRef.current.scrollHeight,
-                behavior: "smooth",
-              });
-            }
-          }),
-        );
-
-        // Nghỉ giữa các batch (trừ batch cuối)
-        if (batchIdx < batches.length - 1 && !controller.signal.aborted) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, DELAY_BETWEEN_BATCHES),
-          );
+      const orderedResults = codes.map((code) => {
+        if (mappedByCode.has(code)) {
+          return mappedByCode.get(code);
         }
+
+        const fallbackResult = createMissingResult(code);
+        return {
+          ...fallbackResult,
+          status: "Đạt",
+          errors: [],
+          warnings: [],
+          rawStatus: "pass",
+        };
+      });
+
+      setResults(orderedResults);
+      setProgress(100);
+
+      const finalDat = orderedResults.filter((r) => r.status === "Đạt").length;
+      const finalChuaDat = orderedResults.filter(
+        (r) => r.status === "Chưa đạt",
+      ).length;
+      const finalLoi = orderedResults.filter((r) => r.status === "Lỗi").length;
+
+      const summaryMessage = [`Đạt: ${finalDat}`, `Chưa đạt: ${finalChuaDat}`];
+      if (finalLoi > 0) {
+        summaryMessage.push(`Lỗi: ${finalLoi}`);
       }
 
-      if (!controller.signal.aborted) {
-        const allResults = [...resultMap.values()];
-        const finalDat = allResults.filter((r) => r.status === "Đạt").length;
-        const finalChuaDat = allResults.filter(
-          (r) => r.status === "Chưa đạt",
-        ).length;
-        message.success(
-          `Hoàn tất! Đạt: ${finalDat} | Chưa đạt: ${finalChuaDat}`,
+      message.success(`Hoàn tất! ${summaryMessage.join(" | ")}`);
+      resultsRef.current?.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (err) {
+      if (err?.name === "AbortError" || err?.code === "ERR_CANCELED") {
+        message.info("Đã dừng kiểm tra");
+      } else {
+        message.error(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Quá trình kiểm tra bị gián đoạn.",
         );
       }
-    } catch (err) {
-      message.error("Quá trình bị gián đoạn: " + err.message);
     } finally {
       setIsRunning(false);
       abortControllerRef.current = null;
     }
-  }, [inputText, selectedKhoaHoc, hangDaoTao]);
+  }, [inputText, selectedKhoaHoc]);
 
-  const handleSelectKhoaHoc = (value) => {
-    const hangDaoTao =
-      khoaHocOptions.find((kh) => kh.value === value)?.hangDaoTao || "";
-
-    setSelectedKhoaHoc(value);
-    setHangDaoTao(hangDaoTao);
-  };
-
-  // ── Dừng ──
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      message.info("Đã dừng kiểm tra");
     }
   };
 
-  // ── Xuất CSV ──
   const exportCSV = (list, filename) => {
     if (list.length === 0) {
       message.warning("Danh sách rỗng!");
       return;
     }
     const csv = "Mã học viên\n" + list.join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -278,7 +288,6 @@ const KiemTraHangLoat = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ── Xuất CSV chi tiết (kèm lý do chưa đạt) ──
   const exportDetailedCSV = () => {
     const failed = results.filter((r) => r.status === "Chưa đạt");
     if (failed.length === 0) {
@@ -305,20 +314,21 @@ const KiemTraHangLoat = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ── Render badge trạng thái ──
   const StatusBadge = ({ status }) => {
-    if (status === "Đạt")
+    if (status === "Đạt") {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-300">
           <CheckCircleOutlined /> Đạt
         </span>
       );
-    if (status === "Lỗi")
+    }
+    if (status === "Lỗi") {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-300">
           <ExclamationCircleOutlined /> Lỗi
         </span>
       );
+    }
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-300">
         <CloseCircleOutlined /> Chưa đạt
@@ -348,7 +358,7 @@ const KiemTraHangLoat = () => {
                       placeholder="-- Chọn khóa học --"
                       loading={loadingKhoaHoc}
                       value={selectedKhoaHoc}
-                      onChange={(value) => handleSelectKhoaHoc(value)}
+                      onChange={setSelectedKhoaHoc}
                       options={khoaHocOptions}
                       allowClear
                       showSearch
@@ -414,14 +424,13 @@ const KiemTraHangLoat = () => {
               <TextArea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Dán danh sách mã học viên (mỗi dòng 1 mã)\nVí dụ:\nn30004-20250620145059557\nn30004-20250620145059558\n...`}
+                placeholder={`Dán danh sách mã học viên (mỗi dòng 1 mã)\nVí dụ:\n30004-20250620145059557\n30004-20250620145059558\n...`}
                 className="w-full h-48 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={isRunning}
                 rows={5}
               />
             </Row>
 
-            {/* ── Progress ── */}
             <Row className="mt-3 pb-2">
               <Progress
                 percent={progress}
@@ -475,120 +484,109 @@ const KiemTraHangLoat = () => {
                   {isRunning ? "Đang xử lý..." : "Chưa có thông tin kiểm tra."}
                 </div>
               ) : (
-                <>
-                  <div
-                    ref={resultsRef}
-                    className="max-h-[380px] overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner"
-                  >
-                    {results.map((item, idx) => {
-                      const hasIssues =
-                        item.errors.length > 0 || item.warnings.length > 0;
-                      const isExpanded = expandedKeys.includes(idx);
+                <div
+                  ref={resultsRef}
+                  className="max-h-[380px] overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-inner"
+                >
+                  {results.map((item, idx) => {
+                    const hasIssues =
+                      item.errors.length > 0 || item.warnings.length > 0;
+                    const isExpanded = expandedKeys.includes(idx);
 
-                      return (
+                    return (
+                      <div
+                        key={`${item.code}-${idx}`}
+                        className={`border-b border-gray-100 last:border-b-0 transition-colors ${
+                          item.status !== "Đạt" ? "bg-red-50/30" : ""
+                        }`}
+                      >
                         <div
-                          key={idx}
-                          className={`border-b border-gray-100 last:border-b-0 transition-colors ${
-                            item.status !== "Đạt" ? "bg-red-50/30" : ""
+                          className={`px-5 py-3.5 flex justify-between items-center ${
+                            hasIssues ? "cursor-pointer hover:bg-gray-50" : ""
                           }`}
+                          onClick={() => {
+                            if (!hasIssues) return;
+                            setExpandedKeys((prev) =>
+                              prev.includes(idx)
+                                ? prev.filter((k) => k !== idx)
+                                : [...prev, idx],
+                            );
+                          }}
                         >
-                          {/* Hàng chính */}
-                          <div
-                            className={`px-5 py-3.5 flex justify-between items-center ${
-                              hasIssues ? "cursor-pointer hover:bg-gray-50" : ""
-                            }`}
-                            onClick={() => {
-                              if (!hasIssues) return;
-                              setExpandedKeys((prev) =>
-                                prev.includes(idx)
-                                  ? prev.filter((k) => k !== idx)
-                                  : [...prev, idx],
-                              );
-                            }}
-                          >
-                            <div className="flex items-center gap-3">
-                              {/* Số thứ tự */}
-                              <span className="text-xs text-gray-400 w-6 text-right">
-                                {idx + 1}
-                              </span>
-                              <Text
-                                code
-                                copyable
-                                className="text-sm font-medium"
-                              >
-                                {item.code}
-                              </Text>
-                              {/* Badge số lỗi */}
-                              {item.errors.length > 0 &&
-                                (item.errors[0]?.label ===
-                                "Chưa có phiên học" ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
-                                    Chưa có phiên học
-                                  </span>
-                                ) : (
-                                  <Badge
-                                    count={item.errors.length}
-                                    style={{ backgroundColor: "#ef4444" }}
-                                    title={`${item.errors.length} điều kiện không đạt`}
-                                  />
-                                ))}
-                              {item.warnings.length > 0 && (
-                                <Badge
-                                  count={item.warnings.length}
-                                  style={{ backgroundColor: "#f59e0b" }}
-                                  title={`${item.warnings.length} cảnh báo`}
-                                />
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <StatusBadge status={item.status} />
-                              {hasIssues && (
-                                <span className="text-xs text-gray-400">
-                                  {isExpanded ? "▲" : "▼"}
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400 w-6 text-right">
+                              {idx + 1}
+                            </span>
+                            <Text code copyable className="text-sm font-medium">
+                              {item.code}
+                            </Text>
+                            {item.errors.length > 0 &&
+                              (item.errors[0]?.label === "Chưa có dữ liệu" ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
+                                  Chưa có dữ liệu
                                 </span>
-                              )}
-                            </div>
+                              ) : (
+                                <Badge
+                                  count={item.errors.length}
+                                  style={{ backgroundColor: "#ef4444" }}
+                                  title={`${item.errors.length} điều kiện không đạt`}
+                                />
+                              ))}
+                            {item.warnings.length > 0 && (
+                              <Badge
+                                count={item.warnings.length}
+                                style={{ backgroundColor: "#f59e0b" }}
+                                title={`${item.warnings.length} cảnh báo`}
+                              />
+                            )}
                           </div>
 
-                          {/* Chi tiết lỗi khi expand */}
-                          {isExpanded && hasIssues && (
-                            <div className="px-4 pb-4 space-y-1.5">
-                              {item.errors.map((err, i) => (
-                                <div
-                                  key={i}
-                                  className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5"
-                                >
-                                  <CloseCircleOutlined className="mt-0.5 shrink-0" />
-                                  <div>
-                                    <span className="font-semibold">
-                                      [{err.label}]
-                                    </span>{" "}
-                                    {err.message}
-                                  </div>
-                                </div>
-                              ))}
-                              {item.warnings.map((warn, i) => (
-                                <div
-                                  key={i}
-                                  className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5"
-                                >
-                                  <WarningOutlined className="mt-0.5 shrink-0" />
-                                  <div>
-                                    <span className="font-semibold">
-                                      [{warn.label}]
-                                    </span>{" "}
-                                    {warn.message}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-3">
+                            <StatusBadge status={item.status} />
+                            {hasIssues && (
+                              <span className="text-xs text-gray-400">
+                                {isExpanded ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </>
+
+                        {isExpanded && hasIssues && (
+                          <div className="px-4 pb-4 space-y-1.5">
+                            {item.errors.map((err, i) => (
+                              <div
+                                key={`${item.code}-error-${i}`}
+                                className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5"
+                              >
+                                <CloseCircleOutlined className="mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="font-semibold">
+                                    [{err.label}]
+                                  </span>{" "}
+                                  {err.message}
+                                </div>
+                              </div>
+                            ))}
+                            {item.warnings.map((warn, i) => (
+                              <div
+                                key={`${item.code}-warning-${i}`}
+                                className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5"
+                              >
+                                <WarningOutlined className="mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="font-semibold">
+                                    [{warn.label}]
+                                  </span>{" "}
+                                  {warn.message}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </Card>

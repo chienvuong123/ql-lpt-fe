@@ -32,3 +32,8 @@ export const kiemTraTrungThoiGian = async (body = {}) => {
   const response = await api.post("/phien", body);
   return response.data;
 };
+
+export const kiemTraToanKhoa = async (params = {}, config = {}) => {
+  const response = await api.post("/toan-khoa", params, config);
+  return response.data;
+};

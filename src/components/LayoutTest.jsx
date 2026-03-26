@@ -114,6 +114,16 @@ const LayoutTest = () => {
       ],
     },
     {
+      key: "cabin",
+      icon: <BsCalendar3 />,
+      label: "Cabin",
+      children: [
+        { key: "danh-sach-cabin", label: "Danh sách học viên Cabin" },
+        { key: "lich-cabin", label: "Chia lịch Cabin" },
+        { key: "hoc-bu-cabin", label: "Thiếu/bù giờ Cabin" },
+      ],
+    },
+    {
       key: "reports",
       icon: <BarChartOutlined />,
       label: "DAT",
@@ -147,17 +157,7 @@ const LayoutTest = () => {
       icon: <SafetyOutlined />,
       label: "Kiểm tra hàng năm",
     },
-    {
-      key: "cabin",
-      icon: <BsCalendar3 />,
-      label: "Cabin",
-      children: [
-        { key: "danh-sach-cabin", label: "Danh sách học viên Cabin" },
-        { key: "lich-cabin", label: "Chia lịch Cabin" },
-        { key: "hoc-bu-cabin", label: "Thiếu/bù giờ Cabin" },
-      ],
-    },
-    { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên" },
+    { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên public" },
     { key: "them-du-lieu", label: "Thêm dữ liệu vào hệ thống" },
   ];
 
@@ -166,6 +166,7 @@ const LayoutTest = () => {
     "class",
     "class-management",
     "quan-ly-hoc-vien-ly-thuyet",
+    "dashboard-ly-thuyet",
   ];
 
   const menuItems = isGiaoVien
