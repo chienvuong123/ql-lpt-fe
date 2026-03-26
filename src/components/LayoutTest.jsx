@@ -46,6 +46,7 @@ const menuPathMap = {
   "dashboard-ly-thuyet": "/dashboard-ly-thuyet",
   "hoc-vien-theo-giao-vien": "/hoc-vien-theo-giao-vien",
   "them-du-lieu": "/them-du-lieu",
+  "kiem-tra-trung-xe-giao-vien": "/kiem-tra-trung-xe-giao-vien",
 };
 
 const LayoutTest = () => {
@@ -107,7 +108,7 @@ const LayoutTest = () => {
       icon: <BookOutlined />,
       label: "Lý thuyết",
       children: [
-        // { key: "dashboard-ly-thuyet", label: "Dashboard lý thuyết" },
+        { key: "dashboard-ly-thuyet", label: "Dashboard lý thuyết" },
         { key: "class-management", label: "Lớp học lý thuyết" },
         { key: "quan-ly-hoc-vien-ly-thuyet", label: "Quản lý học viên" },
       ],
@@ -122,6 +123,10 @@ const LayoutTest = () => {
         {
           key: "hoc-vien-theo-giao-vien",
           label: "DS học viên theo GV",
+        },
+        {
+          key: "kiem-tra-trung-xe-giao-vien",
+          label: "Kiểm tra trùng xe, giáo viên",
         },
         { key: "check-full-course", label: "Báo cáo học viên hàng loạt" },
         { key: "hoc-vien-ky-dat", label: "Danh sách học viên kí DAT" },

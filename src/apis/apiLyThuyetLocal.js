@@ -21,3 +21,19 @@ export const ketQuaKiemTra = async (enrolmentPlanIid, params = {}) => {
   });
   return response.data;
 };
+
+export const ketQuaKiemTraTheoDanhSachIid = async (
+  enrolmentPlanIids = [],
+  params = {},
+) => {
+  const response = await axios.post(`${url}/hoc-vien/khoa/danh-sach`, {
+    enrolmentPlanIids,
+    ...params,
+  });
+  return response.data;
+};
+
+export const getDashboardLyThuyet = async (payload = {}) => {
+  const response = await axios.post(`${url}/dashboard`, payload);
+  return response.data;
+};

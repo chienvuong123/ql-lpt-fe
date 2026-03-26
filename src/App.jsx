@@ -27,9 +27,9 @@ import QuanLyHocVienLyThuyet from "./pages/class/QuanLyHocVienLyThuyet";
 import TruyXuatLoi from "./pages/dat/TruyXuatLoi";
 import { GiaoVienGuard } from "./components/RoleGuard";
 import DashboardDAT from "./pages/dat/DashboardDAT";
-import DashboardLYThuyet from "./pages/class/DashboardLYThuyet";
 import HocVienTheoGiaoVien from "./pages/dat/HocVienTheoGiaoVien";
 import ThemDuLieuVaoHeThong from "./pages/add-data/ThemDuLieuVaoHeThong";
+import DashboardLyThuyet from "./pages/class/DashboardLYThuyet";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -199,7 +199,7 @@ function App() {
                 element={
                   <GuardedRoute
                     path="/dashboard-ly-thuyet"
-                    element={<DashboardLYThuyet />}
+                    element={<DashboardLyThuyet />}
                   />
                 }
               />

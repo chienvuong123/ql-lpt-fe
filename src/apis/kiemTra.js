@@ -22,3 +22,13 @@ export const fetchCheckStudents = async (params = {}) => {
   const response = await api.get("/", { params });
   return response.data;
 };
+
+export const optionTeacherCheck = async (params = {}) => {
+  const response = await api.get("/giao-vien", { params });
+  return response.data;
+};
+
+export const kiemTraTrungThoiGian = async (body = {}) => {
+  const response = await api.post("/phien", body);
+  return response.data;
+};

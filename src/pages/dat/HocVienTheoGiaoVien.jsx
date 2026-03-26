@@ -1,11 +1,26 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useMemo, useState } from "react";
-import { Card, Col, Empty, Row, Select, Table, Typography } from "antd";
-import { useQuery } from "@tanstack/react-query";
+import {
+  Button,
+  Card,
+  Col,
+  Empty,
+  message,
+  Modal,
+  Row,
+  Select,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { DanhSachGiaoVien } from "../../apis/giaoVien";
 import { DanhSachKhoaHoc } from "../../apis/hocVien";
-import { fetchCheckStudents } from "../../apis/kiemTra";
+import {
+  fetchCheckStudents,
+  kiemTraTrungThoiGian,
+  optionTeacherCheck,
+} from "../../apis/kiemTra";
 
 const { Title, Text } = Typography;
 
@@ -15,6 +30,20 @@ const formatDate = (value) => {
   return date.isValid() ? date.format("DD/MM/YYYY") : "-";
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const date = dayjs(value);
+  return date.isValid() ? date.format("DD/MM/YYYY HH:mm:ss") : "-";
+};
+
+const conflictColors = [
+  { border: "#ef4444", background: "#fef2f2", tag: "red" },
+  { border: "#f59e0b", background: "#fffbeb", tag: "gold" },
+  { border: "#10b981", background: "#ecfdf5", tag: "green" },
+  { border: "#3b82f6", background: "#eff6ff", tag: "blue" },
+  { border: "#8b5cf6", background: "#f5f3ff", tag: "purple" },
+];
+
 const HocVienTheoGiaoVien = () => {
   const [selectedTeacher, setSelectedTeacher] = useState(undefined);
   const [selectedCourse, setSelectedCourse] = useState(undefined);
@@ -22,19 +51,8 @@ const HocVienTheoGiaoVien = () => {
     teacher: undefined,
     course: undefined,
   });
-
-  const { data: teacherResponse = {}, isLoading: isLoadingTeachers } = useQuery(
-    {
-      queryKey: ["hocVienTheoGiaoVien", "teachers"],
-      queryFn: () =>
-        DanhSachGiaoVien({
-          page: 1,
-          limit: 1000,
-        }),
-      staleTime: 1000 * 60 * 5,
-      retry: false,
-    },
-  );
+  const [duplicateCheckResult, setDuplicateCheckResult] = useState(null);
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
 
   const { data: courseResponse = {}, isLoading: isLoadingCourses } = useQuery({
     queryKey: ["hocVienTheoGiaoVien", "courses"],
@@ -42,6 +60,23 @@ const HocVienTheoGiaoVien = () => {
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
+
+  const { data: teacherResponse = {}, isLoading: isLoadingTeachers } = useQuery(
+    {
+      queryKey: ["hocVienTheoGiaoVien", "teachers", selectedCourse],
+      queryFn: () =>
+        optionTeacherCheck({
+          khoa: selectedCourse,
+        }),
+      enabled: !!selectedCourse,
+      staleTime: 1000 * 60 * 5,
+      retry: false,
+    },
+  );
+
+  useEffect(() => {
+    setSelectedTeacher(undefined);
+  }, [selectedCourse]);
 
   useEffect(() => {
     if (selectedTeacher && selectedCourse) {
@@ -57,6 +92,11 @@ const HocVienTheoGiaoVien = () => {
       course: undefined,
     });
   }, [selectedTeacher, selectedCourse]);
+
+  useEffect(() => {
+    setDuplicateCheckResult(null);
+    setIsConflictModalOpen(false);
+  }, [submittedFilter]);
 
   const {
     data: dataCheckStudents = {},
@@ -75,23 +115,18 @@ const HocVienTheoGiaoVien = () => {
   });
 
   const teacherOptions = useMemo(() => {
-    const teachers = Array.isArray(teacherResponse?.data?.Data)
-      ? teacherResponse.data.Data
-      : [];
+    const teachers = Array.isArray(teacherResponse?.data)
+      ? teacherResponse.data
+      : Array.isArray(teacherResponse?.Data)
+        ? teacherResponse.Data
+        : Array.isArray(teacherResponse?.result)
+          ? teacherResponse.result
+          : [];
 
-    return teachers
-      .filter((teacher) => teacher?.HoTen || teacher?.MaGV)
-      .map((teacher) => {
-        const teacherName = teacher?.HoTen || teacher?.MaGV;
-        const yearOfBirth = teacher?.NgaySinh
-          ? new Date(teacher.NgaySinh).getFullYear()
-          : null;
-
-        return {
-          value: teacherName,
-          label: yearOfBirth ? `${teacherName} - ${yearOfBirth}` : teacherName,
-        };
-      });
+    return teachers.filter(Boolean).map((teacher) => ({
+      value: teacher,
+      label: teacher,
+    }));
   }, [teacherResponse]);
 
   const courseOptions = useMemo(() => {
@@ -116,6 +151,76 @@ const HocVienTheoGiaoVien = () => {
     return Array.isArray(list) ? list : [];
   }, [dataCheckStudents]);
 
+  const filteredMaDkList = useMemo(
+    () =>
+      dataSource
+        .map((item) => String(item?.ma_dk || item?.maDangKy || "").trim())
+        .filter(Boolean),
+    [dataSource],
+  );
+
+  const conflictList = useMemo(() => {
+    if (Array.isArray(duplicateCheckResult?.conflicts)) {
+      return duplicateCheckResult.conflicts;
+    }
+
+    if (Array.isArray(duplicateCheckResult?.data?.conflicts)) {
+      return duplicateCheckResult.data.conflicts;
+    }
+
+    if (Array.isArray(duplicateCheckResult?.Data?.conflicts)) {
+      return duplicateCheckResult.Data.conflicts;
+    }
+
+    return [];
+  }, [duplicateCheckResult]);
+
+  const conflictCount = Number(
+    duplicateCheckResult?.tong_conflict ??
+      duplicateCheckResult?.data?.tong_conflict ??
+      duplicateCheckResult?.Data?.tong_conflict ??
+      conflictList.length ??
+      0,
+  );
+
+  const { mutate: handleDuplicateCheck, isPending: isCheckingDuplicate } =
+    useMutation({
+      mutationFn: () => {
+        const today = dayjs().format("YYYY-MM-DD");
+
+        return kiemTraTrungThoiGian({
+          ngaybatdau: "2022-01-01",
+          ngayketthuc: `${today}T23:59:00`,
+          ma_dk_list: filteredMaDkList,
+        });
+      },
+      onSuccess: (response) => {
+        const tongConflict = Number(
+          response?.tong_conflict ??
+            response?.data?.tong_conflict ??
+            response?.Data?.tong_conflict ??
+            0,
+        );
+
+        setDuplicateCheckResult(response);
+        setIsConflictModalOpen(false);
+
+        if (tongConflict > 0) {
+          message.warning(`Phát hiện ${tongConflict} cặp phiên bị trùng thời gian.`);
+          return;
+        }
+
+        message.success(
+          `Đã kiểm tra ${filteredMaDkList.length} mã đăng ký, không có phiên lỗi.`,
+        );
+      },
+      onError: (error) => {
+        setDuplicateCheckResult(null);
+        setIsConflictModalOpen(false);
+        message.error(error?.message || "Không thể kiểm tra trùng thời gian.");
+      },
+    });
+
   const columns = useMemo(
     () => [
       {
@@ -130,7 +235,7 @@ const HocVienTheoGiaoVien = () => {
         title: "Mã đăng ký",
         dataIndex: "maDangKy",
         key: "maDangKy",
-        width: 220,
+        width: 230,
       },
       {
         title: "Họ và tên",
@@ -167,7 +272,7 @@ const HocVienTheoGiaoVien = () => {
         title: "Khóa",
         dataIndex: "khoaHoc",
         key: "khoaHoc",
-        width: 140,
+        width: 90,
         align: "center",
         render: (value) => value || "-",
       },
@@ -257,6 +362,7 @@ const HocVienTheoGiaoVien = () => {
               onChange={setSelectedTeacher}
               options={teacherOptions}
               loading={isLoadingTeachers}
+              disabled={!selectedCourse}
               allowClear
               showSearch
               optionFilterProp="label"
@@ -288,6 +394,25 @@ const HocVienTheoGiaoVien = () => {
               </span>
             </Text>
           </div>
+
+          {submittedFilter.teacher &&
+          submittedFilter.course &&
+          filteredMaDkList.length > 0 ? (
+            <div className="!flex !items-center !gap-2">
+              <Button
+                type="primary"
+                onClick={() => handleDuplicateCheck()}
+                loading={isCheckingDuplicate}
+              >
+                Kiểm tra
+              </Button>
+              {conflictCount > 0 ? (
+                <Button onClick={() => setIsConflictModalOpen(true)}>
+                  Xem chi tiết lỗi
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {submittedFilter.teacher && submittedFilter.course ? (
@@ -315,6 +440,99 @@ const HocVienTheoGiaoVien = () => {
           <Empty description="Chọn khóa học và giáo viên để tải danh sách học viên" />
         )}
       </Card>
+
+      <Modal
+        title={`Chi tiết phiên lỗi (${conflictCount})`}
+        open={isConflictModalOpen}
+        onCancel={() => setIsConflictModalOpen(false)}
+        footer={null}
+        width={1000}
+      >
+        {conflictList.length > 0 ? (
+          <div className="!space-y-4">
+            {conflictList.map((conflict, index) => {
+              const color = conflictColors[index % conflictColors.length];
+              const sessions = [
+                { key: "phien_1", label: "Phiên 1", data: conflict?.phien_1 },
+                { key: "phien_2", label: "Phiên 2", data: conflict?.phien_2 },
+              ];
+
+              return (
+                <div
+                  key={`${conflict?.phien_1?.id || "p1"}-${conflict?.phien_2?.id || "p2"}-${index}`}
+                  className="rounded-xl border p-4"
+                  style={{
+                    borderColor: color.border,
+                    backgroundColor: color.background,
+                  }}
+                >
+                  <div className="!mb-3 !flex !items-center !justify-between !gap-3">
+                    <div className="!flex !items-center !gap-2 !flex-wrap">
+                      <Tag color={color.tag}>Lỗi #{index + 1}</Tag>
+                      <Text strong>{conflict?.giaoVien || "Không rõ giáo viên"}</Text>
+                    </div>
+                    <Text type="secondary">Cặp phiên bị trùng thời gian</Text>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {sessions.map((session) => (
+                      <div
+                        key={session.key}
+                        className="rounded-lg border bg-white p-4"
+                        style={{ borderColor: color.border }}
+                      >
+                        <div className="!mb-3">
+                          <Tag color={color.tag}>{session.label}</Tag>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                          <div>
+                            <Text type="secondary">Mã đăng ký</Text>
+                            <div className="font-medium">
+                              {session?.data?.ma_dk || "-"}
+                            </div>
+                          </div>
+                          <div>
+                            <Text type="secondary">Khóa học</Text>
+                            <div className="font-medium">
+                              {session?.data?.khoaHoc || "-"}
+                            </div>
+                          </div>
+                          <div>
+                            <Text type="secondary">Biển số</Text>
+                            <div className="font-medium">
+                              {session?.data?.bienSo || "-"}
+                            </div>
+                          </div>
+                          <div>
+                            <Text type="secondary">Mã phiên</Text>
+                            <div className="font-medium">
+                              {session?.data?.id || "-"}
+                            </div>
+                          </div>
+                          <div>
+                            <Text type="secondary">Đăng nhập</Text>
+                            <div className="font-medium">
+                              {formatDateTime(session?.data?.dangNhap)}
+                            </div>
+                          </div>
+                          <div>
+                            <Text type="secondary">Đăng xuất</Text>
+                            <div className="font-medium">
+                              {formatDateTime(session?.data?.dangXuat)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty description="Không có phiên lỗi." />
+        )}
+      </Modal>
     </div>
   );
 };
