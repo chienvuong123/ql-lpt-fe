@@ -59,10 +59,12 @@ const LyThuyetScoreModal = ({
         <Empty description="Khong co du lieu diem" />
       )}
       <Space className="!bg-gray-100 !mt-8 w-full px-3 py-3">
-        <Text className="!text-sm !text-gray-600">Làm bài hết môn: </Text>
+        <Text className="!text-sm !text-gray-600">
+          Kiểm tra kết thúc môn học:{" "}
+        </Text>
         <strong
           style={{
-            color: loaiHetMon === "Chưa làm bài hết môn" ? "red" : "green",
+            color: loaiHetMon === "Chưa làm" ? "red" : "green",
           }}
         >
           {loadingStatus ? "Dang tai..." : loaiHetMon}

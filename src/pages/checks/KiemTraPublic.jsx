@@ -376,7 +376,7 @@ const KiemTraPublic = () => {
     // const loaiLyThuyet = raw?.loai_ly_thuyet;
 
     return {
-      loaiHetMon: loaiHetMon ? "Đã làm bài hết môn" : "Chưa làm bài hết môn",
+      loaiHetMon: loaiHetMon ? "Đã làm" : "Chưa làm",
       loaiHetMonStatus: loaiHetMon,
     };
   }, [chiTietLyThuyetData]);
@@ -441,13 +441,22 @@ const KiemTraPublic = () => {
     100,
     Math.round((totalCabinSeconds / requiredCabinSeconds) * 100),
   );
+  const isAllCabinRulesPassed =
+    cabinGroupedByRule.length > 0 &&
+    cabinGroupedByRule.every((item) => item.learnedMinutes >= item.passMinutes);
 
   const cabinText = useMemo(() => {
     if (loadingCabin) return "Đang tải dữ liệu CABIN...";
     if (cabinDataList.length === 0) return "Trượt";
 
-    return isCabinPassed ? "Đạt" : "Trượt";
-  }, [loadingCabin, cabinDataList.length, isCabinPassed]);
+    return isCabinPassed && isAllCabinRulesPassed ? "Đạt" : "Trượt";
+  }, [
+    loadingCabin,
+    cabinDataList.length,
+    isCabinPassed,
+    isAllCabinRulesPassed,
+  ]);
+  const isCabinFinalPassed = isCabinPassed && isAllCabinRulesPassed;
 
   useEffect(() => {
     window.history.pushState(null, null, window.location.href);
@@ -752,7 +761,7 @@ const KiemTraPublic = () => {
                         >
                           <Text
                             className={`!text-xs !font-bold ${
-                              isCabinPassed
+                              isCabinFinalPassed
                                 ? "!text-[#1b8a35]"
                                 : "!text-[#dc2626]"
                             }`}

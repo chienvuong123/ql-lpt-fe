@@ -94,12 +94,6 @@ function App() {
                 }
               />
               <Route
-                path="lich-cabin"
-                element={
-                  <GuardedRoute path="/lich-cabin" element={<LichCabin />} />
-                }
-              />
-              <Route
                 path="hoc-bu-cabin"
                 element={
                   <GuardedRoute path="/hoc-bu-cabin" element={<BuCaBin />} />
@@ -216,6 +210,12 @@ function App() {
               <Route path="them-du-lieu" element={<ThemDuLieuVaoHeThong />} />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
+            <Route
+              path="lich-cabin"
+              element={
+                <GuardedRoute path="/lich-cabin" element={<LichCabin />} />
+              }
+            />
           </Routes>
         </BrowserRouter>
       </ConfigProvider>
