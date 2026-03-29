@@ -101,3 +101,12 @@ export const formatHoursToHM = (hours = 0) => {
 
   return `${h}h ${m}'`;
 };
+
+export const formatMinutesToHM = (minutes = 0) => {
+  if (!minutes || isNaN(minutes)) return "0h 0'";
+
+  let h = Math.floor(minutes / 60);
+  let m = minutes % 60;
+
+  return `${h}h ${m} phút`;
+};
