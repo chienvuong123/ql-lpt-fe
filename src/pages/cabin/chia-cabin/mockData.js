@@ -58,15 +58,17 @@ function randomMaDK(index) {
 
 function createStudent(index, forceCabin = null, customMinutes = null) {
   const hasCabin = forceCabin !== null ? forceCabin : Math.random() > 0.4; // 60% có cabin
-  const khoaList = ["K20", "K21", "K22", "K23", "K24"];
+  const khoaList = ["K26B122", "K26B001", "K26B002", "K26B003", " K26B0123"];
   const khoa = khoaList[Math.floor(Math.random() * khoaList.length)];
 
   let daysToAdd = 0;
-  if (khoa === "K20") daysToAdd = Math.floor(Math.random() * 20) + 1; // 1 to 20 days
-  else if (khoa === "K21") daysToAdd = 30 + Math.floor(Math.random() * 20);
-  else if (khoa === "K22") daysToAdd = 60 + Math.floor(Math.random() * 20);
-  else if (khoa === "K23") daysToAdd = 90 + Math.floor(Math.random() * 20);
-  else if (khoa === "K24") daysToAdd = 120 + Math.floor(Math.random() * 20);
+  if (khoa === "K26B122")
+    daysToAdd = Math.floor(Math.random() * 20) + 1; // 1 to 20 days
+  else if (khoa === "K26B001") daysToAdd = 30 + Math.floor(Math.random() * 20);
+  else if (khoa === "K26B002") daysToAdd = 60 + Math.floor(Math.random() * 20);
+  else if (khoa === "K26B003") daysToAdd = 90 + Math.floor(Math.random() * 20);
+  else if (khoa === "K26B0123")
+    daysToAdd = 120 + Math.floor(Math.random() * 20);
 
   const endDate = new Date();
   endDate.setDate(endDate.getDate() + daysToAdd);
@@ -91,7 +93,7 @@ function createStudent(index, forceCabin = null, customMinutes = null) {
     dat_cabin: hasCabin,
     hang_xe: Math.random() > 0.4 ? "B2" : "B1",
     khoa_hoc: khoa,
-    
+
     ngay_bat_dau: formatDate(startDate),
     ngay_ket_thuc: formatDate(endDate),
 
