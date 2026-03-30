@@ -76,6 +76,46 @@ const SettingsModal = ({
                     className="w-full"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-6 pb-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Số Cabin hạng B1
+                    </label>
+                    <InputNumber
+                      min={0}
+                      max={5}
+                      value={globalConfig.b1Cabins}
+                      onChange={(v) =>
+                        setGlobalConfig({
+                          ...globalConfig,
+                          b1Cabins: v,
+                          b2Cabins: 5 - v,
+                        })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Số Cabin hạng B2
+                    </label>
+                    <InputNumber
+                      min={0}
+                      max={5}
+                      value={globalConfig.b2Cabins}
+                      onChange={(v) =>
+                        setGlobalConfig({
+                          ...globalConfig,
+                          b1Cabins: 5 - v,
+                          b2Cabins: v,
+                        })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </div>
             ),
           },
@@ -159,7 +199,6 @@ const SettingsModal = ({
         <Button
           type="primary"
           onClick={() => {
-            setSchedule({});
             setSettingsModal(false);
             message.success("Đã lưu cài đặt thời gian!");
           }}

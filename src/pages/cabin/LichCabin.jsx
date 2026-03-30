@@ -10,6 +10,8 @@ import {
   UserOutlined,
   DragOutlined,
   DownOutlined,
+  LockOutlined,
+  UnlockOutlined,
 } from "@ant-design/icons";
 import {
   Input,
@@ -56,6 +58,19 @@ const StudentMiniCard = ({ student, onRemove, onViewDetail, isDragging }) => (
         {student.bai_cabin !== null && (
           <Tag color="blue" className="!text-[10px] !px-1 !py-0 !m-0">
             Bài {student.bai_cabin}
+          </Tag>
+        )}
+        {student.hang_xe && (
+          <Tag
+            color={student.hang_xe === "B1" ? "magenta" : "geekblue"}
+            className="!text-[10px] !px-1 !py-0 !m-0"
+          >
+            Hạng {student.hang_xe}
+          </Tag>
+        )}
+        {student.khoa_hoc && (
+          <Tag color="default" className="!text-[10px] !px-1 !py-0 !m-0">
+            {student.khoa_hoc}
           </Tag>
         )}
         {student.phut_cabin !== null && (
@@ -176,15 +191,16 @@ const LichCabin = () => {
     endTime: "19:30",
     maxPerCabin: 4, // Giới hạn số người tối đa trong 1 cabin
     intervalMinutes: 10, // Khoảng cách giữa các học viên (phút)
-  });
-  const [dayConfigs, setDayConfigs] = useState({
-    5: { start: "07:00", end: "19:30", noSessions: false },
+    b1Cabins: 2,
+    b2Cabins: 3,
   });
 
   // weekSchedules: { [weekKey]: { assignedMaDks: Set, schedule: {} } }
   const [weekSchedules, setWeekSchedules] = useState({});
 
   const [search, setSearch] = useState("");
+  const [filterKhoa, setFilterKhoa] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [settingsModal, setSettingsModal] = useState(false);
   const [cabinLimitModal, setCabinLimitModal] = useState(false);
   const [week, setWeek] = useState(new Date("2026-03-23"));
@@ -203,24 +219,38 @@ const LichCabin = () => {
 
   // Lấy data của tuần hiện tại
   const currentWeekData = useMemo(
-    () => weekSchedules[weekKey] || { assignedMaDks: new Set(), schedule: {} },
+    () => weekSchedules[weekKey] || { assignedMaDks: new Set(), schedule: {}, dayConfigs: {} },
     [weekSchedules, weekKey],
   );
 
   const assignedMaDks = currentWeekData.assignedMaDks;
   const schedule = currentWeekData.schedule;
+  const dayConfigs = currentWeekData.dayConfigs || {};
+  const lockedCabins = currentWeekData.lockedCabins || {};
 
   // Helper để update tuần hiện tại
   const updateCurrentWeek = useCallback(
     (updater) => {
       setWeekSchedules((prev) => {
-        const old = prev[weekKey] || { assignedMaDks: new Set(), schedule: {} };
-        const updated = updater(old);
-        return { ...prev, [weekKey]: updated };
+        const old = prev[weekKey] || { assignedMaDks: new Set(), schedule: {}, dayConfigs: {} };
+        const updated = typeof updater === "function" ? updater(old) : updater;
+        return { ...prev, [weekKey]: { ...old, ...updated } };
       });
     },
     [weekKey],
   );
+
+  const toggleLock = useCallback((slotKey) => {
+    updateCurrentWeek((old) => {
+      const locks = old.lockedCabins || {};
+      return {
+        lockedCabins: {
+          ...locks,
+          [slotKey]: !locks[slotKey]
+        }
+      };
+    });
+  }, [updateCurrentWeek]);
 
   const setAssignedMaDks = useCallback(
     (newSet) => {
@@ -242,6 +272,19 @@ const LichCabin = () => {
     [updateCurrentWeek],
   );
 
+  const setDayConfigs = useCallback(
+    (newConfigsOrUpdater) => {
+      updateCurrentWeek((old) => ({
+        ...old,
+        dayConfigs:
+          typeof newConfigsOrUpdater === "function"
+            ? newConfigsOrUpdater(old.dayConfigs || {})
+            : newConfigsOrUpdater,
+      }));
+    },
+    [updateCurrentWeek],
+  );
+
   // ── Schedule helpers ──
   const getDayConfig = useCallback(
     (dayIdx) => {
@@ -256,25 +299,40 @@ const LichCabin = () => {
     [dayConfigs, globalConfig],
   );
 
+  const globalSessions = useMemo(() => {
+    const arr = [];
+    let start = timeToMin(globalConfig.startTime);
+    const endMin = timeToMin(globalConfig.endTime);
+    let i = 1;
+    while (start + globalConfig.duration <= endMin) {
+      arr.push({
+        num: i,
+        startMin: start,
+        endMin: start + globalConfig.duration,
+        time: `${minToTime(start)}-${minToTime(start + globalConfig.duration)}`,
+      });
+      start += globalConfig.duration;
+      i++;
+    }
+    return arr;
+  }, [globalConfig.startTime, globalConfig.endTime, globalConfig.duration]);
+
   const getSessions = useCallback(
     (dayIdx) => {
       const cfg = getDayConfig(dayIdx);
-      if (cfg.noSessions) return [];
-      const sessions = [];
-      let start = timeToMin(cfg.start);
-      const endMin = timeToMin(cfg.end);
-      let i = 1;
-      while (start + globalConfig.duration <= endMin) {
-        sessions.push({
-          num: i,
-          time: `${minToTime(start)}-${minToTime(start + globalConfig.duration)}`,
-        });
-        start += globalConfig.duration;
-        i++;
-      }
-      return sessions;
+      if (cfg.noSessions) return globalSessions.map(() => null);
+      
+      const dayStartMin = timeToMin(cfg.start);
+      const dayEndMin = timeToMin(cfg.end);
+
+      return globalSessions.map(gSess => {
+        if (gSess.startMin >= dayStartMin && gSess.endMin <= dayEndMin) {
+          return gSess;
+        }
+        return null;
+      });
     },
-    [getDayConfig, globalConfig.duration],
+    [getDayConfig, globalSessions],
   );
 
   const weekDates = useMemo(() => {
@@ -293,10 +351,12 @@ const LichCabin = () => {
     weekDates.forEach((_, di) => {
       const dayIdx = (di + 1) % 7;
       getSessions(dayIdx).forEach((sess) => {
-        s[`${di}-${sess.num}`] = {
-          time: sess.time,
-          cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
-        };
+        if (sess) {
+          s[`${di}-${sess.num}`] = {
+            time: sess.time,
+            cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+          };
+        }
       });
     });
     return s;
@@ -367,8 +427,10 @@ const LichCabin = () => {
   //  • Ghép nhiều người chỉ dành cho hasData, tuân theo maxPerCabin & thời gian
   // ────────────────────────────────────────────────────────────────────────────
   const canDropIntoCabin = useCallback(
-    (targetMaDkList, droppingMaDks) => {
-      const { duration, maxPerCabin } = globalConfig;
+    (targetMaDkList, droppingMaDks, targetCn, slotKey) => {
+      if (slotKey && lockedCabins[slotKey]) return false;
+      const { duration, maxPerCabin, b1Cabins } = globalConfig;
+      const targetType = Number(targetCn) > 5 - b1Cabins ? "B1" : "B2";
 
       const existingStudents = targetMaDkList
         .map(getStudentByMaDk)
@@ -376,6 +438,11 @@ const LichCabin = () => {
       const droppingStudents = droppingMaDks
         .map(getStudentByMaDk)
         .filter(Boolean);
+
+      // KHÔNG cho phép thả nếu sai hạng xe
+      if (droppingStudents.some((s) => s.hang_xe !== targetType)) {
+        return false;
+      }
 
       // ── Cabin đang có noData → không cho thêm vào (chỉ swap, xử lý riêng)
       if (existingStudents.some(isNoData)) return false;
@@ -395,48 +462,109 @@ const LichCabin = () => {
       const totalTime = calcCabinTime(allInCabin);
       return totalTime < duration;
     },
-    [globalConfig, getStudentByMaDk, calcCabinTime],
+    [globalConfig, getStudentByMaDk, calcCabinTime, lockedCabins],
   );
 
   // ────────────────────────────────────────────────────────────────────────────
   // AUTO-ASSIGN
   // ────────────────────────────────────────────────────────────────────────────
   const handleAutoAssign = (mode = "all") => {
+    // Kiểm tra xem có slot nào đã có người xếp nhưng chưa bị khoá không
+    let hasUnlockedNonEmpty = false;
+    Object.keys(fullSchedule).forEach((key) => {
+      [1, 2, 3, 4, 5].forEach((cn) => {
+        const slotKey = `${key}-${cn}`;
+        if (
+          !lockedCabins[slotKey] &&
+          fullSchedule[key]?.cabins[cn]?.length > 0
+        ) {
+          hasUnlockedNonEmpty = true;
+        }
+      });
+    });
+
+    if (hasUnlockedNonEmpty) {
+      Modal.confirm({
+        title: "Xác nhận Tự động chia",
+        content:
+          "Tuần này đã có sẵn học viên trên Lịch. Bạn muốn XOÁ TRỐNG các suất chưa bị khoá để chia lại từ đầu, hay GIỮ NGUYÊN và chỉ chia tiếp vào các suất còn trống?",
+        okText: "Xoá và Chia lại",
+        okType: "danger",
+        cancelText: "Chỉ điền suất trống",
+        onOk: () => doAutoAssign(mode, true),
+        onCancel: () => doAutoAssign(mode, false),
+      });
+    } else {
+      doAutoAssign(mode, false);
+    }
+  };
+
+  const doAutoAssign = (mode = "all", resetUnlocked = false) => {
     try {
       const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
+      const newAssignedThisWeek = new Set(assignedMaDks);
+
+      if (resetUnlocked) {
+        // Step 1: CLEAR unlocked slots for the current week
+        Object.keys(newSchedule).forEach((key) => {
+          [1, 2, 3, 4, 5].forEach((cn) => {
+            const slotKey = `${key}-${cn}`;
+            if (!lockedCabins[slotKey]) {
+              const studentsInSlot = newSchedule[key].cabins[cn] || [];
+              studentsInSlot.forEach((id) => newAssignedThisWeek.delete(id));
+              newSchedule[key].cabins[cn] = [];
+            }
+          });
+        });
+      }
+
+      // Step 2: Tính toán lại global unassigned dựa trên danh sách vừa reset
+      const globalAssigned = new Set();
+      Object.keys(weekSchedules).forEach((wk) => {
+        if (wk !== weekKey) {
+          weekSchedules[wk].assignedMaDks.forEach((id) =>
+            globalAssigned.add(id),
+          );
+        }
+      });
+      newAssignedThisWeek.forEach((id) => globalAssigned.add(id));
+
       const newAssigned = new Set();
 
-      // Học viên chưa được chia ở BẤT KỲ tuần nào
+      // Học viên chưa được chia (xét theo global tuần cộng dồn)
       const unassigned = allStudents.filter(
-        (s) => !allAssignedMaDks.has(s.ma_dk),
-      );
+        (s) => !globalAssigned.has(s.ma_dk),
+      ).sort((a, b) => {
+        const dateA = new Date(a.ngay_ket_thuc || 0).getTime();
+        const dateB = new Date(b.ngay_ket_thuc || 0).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.giao_vien || "").localeCompare(b.giao_vien || "");
+      });
 
       const groupA = unassigned.filter(isNoData);
+      const groupA_B1 = groupA.filter((s) => s.hang_xe === "B1");
+      const groupA_B2 = groupA.filter((s) => s.hang_xe === "B2");
 
       // Nhóm B: HV có dữ liệu và còn thiếu giờ (phut_thieu > 0)
-      // Lọc thêm: phút còn thiếu phải <= duration (1 HV 1 mình phải vừa 1 ca)
       const groupB =
         mode === "all"
           ? unassigned.filter((s) => {
               if (!isHasData(s)) return false;
               const remaining = getRemaining(s, globalConfig.duration);
-              // Phải còn thiếu giờ VÀ 1 mình cũng vừa ca
               return remaining > 0 && remaining <= globalConfig.duration;
             })
           : [];
-      const binsB =
-        mode === "all"
-          ? binPackStudents(
-              groupB,
-              globalConfig.duration,
-              globalConfig.maxPerCabin,
-              globalConfig.intervalMinutes,
-            )
-          : [];
 
-      // Lấy slot trống theo thứ tự: Ngày (T2 → CN) → Ca (sớm → muộn)
-      const emptySlots = [];
-      Object.keys(newSchedule)
+      const groupB_B1 = groupB.filter((s) => s.hang_xe === "B1");
+      const groupB_B2 = groupB.filter((s) => s.hang_xe === "B2");
+
+      const binsB_B1 = mode === "all" ? binPackStudents(groupB_B1, globalConfig.duration, globalConfig.maxPerCabin, globalConfig.intervalMinutes) : [];
+      const binsB_B2 = mode === "all" ? binPackStudents(groupB_B2, globalConfig.duration, globalConfig.maxPerCabin, globalConfig.intervalMinutes) : [];
+
+      // Dùng initSchedule để LOẠI BỎ ghost keys
+      const emptySlotsB1 = [];
+      const emptySlotsB2 = [];
+      Object.keys(initSchedule)
         .sort((a, b) => {
           const [diA, snA] = a.split("-").map(Number);
           const [diB, snB] = b.split("-").map(Number);
@@ -445,36 +573,51 @@ const LichCabin = () => {
         })
         .forEach((key) => {
           [1, 2, 3, 4, 5].forEach((cn) => {
-            if (newSchedule[key].cabins[cn].length === 0) {
-              emptySlots.push({ key, cn });
+            // Đảm bảo không ghi đè nếu đã có người gán
+            if (newSchedule[key] && newSchedule[key].cabins[cn]?.length === 0) {
+              const slotKey = `${key}-${cn}`;
+              if (!lockedCabins[slotKey]) {
+                if (Number(cn) > 5 - globalConfig.b1Cabins) {
+                  emptySlotsB1.push({ key, cn });
+                } else {
+                  emptySlotsB2.push({ key, cn });
+                }
+              }
             }
           });
         });
 
-      let slotIdx = 0;
-
-      // Bước 1: Luôn chia Nhóm A trước (ưu tiên tuyệt đối)
-      for (const student of groupA) {
-        if (slotIdx >= emptySlots.length) break;
-        const { key, cn } = emptySlots[slotIdx++];
-        newSchedule[key].cabins[cn] = [student.ma_dk];
-        newAssigned.add(student.ma_dk);
-      }
-
-      // Bước 2: Chỉ chia Nhóm B nếu mode = "all"
-      if (mode === "all") {
-        for (const bin of binsB) {
+      // Helper phân bổ
+      const fillSlots = (studentsOrBins, isBin, emptySlots) => {
+        let slotIdx = 0;
+        for (const item of studentsOrBins) {
           if (slotIdx >= emptySlots.length) break;
           const { key, cn } = emptySlots[slotIdx++];
-          newSchedule[key].cabins[cn] = bin.map((s) => s.ma_dk);
-          bin.forEach((s) => newAssigned.add(s.ma_dk));
+          
+          if (!newSchedule[key]) {
+             newSchedule[key] = { time: initSchedule[key].time, cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
+          }
+          
+          const maDksToAssign = isBin ? item.map((s) => s.ma_dk) : [item.ma_dk];
+          newSchedule[key].cabins[cn] = maDksToAssign;
+          maDksToAssign.forEach((id) => newAssigned.add(id));
         }
-      }
+        // Trả về số slot còn trống
+        return emptySlots.slice(slotIdx);
+      };
+
+      // Xếp B1
+      let remainB1 = fillSlots(groupA_B1, false, emptySlotsB1);
+      if (mode === "all") fillSlots(binsB_B1, true, remainB1);
+
+      // Xếp B2
+      let remainB2 = fillSlots(groupA_B2, false, emptySlotsB2);
+      if (mode === "all") fillSlots(binsB_B2, true, remainB2);
 
       // Cập nhật state
       updateCurrentWeek(() => ({
         schedule: newSchedule,
-        assignedMaDks: new Set([...assignedMaDks, ...newAssigned]),
+        assignedMaDks: new Set([...newAssignedThisWeek, ...newAssigned]),
       }));
 
       const cntA = groupA.filter((s) => newAssigned.has(s.ma_dk)).length;
@@ -573,16 +716,20 @@ const LichCabin = () => {
   // Điều kiện: HV kéo là noData (1 người) VÀ cabin đích đang có đúng 1 noData
   // Áp dụng cả khi kéo từ list lẫn từ cabin khác
   const canSwap = useCallback(
-    (targetMaDkList, droppingMaDks) => {
+    (targetMaDkList, droppingMaDks, targetCn) => {
       if (droppingMaDks.length !== 1 || targetMaDkList.length !== 1)
         return false;
       const droppingStudent = getStudentByMaDk(droppingMaDks[0]);
       const targetStudent = getStudentByMaDk(targetMaDkList[0]);
       if (!droppingStudent || !targetStudent) return false;
+      
+      const targetType = Number(targetCn) > 5 - globalConfig.b1Cabins ? "B1" : "B2";
+      if (droppingStudent.hang_xe !== targetType) return false;
+
       // Chỉ swap khi HV kéo là noData VÀ HV đích là noData
       return isNoData(droppingStudent) && isNoData(targetStudent);
     },
-    [getStudentByMaDk],
+    [getStudentByMaDk, globalConfig.b1Cabins],
   );
 
   const handleDrop = useCallback(
@@ -623,10 +770,15 @@ const LichCabin = () => {
       }
 
       const existingInTarget = newSchedule[targetKey].cabins[targetCn];
+      const targetSlotKey = `${targetDi}-${targetSn}-${targetCn}`;
+      if (lockedCabins[targetSlotKey]) {
+        message.error("Cabin này đã bị khoá, không thể nhận thêm học viên!");
+        return;
+      }
 
       // ── Kiểm tra swap ──
       // Swap xảy ra khi: HV kéo là noData, cabin đích có đúng 1 noData
-      const shouldSwap = canSwap(existingInTarget, maDks);
+      const shouldSwap = canSwap(existingInTarget, maDks, targetCn);
 
       if (shouldSwap) {
         const swappedId = existingInTarget[0];
@@ -661,7 +813,7 @@ const LichCabin = () => {
       }
 
       // ── Kiểm tra overflow / invalid drop ──
-      if (!canDropIntoCabin(existingInTarget, maDks)) {
+      if (!canDropIntoCabin(existingInTarget, maDks, targetCn, targetSlotKey)) {
         const existingStudents = existingInTarget
           .map(getStudentByMaDk)
           .filter(Boolean);
@@ -679,6 +831,8 @@ const LichCabin = () => {
               "Học viên chưa học Cabin phải ở riêng 1 cabin, không thể ghép nhóm!",
             );
           }
+        } else if (droppingStudents.some(s => s.hang_xe !== (Number(targetCn) > 5 - globalConfig.b1Cabins ? "B1" : "B2"))) {
+          message.error("Học viên không khớp Hạng Xe với Cabin này!");
         } else if (existingStudents.some(isNoData)) {
           message.error(
             "Cabin này đang có học viên chưa học Cabin (phải ở riêng), không thể thêm vào!",
@@ -752,29 +906,30 @@ const LichCabin = () => {
 
   // ── Filter list ──
   // Danh sách chờ: chưa được chia ở bất kỳ tuần nào
+  const uniqueKhoaHoc = useMemo(() => {
+    const list = [...new Set(allStudents.map(s => s.khoa_hoc).filter(Boolean))];
+    return list.sort();
+  }, [allStudents]);
+
   const availableStudents = useMemo(
     () =>
       allStudents.filter(
-        (s) =>
-          !allAssignedMaDks.has(s.ma_dk) &&
-          (s.ho_ten.toLowerCase().includes(search.toLowerCase()) ||
+        (s) => {
+          if (allAssignedMaDks.has(s.ma_dk)) return false;
+          if (filterKhoa !== "all" && s.khoa_hoc !== filterKhoa) return false;
+          if (filterStatus === "noData" && !isNoData(s)) return false;
+          if (filterStatus === "hasData" && !isHasData(s)) return false;
+          
+          return (s.ho_ten.toLowerCase().includes(search.toLowerCase()) ||
             s.ma_dk.includes(search) ||
-            s.giao_vien.toLowerCase().includes(search.toLowerCase())),
+            s.giao_vien.toLowerCase().includes(search.toLowerCase()));
+        }
       ),
-    [allStudents, allAssignedMaDks, search],
+    [allStudents, allAssignedMaDks, search, filterKhoa, filterStatus],
   );
 
   const dateStr = (d) =>
     `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-
-  const maxSessions = useMemo(
-    () =>
-      Math.max(
-        ...weekDates.map((_, di) => getSessions((di + 1) % 7).length || 0),
-        0,
-      ),
-    [weekDates, getSessions],
-  );
 
   const totalSlots = Object.keys(fullSchedule).length * 5;
   const assignedSlots = Object.values(fullSchedule).reduce(
@@ -804,10 +959,20 @@ const LichCabin = () => {
     const students = maDkList.map(getStudentByMaDk).filter(Boolean);
     const isEmpty = students.length === 0;
     const hasMultiple = students.length > 1;
+    const cType = Number(cabinNum) > 5 - globalConfig.b1Cabins ? "B1" : "B2";
 
     const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
+    const isLocked = lockedCabins[slotKey] || false;
     const isDragOver = dragOverSlot === slotKey;
     const isPopoverOpen = openPopover === slotKey;
+
+    const currentViewDate = weekDates[0] || new Date();
+    const hasExpiringStudent = students.some(s => {
+      if (!s.ngay_ket_thuc) return false;
+      const endD = new Date(s.ngay_ket_thuc);
+      const diffDays = (endD.getTime() - currentViewDate.getTime()) / (1000 * 3600 * 24);
+      return diffDays <= 14 && diffDays >= -30;
+    });
 
     const totalTime = calcCabinTime(students);
     const minuteOverflow = totalTime >= globalConfig.duration;
@@ -818,21 +983,21 @@ const LichCabin = () => {
 
     // Check swap trước: noData kéo vào cabin đang có đúng 1 noData → hoán đổi
     const willSwap =
-      !isEmpty && draggingMaDks.length > 0 && canSwap(maDkList, draggingMaDks);
+      !isLocked && !isEmpty && draggingMaDks.length > 0 && canSwap(maDkList, draggingMaDks);
 
     // dropAllowed: true nếu thêm được bình thường HOẶC sẽ swap
-    const dropAllowed = isEmpty
-      ? true
+    const dropAllowed = isLocked
+      ? false
       : willSwap
         ? true
-        : canDropIntoCabin(maDkList, draggingMaDks);
+        : canDropIntoCabin(maDkList, draggingMaDks, cabinNum, slotKey);
 
     // ── Popover content ──
     const popoverContent = (
       <div className="w-64 space-y-2 max-h-80 overflow-y-auto">
         <div className="flex items-center justify-between pb-1 border-b border-gray-100">
           <span className="font-semibold text-sm text-gray-700">
-            Cabin {cabinNum} — {students.length}/{globalConfig.maxPerCabin} HV
+            Cabin {cabinNum} ({cType}) — {students.length}/{globalConfig.maxPerCabin} HV
           </span>
           {totalTime > 0 && (
             <Tag color={hasError ? "red" : "green"}>
@@ -884,11 +1049,12 @@ const LichCabin = () => {
         onDrop={(e) => handleDrop(e, dateIndex, sessionNum, cabinNum)}
         className={[
           "relative border rounded-md px-1 py-1 flex flex-col transition-all duration-100 group min-h-[52px]",
-          isEmpty
+          hasExpiringStudent ? "ring-[1.5px] ring-orange-300 border-orange-400 bg-orange-50" : "",
+          !hasExpiringStudent && isEmpty
             ? "bg-white border-gray-200 cursor-pointer hover:border-blue-300"
-            : hasError
+            : (!hasExpiringStudent && hasError)
               ? "bg-red-50 border-red-200"
-              : "bg-blue-50 border-blue-200",
+              : (!hasExpiringStudent) ? "bg-blue-50 border-blue-200" : "",
           isDragOver && willSwap
             ? "ring-2 ring-yellow-400 border-yellow-400 bg-yellow-50 scale-[1.02]"
             : isDragOver && dropAllowed
@@ -902,10 +1068,20 @@ const LichCabin = () => {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[11px] font-medium text-gray-500 leading-none">
-            Cabin {cabinNum}{" "}
-            <span
-              className={
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-medium text-gray-500 leading-none">
+              Cabin {cabinNum} <span className="font-bold">({cType})</span>
+            </span>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleLock(slotKey); }}
+              className={`p-0.5 rounded transition hover:scale-110 ${isLocked ? "bg-red-100 text-red-600" : "hover:bg-gray-200 text-gray-400"}`}
+              title={isLocked ? "Mở khoá Cabin" : "Khoá Cabin"}
+            >
+              {isLocked ? <LockOutlined style={{ fontSize: 10 }} /> : <UnlockOutlined style={{ fontSize: 10 }} />}
+            </button>
+          </div>
+          <span
+            className={
                 isEmpty
                   ? "text-gray-400"
                   : hasError
@@ -919,7 +1095,6 @@ const LichCabin = () => {
                 : `${students.length}/${globalConfig.maxPerCabin} HV`}
               )
             </span>
-          </span>
           {hasMultiple && (
             <span className="bg-blue-500 text-white rounded-full text-[10px] px-1.5 font-bold leading-4 min-w-[18px] text-center">
               {students.length}
@@ -1124,23 +1299,14 @@ const LichCabin = () => {
     })),
   ];
 
-  // Tìm ngày đầu tiên có session để lấy giờ hiển thị cột "Giờ"
-  const refDayIdx = useMemo(() => {
-    for (let di = 0; di < 7; di++) {
-      const dayIdx = (di + 1) % 7;
-      if (getSessions(dayIdx).length > 0) return dayIdx;
-    }
-    return 1;
-  }, [getSessions]);
-
   const dataSource = useMemo(
     () =>
-      Array.from({ length: maxSessions }, (_, si) => ({
+      globalSessions.map((gSess, si) => ({
         key: si,
         sessionIndex: si,
-        time: getSessions(refDayIdx)[si]?.time || "",
+        time: gSess.time,
       })),
-    [maxSessions, getSessions, refDayIdx],
+    [globalSessions],
   );
 
   // ─── Cabin Limit Settings Modal ───────────────────────────────────────────
@@ -1162,41 +1328,47 @@ const LichCabin = () => {
     const newInterval = tempLimit.intervalMinutes;
     const newDuration = globalConfig.duration;
 
-    // Quét toàn bộ schedule của tuần hiện tại, kick HV vi phạm giới hạn mới
-    const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
-    const newAssigned = new Set(assignedMaDks);
+    // Quét toàn bộ schedule của TẤT CẢ các tuần, kick HV vi phạm giới hạn mới
     let kickedCount = 0;
+    const nextSchedules = { ...weekSchedules };
 
-    Object.keys(newSchedule).forEach((key) => {
-      [1, 2, 3, 4, 5].forEach((cn) => {
-        const maDkList = newSchedule[key].cabins[cn];
-        if (maDkList.length === 0) return;
+    Object.keys(nextSchedules).forEach((wk) => {
+      const weekData = nextSchedules[wk];
+      const newSchedule = JSON.parse(JSON.stringify(weekData.schedule));
+      const newAssigned = new Set(weekData.assignedMaDks);
+      let weekChanged = false;
 
-        const students = maDkList
-          .map((id) => allStudents.find((s) => s.ma_dk === id))
-          .filter(Boolean);
+      Object.keys(newSchedule).forEach((key) => {
+        [1, 2, 3, 4, 5].forEach((cn) => {
+          const maDkList = newSchedule[key].cabins[cn];
+          if (!maDkList || maDkList.length === 0) return;
 
-        // noData: luôn 1 mình → không ảnh hưởng giới hạn số người/thời gian
-        if (students.every(isNoData)) return;
+          const students = maDkList
+            .map((id) => allStudents.find((s) => s.ma_dk === id))
+            .filter(Boolean);
 
-        // Kiểm tra số lượng vượt maxPerCabin mới
-        const overCount = students.length > newMax;
+          if (students.every(isNoData)) return;
 
-        // Tính tổng thời gian cần dùng với interval mới (dùng phút THIẾU)
-        const totalTime =
-          students.reduce((sum, s) => sum + getRemaining(s, newDuration), 0) +
-          (students.length - 1) * newInterval;
-        const overTime = totalTime >= newDuration;
+          const overCount = students.length > newMax;
+          const totalTime =
+            students.reduce((sum, s) => sum + getRemaining(s, newDuration), 0) +
+            (students.length - 1) * newInterval;
+          const overTime = totalTime >= newDuration;
 
-        if (overCount || overTime) {
-          // Kick toàn bộ HV trong cabin này về list
-          maDkList.forEach((id) => {
-            newAssigned.delete(id);
-            kickedCount++;
-          });
-          newSchedule[key].cabins[cn] = [];
-        }
+          if (overCount || overTime) {
+            maDkList.forEach((id) => {
+              newAssigned.delete(id);
+              kickedCount++;
+            });
+            newSchedule[key].cabins[cn] = [];
+            weekChanged = true;
+          }
+        });
       });
+
+      if (weekChanged) {
+        nextSchedules[wk] = { ...weekData, schedule: newSchedule, assignedMaDks: newAssigned };
+      }
     });
 
     setGlobalConfig((prev) => ({
@@ -1206,12 +1378,9 @@ const LichCabin = () => {
     }));
 
     if (kickedCount > 0) {
-      updateCurrentWeek(() => ({
-        schedule: newSchedule,
-        assignedMaDks: newAssigned,
-      }));
+      setWeekSchedules(nextSchedules);
       message.warning(
-        `Đã cập nhật giới hạn. ${kickedCount} học viên vi phạm giới hạn mới đã được trả về danh sách chờ.`,
+        `Đã cập nhật giới hạn. ${kickedCount} học viên vi phạm đã được trả về danh sách chờ.`,
         6,
       );
     } else {
@@ -1411,6 +1580,30 @@ const LichCabin = () => {
               Chờ xếp ({availableStudents.length}/{allStudents.length})
             </div>
 
+            <div className="flex gap-2 mb-2">
+              <Select
+                value={filterKhoa}
+                onChange={setFilterKhoa}
+                size="small"
+                className="flex-1"
+                options={[
+                  { value: "all", label: "Tất cả khóa" },
+                  ...uniqueKhoaHoc.map((k) => ({ value: k, label: k })),
+                ]}
+              />
+              <Select
+                value={filterStatus}
+                onChange={setFilterStatus}
+                size="small"
+                className="flex-1"
+                options={[
+                  { value: "all", label: "Tất cả trạng thái" },
+                  { value: "noData", label: "Chưa học Cabin" },
+                  { value: "hasData", label: "Đã học / Thiếu giờ" },
+                ]}
+              />
+            </div>
+
             <Input
               placeholder="Tìm tên, mã ĐK, GV..."
               prefix={<SearchOutlined />}
@@ -1520,7 +1713,20 @@ const LichCabin = () => {
                       <div className="text-[11px] text-gray-500">
                         Mã: {student.ma_dk}
                       </div>
-                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {student.hang_xe && (
+                          <Tag
+                            color={student.hang_xe === "B1" ? "magenta" : "geekblue"}
+                            className="!text-[10px] !px-1 !py-0 !m-0"
+                          >
+                            Hạng {student.hang_xe}
+                          </Tag>
+                        )}
+                        {student.khoa_hoc && (
+                          <Tag color="default" className="!text-[10px] !px-1 !py-0 !m-0">
+                            {student.khoa_hoc}
+                          </Tag>
+                        )}
                         {hasData ? (
                           <>
                             <Tag
@@ -1681,43 +1887,55 @@ const LichCabin = () => {
           setGlobalConfig(resolvedConfig);
 
           if (newDuration && newDuration !== oldDuration) {
-            // Kick các slot có tổng phút thiếu (tính theo duration mới) > duration mới
-            const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
-            const newAssigned = new Set(assignedMaDks);
+            // Kick các slot có tổng phút thiếu > duration mới (Áp dụng TOÀN BỘ TUẦN)
             let kicked = 0;
-            Object.keys(newSchedule).forEach((key) => {
-              [1, 2, 3, 4, 5].forEach((cn) => {
-                const list = newSchedule[key].cabins[cn];
-                if (!list.length) return;
-                const students = list
-                  .map((id) => allStudents.find((s) => s.ma_dk === id))
-                  .filter(Boolean);
-                if (students.every(isNoData)) return;
-                // Tính lại với duration mới
-                const totalNeeded = students
-                  .filter(isHasData)
-                  .reduce(
-                    (sum, s) =>
-                      sum + Math.max(0, newDuration - (s.phut_cabin || 0)),
-                    0,
-                  );
-                const totalTime =
-                  totalNeeded +
-                  (students.length - 1) * globalConfig.intervalMinutes;
-                if (totalTime >= newDuration) {
-                  list.forEach((id) => {
-                    newAssigned.delete(id);
-                    kicked++;
-                  });
-                  newSchedule[key].cabins[cn] = [];
-                }
+            const nextSchedules = { ...weekSchedules };
+
+            Object.keys(nextSchedules).forEach((wk) => {
+              const weekData = nextSchedules[wk];
+              const newSchedule = JSON.parse(JSON.stringify(weekData.schedule));
+              const newAssigned = new Set(weekData.assignedMaDks);
+              let weekChanged = false;
+
+              Object.keys(newSchedule).forEach((key) => {
+                [1, 2, 3, 4, 5].forEach((cn) => {
+                  const list = newSchedule[key].cabins[cn];
+                  if (!list || !list.length) return;
+                  const students = list
+                    .map((id) => allStudents.find((s) => s.ma_dk === id))
+                    .filter(Boolean);
+                  
+                  if (students.every(isNoData)) return;
+                  
+                  const totalNeeded = students
+                    .filter(isHasData)
+                    .reduce(
+                      (sum, s) =>
+                        sum + Math.max(0, newDuration - (s.phut_cabin || 0)),
+                      0,
+                    );
+                  const totalTime =
+                    totalNeeded +
+                    (students.length - 1) * resolvedConfig.intervalMinutes;
+                    
+                  if (totalTime >= newDuration) {
+                    list.forEach((id) => {
+                      newAssigned.delete(id);
+                      kicked++;
+                    });
+                    newSchedule[key].cabins[cn] = [];
+                    weekChanged = true;
+                  }
+                });
               });
+
+              if (weekChanged) {
+                nextSchedules[wk] = { ...weekData, schedule: newSchedule, assignedMaDks: newAssigned };
+              }
             });
+
             if (kicked > 0) {
-              updateCurrentWeek(() => ({
-                schedule: newSchedule,
-                assignedMaDks: newAssigned,
-              }));
+              setWeekSchedules(nextSchedules);
               message.warning(
                 `Thay đổi thời lượng ca: ${kicked} học viên vi phạm đã được trả về danh sách chờ.`,
                 5,

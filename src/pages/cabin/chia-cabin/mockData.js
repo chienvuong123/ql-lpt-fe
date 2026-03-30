@@ -58,6 +58,27 @@ function randomMaDK(index) {
 
 function createStudent(index, forceCabin = null, customMinutes = null) {
   const hasCabin = forceCabin !== null ? forceCabin : Math.random() > 0.4; // 60% có cabin
+  const khoaList = ["K20", "K21", "K22", "K23", "K24"];
+  const khoa = khoaList[Math.floor(Math.random() * khoaList.length)];
+
+  let daysToAdd = 0;
+  if (khoa === "K20") daysToAdd = Math.floor(Math.random() * 20) + 1; // 1 to 20 days
+  else if (khoa === "K21") daysToAdd = 30 + Math.floor(Math.random() * 20);
+  else if (khoa === "K22") daysToAdd = 60 + Math.floor(Math.random() * 20);
+  else if (khoa === "K23") daysToAdd = 90 + Math.floor(Math.random() * 20);
+  else if (khoa === "K24") daysToAdd = 120 + Math.floor(Math.random() * 20);
+
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + daysToAdd);
+  const startDate = new Date(endDate);
+  startDate.setMonth(startDate.getMonth() - 3); // 3 months duration
+
+  const formatDate = (d) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
 
   return {
     ma_dk: randomMaDK(index),
@@ -68,6 +89,11 @@ function createStudent(index, forceCabin = null, customMinutes = null) {
     loai_ly_thuyet: Math.random() > 0.5,
     loai_het_mon: Math.random() > 0.5,
     dat_cabin: hasCabin,
+    hang_xe: Math.random() > 0.4 ? "B2" : "B1",
+    khoa_hoc: khoa,
+    
+    ngay_bat_dau: formatDate(startDate),
+    ngay_ket_thuc: formatDate(endDate),
 
     ghi_chu: `note ngày ${Math.floor(Math.random() * 30) + 1}`,
 
