@@ -65,11 +65,18 @@ async function checkOneCode(code, signal, studentInfo, maKh) {
 
   const dataSource = response?.data?.Data || [];
 
+  const khoaHoc =
+    studentInfo?.khoaHoc ||
+    studentInfo?.MaKhoaHoc ||
+    studentInfo?.maKhoaHoc ||
+    "";
+
   if (dataSource.length === 0) {
     return {
       code,
       tenHV: studentInfo?.hoVaTen,
       ngaySinh: dayjs(studentInfo?.ngaySinh).format("DD/MM/YYYY"),
+      khoaHoc,
       status: "Chưa đạt",
       errors: [
         {
@@ -90,6 +97,7 @@ async function checkOneCode(code, signal, studentInfo, maKh) {
     code,
     tenHV: studentInfo?.hoVaTen,
     ngaySinh: dayjs(studentInfo?.ngaySinh).format("DD/MM/YYYY"),
+    khoaHoc,
     status: evaluation.status === "pass" ? "Đạt" : "Chưa đạt",
     errors: evaluation.errors,
     warnings: evaluation.warnings,
@@ -379,7 +387,13 @@ const KiemTraHangNam = () => {
 
   const exportDetailedExcel = () => {
     const failed = results.filter((r) => r.status === "Chưa đạt");
-    if (!failed.length) return message.warning("Không có dữ liệu chưa đạt!");
+    const filtered = failed.filter(
+      (item) =>
+        !item.errors.some((err) => err.label === "Chưa có phiên học") &&
+        item.errors.some((err) => err.type === "error"),
+    );
+    if (!filtered.length)
+      return message.warning("Không có dữ liệu chưa đạt phù hợp để xuất!");
 
     const hStyle = {
       font: { bold: true, color: { rgb: "FFFFFF" } },
@@ -392,25 +406,32 @@ const KiemTraHangNam = () => {
         "Mã học viên",
         "Họ và tên",
         "Ngày sinh",
+        "Khóa",
         "Lỗi sai",
         "Ghi chú",
       ].map((h) => ({ v: h, s: hStyle })),
     ];
 
     let stt = 1;
-    failed.forEach((item) => {
-      item.errors.forEach((err) => {
-        data.push(
-          [
-            stt++,
-            item.code,
-            item.tenHV,
-            item.ngaySinh,
-            err.label,
-            err.message,
-          ].map((v) => ({ v: v || "" })),
-        );
-      });
+    filtered.forEach((item) => {
+      console.log(item);
+
+      const joinedLabels = item.errors
+        .filter((err) => err.type === "error")
+        .map((err) => err.label)
+        .join(", ");
+
+      data.push(
+        [
+          stt++,
+          item.code,
+          item.tenHV,
+          item.ngaySinh,
+          item.khoaHoc || "",
+          joinedLabels,
+          "",
+        ].map((v) => ({ v: v || "" })),
+      );
     });
 
     const ws = XLSX.utils.aoa_to_sheet(data);

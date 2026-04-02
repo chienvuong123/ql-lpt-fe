@@ -88,11 +88,11 @@ export function evaluate(summary, dataSource, studentInfo) {
   // Tất cả phiên học phải có HoTenGV khớp với giaoVien đã đăng ký
   // ═════════════════════════════════════════════════════════════════════════════
 
-  const wrongTeacherSessions = dataSource.filter(
-    (s) =>
-      normalizeNameBirth(s.HoTenGV).toLocaleUpperCase !==
-      normalizeNameBirth(registeredTeacher).toLocaleUpperCase,
-  );
+  const wrongTeacherSessions = dataSource.filter((s) => {
+    const nameA = normalizeNameBirth(s.HoTenGV).toUpperCase();
+    const nameB = normalizeNameBirth(registeredTeacher).toUpperCase();
+    return nameA !== nameB;
+  });
 
   if (wrongTeacherSessions.length > 0) {
     const wrongNames = [
@@ -103,15 +103,40 @@ export function evaluate(summary, dataSource, studentInfo) {
       ),
     ].join(", ");
 
-    warnings.push({
-      type: "warning",
+    errors.push({
+      type: "error",
       label: "Sai giáo viên",
       message: `Đăng ký với GV: "${removeBirthYear(studentInfo.giaoVien)}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongTeacherSessions.length} phiên không khớp).`,
     });
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // KIỂM TRA 2: Biển số xe
+  // KIỂM TRA 2: Ngủ giữa 2 phiên < 15 phút (cảnh báo)
+  // ══════════════════════════════════════════════════════════════════════════════
+  const sortedSessions = [...dataSource]
+    .filter((s) => s.ThoiDiemDangNhap && s.ThoiDiemDangXuat)
+    .sort(
+      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
+    );
+
+  for (let i = 1; i < sortedSessions.length; i++) {
+    const prev = sortedSessions[i - 1];
+    const curr = sortedSessions[i];
+    const tXuat = new Date(prev.ThoiDiemDangXuat);
+    const tNhap = new Date(curr.ThoiDiemDangNhap);
+    if (isNaN(tXuat) || isNaN(tNhap)) continue;
+    const gapMinutes = (tNhap - tXuat) / 1000 / 60;
+    if (gapMinutes < 15) {
+      errors.push({
+        type: "error",
+        label: "Thời gian nghỉ < 15 phút",
+        message: `Khoảng nghỉ giữa phiên ${i} và ${i + 1} chỉ ${gapMinutes.toFixed(0)} phút (cần >= 15 phút).`,
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // KIỂM TRA 3: Biển số xe
   // ══════════════════════════════════════════════════════════════════════════════
   if (!registeredPlateB1 && !registeredPlateB2) {
     // Không có thông tin xe nào → cảnh báo
@@ -146,9 +171,8 @@ export function evaluate(summary, dataSource, studentInfo) {
         .filter(Boolean)
         .join(", ");
 
-      // BÁO LỖI: Cập nhật nội dung theo yêu cầu của bạn
-      warnings.push({
-        type: "warning",
+      errors.push({
+        type: "error",
         label: "Sai biển số xe",
         message: `Xe đăng ký: "${allowedList}", nhưng hành trình có phiên dùng xe: "${wrongPlates}" (${wrongPlateSessions.length} phiên không đúng).`,
       });
