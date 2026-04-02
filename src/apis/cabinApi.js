@@ -21,3 +21,11 @@ export const getDanhSachKetQuaHocCabin = async (params) => {
     throw error;
   }
 };
+
+export const getDanhSachHocVienChiaCabin = async (params = {}) => {
+  const response = await axios.get(
+    `${hocVienCabinBaseUrl}/danh-sach-chia-lich`,
+    { params },
+  );
+  return response.data;
+};

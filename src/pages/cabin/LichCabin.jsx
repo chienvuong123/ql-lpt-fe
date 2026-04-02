@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Row, Col } from "antd";
 import { formatMinutesToHM } from "../../util/helper";
 import { generateStudents } from "./chia-cabin/mockData";
@@ -13,9 +13,10 @@ import StudentDetailDrawer from "./chia-cabin/StudentDetailDrawer";
 import CabinLimitModal from "./chia-cabin/CabinLimitModal";
 import { isHasData, isNoData } from "./chia-cabin/utils";
 import CabinTable from "./chia-cabin/Cabintable";
+import { exportCabinExcel } from "./chia-cabin/exportCabinExcel";
 
 const LichCabin = () => {
-  const [allStudents] = useState(() => generateStudents(500));
+  const [allStudents] = useState(() => generateStudents(300));
 
   const schedule = useCabinSchedule(allStudents);
   const {
@@ -135,6 +136,29 @@ const LichCabin = () => {
     setCabinLimitModal(false);
   };
 
+  // ── Excel export ──────────────────────────────────────────────────────────
+  const handleExport = useCallback(() => {
+    const fmt = (d) =>
+      `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const weekLabel = `${fmt(weekDates[0])}-${fmt(weekDates[6])}_${weekDates[6].getFullYear()}`;
+    exportCabinExcel({
+      fullSchedule,
+      weekDates,
+      globalSessions,
+      lockedCabins,
+      getStudentByMaDk,
+      getSessions,
+      weekLabel,
+    });
+  }, [
+    fullSchedule,
+    weekDates,
+    globalSessions,
+    lockedCabins,
+    getStudentByMaDk,
+    getSessions,
+  ]);
+
   // ── Shared CabinSlot props ────────────────────────────────────────────────
   const cabinSlotProps = {
     fullSchedule,
@@ -183,6 +207,7 @@ const LichCabin = () => {
         onAutoAssign={handleAutoAssign}
         onOpenLimitModal={handleOpenLimitModal}
         onOpenSettings={() => setSettingsModal(true)}
+        onExport={handleExport}
       />
 
       <Row gutter={[12, 12]} className="!m-3 flex-1">

@@ -6,6 +6,7 @@ import {
   BgColorsOutlined,
   UserOutlined,
   DownOutlined,
+  FileExcelOutlined,
 } from "@ant-design/icons";
 import { Button, Select, Dropdown } from "antd";
 import { dateStr } from "./utils";
@@ -27,6 +28,7 @@ const ScheduleHeader = ({
   onAutoAssign,
   onOpenLimitModal,
   onOpenSettings,
+  onExport,
 }) => {
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -87,6 +89,18 @@ const ScheduleHeader = ({
 
             <Button icon={<SettingOutlined />} onClick={onOpenSettings}>
               Cài đặt
+            </Button>
+
+            <Button
+              icon={<FileExcelOutlined />}
+              onClick={onExport}
+              style={{
+                background: "#217346",
+                borderColor: "#217346",
+                color: "#fff",
+              }}
+            >
+              Xuất Excel
             </Button>
           </div>
         </div>
