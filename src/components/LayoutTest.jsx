@@ -47,6 +47,7 @@ const menuPathMap = {
   "hoc-vien-theo-giao-vien": "/hoc-vien-theo-giao-vien",
   "them-du-lieu": "/them-du-lieu",
   "kiem-tra-trung-xe-giao-vien": "/kiem-tra-trung-xe-giao-vien",
+  "kiem-tra-hoc-vien-sau-tot-nghiep": "/kiem-tra-hoc-vien-sau-tot-nghiep",
 };
 
 const LayoutTest = () => {
@@ -156,6 +157,11 @@ const LayoutTest = () => {
       key: "annual-check",
       icon: <SafetyOutlined />,
       label: "Kiểm tra hàng năm",
+    },
+    {
+      key: "kiem-tra-hoc-vien-sau-tot-nghiep",
+      icon: <SafetyOutlined />,
+      label: "Kiểm tra HV sau tốt nghiệp",
     },
     { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên public" },
     { key: "them-du-lieu", label: "Thêm dữ liệu vào hệ thống" },
