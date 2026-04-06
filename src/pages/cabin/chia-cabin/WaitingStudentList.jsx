@@ -1,8 +1,9 @@
-import { Card, Select, Input, Tag, Empty } from "antd";
+import { Card, Select, Input, Tag, Empty, Spin } from "antd";
 import { UserOutlined, SearchOutlined } from "@ant-design/icons";
 import { message } from "antd";
 
 const WaitingStudentList = ({
+  loading,
   globalConfig,
   availableStudents,
   allStudents,
@@ -61,29 +62,10 @@ const WaitingStudentList = ({
   };
 
   return (
-    <Card bodyStyle={{ padding: 8 }} className="sticky">
-      {/* <div className="text-xs space-y-2 mb-4">
-        <div>
-          🔵 <b>Nhóm A</b> (chưa học Cabin): 1 người/cabin riêng, ưu tiên trước.
-        </div>
-        <div>
-          🟢 <b>Nhóm B</b> (thiếu giờ): gom nhóm sao cho tổng phút còn thiếu +
-          khoảng cách &le; {globalConfig.duration} ph/ca.
-        </div>
-        <div>
-          🔄 <b>Hoán đổi</b>: kéo HV chưa có DL vào cabin HV chưa có DL khác →
-          tự động hoán đổi.
-        </div>
-        <div>
-          ↩ <b>Trả về</b>: kéo HV từ cabin thả vào vùng này để đưa về danh sách
-          chờ.
-        </div>
-        <div>
-          ⏱ <b>Giới hạn cabin</b>: tối đa {globalConfig.maxPerCabin} HV, cách
-          nhau {globalConfig.intervalMinutes} phút.
-        </div>
-      </div> */}
-
+    <Card
+      bodyStyle={{ padding: 8, height: "100%", display: "flex", flexDirection: "column" }}
+      className="h-full"
+    >
       <div className="font-semibold text-sm flex items-center gap-1.5 mb-2">
         <UserOutlined />
         Chờ xếp ({availableStudents.length}/{allStudents.length})
@@ -122,18 +104,9 @@ const WaitingStudentList = ({
         className="mb-2"
       />
 
-      <div className="flex gap-1 mb-2 flex-wrap">
-        <Tag color="default" className="!text-[10px] !m-0">
-          Chưa học Cabin
-        </Tag>
-        <Tag color="blue" className="!text-[10px] !m-0">
-          Thiếu giờ Cabin
-        </Tag>
-      </div>
-
       <div
         className={[
-          "flex flex-col gap-1.5 h-[66vh] overflow-y-auto pr-1 rounded-lg transition-all",
+          "flex flex-col gap-1.5 flex-1 min-h-[0px] overflow-y-auto pr-1 rounded-lg transition-all",
           listDropOver ? "ring-2 ring-orange-400 bg-orange-50" : "",
         ]
           .filter(Boolean)
@@ -155,7 +128,9 @@ const WaitingStudentList = ({
             ↓ Thả để trả về danh sách chờ
           </div>
         )}
-
+        <div className="flex justify-center items-center">
+          <Spin spinning={loading} tip="Đang tải dữ liệu..." />
+        </div>
         {availableStudents.length > 0 ? (
           availableStudents.map((student) => {
             const hasData = isHasData(student);

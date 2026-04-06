@@ -52,12 +52,20 @@ const StudentDetailModal = ({
       ? studentData.learning
       : studentData?.learning?.score_by_rubrik || [];
 
-    return rubricList.map((item, index) => ({
-      key: item?.iid || `${index}`,
-      rubricName: item?.name || "-",
-      score: item?.score ?? 0,
-      passed: Number(item?.passed) === 1,
-    }));
+    return rubricList
+      .filter(
+        (item) =>
+          !String(item?.name || "").includes("Bảng tổng hợp") &&
+          !String(item?.name || "").includes("Điểm kiểm tra tổng hợp") &&
+          !String(item?.name || "").includes("Tổng thời gian học") &&
+          !String(item?.name || "").includes("Pháp luật GTĐB"),
+      )
+      .map((item, index) => ({
+        key: item?.iid || `${index}`,
+        rubricName: item?.name || "-",
+        score: item?.score ?? 0,
+        passed: Number(item?.passed) === 1,
+      }));
   }, [studentData]);
 
   const { progress, passed, total } = useMemo(() => {
@@ -66,7 +74,8 @@ const StudentDetailModal = ({
       return (
         !tenChiTieu.includes("Bảng tổng hợp") &&
         !tenChiTieu.includes("Điểm kiểm tra tổng hợp") &&
-        !tenChiTieu.includes("Tổng thời gian học")
+        !tenChiTieu.includes("Tổng thời gian học") &&
+        !tenChiTieu.includes("Pháp luật GTĐB")
       );
     });
 

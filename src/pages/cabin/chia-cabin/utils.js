@@ -10,10 +10,10 @@ export const dateStr = (d) =>
 
 // ─── Student type checks ──────────────────────────────────────────────────────
 /** Học viên chưa có dữ liệu cabin */
-export const isNoData = (s) => s.bai_cabin === null && s.phut_cabin === null;
+export const isNoData = (s) => !s.bai_cabin && !s.phut_cabin;
 
 /** Học viên có dữ liệu cabin (đã học, có thể còn thiếu giờ) */
-export const isHasData = (s) => s.phut_cabin !== null;
+export const isHasData = (s) => !!s.bai_cabin || !!s.phut_cabin;
 
 // ─── Week key ─────────────────────────────────────────────────────────────────
 /** Trả về key dạng "YYYY-Www" từ một ngày bất kỳ trong tuần */

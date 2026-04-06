@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -350,7 +350,8 @@ const KiemTraPublic = () => {
         (item) =>
           !String(item?.name || "").includes("Bảng tổng hợp") &&
           !String(item?.name || "").includes("Điểm kiểm tra tổng hợp") &&
-          !String(item?.name || "").includes("Tổng thời gian học"),
+          !String(item?.name || "").includes("Tổng thời gian học") &&
+          !String(item?.name || "").includes("Pháp luật GTĐB"),
       )
       .map((item, index) => ({
         key: item?.iid || `${index}`,
@@ -760,11 +761,10 @@ const KiemTraPublic = () => {
                           className="!mt-2"
                         >
                           <Text
-                            className={`!text-xs !font-bold ${
-                              isCabinFinalPassed
-                                ? "!text-[#1b8a35]"
-                                : "!text-[#dc2626]"
-                            }`}
+                            className={`!text-xs !font-bold ${isCabinFinalPassed
+                              ? "!text-[#1b8a35]"
+                              : "!text-[#dc2626]"
+                              }`}
                           >
                             {cabinText}
                           </Text>
@@ -795,11 +795,10 @@ const KiemTraPublic = () => {
                           DAT
                         </Text>
                         <div
-                          className={`!font-semibold text-[13px] flex justify-center ${
-                            trangThaiKyDAT
-                              ? "!text-[#1b8a35]"
-                              : "!text-[#ff0000]"
-                          }`}
+                          className={`!font-semibold text-[13px] flex justify-center ${trangThaiKyDAT
+                            ? "!text-[#1b8a35]"
+                            : "!text-[#ff0000]"
+                            }`}
                         >
                           {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
                         </div>

@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Row, Col } from "antd";
 import { formatMinutesToHM } from "../../util/helper";
-import { generateStudents } from "./chia-cabin/mockData";
+import { getDanhSachHocVienChiaCabin } from "../../apis/cabinApi";
 
 import { useCabinSchedule } from "./chia-cabin/hooks/useCabinSchedule";
 import { useDragDrop } from "./chia-cabin/hooks/useDragDrop";
@@ -9,14 +9,32 @@ import { useDragDrop } from "./chia-cabin/hooks/useDragDrop";
 import ScheduleHeader from "./chia-cabin/ScheduleHeader";
 import WaitingStudentList from "./chia-cabin/WaitingStudentList";
 import SettingsModal from "./chia-cabin/SettingsModal";
-import StudentDetailDrawer from "./chia-cabin/StudentDetailDrawer";
+import StudentDetailModal from "./chia-cabin/StudentDetailModal";
 import CabinLimitModal from "./chia-cabin/CabinLimitModal";
 import { isHasData, isNoData } from "./chia-cabin/utils";
 import CabinTable from "./chia-cabin/Cabintable";
 import { exportCabinExcel } from "./chia-cabin/exportCabinExcel";
 
 const LichCabin = () => {
-  const [allStudents] = useState(() => generateStudents(300));
+  const [allStudents, setAllStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(true);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoadingStudents(true);
+        const res = await getDanhSachHocVienChiaCabin();
+        if (res && res.data) {
+          setAllStudents(res.data);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải danh sách học viên", error);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   const schedule = useCabinSchedule(allStudents);
   const {
@@ -223,6 +241,7 @@ const LichCabin = () => {
 
         <Col span={4}>
           <WaitingStudentList
+            loading={loadingStudents}
             globalConfig={globalConfig}
             availableStudents={availableStudents}
             allStudents={allStudents}
@@ -271,7 +290,7 @@ const LichCabin = () => {
         setSchedule={setSchedule}
       />
 
-      <StudentDetailDrawer
+      <StudentDetailModal
         studentDetail={studentDetail}
         setStudentDetail={setStudentDetail}
       />
