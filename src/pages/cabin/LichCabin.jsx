@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Row, Col } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { Row, Col, Spin } from "antd";
 import { formatMinutesToHM } from "../../util/helper";
 import { getDanhSachHocVienChiaCabin } from "../../apis/cabinApi";
 
@@ -16,25 +17,13 @@ import CabinTable from "./chia-cabin/CabinTable";
 import { exportCabinExcel } from "./chia-cabin/exportCabinExcel";
 
 const LichCabin = () => {
-  const [allStudents, setAllStudents] = useState([]);
-  const [loadingStudents, setLoadingStudents] = useState(true);
+  const { data: studentsData, isFetching: isFetchingStudents } = useQuery({
+    queryKey: ["cabinStudents"],
+    queryFn: getDanhSachHocVienChiaCabin,
+    staleTime: 10 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoadingStudents(true);
-        const res = await getDanhSachHocVienChiaCabin();
-        if (res && res.data) {
-          setAllStudents(res.data);
-        }
-      } catch (error) {
-        console.error("Lỗi khi tải danh sách học viên", error);
-      } finally {
-        setLoadingStudents(false);
-      }
-    };
-    fetchStudents();
-  }, []);
+  const allStudents = useMemo(() => studentsData?.data || [], [studentsData]);
 
   const schedule = useCabinSchedule(allStudents);
   const {
@@ -65,14 +54,14 @@ const LichCabin = () => {
     handleSaveCabinLimit,
     handleSaveScheduleToServer,
     handleLoadScheduleFromServer,
+    handleClearCurrentWeek,
     loadingSync,
+    isFetchingSchedule,
   } = schedule;
 
-  useEffect(() => {
-    if (allStudents.length > 0) {
-      handleLoadScheduleFromServer();
-    }
-  }, [week, allStudents.length, handleLoadScheduleFromServer]);
+  const isGlobalLoading =
+    isFetchingStudents || isFetchingSchedule || loadingSync;
+
 
   const dragDrop = useDragDrop({
     fullSchedule,
@@ -214,9 +203,17 @@ const LichCabin = () => {
     setOpenPopover,
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
+      {isGlobalLoading && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm">
+          <Spin size="large" />
+          <div className="mt-4 font-medium text-blue-600 animate-pulse">
+            Đang chuẩn bị dữ liệu...
+          </div>
+        </div>
+      )}
+
       <ScheduleHeader
         weekDates={weekDates}
         assignedMaDks={assignedMaDks}
@@ -236,6 +233,7 @@ const LichCabin = () => {
         onOpenSettings={() => setSettingsModal(true)}
         onExport={handleExport}
         onSave={handleSaveScheduleToServer}
+        onClear={handleClearCurrentWeek}
         loadingSync={loadingSync}
       />
 
@@ -252,7 +250,7 @@ const LichCabin = () => {
 
         <Col span={4}>
           <WaitingStudentList
-            loading={loadingStudents}
+            loading={isFetchingStudents}
             globalConfig={globalConfig}
             availableStudents={availableStudents}
             allStudents={allStudents}

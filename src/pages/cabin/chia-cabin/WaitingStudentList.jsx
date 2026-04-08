@@ -64,7 +64,7 @@ const WaitingStudentList = ({
   return (
     <Card
       bodyStyle={{ padding: 8, height: "100%", display: "flex", flexDirection: "column" }}
-      className="h-full"
+      className="h-[86vh]"
     >
       <div className="font-semibold text-sm flex items-center gap-1.5 mb-2">
         <UserOutlined />
@@ -128,9 +128,6 @@ const WaitingStudentList = ({
             ↓ Thả để trả về danh sách chờ
           </div>
         )}
-        <div className="flex justify-center items-center">
-          <Spin spinning={loading} tip="Đang tải dữ liệu..." />
-        </div>
         {availableStudents.length > 0 ? (
           availableStudents.map((student) => {
             const hasData = isHasData(student);

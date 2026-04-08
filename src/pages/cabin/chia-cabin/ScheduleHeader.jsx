@@ -8,6 +8,7 @@ import {
   DownOutlined,
   FileExcelOutlined,
   SaveOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import { Button, Select, Dropdown } from "antd";
 import { dateStr } from "./utils";
@@ -31,6 +32,7 @@ const ScheduleHeader = ({
   onOpenSettings,
   onExport,
   onSave,
+  onClear,
   loadingSync,
 }) => {
   return (
@@ -102,6 +104,15 @@ const ScheduleHeader = ({
               className="bg-blue-600 hover:bg-blue-700"
             >
               Lưu lịch
+            </Button>
+            <Button
+              icon={<DeleteOutlined />}
+              onClick={onClear}
+              danger
+              title="Xóa hết tuần này"
+              className="hover:!bg-red-50"
+            >
+              Xóa lịch đã chia
             </Button>
 
             <Button

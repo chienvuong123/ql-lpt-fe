@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { message, Modal } from "antd";
 import {
   binPackStudents,
@@ -26,7 +27,7 @@ export const useCabinSchedule = (allStudents) => {
   const [weekSchedules, setWeekSchedules] = useState({});
   const [week, setWeek] = useState(new Date("2026-03-23"));
   const [loadingSync, setLoadingSync] = useState(false);
-  const [assignmentMetadata, setAssignmentMetadata] = useState({}); // { "di-sn-cn-maDk": { id, ghi_chu, is_locked } }
+  const queryClient = useQueryClient();
 
   // ── Week key & current week data ──────────────────────────────────────────
   const weekKey = useMemo(() => getWeekKey(week), [week]);
@@ -68,7 +69,29 @@ export const useCabinSchedule = (allStudents) => {
     (slotKey) => {
       updateCurrentWeek((old) => {
         const locks = old.lockedCabins || {};
-        return { lockedCabins: { ...locks, [slotKey]: !locks[slotKey] } };
+        const isNowLocked = !locks[slotKey];
+        const updates = {
+          lockedCabins: { ...locks, [slotKey]: isNowLocked },
+        };
+
+        // Nếu mới khóa, tự động dọn dẹp các học viên đang có trong slot đó
+        if (isNowLocked) {
+          const [di, sn, cn] = slotKey.split("-");
+          const key = `${di}-${sn}`;
+          const currentMaDks = old.schedule[key]?.cabins[cn] || [];
+
+          if (currentMaDks.length > 0) {
+            const newSchedule = JSON.parse(JSON.stringify(old.schedule));
+            newSchedule[key].cabins[cn] = [];
+            updates.schedule = newSchedule;
+
+            const newAssigned = new Set(old.assignedMaDks);
+            currentMaDks.forEach((maDk) => newAssigned.delete(maDk));
+            updates.assignedMaDks = newAssigned;
+          }
+        }
+
+        return updates;
       });
     },
     [updateCurrentWeek],
@@ -594,6 +617,8 @@ export const useCabinSchedule = (allStudents) => {
         const slot = fullSchedule[key];
         Object.keys(slot.cabins).forEach((cn) => {
           const maDks = slot.cabins[cn];
+          const isLocked = !!lockedCabins[`${key}-${cn}`];
+
           if (maDks && maDks.length > 0) {
             maDks.forEach((maDk) => {
               const student = getStudentByMaDk(maDk);
@@ -608,7 +633,7 @@ export const useCabinSchedule = (allStudents) => {
                   ghi_chu: student.ghi_chu || "",
                   ma_khoa: student.khoa_hoc,
                   giao_vien: student.giao_vien,
-                  is_locked: !!lockedCabins[`${key}-${cn}`],
+                  is_locked: isLocked,
                   is_makeup: false,
                   is_thieu_gio: maDks.length > 1,
                   thoi_gian_hoc: globalConfig.duration,
@@ -616,11 +641,30 @@ export const useCabinSchedule = (allStudents) => {
                 });
               }
             });
+          } else if (isLocked) {
+            // Khi cabin bị khóa nhưng chưa có học viên, vẫn gửi để giữ trạng thái khóa
+            assignments.push({
+              ma_dk: "",
+              ngay: weekDates[di].toISOString().split("T")[0],
+              ca_hoc: sn,
+              cabin_so: Number(cn),
+              gio_bat_dau: slot.time.split("-")[0],
+              gio_ket_thuc: slot.time.split("-")[1],
+              ghi_chu: "",
+              ma_khoa: "",
+              giao_vien: "",
+              is_locked: true,
+              is_makeup: false,
+              is_thieu_gio: false,
+              thoi_gian_hoc: globalConfig.duration,
+              thoi_gian_tong: globalConfig.duration,
+            });
           }
         });
       });
 
       await saveLichCabin({ week_key, assignments });
+      queryClient.invalidateQueries({ queryKey: ["cabinSchedule"] });
       message.success("Đã lưu lịch lên hệ thống thành công!");
     } catch (error) {
       console.error("Save schedule error:", error);
@@ -630,76 +674,81 @@ export const useCabinSchedule = (allStudents) => {
     }
   }, [fullSchedule, weekDates, lockedCabins, getStudentByMaDk]);
 
-  const handleLoadScheduleFromServer = useCallback(async () => {
-    try {
-      setLoadingSync(true);
-      const monday = weekDates[0];
-      const week_key = monday.toISOString().split("T")[0];
+  const monday = weekDates[0];
+  const week_key_str = monday.toISOString().split("T")[0];
 
-      const res = await getLichCabin({ week_key });
-      if (res && res.data) {
-        const data = res.data;
-        const newSchedule = JSON.parse(JSON.stringify(initSchedule));
-        const newLocked = {};
-        const newAssigned = new Set();
-        const newMetadata = {};
+  const {
+    data: serverData,
+    isFetching: isFetchingSchedule,
+    refetch,
+  } = useQuery({
+    queryKey: ["cabinSchedule", weekKey],
+    queryFn: () => getLichCabin({ week_key: week_key_str }),
+    enabled: allStudents.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 mins cache
+  });
 
-        data.forEach((item) => {
-          const itemDate = new Date(item.ngay);
-          // Find day index relative to Monday
-          const di = Math.round((itemDate.getTime() - monday.getTime()) / 86400000);
-          if (di >= 0 && di < 7) {
-            const key = `${di}-${item.ca_hoc}`;
-            if (newSchedule[key]) {
-              if (!newSchedule[key].cabins[item.cabin_so]) {
-                newSchedule[key].cabins[item.cabin_so] = [];
-              }
+  // Sync server data to local state
+  useEffect(() => {
+    if (serverData?.data) {
+      const data = serverData.data;
+      const newSchedule = JSON.parse(JSON.stringify(initSchedule));
+      const newLocked = {};
+      const newAssigned = new Set();
+
+      data.forEach((item) => {
+        const itemDate = new Date(item.ngay);
+        const di = Math.round(
+          (itemDate.getTime() - monday.getTime()) / 86400000,
+        );
+        if (di >= 0 && di < 7) {
+          const key = `${di}-${item.ca_hoc}`;
+          if (newSchedule[key]) {
+            if (!newSchedule[key].cabins[item.cabin_so]) {
+              newSchedule[key].cabins[item.cabin_so] = [];
+            }
+            if (item.ma_dk) {
               newSchedule[key].cabins[item.cabin_so].push(item.ma_dk);
               newAssigned.add(item.ma_dk);
-
-              const metaKey = `${key}-${item.cabin_so}-${item.ma_dk}`;
-              newMetadata[metaKey] = {
-                id: item.id,
-                ghi_chu: item.ghi_chu,
-                is_locked: item.is_locked,
-              };
-
-              if (item.is_locked) {
-                newLocked[`${key}-${item.cabin_so}`] = true;
-              }
+            }
+            if (item.is_locked) {
+              newLocked[`${key}-${item.cabin_so}`] = true;
             }
           }
-        });
+        }
+      });
 
-        setAssignmentMetadata(newMetadata);
-        // Update state for this week
+      updateCurrentWeek(() => ({
+        schedule: newSchedule,
+        lockedCabins: newLocked,
+        assignedMaDks: newAssigned,
+      }));
+    }
+  }, [serverData, initSchedule, updateCurrentWeek, monday]);
+
+  const handleLoadScheduleFromServer = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+
+  const handleClearCurrentWeek = useCallback(() => {
+    Modal.confirm({
+      title: "Xác nhận xóa sạch tuần này?",
+      content:
+        "Tất cả học viên đã được xếp lịch trong tuần này sẽ bị xóa khỏi lịch học và quay lại danh sách chờ. Bạn có chắc chắn muốn thực hiện?",
+      okText: "Xác nhận xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: () => {
         updateCurrentWeek(() => ({
-          schedule: newSchedule,
-          lockedCabins: newLocked,
-          assignedMaDks: newAssigned,
+          schedule: {},
+          assignedMaDks: new Set(),
+          lockedCabins: {},
         }));
-      }
-    } catch (error) {
-      console.error("Load schedule error:", error);
-      // message.error("Lỗi khi tải lịch từ server");
-    } finally {
-      setLoadingSync(false);
-    }
-  }, [weekDates, initSchedule, updateCurrentWeek]);
-
-  const handleUpdateGhiChu = useCallback(async (id, ghi_chu) => {
-    try {
-      setLoadingSync(true);
-      await updateGhiChuLichCabin(id, { ghi_chu });
-      message.success("Cập nhật ghi chú thành công!");
-      await handleLoadScheduleFromServer();
-    } catch (error) {
-      console.error("Update ghi chu error:", error);
-      message.error("Lỗi khi cập nhật ghi chú");
-    } finally {
-      setLoadingSync(false);
-    }
-  }, [handleLoadScheduleFromServer]);
+        message.success("Đã xóa sạch lịch học của tuần này.");
+      },
+    });
+  }, [updateCurrentWeek]);
 
   return {
     // state
@@ -722,7 +771,7 @@ export const useCabinSchedule = (allStudents) => {
     assignedSlots,
     totalEmptySlots,
     loadingSync,
-    assignmentMetadata,
+    isFetchingSchedule,
     // helpers
     getStudentByMaDk,
     calcCabinTime,
@@ -740,6 +789,6 @@ export const useCabinSchedule = (allStudents) => {
     handleSaveCabinLimit,
     handleSaveScheduleToServer,
     handleLoadScheduleFromServer,
-    handleUpdateGhiChu,
+    handleClearCurrentWeek,
   };
 };
