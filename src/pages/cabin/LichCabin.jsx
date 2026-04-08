@@ -12,7 +12,7 @@ import SettingsModal from "./chia-cabin/SettingsModal";
 import StudentDetailModal from "./chia-cabin/StudentDetailModal";
 import CabinLimitModal from "./chia-cabin/CabinLimitModal";
 import { isHasData, isNoData } from "./chia-cabin/utils";
-import CabinTable from "./chia-cabin/Cabintable";
+import CabinTable from "./chia-cabin/CabinTable";
 import { exportCabinExcel } from "./chia-cabin/exportCabinExcel";
 
 const LichCabin = () => {
