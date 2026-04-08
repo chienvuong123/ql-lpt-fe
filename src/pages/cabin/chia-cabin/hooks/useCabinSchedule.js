@@ -9,6 +9,7 @@ import {
   minToTime,
   timeToMin,
 } from "../utils";
+import { saveLichCabin, getLichCabin, updateGhiChuLichCabin } from "../../../../apis/cabinApi";
 
 const DEFAULT_CONFIG = {
   duration: 150,
@@ -24,6 +25,8 @@ export const useCabinSchedule = (allStudents) => {
   const [globalConfig, setGlobalConfig] = useState(DEFAULT_CONFIG);
   const [weekSchedules, setWeekSchedules] = useState({});
   const [week, setWeek] = useState(new Date("2026-03-23"));
+  const [loadingSync, setLoadingSync] = useState(false);
+  const [assignmentMetadata, setAssignmentMetadata] = useState({}); // { "di-sn-cn-maDk": { id, ghi_chu, is_locked } }
 
   // ── Week key & current week data ──────────────────────────────────────────
   const weekKey = useMemo(() => getWeekKey(week), [week]);
@@ -348,10 +351,10 @@ export const useCabinSchedule = (allStudents) => {
       const groupB =
         mode === "all"
           ? unassigned.filter((s) => {
-              if (!isHasData(s)) return false;
-              const remaining = getRemaining(s, globalConfig.duration);
-              return remaining > 0 && remaining <= globalConfig.duration;
-            })
+            if (!isHasData(s)) return false;
+            const remaining = getRemaining(s, globalConfig.duration);
+            return remaining > 0 && remaining <= globalConfig.duration;
+          })
           : [];
 
       const groupB_B1 = groupB.filter((s) => s.hang_xe === "B1");
@@ -360,20 +363,20 @@ export const useCabinSchedule = (allStudents) => {
       const binsB_B1 =
         mode === "all"
           ? binPackStudents(
-              groupB_B1,
-              globalConfig.duration,
-              globalConfig.maxPerCabin,
-              globalConfig.intervalMinutes,
-            )
+            groupB_B1,
+            globalConfig.duration,
+            globalConfig.maxPerCabin,
+            globalConfig.intervalMinutes,
+          )
           : [];
       const binsB_B2 =
         mode === "all"
           ? binPackStudents(
-              groupB_B2,
-              globalConfig.duration,
-              globalConfig.maxPerCabin,
-              globalConfig.intervalMinutes,
-            )
+            groupB_B2,
+            globalConfig.duration,
+            globalConfig.maxPerCabin,
+            globalConfig.intervalMinutes,
+          )
           : [];
 
       const emptySlotsB1 = [];
@@ -579,6 +582,121 @@ export const useCabinSchedule = (allStudents) => {
     }
   };
 
+  const handleSaveScheduleToServer = useCallback(async () => {
+    try {
+      setLoadingSync(true);
+      const assignments = [];
+      const monday = weekDates[0];
+      const week_key = monday.toISOString().split("T")[0];
+
+      Object.keys(fullSchedule).forEach((key) => {
+        const [di, sn] = key.split("-").map(Number);
+        const slot = fullSchedule[key];
+        Object.keys(slot.cabins).forEach((cn) => {
+          const maDks = slot.cabins[cn];
+          if (maDks && maDks.length > 0) {
+            maDks.forEach((maDk) => {
+              const student = getStudentByMaDk(maDk);
+              if (student) {
+                assignments.push({
+                  ma_dk: student.ma_dk,
+                  ngay: weekDates[di].toISOString().split("T")[0],
+                  ca_hoc: sn,
+                  cabin_so: Number(cn),
+                  gio_bat_dau: slot.time.split("-")[0],
+                  gio_ket_thuc: slot.time.split("-")[1],
+                  ghi_chu: student.ghi_chu || "",
+                  ma_khoa: student.khoa_hoc,
+                  giao_vien: student.giao_vien,
+                  is_locked: !!lockedCabins[`${key}-${cn}`],
+                });
+              }
+            });
+          }
+        });
+      });
+
+      await saveLichCabin({ week_key, assignments });
+      message.success("Đã lưu lịch lên hệ thống thành công!");
+    } catch (error) {
+      console.error("Save schedule error:", error);
+      message.error("Lỗi khi lưu lịch: " + (error.response?.data?.message || error.message));
+    } finally {
+      setLoadingSync(false);
+    }
+  }, [fullSchedule, weekDates, lockedCabins, getStudentByMaDk]);
+
+  const handleLoadScheduleFromServer = useCallback(async () => {
+    try {
+      setLoadingSync(true);
+      const monday = weekDates[0];
+      const week_key = monday.toISOString().split("T")[0];
+
+      const res = await getLichCabin({ week_key });
+      if (res && res.data) {
+        const data = res.data;
+        const newSchedule = JSON.parse(JSON.stringify(initSchedule));
+        const newLocked = {};
+        const newAssigned = new Set();
+        const newMetadata = {};
+
+        data.forEach((item) => {
+          const itemDate = new Date(item.ngay);
+          // Find day index relative to Monday
+          const di = Math.round((itemDate.getTime() - monday.getTime()) / 86400000);
+          if (di >= 0 && di < 7) {
+            const key = `${di}-${item.ca_hoc}`;
+            if (newSchedule[key]) {
+              if (!newSchedule[key].cabins[item.cabin_so]) {
+                newSchedule[key].cabins[item.cabin_so] = [];
+              }
+              newSchedule[key].cabins[item.cabin_so].push(item.ma_dk);
+              newAssigned.add(item.ma_dk);
+
+              const metaKey = `${key}-${item.cabin_so}-${item.ma_dk}`;
+              newMetadata[metaKey] = {
+                id: item.id,
+                ghi_chu: item.ghi_chu,
+                is_locked: item.is_locked,
+              };
+
+              if (item.is_locked) {
+                newLocked[`${key}-${item.cabin_so}`] = true;
+              }
+            }
+          }
+        });
+
+        setAssignmentMetadata(newMetadata);
+        // Update state for this week
+        updateCurrentWeek(() => ({
+          schedule: newSchedule,
+          lockedCabins: newLocked,
+          assignedMaDks: newAssigned,
+        }));
+      }
+    } catch (error) {
+      console.error("Load schedule error:", error);
+      // message.error("Lỗi khi tải lịch từ server");
+    } finally {
+      setLoadingSync(false);
+    }
+  }, [weekDates, initSchedule, updateCurrentWeek]);
+
+  const handleUpdateGhiChu = useCallback(async (id, ghi_chu) => {
+    try {
+      setLoadingSync(true);
+      await updateGhiChuLichCabin(id, { ghi_chu });
+      message.success("Cập nhật ghi chú thành công!");
+      await handleLoadScheduleFromServer();
+    } catch (error) {
+      console.error("Update ghi chu error:", error);
+      message.error("Lỗi khi cập nhật ghi chú");
+    } finally {
+      setLoadingSync(false);
+    }
+  }, [handleLoadScheduleFromServer]);
+
   return {
     // state
     globalConfig,
@@ -599,6 +717,8 @@ export const useCabinSchedule = (allStudents) => {
     totalSlots,
     assignedSlots,
     totalEmptySlots,
+    loadingSync,
+    assignmentMetadata,
     // helpers
     getStudentByMaDk,
     calcCabinTime,
@@ -614,5 +734,8 @@ export const useCabinSchedule = (allStudents) => {
     handleAutoAssign,
     handleSaveGlobalConfig,
     handleSaveCabinLimit,
+    handleSaveScheduleToServer,
+    handleLoadScheduleFromServer,
+    handleUpdateGhiChu,
   };
 };

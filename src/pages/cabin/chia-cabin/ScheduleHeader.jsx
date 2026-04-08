@@ -7,6 +7,7 @@ import {
   UserOutlined,
   DownOutlined,
   FileExcelOutlined,
+  SaveOutlined,
 } from "@ant-design/icons";
 import { Button, Select, Dropdown } from "antd";
 import { dateStr } from "./utils";
@@ -29,6 +30,8 @@ const ScheduleHeader = ({
   onOpenLimitModal,
   onOpenSettings,
   onExport,
+  onSave,
+  loadingSync,
 }) => {
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -89,6 +92,16 @@ const ScheduleHeader = ({
 
             <Button icon={<SettingOutlined />} onClick={onOpenSettings}>
               Cài đặt
+            </Button>
+
+            <Button
+              icon={<SaveOutlined />}
+              onClick={onSave}
+              loading={loadingSync}
+              type="primary"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Lưu lịch
             </Button>
 
             <Button

@@ -29,3 +29,18 @@ export const getDanhSachHocVienChiaCabin = async (params = {}) => {
   );
   return response.data;
 };
+
+export const saveLichCabin = async (data = {}) => {
+  const response = await axios.post(`${hocVienCabinBaseUrl}/save-lich`, data);
+  return response.data;
+};
+
+export const getLichCabin = async (params = {}) => {
+  const response = await axios.get(`${hocVienCabinBaseUrl}/get-lich`, { params });
+  return response.data;
+};
+
+export const updateGhiChuLichCabin = async (id, data = {}) => {
+  const response = await axios.patch(`${hocVienCabinBaseUrl}/update-lich-note/${id}`, data);
+  return response.data;
+};

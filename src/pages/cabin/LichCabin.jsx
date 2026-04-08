@@ -63,7 +63,16 @@ const LichCabin = () => {
     handleAutoAssign,
     handleSaveGlobalConfig,
     handleSaveCabinLimit,
+    handleSaveScheduleToServer,
+    handleLoadScheduleFromServer,
+    loadingSync,
   } = schedule;
+
+  useEffect(() => {
+    if (allStudents.length > 0) {
+      handleLoadScheduleFromServer();
+    }
+  }, [week, allStudents.length, handleLoadScheduleFromServer]);
 
   const dragDrop = useDragDrop({
     fullSchedule,
@@ -226,6 +235,8 @@ const LichCabin = () => {
         onOpenLimitModal={handleOpenLimitModal}
         onOpenSettings={() => setSettingsModal(true)}
         onExport={handleExport}
+        onSave={handleSaveScheduleToServer}
+        loadingSync={loadingSync}
       />
 
       <Row gutter={[12, 12]} className="!m-3 flex-1">
