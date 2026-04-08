@@ -609,6 +609,10 @@ export const useCabinSchedule = (allStudents) => {
                   ma_khoa: student.khoa_hoc,
                   giao_vien: student.giao_vien,
                   is_locked: !!lockedCabins[`${key}-${cn}`],
+                  is_makeup: false,
+                  is_thieu_gio: maDks.length > 1,
+                  thoi_gian_hoc: globalConfig.duration,
+                  thoi_gian_tong: globalConfig.duration,
                 });
               }
             });
