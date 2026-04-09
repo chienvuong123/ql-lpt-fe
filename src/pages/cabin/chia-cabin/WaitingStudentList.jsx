@@ -11,6 +11,8 @@ const WaitingStudentList = ({
   setFilterKhoa,
   filterStatus,
   setFilterStatus,
+  filterType,
+  setFilterType,
   search,
   setSearch,
   uniqueKhoaHoc,
@@ -95,6 +97,20 @@ const WaitingStudentList = ({
         />
       </div>
 
+      <div className="flex gap-2 mb-2">
+        <Select
+          value={filterType}
+          onChange={setFilterType}
+          size="small"
+          className="w-full"
+          options={[
+            { value: "all", label: "Tất cả loại hv" },
+            { value: "normal", label: "Học viên chính khóa" },
+            { value: "makeup", label: "Học viên học bù" },
+          ]}
+        />
+      </div>
+
       <Input
         placeholder="Tìm tên, mã ĐK, GV..."
         prefix={<SearchOutlined />}
@@ -162,6 +178,14 @@ const WaitingStudentList = ({
                       className="!text-[10px] !px-1 !py-0 !m-0"
                     >
                       Hạng {student.hang_xe}
+                    </Tag>
+                  )}
+                  {student.is_makeup && (
+                    <Tag
+                      color="volcano"
+                      className="!text-[10px] !px-1 !py-0 !m-0"
+                    >
+                      Học bù
                     </Tag>
                   )}
                   {student.khoa_hoc && (

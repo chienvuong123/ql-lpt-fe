@@ -57,6 +57,11 @@ const LichCabin = () => {
     handleClearCurrentWeek,
     loadingSync,
     isFetchingSchedule,
+    priorityCourse,
+    setPriorityCourse,
+    handlePriorityInsert,
+    getDayConfig,
+    isMakeupSlot,
   } = schedule;
 
   const isGlobalLoading =
@@ -72,6 +77,11 @@ const LichCabin = () => {
     calcCabinTime,
     canDropIntoCabin,
     updateCurrentWeek,
+    priorityCourse,
+    handlePriorityInsert,
+    getDayConfig,
+    getSessions,
+    isMakeupSlot,
   });
   const {
     dragState,
@@ -93,6 +103,7 @@ const LichCabin = () => {
   const [search, setSearch] = useState("");
   const [filterKhoa, setFilterKhoa] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterType, setFilterType] = useState("all"); // all, normal, makeup
   const [filterCabin, setFilterCabin] = useState("all");
   const [settingsModal, setSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState("global");
@@ -119,13 +130,15 @@ const LichCabin = () => {
         if (filterKhoa !== "all" && s.khoa_hoc !== filterKhoa) return false;
         if (filterStatus === "noData" && !isNoData(s)) return false;
         if (filterStatus === "hasData" && !isHasData(s)) return false;
+        if (filterType === "makeup" && !s.is_makeup) return false;
+        if (filterType === "normal" && s.is_makeup) return false;
         return (
           s.ho_ten.toLowerCase().includes(search.toLowerCase()) ||
           s.ma_dk.includes(search) ||
           s.giao_vien.toLowerCase().includes(search.toLowerCase())
         );
       }),
-    [allStudents, allAssignedMaDks, search, filterKhoa, filterStatus],
+    [allStudents, allAssignedMaDks, search, filterKhoa, filterStatus, filterType],
   );
 
   const unassignedNoData = allStudents.filter(
@@ -189,6 +202,9 @@ const LichCabin = () => {
     canSwap,
     canDropIntoCabin,
     toggleLock,
+    getDayConfig,
+    isMakeupSlot,
+    getSessions,
     handleDragOver,
     handleDragLeave,
     handleDrop,
@@ -235,6 +251,9 @@ const LichCabin = () => {
         onSave={handleSaveScheduleToServer}
         onClear={handleClearCurrentWeek}
         loadingSync={loadingSync}
+        priorityCourse={priorityCourse}
+        setPriorityCourse={setPriorityCourse}
+        uniqueKhoaHoc={uniqueKhoaHoc}
       />
 
       <Row gutter={[12, 12]} className="!m-3 flex-1">
@@ -258,6 +277,8 @@ const LichCabin = () => {
             setFilterKhoa={setFilterKhoa}
             filterStatus={filterStatus}
             setFilterStatus={setFilterStatus}
+            filterType={filterType}
+            setFilterType={setFilterType}
             search={search}
             setSearch={setSearch}
             uniqueKhoaHoc={uniqueKhoaHoc}

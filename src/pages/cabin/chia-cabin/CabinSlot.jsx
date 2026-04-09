@@ -70,13 +70,22 @@ const CabinSlot = ({
   handleRemoveStudent,
   setStudentDetail,
   setOpenPopover,
+  getDayConfig,
+  isMakeupSlot,
+  getSessions,
 }) => {
   const key = `${dateIndex}-${sessionNum}`;
   const maDkList = fullSchedule[key]?.cabins[cabinNum] || [];
   const students = maDkList.map(getStudentByMaDk).filter(Boolean);
   const isEmpty = students.length === 0;
   const hasMultiple = students.length > 1;
-  const cType = Number(cabinNum) > 5 - globalConfig.b1Cabins ? "B1" : "B2";
+
+  const dCfg = getDayConfig(dateIndex);
+  const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
+  const cType = Number(cabinNum) > 5 - b1Count ? "B1" : "B2";
+
+  const session = getSessions(dateIndex).find((s) => s?.num === sessionNum);
+  const isMakeupZone = session ? isMakeupSlot(dateIndex, session) : false;
 
   const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
   const isLocked = lockedCabins[slotKey] || false;
@@ -126,6 +135,9 @@ const CabinSlot = ({
           <Tag color={hasError ? "red" : "green"}>
             Cần {totalTime}/{globalConfig.duration} ph
           </Tag>
+        )}
+        {isMakeupZone && (
+          <Tag color="volcano" className="font-bold">Ô HỌC BÙ</Tag>
         )}
       </div>
 
@@ -185,6 +197,9 @@ const CabinSlot = ({
           <span className="text-xs font-medium text-gray-500 leading-none uppercase">
             Cabin {cabinNum} <span className="font-bold">({cType})</span>
           </span>
+          {isMakeupZone && (
+            <span className="text-[9px] bg-volcano-100 text-volcano-600 px-1 rounded shadow-sm border border-volcano-200">BÙ</span>
+          )}
           <button
             onClick={(e) => {
               e.preventDefault();

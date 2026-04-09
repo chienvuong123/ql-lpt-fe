@@ -31,6 +31,8 @@ const CabinTable = ({
   handleRemoveStudent,
   setStudentDetail,
   setOpenPopover,
+  getDayConfig,
+  isMakeupSlot,
 }) => {
   const columns = useMemo(
     () => [
@@ -56,7 +58,7 @@ const CabinTable = ({
         dataIndex: `day_${i}`,
         key: `day_${i}`,
         render: (_, record) => {
-          const sessions = getSessions((i + 1) % 7);
+          const sessions = getSessions(i);
           const session = sessions[record.sessionIndex];
 
           if (!session) {
@@ -99,6 +101,9 @@ const CabinTable = ({
                     handleRemoveStudent={handleRemoveStudent}
                     setStudentDetail={setStudentDetail}
                     setOpenPopover={setOpenPopover}
+                    getDayConfig={getDayConfig}
+                    isMakeupSlot={isMakeupSlot}
+                    getSessions={getSessions}
                   />
                 </div>
               ))}

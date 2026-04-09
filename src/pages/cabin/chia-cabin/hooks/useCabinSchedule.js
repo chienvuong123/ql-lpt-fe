@@ -20,6 +20,10 @@ const DEFAULT_CONFIG = {
   intervalMinutes: 15,
   b1Cabins: 2,
   b2Cabins: 3,
+  businessStart: "07:00",
+  businessEnd: "17:00",
+  makeupThreshold: "17:00",
+  acceptMakeup: false, // Global default, can be overridden by day
 };
 
 export const useCabinSchedule = (allStudents) => {
@@ -27,6 +31,7 @@ export const useCabinSchedule = (allStudents) => {
   const [weekSchedules, setWeekSchedules] = useState({});
   const [week, setWeek] = useState(new Date("2026-03-23"));
   const [loadingSync, setLoadingSync] = useState(false);
+  const [priorityCourse, setPriorityCourse] = useState("all");
   const queryClient = useQueryClient();
 
   // ── Week key & current week data ──────────────────────────────────────────
@@ -125,16 +130,30 @@ export const useCabinSchedule = (allStudents) => {
 
   // ── Sessions ──────────────────────────────────────────────────────────────
   const getDayConfig = useCallback(
-    (dayIdx) => {
+    (di) => {
+      // Chuyển di (0: T2, ..., 6: CN) sang dayIdx (1: T2, ..., 0: CN)
+      const dayIdx = (di + 1) % 7;
       const override = dayConfigs[dayIdx];
       if (override?.noSessions) return { noSessions: true };
       return {
         start: override?.start ?? globalConfig.startTime,
         end: override?.end ?? globalConfig.endTime,
+        b1Cabins: override?.b1Cabins ?? globalConfig.b1Cabins,
+        acceptMakeup: override?.acceptMakeup ?? globalConfig.acceptMakeup,
         noSessions: false,
       };
     },
     [dayConfigs, globalConfig],
+  );
+
+  const isMakeupSlot = useCallback(
+    (di, session) => {
+      const dCfg = getDayConfig(di);
+      if (!dCfg.acceptMakeup) return false;
+      // Theo yêu cầu: ca từ 17h trở đi là ca học bù
+      return session.startMin >= timeToMin(globalConfig.makeupThreshold || "17:00");
+    },
+    [getDayConfig, globalConfig.makeupThreshold],
   );
 
   const globalSessions = useMemo(() => {
@@ -156,8 +175,8 @@ export const useCabinSchedule = (allStudents) => {
   }, [globalConfig.startTime, globalConfig.endTime, globalConfig.duration]);
 
   const getSessions = useCallback(
-    (dayIdx) => {
-      const cfg = getDayConfig(dayIdx);
+    (di) => {
+      const cfg = getDayConfig(di);
       if (cfg.noSessions) return globalSessions.map(() => null);
       const dayStartMin = timeToMin(cfg.start);
       const dayEndMin = timeToMin(cfg.end);
@@ -184,8 +203,7 @@ export const useCabinSchedule = (allStudents) => {
   const initSchedule = useMemo(() => {
     const s = {};
     weekDates.forEach((_, di) => {
-      const dayIdx = (di + 1) % 7;
-      getSessions(dayIdx).forEach((sess) => {
+      getSessions(di).forEach((sess) => {
         if (sess) {
           s[`${di}-${sess.num}`] = {
             time: sess.time,
@@ -256,8 +274,17 @@ export const useCabinSchedule = (allStudents) => {
   const canDropIntoCabin = useCallback(
     (targetMaDkList, droppingMaDks, targetCn, slotKey) => {
       if (slotKey && lockedCabins[slotKey]) return false;
-      const { duration, maxPerCabin, b1Cabins } = globalConfig;
-      const targetType = Number(targetCn) > 5 - b1Cabins ? "B1" : "B2";
+
+      // slotKey format: "di-sn-cn" or "di-sn"
+      const parts = slotKey.split("-");
+      const di = parseInt(parts[0]);
+      const sn = parseInt(parts[1]);
+
+      const dCfg = getDayConfig(di);
+      const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
+      const { duration, maxPerCabin } = globalConfig;
+
+      const targetType = Number(targetCn) > 5 - b1Count ? "B1" : "B2";
       const existingStudents = targetMaDkList
         .map(getStudentByMaDk)
         .filter(Boolean);
@@ -266,6 +293,33 @@ export const useCabinSchedule = (allStudents) => {
         .filter(Boolean);
 
       if (droppingStudents.some((s) => s.hang_xe !== targetType)) return false;
+
+      // Ràng buộc học bù
+      const session = getSessions(di).find((s) => s?.num === sn);
+      if (session) {
+        const isMakeupZone = isMakeupSlot(di, session);
+        const hasMakeupInDropping = droppingStudents.some((s) => s.is_makeup);
+        const hasNormalInDropping = droppingStudents.some((s) => !s.is_makeup);
+
+        if (isMakeupZone) {
+          // Ô học bù chỉ nhận HV học bù
+          if (hasNormalInDropping) return false;
+        } else {
+          // Ô thường không nhận HV học bù
+          if (hasMakeupInDropping) return false;
+        }
+
+        // Kiểm tra hòa trộn trong cabin
+        if (existingStudents.length > 0) {
+          const hasMakeupInExisting = existingStudents.some((s) => s.is_makeup);
+          if (isMakeupZone && !hasMakeupInExisting && existingStudents.length > 0) {
+            // Trường hợp hy hữu nếu đã có học viên thường ở đây (do dữ liệu cũ)
+            // thì vẫn chặn không cho thêm học bù vào hoặc ngược lại.
+            // Nhưng về cơ bản isMakeupZone đã kiểm tra loại học viên rồi.
+          }
+        }
+      }
+
       if (existingStudents.some(isNoData)) return false;
       if (droppingStudents.some(isNoData)) return existingStudents.length === 0;
 
@@ -273,7 +327,104 @@ export const useCabinSchedule = (allStudents) => {
       if (allInCabin.length > maxPerCabin) return false;
       return calcCabinTime(allInCabin) < duration;
     },
-    [globalConfig, getStudentByMaDk, calcCabinTime, lockedCabins],
+    [globalConfig, getStudentByMaDk, calcCabinTime, lockedCabins, getDayConfig, getSessions, isMakeupSlot],
+  );
+
+  // ── Shift logic ───────────────────────────────────────────────────────────
+  const shiftOneStudent = useCallback(
+    (maDk, fromDateIdx, fromSessionNum, fromCabinNum, currentSchedule) => {
+      const student = getStudentByMaDk(maDk);
+      if (!student) return currentSchedule;
+
+      // Tìm tất cả các ô từ thời điểm hiện tại trở đi
+      const allKeys = Object.keys(initSchedule).sort((a, b) => {
+        const [diA, snA] = a.split("-").map(Number);
+        const [diB, snB] = b.split("-").map(Number);
+        if (diA !== diB) return diA - diB;
+        return snA - snB;
+      });
+
+      const startIndex = allKeys.indexOf(`${fromDateIdx}-${fromSessionNum}`);
+      if (startIndex === -1) return currentSchedule;
+
+      for (let i = startIndex; i < allKeys.length; i++) {
+        const key = allKeys[i];
+        const [di, sn] = key.split("-").map(Number);
+        const sessions = getSessions(di);
+        const session = sessions.find((s) => s?.num === sn);
+        if (!session) continue;
+
+        // Ưu tiên cùng ca học (các cabin khác)
+        // Sau đó mới đến ca tiếp theo
+        const startCabin = (key === `${fromDateIdx}-${fromSessionNum}`) ? fromCabinNum + 1 : 1;
+
+        for (let cn = 1; cn <= 5; cn++) {
+          // Bỏ qua ô hiện tại
+          if (key === `${fromDateIdx}-${fromSessionNum}` && cn === fromCabinNum) continue;
+
+          const slotKey = `${key}-${cn}`;
+          const existingIds = currentSchedule[key]?.cabins[cn] || [];
+
+          if (canDropIntoCabin(existingIds, [maDk], cn, slotKey)) {
+            const nextSchedule = JSON.parse(JSON.stringify(currentSchedule));
+            if (!nextSchedule[key]) {
+              nextSchedule[key] = { time: session.time, cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
+            }
+            nextSchedule[key].cabins[cn].push(maDk);
+            return nextSchedule;
+          }
+        }
+      }
+
+      // Nếu không tìm được chỗ trống, trả về null để báo hiệu cần đưa về danh sách chờ
+      return null;
+    },
+    [getStudentByMaDk, initSchedule, getSessions, canDropIntoCabin],
+  );
+
+  const handlePriorityInsert = useCallback(
+    (maDks, di, sn, cn) => {
+      const targetKey = `${di}-${sn}`;
+      const targetSlotKey = `${di}-${sn}-${cn}`;
+      const existingInTarget = fullSchedule[targetKey]?.cabins[cn] || [];
+
+      let currentSchedule = JSON.parse(JSON.stringify(fullSchedule));
+      const newAssigned = new Set(assignedMaDks);
+      maDks.forEach((id) => newAssigned.add(id));
+
+      // 1. Gỡ học viên cũ ra
+      currentSchedule[targetKey].cabins[cn] = [];
+
+      // 2. Chèn học viên mới vào
+      currentSchedule[targetKey].cabins[cn] = maDks;
+
+      // 3. Tìm chỗ mới cho từng học viên bị đẩy đi
+      let finalSchedule = currentSchedule;
+      let kickedCount = 0;
+
+      for (const oldMaDk of existingInTarget) {
+        const shifted = shiftOneStudent(oldMaDk, di, sn, cn, finalSchedule);
+        if (shifted) {
+          finalSchedule = shifted;
+        } else {
+          // Không tìm được chỗ trống trong tuần -> trả về danh sách chờ
+          newAssigned.delete(oldMaDk);
+          kickedCount++;
+        }
+      }
+
+      updateCurrentWeek(() => ({
+        schedule: finalSchedule,
+        assignedMaDks: newAssigned,
+      }));
+
+      if (kickedCount > 0) {
+        message.warning(`Đã đẩy ${existingInTarget.length} HV. Trong đó ${kickedCount} HV phải về danh sách chờ vì hết chỗ trống.`);
+      } else if (existingInTarget.length > 0) {
+        message.success(`Đã đẩy ${existingInTarget.length} học viên cũ sang các ca trống tiếp theo.`);
+      }
+    },
+    [fullSchedule, assignedMaDks, shiftOneStudent, updateCurrentWeek],
   );
 
   // ── Remove student ────────────────────────────────────────────────────────
@@ -361,49 +512,64 @@ export const useCabinSchedule = (allStudents) => {
       const unassigned = allStudents
         .filter((s) => !globalAssigned.has(s.ma_dk))
         .sort((a, b) => {
+          // 1. Ưu tiên theo Khóa học
+          const khoaA = a.khoa_hoc || "";
+          const khoaB = b.khoa_hoc || "";
+          if (khoaA !== khoaB) return khoaA.localeCompare(khoaB);
+
+          // 2. Ưu tiên theo Giáo viên (trong cùng một khóa)
+          const gvA = a.giao_vien || "";
+          const gvB = b.giao_vien || "";
+          if (gvA !== gvB) return gvA.localeCompare(gvB);
+
+          // 3. Ngày kết thúc (nếu có)
           const dateA = new Date(a.ngay_ket_thuc || 0).getTime();
           const dateB = new Date(b.ngay_ket_thuc || 0).getTime();
-          if (dateA !== dateB) return dateA - dateB;
-          return (a.giao_vien || "").localeCompare(b.giao_vien || "");
+          return dateA - dateB;
         });
 
-      const groupA = unassigned.filter(isNoData);
-      const groupA_B1 = groupA.filter((s) => s.hang_xe === "B1");
-      const groupA_B2 = groupA.filter((s) => s.hang_xe === "B2");
+      // Phân tách học viên: Chính khóa vs Học bù
+      const normalStudents = unassigned.filter((s) => !s.is_makeup);
+      const makeupStudents = unassigned.filter((s) => s.is_makeup);
 
-      const groupB =
-        mode === "all"
-          ? unassigned.filter((s) => {
-            if (!isHasData(s)) return false;
-            const remaining = getRemaining(s, globalConfig.duration);
-            return remaining > 0 && remaining <= globalConfig.duration;
-          })
-          : [];
+      // Nhóm học viên chính khóa
+      const groupA_Normal = normalStudents.filter(isNoData);
+      const groupB_Normal = mode === "all"
+        ? normalStudents.filter((s) => {
+          if (!isHasData(s)) return false;
+          const remaining = getRemaining(s, globalConfig.duration);
+          return remaining > 0 && remaining <= globalConfig.duration;
+        })
+        : [];
 
-      const groupB_B1 = groupB.filter((s) => s.hang_xe === "B1");
-      const groupB_B2 = groupB.filter((s) => s.hang_xe === "B2");
+      // Nhóm học viên học bù
+      const groupA_Makeup = makeupStudents.filter(isNoData);
+      const groupB_Makeup = mode === "all"
+        ? makeupStudents.filter((s) => {
+          if (!isHasData(s)) return false;
+          const remaining = getRemaining(s, globalConfig.duration);
+          return remaining > 0 && remaining <= globalConfig.duration;
+        })
+        : [];
 
-      const binsB_B1 =
-        mode === "all"
-          ? binPackStudents(
-            groupB_B1,
-            globalConfig.duration,
-            globalConfig.maxPerCabin,
-            globalConfig.intervalMinutes,
-          )
-          : [];
-      const binsB_B2 =
-        mode === "all"
-          ? binPackStudents(
-            groupB_B2,
-            globalConfig.duration,
-            globalConfig.maxPerCabin,
-            globalConfig.intervalMinutes,
-          )
-          : [];
+      // Gom nhóm Bin-packing cho cả 2 nhóm
+      const getBins = (students) => {
+        const b1 = students.filter((s) => s.hang_xe === "B1");
+        const b2 = students.filter((s) => s.hang_xe === "B2");
+        const binsB1 = binPackStudents(b1, globalConfig.duration, globalConfig.maxPerCabin, globalConfig.intervalMinutes);
+        const binsB2 = binPackStudents(b2, globalConfig.duration, globalConfig.maxPerCabin, globalConfig.intervalMinutes);
+        return { binsB1, binsB2 };
+      };
 
-      const emptySlotsB1 = [];
-      const emptySlotsB2 = [];
+      const normalBins = getBins(groupB_Normal);
+      const makeupBins = getBins(groupB_Makeup);
+
+      // Phân tách ô trống
+      const emptyNormalB1 = [];
+      const emptyNormalB2 = [];
+      const emptyMakeupB1 = [];
+      const emptyMakeupB2 = [];
+
       Object.keys(initSchedule)
         .sort((a, b) => {
           const [diA, snA] = a.split("-").map(Number);
@@ -412,29 +578,36 @@ export const useCabinSchedule = (allStudents) => {
           return snA - snB;
         })
         .forEach((key) => {
+          const [di, sn] = key.split("-").map(Number);
+          const session = getSessions(di).find((s) => s?.num === sn);
+          if (!session) return;
+
+          const isMakeup = isMakeupSlot(di, session);
+          const dCfg = getDayConfig(di);
+          const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
+
           [1, 2, 3, 4, 5].forEach((cn) => {
             if (newSchedule[key] && newSchedule[key].cabins[cn]?.length === 0) {
               const slotKey = `${key}-${cn}`;
               if (!lockedCabins[slotKey]) {
-                if (Number(cn) > 5 - globalConfig.b1Cabins)
-                  emptySlotsB1.push({ key, cn });
-                else emptySlotsB2.push({ key, cn });
+                const isB1 = Number(cn) > 5 - b1Count;
+                if (isMakeup) {
+                  if (isB1) emptyMakeupB1.push({ key, cn });
+                  else emptyMakeupB2.push({ key, cn });
+                } else {
+                  if (isB1) emptyNormalB1.push({ key, cn });
+                  else emptyNormalB2.push({ key, cn });
+                }
               }
             }
           });
         });
 
-      const fillSlots = (studentsOrBins, isBin, emptySlots) => {
+      const fillSlots = (items, isBin, emptySlots) => {
         let slotIdx = 0;
-        for (const item of studentsOrBins) {
+        for (const item of items) {
           if (slotIdx >= emptySlots.length) break;
           const { key, cn } = emptySlots[slotIdx++];
-          if (!newSchedule[key]) {
-            newSchedule[key] = {
-              time: initSchedule[key].time,
-              cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
-            };
-          }
           const maDksToAssign = isBin ? item.map((s) => s.ma_dk) : [item.ma_dk];
           newSchedule[key].cabins[cn] = maDksToAssign;
           maDksToAssign.forEach((id) => newAssigned.add(id));
@@ -442,10 +615,17 @@ export const useCabinSchedule = (allStudents) => {
         return emptySlots.slice(slotIdx);
       };
 
-      let remainB1 = fillSlots(groupA_B1, false, emptySlotsB1);
-      if (mode === "all") fillSlots(binsB_B1, true, remainB1);
-      let remainB2 = fillSlots(groupA_B2, false, emptySlotsB2);
-      if (mode === "all") fillSlots(binsB_B2, true, remainB2);
+      // Điền học viên chính khóa vào ô thường
+      let remNormalB1 = fillSlots(groupA_Normal.filter(s => s.hang_xe === "B1"), false, emptyNormalB1);
+      fillSlots(normalBins.binsB1, true, remNormalB1);
+      let remNormalB2 = fillSlots(groupA_Normal.filter(s => s.hang_xe === "B2"), false, emptyNormalB2);
+      fillSlots(normalBins.binsB2, true, remNormalB2);
+
+      // Điền học viên học bù vào ô học bù
+      let remMakeupB1 = fillSlots(groupA_Makeup.filter(s => s.hang_xe === "B1"), false, emptyMakeupB1);
+      fillSlots(makeupBins.binsB1, true, remMakeupB1);
+      let remMakeupB2 = fillSlots(groupA_Makeup.filter(s => s.hang_xe === "B2"), false, emptyMakeupB2);
+      fillSlots(makeupBins.binsB2, true, remMakeupB2);
 
       updateCurrentWeek(() => ({
         schedule: newSchedule,
@@ -772,19 +952,23 @@ export const useCabinSchedule = (allStudents) => {
     totalEmptySlots,
     loadingSync,
     isFetchingSchedule,
+    priorityCourse,
     // helpers
     getStudentByMaDk,
     calcCabinTime,
     canDropIntoCabin,
     getSessions,
     getDayConfig,
+    isMakeupSlot,
     // actions
+    setPriorityCourse,
     updateCurrentWeek,
     toggleLock,
     setSchedule,
     setDayConfigs,
     handleRemoveStudent,
     handleAutoAssign,
+    handlePriorityInsert,
     handleSaveGlobalConfig,
     handleSaveCabinLimit,
     handleSaveScheduleToServer,

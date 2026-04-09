@@ -62,6 +62,25 @@ const SettingsModal = ({
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Giờ bắt đầu tính học bù
+                    </label>
+                    <Input
+                      type="time"
+                      value={globalConfig.makeupThreshold || "17:00"}
+                      onChange={(e) =>
+                        setGlobalConfig({
+                          ...globalConfig,
+                          makeupThreshold: e.target.value,
+                        })
+                      }
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Các ca học bắt đầu từ giờ này sẽ chỉ nhận HV học bù (nếu ngày đó cho phép).</p>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Thời lượng mỗi ca (phút)
@@ -154,34 +173,86 @@ const SettingsModal = ({
                       </div>
 
                       {!override.noSessions && (
-                        <div className="grid grid-cols-2 gap-6">
-                          <Input
-                            type="time"
-                            value={override.start || globalConfig.startTime}
-                            onChange={(e) =>
-                              setDayConfigs({
-                                ...dayConfigs,
-                                [dayIdx]: {
-                                  ...override,
-                                  start: e.target.value,
-                                },
-                              })
-                            }
-                          />
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-[11px] font-medium text-gray-400 mb-1">Giờ bắt đầu</label>
+                              <Input
+                                type="time"
+                                value={override.start || globalConfig.startTime}
+                                onChange={(e) =>
+                                  setDayConfigs({
+                                    ...dayConfigs,
+                                    [dayIdx]: {
+                                      ...override,
+                                      start: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
 
-                          <Input
-                            type="time"
-                            value={override.end || globalConfig.endTime}
-                            onChange={(e) =>
-                              setDayConfigs({
-                                ...dayConfigs,
-                                [dayIdx]: {
-                                  ...override,
-                                  end: e.target.value,
-                                },
-                              })
-                            }
-                          />
+                            <div>
+                              <label className="block text-[11px] font-medium text-gray-400 mb-1">Giờ kết thúc</label>
+                              <Input
+                                type="time"
+                                value={override.end || globalConfig.endTime}
+                                onChange={(e) =>
+                                  setDayConfigs({
+                                    ...dayConfigs,
+                                    [dayIdx]: {
+                                      ...override,
+                                      end: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">Nhận hv học bù</span>
+                              <Switch
+                                size="small"
+                                checked={override.acceptMakeup || false}
+                                onChange={(checked) =>
+                                  setDayConfigs({
+                                    ...dayConfigs,
+                                    [dayIdx]: {
+                                      ...override,
+                                      acceptMakeup: checked,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-medium">Số cabin B1</span>
+                              <InputNumber
+                                min={0}
+                                max={5}
+                                size="small"
+                                value={override.b1Cabins ?? globalConfig.b1Cabins}
+                                onChange={(v) =>
+                                  setDayConfigs({
+                                    ...dayConfigs,
+                                    [dayIdx]: {
+                                      ...override,
+                                      b1Cabins: v,
+                                    },
+                                  })
+                                }
+                                style={{ width: 60 }}
+                              />
+                            </div>
+                          </div>
+                          {override.acceptMakeup && (
+                            <p className="text-[10px] text-blue-500 italic">
+                              * Ngày này sẽ có các ca từ {globalConfig.makeupThreshold || "17:00"} dành riêng cho học viên học bù.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

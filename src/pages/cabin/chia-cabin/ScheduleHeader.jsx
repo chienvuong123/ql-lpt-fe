@@ -34,6 +34,9 @@ const ScheduleHeader = ({
   onSave,
   onClear,
   loadingSync,
+  priorityCourse,
+  setPriorityCourse,
+  uniqueKhoaHoc,
 }) => {
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -166,6 +169,24 @@ const ScheduleHeader = ({
                 ...[1, 2, 3, 4, 5].map((n) => ({
                   value: n,
                   label: `Cabin ${n}`,
+                })),
+              ]}
+            />
+          </div>
+
+          {/* Priority course */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 font-medium">Khóa ưu tiên (đẩy lịch):</span>
+            <Select
+              value={priorityCourse}
+              onChange={setPriorityCourse}
+              size="small"
+              style={{ width: 140 }}
+              options={[
+                { value: "all", label: "Không có" },
+                ...uniqueKhoaHoc.map((k) => ({
+                  value: k,
+                  label: k,
                 })),
               ]}
             />

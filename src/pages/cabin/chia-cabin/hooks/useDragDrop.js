@@ -11,6 +11,11 @@ export const useDragDrop = ({
   calcCabinTime,
   canDropIntoCabin,
   updateCurrentWeek,
+  priorityCourse,
+  handlePriorityInsert,
+  getDayConfig,
+  getSessions,
+  isMakeupSlot,
 }) => {
   const [dragState, setDragState] = useState(null);
   const [dragOverSlot, setDragOverSlot] = useState(null);
@@ -151,11 +156,48 @@ export const useDragDrop = ({
         return;
       }
 
+      const droppingStudents = maDks.map(getStudentByMaDk).filter(Boolean);
+      const isPriority = priorityCourse !== "all" && droppingStudents.some(s => s.khoa_hoc === priorityCourse);
+
       if (!canDropIntoCabin(existingInTarget, maDks, targetCn, targetSlotKey)) {
+        // Nếu là khóa ưu tiên, xem xét việc đẩy lịch thay vì chặn
+        if (isPriority) {
+          // Kiểm tra hạng xe và vùng học bù trước (ràng buộc cứng)
+          const dCfg = getDayConfig(targetDi);
+          const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
+          
+          // Re-validate basic rules: Hang xe
+          const targetType = Number(targetCn) > 5 - b1Count ? "B1" : "B2";
+          if (droppingStudents.some(s => s.hang_xe !== targetType)) {
+             message.error("Học viên ưu tiên cũng phải đúng Hạng xe với Cabin!");
+             setDragState(null);
+             return;
+          }
+
+          // Kiểm tra vùng học bù (ràng buộc cứng cho cả khóa ưu tiên)
+          const session = getSessions(targetDi).find((s) => s?.num === targetSn);
+          if (session) {
+            const isMakeupZone = isMakeupSlot(targetDi, session);
+            const hasMakeup = droppingStudents.some(s => s.is_makeup);
+            if (isMakeupZone && !hasMakeup) {
+              message.error("Ô học bù chỉ dành cho học viên học bù!");
+              setDragState(null);
+              return;
+            }
+            if (!isMakeupZone && hasMakeup) {
+              message.error("Học viên học bù không thể xếp vào ca chính khóa!");
+              setDragState(null);
+              return;
+            }
+          }
+          
+          // Trigger Priority Insert
+          handlePriorityInsert(maDks, targetDi, targetSn, targetCn);
+          setDragState(null);
+          return;
+        }
+
         const existingStudents = existingInTarget
-          .map(getStudentByMaDk)
-          .filter(Boolean);
-        const droppingStudents = maDks.map(getStudentByMaDk).filter(Boolean);
 
         if (droppingStudents.some(isNoData) && existingStudents.length > 0) {
           if (existingStudents.some(isHasData)) {
@@ -244,6 +286,11 @@ export const useDragDrop = ({
       calcCabinTime,
       updateCurrentWeek,
       lockedCabins,
+      priorityCourse,
+      handlePriorityInsert,
+      getDayConfig,
+      getSessions,
+      isMakeupSlot,
     ],
   );
 
