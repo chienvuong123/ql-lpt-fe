@@ -43,6 +43,7 @@ export const useCabinSchedule = (allStudents) => {
         assignedMaDks: new Set(),
         schedule: {},
         dayConfigs: {},
+        cabinConfigs: {},
         lockedCabins: {},
       },
     [weekSchedules, weekKey],
@@ -51,6 +52,7 @@ export const useCabinSchedule = (allStudents) => {
   const assignedMaDks = currentWeekData.assignedMaDks;
   const schedule = currentWeekData.schedule;
   const dayConfigs = currentWeekData.dayConfigs || {};
+  const cabinConfigs = currentWeekData.cabinConfigs || {};
   const lockedCabins = currentWeekData.lockedCabins || {};
 
   // ── Update helpers ────────────────────────────────────────────────────────
@@ -61,6 +63,7 @@ export const useCabinSchedule = (allStudents) => {
           assignedMaDks: new Set(),
           schedule: {},
           dayConfigs: {},
+          cabinConfigs: {},
           lockedCabins: {},
         };
         const updated = typeof updater === "function" ? updater(old) : updater;
@@ -122,6 +125,19 @@ export const useCabinSchedule = (allStudents) => {
         dayConfigs:
           typeof newConfigsOrUpdater === "function"
             ? newConfigsOrUpdater(old.dayConfigs || {})
+            : newConfigsOrUpdater,
+      }));
+    },
+    [updateCurrentWeek],
+  );
+
+  const setCabinConfigs = useCallback(
+    (newConfigsOrUpdater) => {
+      updateCurrentWeek((old) => ({
+        ...old,
+        cabinConfigs:
+          typeof newConfigsOrUpdater === "function"
+            ? newConfigsOrUpdater(old.cabinConfigs || {})
             : newConfigsOrUpdater,
       }));
     },
@@ -699,6 +715,121 @@ export const useCabinSchedule = (allStudents) => {
     }
   };
 
+  const doConfigBasedAutoAssign = (cabinNums) => {
+    try {
+      if (!cabinNums || cabinNums.length === 0) return;
+      
+      const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
+      const totalAssignedThisRun = new Set();
+      const currentAssignedMaDks = new Set(assignedMaDks);
+
+      let cabinsProcessed = 0;
+      let studentsAssignedCount = 0;
+
+      for (const cabinNum of cabinNums) {
+        const config = cabinConfigs[cabinNum];
+        if (!config || !config.courses || config.courses.length === 0) continue;
+
+        cabinsProcessed++;
+
+        // Tìm các ô trống của cabin này
+        const emptySlots = [];
+        Object.keys(initSchedule)
+          .sort((a, b) => {
+            const [diA, snA] = a.split("-").map(Number);
+            const [diB, snB] = b.split("-").map(Number);
+            if (diA !== diB) return diA - diB;
+            return snA - snB;
+          })
+          .forEach((key) => {
+            const slotKey = `${key}-${cabinNum}`;
+            if (!lockedCabins[slotKey] && (newSchedule[key]?.cabins[cabinNum] || []).length === 0) {
+              emptySlots.push({ key });
+            }
+          });
+
+        if (emptySlots.length === 0) continue;
+
+        // Lọc học viên chưa có lịch phù hợp với danh sách khóa của cabin
+        const globalAssigned = new Set();
+        Object.keys(weekSchedules).forEach((wk) => {
+          if (wk !== weekKey) weekSchedules[wk].assignedMaDks.forEach((id) => globalAssigned.add(id));
+        });
+        currentAssignedMaDks.forEach((id) => globalAssigned.add(id));
+        totalAssignedThisRun.forEach((id) => globalAssigned.add(id));
+
+        const pool = allStudents.filter(
+          (s) => !globalAssigned.has(s.ma_dk) && config.courses.includes(s.khoa_hoc)
+        );
+
+        if (pool.length === 0) continue;
+
+        // Bước 1: Sắp xếp học viên trong pool theo giáo viên cho từng khóa
+        const poolsByCourse = {};
+        config.courses.forEach(c => {
+          // Lọc học viên của khóa và sắp xếp theo tên giáo viên
+          poolsByCourse[c] = pool
+            .filter(s => s.khoa_hoc === c)
+            .sort((a, b) => (a.giao_vien || "").localeCompare(b.giao_vien || ""));
+        });
+
+        // Bước 2: Tính toán hạn mức ô học (Quota) cho từng khóa dựa trên tỷ lệ % và số ô trống
+        const totalEmptyForCabin = emptySlots.length;
+        const ratios = config.ratios || {};
+        const totalWeight = Object.values(ratios).reduce((a, b) => a + b, 0) || config.courses.length;
+
+        // Tính số lượng ô cần điền cho mỗi khóa
+        const quotas = {};
+        let allocatedCount = 0;
+        config.courses.forEach((c, idx) => {
+          if (idx === config.courses.length - 1) {
+            // Khóa cuối cùng lấy phần còn lại để đảm bảo khớp tổng số ô trống
+            quotas[c] = totalEmptyForCabin - allocatedCount;
+          } else {
+            const ratio = ratios[c] || 0;
+            const q = Math.round((ratio / totalWeight) * totalEmptyForCabin);
+            quotas[c] = q;
+            allocatedCount += q;
+          }
+        });
+
+        // Bước 3: Điền lịch tuần tự theo khối khóa học (tính từ Thứ 2)
+        let slotIdx = 0;
+        for (const courseName of config.courses) {
+          const quota = quotas[courseName];
+          let filledForThisCourse = 0;
+
+          // Điền cho đến khi hết quota hoặc hết học viên trong pool của khóa đó
+          while (filledForThisCourse < quota && poolsByCourse[courseName].length > 0 && slotIdx < emptySlots.length) {
+            const student = poolsByCourse[courseName].shift();
+            const { key } = emptySlots[slotIdx++];
+            
+            if (!newSchedule[key]) newSchedule[key] = { cabins: {} };
+            newSchedule[key].cabins[cabinNum] = [student.ma_dk];
+            totalAssignedThisRun.add(student.ma_dk);
+            studentsAssignedCount++;
+            filledForThisCourse++;
+          }
+        }
+      }
+
+      if (studentsAssignedCount === 0) {
+        message.info("Không có học viên nào được chia thêm dựa trên cấu hình.");
+        return;
+      }
+
+      updateCurrentWeek(() => ({
+        schedule: newSchedule,
+        assignedMaDks: new Set([...currentAssignedMaDks, ...totalAssignedThisRun]),
+      }));
+
+      message.success(`Đã chia xong ${studentsAssignedCount} học viên cho ${cabinsProcessed} máy dựa trên cấu hình.`);
+    } catch (err) {
+      console.error("Config Based Auto Assign Error:", err);
+      message.error("Lỗi khi chia lịch theo cấu hình.");
+    }
+  };
+
   // ── Settings handlers ─────────────────────────────────────────────────────
   const handleSaveGlobalConfig = (newConfig) => {
     const oldDuration = globalConfig.duration;
@@ -990,6 +1121,7 @@ export const useCabinSchedule = (allStudents) => {
     assignedMaDks,
     schedule,
     dayConfigs,
+    cabinConfigs,
     lockedCabins,
     fullSchedule,
     initSchedule,
@@ -1014,9 +1146,11 @@ export const useCabinSchedule = (allStudents) => {
     toggleLock,
     setSchedule,
     setDayConfigs,
+    setCabinConfigs,
     handleRemoveStudent,
     handleAutoAssign,
     handlePriorityInsert,
+    doConfigBasedAutoAssign,
     handleSaveGlobalConfig,
     handleSaveCabinLimit,
     handleSaveScheduleToServer,

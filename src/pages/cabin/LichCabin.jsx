@@ -62,6 +62,9 @@ const LichCabin = () => {
     handlePriorityInsert,
     getDayConfig,
     isMakeupSlot,
+    cabinConfigs,
+    setCabinConfigs,
+    doConfigBasedAutoAssign,
   } = schedule;
 
   const isGlobalLoading =
@@ -128,6 +131,15 @@ const LichCabin = () => {
     () =>
       allStudents.filter((s) => {
         if (allAssignedMaDks.has(s.ma_dk)) return false;
+
+        // Lọc theo cấu hình cabin nếu đang xem 1 cabin cụ thể
+        if (filterCabin && filterCabin !== "all") {
+          const cfg = cabinConfigs[String(filterCabin)];
+          if (cfg && cfg.courses && cfg.courses.length > 0) {
+            if (!cfg.courses.includes(s.khoa_hoc)) return false;
+          }
+        }
+
         if (filterKhoa !== "all" && s.khoa_hoc !== filterKhoa) return false;
         if (filterStatus === "noData" && !isNoData(s)) return false;
         if (filterStatus === "hasData" && !isHasData(s)) return false;
@@ -140,7 +152,7 @@ const LichCabin = () => {
           (s.giao_vien || "").toLowerCase().includes(searchLower)
         );
       }),
-    [allStudents, allAssignedMaDks, deferredSearch, filterKhoa, filterStatus, filterType],
+    [allStudents, allAssignedMaDks, deferredSearch, filterKhoa, filterStatus, filterType, filterCabin, cabinConfigs],
   );
 
   const unassignedNoData = allStudents.filter(
@@ -279,6 +291,7 @@ const LichCabin = () => {
         priorityCourse={priorityCourse}
         setPriorityCourse={setPriorityCourse}
         uniqueKhoaHoc={uniqueKhoaHoc}
+        onConfigBasedAssign={doConfigBasedAutoAssign}
       />
 
       <Row gutter={[12, 12]} className="!m-3 flex-1">
@@ -344,6 +357,9 @@ const LichCabin = () => {
         setGlobalConfig={handleSaveGlobalConfig}
         dayConfigs={dayConfigs}
         setDayConfigs={setDayConfigs}
+        cabinConfigs={cabinConfigs}
+        setCabinConfigs={setCabinConfigs}
+        uniqueKhoaHoc={uniqueKhoaHoc}
         setSchedule={setSchedule}
       />
 

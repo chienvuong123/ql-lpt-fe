@@ -37,6 +37,7 @@ const ScheduleHeader = ({
   priorityCourse,
   setPriorityCourse,
   uniqueKhoaHoc,
+  onConfigBasedAssign,
 }) => {
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -73,6 +74,23 @@ const ScheduleHeader = ({
                     icon: <UserOutlined />,
                     onClick: () => onAutoAssign("noDataOnly"),
                   },
+                  { type: 'divider' },
+                  {
+                    key: "allConfigs",
+                    label: "Chia tự động theo cấu hình các Cabin (Tất cả máy)",
+                    icon: <BgColorsOutlined />,
+                    className: "text-blue-600 font-semibold",
+                    onClick: () => onConfigBasedAssign([1, 2, 3, 4, 5]),
+                  },
+                  ...(filterCabin !== "all" ? [
+                    {
+                      key: "specificCabin",
+                      label: `Chia riêng cho Cabin ${filterCabin} (Theo cấu hình %)`,
+                      icon: <BgColorsOutlined />,
+                      danger: true,
+                      onClick: () => onConfigBasedAssign([filterCabin]),
+                    }
+                  ] : []),
                 ],
               }}
               trigger={["click"]}
@@ -172,6 +190,16 @@ const ScheduleHeader = ({
                 })),
               ]}
             />
+            {filterCabin !== "all" && (
+              <Button 
+                size="small" 
+                type="dashed" 
+                onClick={() => onConfigBasedAssign([filterCabin])}
+                className="text-blue-600 border-blue-200 hover:text-blue-700 hover:border-blue-400"
+              >
+                Chia theo cấu hình Cabin
+              </Button>
+            )}
           </div>
 
           {/* Priority course */}

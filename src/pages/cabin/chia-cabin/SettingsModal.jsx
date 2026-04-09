@@ -1,4 +1,5 @@
-import { Modal, Tabs, Input, InputNumber, Switch, Button, message } from "antd";
+import React, { useState } from "react";
+import { Modal, Tabs, Input, InputNumber, Switch, Button, message, Select, Divider } from "antd";
 
 const SettingsModal = ({
   settingsModal,
@@ -9,8 +10,12 @@ const SettingsModal = ({
   setGlobalConfig,
   dayConfigs,
   setDayConfigs,
+  cabinConfigs,
+  setCabinConfigs,
+  uniqueKhoaHoc,
   setSchedule,
 }) => {
+  const [selectedCabin, setSelectedCabin] = useState(1);
   return (
     <Modal
       title="Cài đặt thời gian"
@@ -138,7 +143,6 @@ const SettingsModal = ({
               </div>
             ),
           },
-
           {
             key: "daily",
             label: "Cài đặt ngày đặc biệt",
@@ -261,6 +265,106 @@ const SettingsModal = ({
               </div>
             ),
           },
+          {
+            key: "cabin",
+            label: "Cấu hình Cabin riêng",
+            children: (
+              <div className="space-y-6 pt-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="font-medium">Chọn Cabin:</span>
+                  <Select
+                    value={selectedCabin}
+                    onChange={setSelectedCabin}
+                    style={{ width: 120 }}
+                    options={[1, 2, 3, 4, 5].map((n) => ({
+                      value: n,
+                      label: `Cabin ${n}`,
+                    }))}
+                  />
+                </div>
+
+                <Divider className="my-2" />
+
+                {selectedCabin && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Khóa học được phép ở Cabin {selectedCabin}
+                      </label>
+                      <Select
+                        mode="multiple"
+                        placeholder="Chọn các khóa học"
+                        className="w-full"
+                        value={(cabinConfigs[selectedCabin] || {}).courses || []}
+                        onChange={(vals) => {
+                          const oldCfg = cabinConfigs[selectedCabin] || {};
+                          const newRatios = { ...(oldCfg.ratios || {}) };
+                          // Dọn dẹp ratios cũ không còn trong vals
+                          Object.keys(newRatios).forEach(k => {
+                            if (!vals.includes(k)) delete newRatios[k];
+                          });
+                          // Khởi tạo ratios mới nếu chưa có
+                          vals.forEach(v => {
+                             if (!newRatios[v]) newRatios[v] = Math.round(100 / vals.length);
+                          });
+
+                          setCabinConfigs({
+                            ...cabinConfigs,
+                            [selectedCabin]: {
+                              ...oldCfg,
+                              courses: vals,
+                              ratios: newRatios
+                            }
+                          });
+                        }}
+                        options={uniqueKhoaHoc.map(k => ({ value: k, label: k }))}
+                      />
+                    </div>
+
+                    {(cabinConfigs[selectedCabin]?.courses || []).length > 0 && (
+                      <div className="bg-gray-50 p-4 rounded-xl">
+                        <label className="block text-sm font-semibold mb-3">
+                          Phân bổ tỷ lệ % (Tổng nên là 100)
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          {(cabinConfigs[selectedCabin]?.courses || []).map(course => (
+                            <div key={course} className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border">
+                              <span className="text-xs font-medium truncate max-w-[120px]" title={course}>{course}</span>
+                              <InputNumber
+                                min={0}
+                                max={100}
+                                size="small"
+                                formatter={value => `${value}%`}
+                                parser={value => value.replace('%', '')}
+                                value={cabinConfigs[selectedCabin]?.ratios?.[course] || 0}
+                                onChange={(val) => {
+                                  const oldCfg = cabinConfigs[selectedCabin] || {};
+                                  setCabinConfigs({
+                                    ...cabinConfigs,
+                                    [selectedCabin]: {
+                                      ...oldCfg,
+                                      ratios: {
+                                        ...(oldCfg.ratios || {}),
+                                        [course]: val
+                                      }
+                                    }
+                                  });
+                                }}
+                                style={{ width: 80 }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3 text-[11px] text-gray-400 italic">
+                          * Tỷ lệ này sẽ được sử dụng khi bạn bấm "Chia theo cấu hình Cabin" ở màn hình chính.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          }
         ]}
       />
 
