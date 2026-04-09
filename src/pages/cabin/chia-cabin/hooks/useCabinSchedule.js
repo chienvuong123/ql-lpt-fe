@@ -220,9 +220,15 @@ export const useCabinSchedule = (allStudents) => {
     [initSchedule, schedule],
   );
 
+  const studentsMap = useMemo(() => {
+    const map = new Map();
+    allStudents.forEach((s) => map.set(s.ma_dk, s));
+    return map;
+  }, [allStudents]);
+
   const getStudentByMaDk = useCallback(
-    (maDk) => allStudents.find((s) => s.ma_dk === maDk),
-    [allStudents],
+    (maDk) => studentsMap.get(maDk),
+    [studentsMap],
   );
 
   // ── Global assigned (all weeks) ───────────────────────────────────────────
@@ -512,6 +518,14 @@ export const useCabinSchedule = (allStudents) => {
       const unassigned = allStudents
         .filter((s) => !globalAssigned.has(s.ma_dk))
         .sort((a, b) => {
+          // 0. Ưu tiên tuyệt đối khóa học được chọn "Khóa ưu tiên"
+          if (priorityCourse !== "all") {
+            const isAPriority = a.khoa_hoc === priorityCourse;
+            const isBPriority = b.khoa_hoc === priorityCourse;
+            if (isAPriority && !isBPriority) return -1;
+            if (!isAPriority && isBPriority) return 1;
+          }
+
           // 1. Ưu tiên theo Khóa học
           const khoaA = a.khoa_hoc || "";
           const khoaB = b.khoa_hoc || "";
@@ -587,27 +601,61 @@ export const useCabinSchedule = (allStudents) => {
           const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
 
           [1, 2, 3, 4, 5].forEach((cn) => {
-            if (newSchedule[key] && newSchedule[key].cabins[cn]?.length === 0) {
-              const slotKey = `${key}-${cn}`;
-              if (!lockedCabins[slotKey]) {
-                const isB1 = Number(cn) > 5 - b1Count;
+            const slotKey = `${key}-${cn}`;
+            if (lockedCabins[slotKey]) return;
+
+            const existingInSlot = newSchedule[key] ? newSchedule[key].cabins[cn] || [] : [];
+            const isB1 = Number(cn) > 5 - b1Count;
+            
+            // Nếu ô trống hoàn toàn
+            if (existingInSlot.length === 0) {
+              if (isMakeup) {
+                if (isB1) emptyMakeupB1.push({ key, cn });
+                else emptyMakeupB2.push({ key, cn });
+              } else {
+                if (isB1) emptyNormalB1.push({ key, cn });
+                else emptyNormalB2.push({ key, cn });
+              }
+            } 
+            // Nếu ô không trống, nhưng là Khóa Ưu Tiên được phép Đẩy Lịch
+            else if (priorityCourse !== "all") {
+              // Chỉ lấy ô nếu KHÔNG có học viên khóa ưu tiên nào trong đó
+              const hasPriorityInSlot = existingInSlot.some(id => getStudentByMaDk(id)?.khoa_hoc === priorityCourse);
+              if (!hasPriorityInSlot) {
                 if (isMakeup) {
-                  if (isB1) emptyMakeupB1.push({ key, cn });
-                  else emptyMakeupB2.push({ key, cn });
+                  if (isB1) emptyMakeupB1.push({ key, cn, displace: true });
+                  else emptyMakeupB2.push({ key, cn, displace: true });
                 } else {
-                  if (isB1) emptyNormalB1.push({ key, cn });
-                  else emptyNormalB2.push({ key, cn });
+                  if (isB1) emptyNormalB1.push({ key, cn, displace: true });
+                  else emptyNormalB2.push({ key, cn, displace: true });
                 }
               }
             }
           });
         });
 
+      // Ưu tiên ô trống TRƯỚC, ô cần đẩy lịch SAU
+      const sortSlots = (slots) => slots.sort((a, b) => (a.displace ? 1 : 0) - (b.displace ? 1 : 0));
+      sortSlots(emptyNormalB1);
+      sortSlots(emptyNormalB2);
+      sortSlots(emptyMakeupB1);
+      sortSlots(emptyMakeupB2);
+
       const fillSlots = (items, isBin, emptySlots) => {
         let slotIdx = 0;
         for (const item of items) {
           if (slotIdx >= emptySlots.length) break;
-          const { key, cn } = emptySlots[slotIdx++];
+          const { key, cn, displace } = emptySlots[slotIdx++];
+          
+          if (displace) {
+             // Thu hồi ô này: đưa các HV cũ về danh sách chờ
+             const oldMaDks = newSchedule[key].cabins[cn] || [];
+             oldMaDks.forEach(id => {
+               newAssignedThisWeek.delete(id);
+               newAssigned.delete(id); // Vừa thêm vào cũng xóa
+             });
+          }
+
           const maDksToAssign = isBin ? item.map((s) => s.ma_dk) : [item.ma_dk];
           newSchedule[key].cabins[cn] = maDksToAssign;
           maDksToAssign.forEach((id) => newAssigned.add(id));

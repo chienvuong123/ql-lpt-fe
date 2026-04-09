@@ -46,7 +46,7 @@ export const getKhoaColor = (khoa) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CabinSlot = ({
+const CabinSlot = React.memo(({
   dateIndex,
   sessionNum,
   cabinNum,
@@ -421,8 +421,7 @@ const CabinSlot = ({
       </Popover>
     );
   }
-
   return <React.Fragment key={slotKey}>{slotDiv}</React.Fragment>;
-};
+});
 
 export default CabinSlot;

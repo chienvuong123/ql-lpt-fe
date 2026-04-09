@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Row, Col, Spin } from "antd";
 import { formatMinutesToHM } from "../../util/helper";
@@ -122,6 +122,7 @@ const LichCabin = () => {
     ];
     return list.sort();
   }, [allStudents]);
+  const deferredSearch = useDeferredValue(search);
 
   const availableStudents = useMemo(
     () =>
@@ -132,13 +133,14 @@ const LichCabin = () => {
         if (filterStatus === "hasData" && !isHasData(s)) return false;
         if (filterType === "makeup" && !s.is_makeup) return false;
         if (filterType === "normal" && s.is_makeup) return false;
+        const searchLower = (deferredSearch || "").toLowerCase();
         return (
-          s.ho_ten.toLowerCase().includes(search.toLowerCase()) ||
-          s.ma_dk.includes(search) ||
-          s.giao_vien.toLowerCase().includes(search.toLowerCase())
+          (s.ho_ten || "").toLowerCase().includes(searchLower) ||
+          (s.ma_dk || "").includes(deferredSearch || "") ||
+          (s.giao_vien || "").toLowerCase().includes(searchLower)
         );
       }),
-    [allStudents, allAssignedMaDks, search, filterKhoa, filterStatus, filterType],
+    [allStudents, allAssignedMaDks, deferredSearch, filterKhoa, filterStatus, filterType],
   );
 
   const unassignedNoData = allStudents.filter(
@@ -189,7 +191,7 @@ const LichCabin = () => {
   ]);
 
   // ── Shared CabinSlot props ────────────────────────────────────────────────
-  const cabinSlotProps = {
+  const cabinSlotProps = useMemo(() => ({
     fullSchedule,
     weekDates,
     globalConfig,
@@ -217,7 +219,30 @@ const LichCabin = () => {
       setOpenPopover(null);
     },
     setOpenPopover,
-  };
+  }), [
+    fullSchedule,
+    weekDates,
+    globalConfig,
+    lockedCabins,
+    dragOverSlot,
+    dragState,
+    openPopover,
+    getStudentByMaDk,
+    calcCabinTime,
+    canSwap,
+    canDropIntoCabin,
+    toggleLock,
+    getDayConfig,
+    isMakeupSlot,
+    getSessions,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragStartAll,
+    handleDragStartOne,
+    handleDragEnd,
+    handleRemoveStudent,
+  ]);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
@@ -268,34 +293,36 @@ const LichCabin = () => {
         </Col>
 
         <Col span={4}>
-          <WaitingStudentList
-            loading={isFetchingStudents}
-            globalConfig={globalConfig}
-            availableStudents={availableStudents}
-            allStudents={allStudents}
-            filterKhoa={filterKhoa}
-            setFilterKhoa={setFilterKhoa}
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            filterType={filterType}
-            setFilterType={setFilterType}
-            search={search}
-            setSearch={setSearch}
-            uniqueKhoaHoc={uniqueKhoaHoc}
-            listDropOver={listDropOver}
-            setListDropOver={setListDropOver}
-            dragState={dragState}
-            setDragState={setDragState}
-            fullSchedule={fullSchedule}
-            assignedMaDks={assignedMaDks}
-            updateCurrentWeek={updateCurrentWeek}
-            getStudentByMaDk={getStudentByMaDk}
-            isHasData={isHasData}
-            handleDragStartFromList={handleDragStartFromList}
-            handleDragEnd={handleDragEnd}
-            setStudentDetail={setStudentDetail}
-            formatMinutesToHM={formatMinutesToHM}
-          />
+          <div className="sticky top-0">
+            <WaitingStudentList
+              loading={isFetchingStudents}
+              globalConfig={globalConfig}
+              availableStudents={availableStudents}
+              allStudents={allStudents}
+              filterKhoa={filterKhoa}
+              setFilterKhoa={setFilterKhoa}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              filterType={filterType}
+              setFilterType={setFilterType}
+              search={search}
+              setSearch={setSearch}
+              uniqueKhoaHoc={uniqueKhoaHoc}
+              listDropOver={listDropOver}
+              setListDropOver={setListDropOver}
+              dragState={dragState}
+              setDragState={setDragState}
+              fullSchedule={fullSchedule}
+              assignedMaDks={assignedMaDks}
+              updateCurrentWeek={updateCurrentWeek}
+              getStudentByMaDk={getStudentByMaDk}
+              isHasData={isHasData}
+              handleDragStartFromList={handleDragStartFromList}
+              handleDragEnd={handleDragEnd}
+              setStudentDetail={setStudentDetail}
+              formatMinutesToHM={formatMinutesToHM}
+            />
+          </div>
         </Col>
       </Row>
 
