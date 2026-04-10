@@ -32,6 +32,7 @@ import ThemDuLieuVaoHeThong from "./pages/add-data/ThemDuLieuVaoHeThong";
 import DashboardLyThuyet from "./pages/class/DashboardLYThuyet";
 import KiemTraTrungXeGiaoVien from "./pages/dat/KiemTraTrungXeGiaoVien";
 import KiemTraDuLieuTotNghiep from "./pages/checks/KiemTraDuLieuTotNghiep";
+import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -208,7 +209,8 @@ function App() {
                   />
                 }
               />
-              <Route path="them-du-lieu" element={<ThemDuLieuVaoHeThong />} />
+              <Route path="dong-bo-du-lieu-he-thong" element={<ThemDuLieuVaoHeThong />} />
+              <Route path="them-tien-do-dao-tao" element={<TienDoDaoTao />} />
               <Route
                 path="kiem-tra-hoc-vien-sau-tot-nghiep"
                 element={<KiemTraDuLieuTotNghiep />}

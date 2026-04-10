@@ -23,3 +23,18 @@ export const dongBoXeGiaoVienSql = (file, onProgress) => {
         },
     });
 };
+
+export const dongBoTienDoDaoTaoSql = async (data) => {
+    const response = await axios.post(`${baseURL}/sync/tien-do`, data);
+    return response.data;
+};
+
+export const getTienDoDaoTaoListSql = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/sync/tien-do`, { params });
+    return response.data;
+};
+
+export const getKhoaHocListSql = async () => {
+    const response = await axios.get(`${baseURL}/sync/courses`);
+    return response.data;
+};

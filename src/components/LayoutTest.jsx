@@ -10,6 +10,7 @@ import {
   BarChartOutlined,
   SyncOutlined,
   SafetyOutlined,
+  AppstoreAddOutlined,
 } from "@ant-design/icons";
 import { BsCalendar3, BsCardChecklist } from "react-icons/bs";
 import {
@@ -45,7 +46,8 @@ const menuPathMap = {
   "dashboard-dat": "/dashboard-dat",
   "dashboard-ly-thuyet": "/dashboard-ly-thuyet",
   "hoc-vien-theo-giao-vien": "/hoc-vien-theo-giao-vien",
-  "them-du-lieu": "/them-du-lieu",
+  "them-tien-do-dao-tao": "/them-tien-do-dao-tao",
+  "dong-bo-du-lieu-he-thong": "/dong-bo-du-lieu-he-thong",
   "kiem-tra-trung-xe-giao-vien": "/kiem-tra-trung-xe-giao-vien",
   "kiem-tra-hoc-vien-sau-tot-nghiep": "/kiem-tra-hoc-vien-sau-tot-nghiep",
 };
@@ -154,6 +156,14 @@ const LayoutTest = () => {
       ],
     },
     {
+      key: "them-du-lieu",
+      icon: <AppstoreAddOutlined />,
+      label: "Thêm dữ liệu", children: [
+        { key: "dong-bo-du-lieu-he-thong", label: "Đồng bộ dữ liệu hệ thống" },
+        { key: "them-tien-do-dao-tao", label: "Thêm tiến độ đào tạo" },
+      ]
+    },
+    {
       key: "annual-check",
       icon: <SafetyOutlined />,
       label: "Kiểm tra hàng năm",
@@ -164,7 +174,7 @@ const LayoutTest = () => {
       label: "Kiểm tra HV sau tốt nghiệp",
     },
     { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên public" },
-    { key: "them-du-lieu", label: "Thêm dữ liệu vào hệ thống" },
+
   ];
 
   // Key giáo viên được phép thấy
@@ -177,13 +187,13 @@ const LayoutTest = () => {
 
   const menuItems = isGiaoVien
     ? allMenuItems
-        .filter((item) => GIAO_VIEN_ALLOWED_KEYS.includes(item.key))
-        .map((item) => ({
-          ...item,
-          children: item.children?.filter((child) =>
-            GIAO_VIEN_ALLOWED_KEYS.includes(child.key),
-          ),
-        }))
+      .filter((item) => GIAO_VIEN_ALLOWED_KEYS.includes(item.key))
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((child) =>
+          GIAO_VIEN_ALLOWED_KEYS.includes(child.key),
+        ),
+      }))
     : allMenuItems;
 
   return (
@@ -199,9 +209,8 @@ const LayoutTest = () => {
         <Flex
           align="center"
           justify={"center"}
-          className={`h-24 overflow-hidden transition-all duration-200 ${
-            collapsed ? "px-0" : "px-4"
-          }`}
+          className={`h-24 overflow-hidden transition-all duration-200 ${collapsed ? "px-0" : "px-4"
+            }`}
         >
           <Image
             src="/logo.png"
