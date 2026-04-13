@@ -361,7 +361,7 @@ const CabinSlot = React.memo(({
                     : "text-gray-500"
                   }`}
               >
-                ({students[0].ten_khoa})
+                ({students[0].khoa_hoc})
               </span>
             </span>
             <span className="text-[11px] text-gray-500 font-normal">

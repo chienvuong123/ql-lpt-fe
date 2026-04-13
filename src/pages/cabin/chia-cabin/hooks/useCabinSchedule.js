@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
 export const useCabinSchedule = (allStudents) => {
   const [globalConfig, setGlobalConfig] = useState(DEFAULT_CONFIG);
   const [weekSchedules, setWeekSchedules] = useState({});
-  const [week, setWeek] = useState(new Date("2026-03-23"));
+  const [week, setWeek] = useState(new Date());
   const [loadingSync, setLoadingSync] = useState(false);
   const [priorityCourse, setPriorityCourse] = useState("all");
   const queryClient = useQueryClient();

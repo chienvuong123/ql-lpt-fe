@@ -161,15 +161,16 @@ export async function exportCabinExcel({
     const courseExpiry = {};
     Object.entries(courseStudents).forEach(([khoa, stList]) => {
       const dates = stList
-        .map((s) => s.ngay_ket_thuc)
+        .map((s) => s.ket_thuc_cabin || s.ngay_ket_thuc)
         .filter(Boolean)
         .map((d) => new Date(d))
         .filter((d) => !isNaN(d.getTime()))
         .sort((a, b) => a - b);
       if (dates.length > 0) {
         const d = dates[0];
-        courseExpiry[khoa] =
-          `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+        courseExpiry[khoa] = `${String(d.getDate()).padStart(2, "0")}/${String(
+          d.getMonth() + 1,
+        ).padStart(2, "0")}/${d.getFullYear()}`;
       }
     });
 
@@ -241,20 +242,6 @@ export async function exportCabinExcel({
             size: 12,
           },
         });
-
-        const exp = courseExpiry[k];
-        if (exp) {
-          richText.push({
-            text: `\n(Hết hạn ${exp})`,
-            font: {
-              name: "Times New Roman",
-              bold: false,
-              italic: true,
-              color: { argb: RED_ARGB },
-              size: 11,
-            },
-          });
-        }
       });
 
       targetCell.value = { richText };
@@ -344,22 +331,25 @@ export async function exportCabinExcel({
 
         if (cell.empty) continue;
 
-        // ── Hiển thị tên học viên ± thời gian bù giờ ─────────────────────────
+        // ── Hiển thị tên giáo viên ± thời gian bù giờ ────────────────────────
         const showTime = cell.students.length >= 2;
 
         if (showTime) {
-          // Rich text: tên (đen) + thời gian bù (đỏ italic) nếu có
+          // Lấy danh sách giáo viên duy nhất
+          const teachers = [
+            ...new Set(cell.students.map((s) => (s.giao_vien || "").trim())),
+          ].filter(Boolean);
+
           const richText = [];
-          cell.students.forEach((s, idx) => {
+          teachers.forEach((teacherName, idx) => {
             if (idx > 0)
               richText.push({
                 text: "\n",
                 font: { name: "Times New Roman", size: 11 },
               });
 
-            const name = toTitleCase(s.ho_ten);
             richText.push({
-              text: name,
+              text: toTitleCase(teacherName),
               font: {
                 name: "Times New Roman",
                 size: 11,
@@ -367,29 +357,31 @@ export async function exportCabinExcel({
                 color: { argb: BLACK_ARGB },
               },
             });
-
-            const rem = remainingMinutes(s);
-            if (rem != null && rem > 0) {
-              const label = fmtMinutes(rem);
-              richText.push({
-                text: ` (${label})`,
-                font: {
-                  name: "Times New Roman",
-                  size: 11.5,
-                  bold: true,
-                  italic: true,
-                  // color: { argb: RED_ARGB },
-                },
-              });
-            }
           });
+
+          // Nếu có học viên cần bù giờ, hiển thị thêm thông tin bù giờ (tùy chọn theo logic cũ nhưng cho giáo viên)
+          // Ở đây ta giữ nguyên logic hiển thị bù giờ nếu có bất kỳ học viên nào cần bù
+          const rems = cell.students
+            .map(remainingMinutes)
+            .filter((r) => r != null && r > 0);
+          if (rems.length > 0) {
+            const maxRem = Math.max(...rems);
+            richText.push({
+              text: ` (${fmtMinutes(maxRem)})`,
+              font: {
+                name: "Times New Roman",
+                size: 11.5,
+                bold: true,
+                italic: true,
+              },
+            });
+          }
 
           cellData.value = { richText };
         } else {
-          // 1 học viên: plain text, không cần thời gian bù
-          cellData.value = cell.students
-            .map((s) => toTitleCase(s.ho_ten))
-            .join("\n");
+          // 1 học viên: hiển thị tên giáo viên
+          const teacher = cell.students[0].giao_vien || "";
+          cellData.value = toTitleCase(teacher);
           cellData.font = {
             name: "Times New Roman",
             size: 11,
@@ -414,6 +406,34 @@ export async function exportCabinExcel({
     sheet.getRow(3).height = 20;
     for (let i = 4; i <= 3 + globalSessions.length; i++)
       sheet.getRow(i).height = 65;
+
+    // ── 8. Footer: Course Expiry Info ────────────────────────────────────────
+    const footerStartRow = globalSessions.length + 6;
+    const footerTitleCell = sheet.getCell(footerStartRow, 1);
+    footerTitleCell.value = "HẠN KẾT THÚC CABIN CÁC KHÓA:";
+    footerTitleCell.font = {
+      name: "Times New Roman",
+      bold: true,
+      size: 12,
+      underline: true,
+    };
+    sheet.mergeCells(footerStartRow, 1, footerStartRow, 3);
+
+    let currentFooterRow = footerStartRow + 1;
+    const sortedCourses = Object.keys(courseExpiry).sort();
+
+    sortedCourses.forEach((k) => {
+      const kCell = sheet.getCell(currentFooterRow, 1);
+      const eCell = sheet.getCell(currentFooterRow, 2);
+
+      kCell.value = k;
+      kCell.font = { name: "Times New Roman", bold: true };
+
+      eCell.value = `Hết hạn: ${courseExpiry[k]}`;
+      eCell.font = { name: "Times New Roman", italic: true, color: { argb: RED_ARGB } };
+
+      currentFooterRow++;
+    });
   }
 
   // ── Export file ───────────────────────────────────────────────────────────
