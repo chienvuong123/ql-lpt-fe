@@ -13,24 +13,17 @@ export const getChiTietHocVienLyThuyet = async (maDk) => {
   return response.data;
 };
 
-export const capNhatTrangThaiHocVienLyThuyet = async (
-  maDk,
-  payload,
-  updatedBy,
-) => {
+export const capNhatTrangThaiHocVienLyThuyet = async (maDk, payload) => {
   const response = await axios.patch(
-    `${hocVienLyThuyetBaseUrl}/${maDk}/trang-thai`,
+    `${baseURL}/hoc-vien-lop-ly-thuyet/trang-thai/${maDk}`,
     payload,
-    {
-      headers: updatedBy ? { "x-user": updatedBy } : undefined,
-    },
   );
   return response.data;
 };
 
 export const capNhatTrangThaiTatCaHocVienLyThuyet = async (payload) => {
-  const response = await axios.patch(
-    `${hocVienLyThuyetBaseUrl}/trang-thai/tat-ca`,
+  const response = await axios.post(
+    `${baseURL}/hoc-vien-lop-ly-thuyet/trang-thai/bulk`,
     payload,
   );
   return response.data;

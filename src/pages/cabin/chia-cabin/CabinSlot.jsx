@@ -206,11 +206,10 @@ const CabinSlot = React.memo(({
               e.stopPropagation();
               toggleLock(slotKey);
             }}
-            className={`p-0.5 rounded transition hover:scale-110 ${
-              isLocked
+            className={`p-0.5 rounded transition hover:scale-110 ${isLocked
                 ? "bg-red-100 text-red-600"
                 : "hover:bg-gray-200 text-gray-400"
-            }`}
+              }`}
             title={isLocked ? "Mở khoá Cabin" : "Khoá Cabin"}
           >
             {isLocked ? (
@@ -248,13 +247,12 @@ const CabinSlot = React.memo(({
       {/* Body */}
       {isEmpty ? (
         <div
-          className={`text-xs font-medium text-center flex-1 flex items-center justify-center ${
-            isDragOver && dropAllowed
+          className={`text-xs font-medium text-center flex-1 flex items-center justify-center ${isDragOver && dropAllowed
               ? "text-green-600"
               : isDragOver && !dropAllowed
                 ? "text-red-500"
                 : "text-gray-400"
-          }`}
+            }`}
         >
           {isDragOver && dropAllowed
             ? "↓ Thả vào đây"
@@ -307,22 +305,20 @@ const CabinSlot = React.memo(({
           )}
           {totalTime > 0 && (
             <div
-              className={`text-[10px] font-semibold ${
-                hasError ? "text-red-500" : "text-green-600"
-              }`}
+              className={`text-[10px] font-semibold ${hasError ? "text-red-500" : "text-green-600"
+                }`}
             >
               Cần {totalTime}/{globalConfig.duration} ph
             </div>
           )}
           {isDragOver && (
             <div
-              className={`text-[10px] font-medium ${
-                willSwap
+              className={`text-[10px] font-medium ${willSwap
                   ? "text-yellow-600"
                   : dropAllowed
                     ? "text-green-600"
                     : "text-red-500"
-              }`}
+                }`}
             >
               {willSwap
                 ? "⇄ Hoán đổi"
@@ -346,9 +342,8 @@ const CabinSlot = React.memo(({
             );
           }}
           onDragEnd={handleDragEnd}
-          className={`relative flex justify-between items-center gap-1 cursor-grab active:cursor-grabbing ${
-            dragState?.maDks?.includes(students[0].ma_dk) ? "opacity-40" : ""
-          }`}
+          className={`relative flex justify-between items-center gap-1 cursor-grab active:cursor-grabbing ${dragState?.maDks?.includes(students[0].ma_dk) ? "opacity-40" : ""
+            }`}
         >
           <div
             onClick={(e) => {
@@ -361,13 +356,12 @@ const CabinSlot = React.memo(({
             <span>
               {students[0].ho_ten}{" "}
               <span
-                className={`text-[11px] rounded w-fit mt-0.5 font-semibold ${
-                  khoaColor
+                className={`text-[11px] rounded w-fit mt-0.5 font-semibold ${khoaColor
                     ? `${khoaColor.bg} ${khoaColor.text}`
                     : "text-gray-500"
-                }`}
+                  }`}
               >
-                ({students[0].khoa_hoc})
+                ({students[0].ten_khoa})
               </span>
             </span>
             <span className="text-[11px] text-gray-500 font-normal">
@@ -376,13 +370,12 @@ const CabinSlot = React.memo(({
           </div>
           {isDragOver && (
             <span
-              className={`text-[10px] font-medium absolute -top-1 left-0 right-0 text-center ${
-                willSwap
+              className={`text-[10px] font-medium absolute -top-1 left-0 right-0 text-center ${willSwap
                   ? "text-yellow-600"
                   : dropAllowed
                     ? "text-green-600"
                     : "text-red-500"
-              }`}
+                }`}
             >
               {willSwap ? "⇄" : dropAllowed ? "+" : "✕"}
             </span>

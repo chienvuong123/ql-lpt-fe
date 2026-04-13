@@ -202,7 +202,7 @@ const WaitingStudentList = ({
                         color="blue"
                         className="!text-[10px] !px-1 !py-0 !m-0"
                       >
-                        Bài {student.bai_cabin}
+                        Bài {student.so_bai_hoc}
                       </Tag>
                       <Tag
                         color="cyan"

@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Table,
   Button,
@@ -158,10 +158,10 @@ const QuanLyHocVienLyThuyet = () => {
 
   const totalStudents = Number(
     ketQuaKiemTraData?.total ||
-      ketQuaKiemTraData?.pagination?.total ||
-      ketQuaKiemTraData?.meta?.total ||
-      students.length ||
-      0,
+    ketQuaKiemTraData?.pagination?.total ||
+    ketQuaKiemTraData?.meta?.total ||
+    students.length ||
+    0,
   );
 
   const totalSelectableStudents = totalStudents || students.length;
@@ -169,10 +169,10 @@ const QuanLyHocVienLyThuyet = () => {
   const getStudentCode = (record) =>
     String(
       record?.ma_dk ||
-        record?.user?.admission_code ||
-        record?.user?.code ||
-        record?.id ||
-        "",
+      record?.user?.admission_code ||
+      record?.user?.code ||
+      record?.id ||
+      "",
     );
 
   const getRowKey = (record) =>
@@ -337,25 +337,19 @@ const QuanLyHocVienLyThuyet = () => {
     },
   });
 
-  const buildPayload = (record, overrides = {}, isAll = false) => {
+  const buildPayload = (record, overrides = {}) => {
     const currentState = resolveCheckState(record);
     const loaiLyThuyet = overrides.loai_ly_thuyet ?? currentState.loaiLyThuyet;
     const loaiHetMon = overrides.loai_het_mon ?? currentState.hetMonChecked;
+    const userName = sessionStorage.getItem("name") || "unknown";
 
     return {
+      ma_khoa: selectedClass?.name || selectedClass?.code || "",
       loai_ly_thuyet: loaiLyThuyet,
       loai_het_mon: loaiHetMon,
       ghi_chu: overrides.ghi_chu ?? currentState.ghiChu,
-      ma_khoa: selectedClass?.iid || "",
-      ten_khoa:
-        selectedClass?.name || selectedClass?.suffix_name || program_code || "",
-      status_updated_at:
-        overrides.status_updated_at || new Date().toISOString(),
-      ho_ten: record?.user?.name,
-      can_cuoc: record?.user?.identification_card,
-      nam_sinh: record?.user?.birth_year,
-      dat_cabin: loaiLyThuyet === true && loaiHetMon === true,
-      ...(isAll && { ma_dk: currentState?.maDk }),
+      code: String(selectedClass?.iid || ""),
+      createdBy: userName,
     };
   };
 
@@ -423,8 +417,8 @@ const QuanLyHocVienLyThuyet = () => {
     const rollbackState =
       fieldName === "loai_het_mon"
         ? {
-            loai_het_mon: currentState.hetMonChecked,
-          }
+          loai_het_mon: currentState.hetMonChecked,
+        }
         : {};
 
     const payload = buildPayload(record, overrides);
@@ -433,8 +427,8 @@ const QuanLyHocVienLyThuyet = () => {
       [maDk]: {
         ...(prev[maDk] || {}),
         [fieldName]: nextCheckedValue,
-        status_updated_at: payload.status_updated_at,
-        dat_cabin: payload.dat_cabin,
+        status_updated_at: new Date().toISOString(),
+        dat_cabin: payload.loai_ly_thuyet === true && payload.loai_het_mon === true,
         is_du_dieu_kien:
           payload.loai_ly_thuyet === true && payload.loai_het_mon === true,
       },
@@ -455,19 +449,10 @@ const QuanLyHocVienLyThuyet = () => {
 
     try {
       const payloads = selectedStudents.map((record) => {
-        const fullPayload = buildPayload(record, { loai_het_mon: true }, true);
+        const fullPayload = buildPayload(record, { loai_het_mon: true });
         return {
-          loai_ly_thuyet: fullPayload.loai_ly_thuyet,
-          loai_het_mon: fullPayload.loai_het_mon,
-          ghi_chu: fullPayload.ghi_chu,
-          ma_khoa: fullPayload.ma_khoa,
-          ten_khoa: fullPayload.ten_khoa,
-          status_updated_at: fullPayload.status_updated_at,
-          ho_ten: fullPayload.ho_ten,
-          can_cuoc: fullPayload.can_cuoc,
-          nam_sinh: fullPayload.nam_sinh,
-          dat_cabin: fullPayload.dat_cabin,
-          ma_dk: fullPayload?.ma_dk,
+          ...fullPayload,
+          ma_dk: getStudentCode(record),
         };
       });
 

@@ -3,11 +3,10 @@ import { DeleteOutlined } from "@ant-design/icons";
 
 const StudentMiniCard = ({ student, onRemove, onViewDetail, isDragging }) => (
   <div
-    className={`flex items-start gap-2 p-2 rounded-lg border transition-all ${
-      isDragging
-        ? "opacity-40 border-blue-300 bg-blue-50"
-        : "border-gray-100 bg-white hover:border-blue-200"
-    }`}
+    className={`flex items-start gap-2 p-2 rounded-lg border transition-all ${isDragging
+      ? "opacity-40 border-blue-300 bg-blue-50"
+      : "border-gray-100 bg-white hover:border-blue-200"
+      }`}
   >
     <div className="flex-1 min-w-0">
       <div className="font-semibold text-gray-800 text-xs truncate">
@@ -15,9 +14,9 @@ const StudentMiniCard = ({ student, onRemove, onViewDetail, isDragging }) => (
       </div>
       <div className="text-[11px] text-gray-500">Mã: {student.ma_dk}</div>
       <div className="flex gap-1 mt-1 flex-wrap">
-        {student.bai_cabin !== null && (
+        {student.so_bai_hoc !== null && (
           <Tag color="blue" className="!text-[10px] !px-1 !py-0 !m-0">
-            Bài {student.bai_cabin}
+            Bài {student.so_bai_hoc}
           </Tag>
         )}
         {student.hang_xe && (
