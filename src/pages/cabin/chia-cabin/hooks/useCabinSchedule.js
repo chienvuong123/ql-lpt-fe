@@ -45,6 +45,8 @@ export const useCabinSchedule = (allStudents) => {
         dayConfigs: {},
         cabinConfigs: {},
         lockedCabins: {},
+        slotNotes: {},
+        slotRecordIds: {},
       },
     [weekSchedules, weekKey],
   );
@@ -54,6 +56,8 @@ export const useCabinSchedule = (allStudents) => {
   const dayConfigs = currentWeekData.dayConfigs || {};
   const cabinConfigs = currentWeekData.cabinConfigs || {};
   const lockedCabins = currentWeekData.lockedCabins || {};
+  const slotNotes = currentWeekData.slotNotes || {};
+  const slotRecordIds = currentWeekData.slotRecordIds || {};
 
   // ── Update helpers ────────────────────────────────────────────────────────
   const updateCurrentWeek = useCallback(
@@ -65,6 +69,8 @@ export const useCabinSchedule = (allStudents) => {
           dayConfigs: {},
           cabinConfigs: {},
           lockedCabins: {},
+          slotNotes: {},
+          slotRecordIds: {},
         };
         const updated = typeof updater === "function" ? updater(old) : updater;
         return { ...prev, [weekKey]: { ...old, ...updated } };
@@ -1020,6 +1026,8 @@ export const useCabinSchedule = (allStudents) => {
       const newSchedule = JSON.parse(JSON.stringify(initSchedule));
       const newLocked = {};
       const newAssigned = new Set();
+      const newNotes = {};
+      const newRecordIds = {};
 
       data.forEach((item) => {
         const itemDate = new Date(item.ngay);
@@ -1039,6 +1047,12 @@ export const useCabinSchedule = (allStudents) => {
             if (item.is_locked) {
               newLocked[`${key}-${item.cabin_so}`] = true;
             }
+            if (item.ghi_chu) {
+              newNotes[`${key}-${item.cabin_so}`] = item.ghi_chu;
+            }
+            if (item.id) {
+              newRecordIds[`${key}-${item.cabin_so}`] = item.id;
+            }
           }
         }
       });
@@ -1047,9 +1061,21 @@ export const useCabinSchedule = (allStudents) => {
         schedule: newSchedule,
         lockedCabins: newLocked,
         assignedMaDks: newAssigned,
+        slotNotes: newNotes,
+        slotRecordIds: newRecordIds,
       }));
     }
   }, [serverData, initSchedule, updateCurrentWeek, monday]);
+
+  const updateSlotNoteLocal = useCallback(
+    (slotKey, note) => {
+      updateCurrentWeek((old) => ({
+        ...old,
+        slotNotes: { ...old.slotNotes, [slotKey]: note },
+      }));
+    },
+    [updateCurrentWeek],
+  );
 
   const handleLoadScheduleFromServer = useCallback(async () => {
     await refetch();
@@ -1099,6 +1125,8 @@ export const useCabinSchedule = (allStudents) => {
     loadingSync,
     isFetchingSchedule,
     priorityCourse,
+    slotNotes,
+    slotRecordIds,
     // helpers
     getStudentByMaDk,
     calcCabinTime,
@@ -1117,6 +1145,7 @@ export const useCabinSchedule = (allStudents) => {
     handleAutoAssign,
     handlePriorityInsert,
     doConfigBasedAutoAssign,
+    updateSlotNoteLocal,
     handleSaveGlobalConfig,
     handleSaveCabinLimit,
     handleSaveScheduleToServer,

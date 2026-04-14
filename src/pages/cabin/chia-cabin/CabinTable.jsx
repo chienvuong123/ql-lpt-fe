@@ -33,6 +33,8 @@ const CabinTable = ({
   setOpenPopover,
   getDayConfig,
   isMakeupSlot,
+  slotNotes,
+  onAddNote,
 }) => {
   const columns = useMemo(
     () => [
@@ -104,6 +106,8 @@ const CabinTable = ({
                     getDayConfig={getDayConfig}
                     isMakeupSlot={isMakeupSlot}
                     getSessions={getSessions}
+                    slotNotes={slotNotes}
+                    onAddNote={onAddNote}
                   />
                 </div>
               ))}
@@ -123,6 +127,8 @@ const CabinTable = ({
       dragOverSlot,
       dragState,
       openPopover,
+      slotNotes,
+      onAddNote,
     ],
   );
 

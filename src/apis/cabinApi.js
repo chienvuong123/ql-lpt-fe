@@ -44,3 +44,10 @@ export const updateGhiChuLichCabin = async (id, data = {}) => {
   const response = await axios.patch(`${hocVienCabinBaseUrl}/update-lich-note/${id}`, data);
   return response.data;
 };
+
+export const checkOnlineStatus = async (data = {}) => {
+  const response = await axios.post(`${hocVienCabinBaseUrl}/check-online`, data);
+  return response.data;
+};
+
+

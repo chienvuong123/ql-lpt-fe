@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useCallback, useEffect, useDeferredValue } from "react";
+import React, { useState, useMemo, useCallback, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Row, Col, Spin } from "antd";
 import { formatMinutesToHM } from "../../util/helper";
 import { getDanhSachHocVienChiaCabin } from "../../apis/cabinApi";
 
 import { useCabinSchedule } from "./chia-cabin/hooks/useCabinSchedule";
 import { useDragDrop } from "./chia-cabin/hooks/useDragDrop";
+import { Row, Col, Spin, message } from "antd";
 
 import ScheduleHeader from "./chia-cabin/ScheduleHeader";
 import WaitingStudentList from "./chia-cabin/WaitingStudentList";
@@ -15,6 +15,8 @@ import CabinLimitModal from "./chia-cabin/CabinLimitModal";
 import { isHasData, isNoData } from "./chia-cabin/utils";
 import CabinTable from "./chia-cabin/CabinTable";
 import { exportCabinExcel } from "./chia-cabin/exportCabinExcel";
+import NoteModal from "./chia-cabin/NoteModal";
+import { updateGhiChuLichCabin } from "../../apis/cabinApi";
 
 const LichCabin = () => {
   const { data: studentsData, isFetching: isFetchingStudents } = useQuery({
@@ -65,42 +67,32 @@ const LichCabin = () => {
     cabinConfigs,
     setCabinConfigs,
     doConfigBasedAutoAssign,
+    slotNotes,
+    slotRecordIds,
+    updateSlotNoteLocal,
   } = schedule;
 
   const isGlobalLoading =
     isFetchingStudents || isFetchingSchedule || loadingSync;
 
 
-  const dragDrop = useDragDrop({
-    fullSchedule,
-    assignedMaDks,
-    lockedCabins,
-    globalConfig,
-    getStudentByMaDk,
-    calcCabinTime,
-    canDropIntoCabin,
-    updateCurrentWeek,
-    priorityCourse,
-    handlePriorityInsert,
-    getDayConfig,
-    getSessions,
-    isMakeupSlot,
+  const [noteModal, setNoteModal] = useState({
+    visible: false,
+    slotKey: "",
+    note: "",
+    isAddMode: false,
+    onSuccess: null,
   });
-  const {
-    dragState,
-    dragOverSlot,
-    listDropOver,
-    setListDropOver,
-    setDragState,
-    canSwap,
-    handleDragStartFromList,
-    handleDragStartOne,
-    handleDragStartAll,
-    handleDragOver,
-    handleDragLeave,
-    handleDragEnd,
-    handleDrop,
-  } = dragDrop;
+
+  const onAddNote = useCallback((slotKey, initialNote, onSuccess, isAddMode = false) => {
+    setNoteModal({
+      visible: true,
+      slotKey,
+      note: initialNote || "",
+      isAddMode,
+      onSuccess,
+    });
+  }, []);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -117,6 +109,38 @@ const LichCabin = () => {
     maxPerCabin: globalConfig.maxPerCabin,
     intervalMinutes: globalConfig.intervalMinutes,
   });
+
+  const dragDrop = useDragDrop({
+    fullSchedule,
+    assignedMaDks,
+    lockedCabins,
+    globalConfig,
+    getStudentByMaDk,
+    calcCabinTime,
+    canDropIntoCabin,
+    updateCurrentWeek,
+    priorityCourse,
+    handlePriorityInsert,
+    getDayConfig,
+    getSessions,
+    isMakeupSlot,
+    onAddNote,
+  });
+  const {
+    dragState,
+    dragOverSlot,
+    listDropOver,
+    setListDropOver,
+    setDragState,
+    canSwap,
+    handleDragStartFromList,
+    handleDragStartOne,
+    handleDragStartAll,
+    handleDragOver,
+    handleDragLeave,
+    handleDragEnd,
+    handleDrop,
+  } = dragDrop;
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const uniqueKhoaHoc = useMemo(() => {
@@ -231,6 +255,8 @@ const LichCabin = () => {
       setOpenPopover(null);
     },
     setOpenPopover,
+    slotNotes,
+    onAddNote,
   }), [
     fullSchedule,
     weekDates,
@@ -254,6 +280,7 @@ const LichCabin = () => {
     handleDragStartOne,
     handleDragEnd,
     handleRemoveStudent,
+    slotNotes,
   ]);
 
   return (
@@ -366,6 +393,28 @@ const LichCabin = () => {
       <StudentDetailModal
         studentDetail={studentDetail}
         setStudentDetail={setStudentDetail}
+      />
+
+      <NoteModal
+        visible={noteModal.visible}
+        slotKey={noteModal.slotKey}
+        initialNote={noteModal.note}
+        isAddMode={noteModal.isAddMode}
+        onCancel={() => setNoteModal((prev) => ({ ...prev, visible: false }))}
+        onSave={async (finalNote) => {
+          try {
+            const recordId = slotRecordIds[noteModal.slotKey];
+            if (recordId) {
+              await updateGhiChuLichCabin(recordId, { ghi_chu: finalNote });
+            }
+            updateSlotNoteLocal(noteModal.slotKey, finalNote);
+            message.success("Đã cập nhật ghi chú!");
+            setNoteModal((prev) => ({ ...prev, visible: false }));
+            if (noteModal.onSuccess) noteModal.onSuccess();
+          } catch (error) {
+            message.error("Lỗi khi lưu ghi chú");
+          }
+        }}
       />
     </div>
   );

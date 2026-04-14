@@ -5,6 +5,8 @@ import {
   UnlockOutlined,
   DeleteOutlined,
   DragOutlined,
+  PlusOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import StudentMiniCard from "./StudentMiniCard";
 
@@ -73,6 +75,8 @@ const CabinSlot = React.memo(({
   getDayConfig,
   isMakeupZone,
   getSessions,
+  slotNotes,
+  onAddNote,
 }) => {
   const key = `${dateIndex}-${sessionNum}`;
   const maDkList = fullSchedule[key]?.cabins[cabinNum] || [];
@@ -93,6 +97,9 @@ const CabinSlot = React.memo(({
   const minuteOverflow = totalTime >= globalConfig.duration;
   const countOverflow = students.length > globalConfig.maxPerCabin;
   const hasError = minuteOverflow || countOverflow;
+
+  const currentNote = slotNotes[slotKey] || "";
+  const isDoiHang = students.some(s => s.hang_xe !== cType);
 
   const draggingMaDks = dragState?.maDks ?? [];
 
@@ -191,6 +198,11 @@ const CabinSlot = React.memo(({
           <span className="text-xs font-medium text-gray-500 leading-none uppercase">
             Cabin {cabinNum} <span className="font-bold">({cType})</span>
           </span>
+          {isDoiHang && (
+            <span className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded border border-amber-200 font-bold animate-pulse">
+              ĐỔI HẠNG
+            </span>
+          )}
           {isMakeupZone && (
             <span className="text-[9px] bg-volcano-100 text-volcano-600 px-1 rounded shadow-sm border border-volcano-200">BÙ</span>
           )}
@@ -201,8 +213,8 @@ const CabinSlot = React.memo(({
               toggleLock(slotKey);
             }}
             className={`p-0.5 rounded transition hover:scale-110 ${isLocked
-                ? "bg-red-100 text-red-600"
-                : "hover:bg-gray-200 text-gray-400"
+              ? "bg-red-100 text-red-600"
+              : "hover:bg-gray-200 text-gray-400"
               }`}
             title={isLocked ? "Mở khoá Cabin" : "Khoá Cabin"}
           >
@@ -212,6 +224,36 @@ const CabinSlot = React.memo(({
               <UnlockOutlined style={{ fontSize: 10 }} />
             )}
           </button>
+          
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!currentNote && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAddNote(slotKey, currentNote, null, true); // true = Add Mode
+                }}
+                className="p-0.5 rounded bg-blue-50 text-blue-500 hover:bg-blue-100"
+                title="Thêm ghi chú"
+              >
+                <PlusOutlined style={{ fontSize: 10 }} />
+              </button>
+            )}
+          </div>
+
+          {currentNote && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAddNote(slotKey, currentNote, null, false); // false = Edit Mode
+              }}
+              className="p-0.5 rounded text-amber-500 hover:bg-amber-50 ml-0.5"
+              title="Xem ghi chú"
+            >
+              <FileTextOutlined style={{ fontSize: 11 }} />
+            </button>
+          )}
         </div>
         {/* <span
           className={[
@@ -242,10 +284,10 @@ const CabinSlot = React.memo(({
       {isEmpty ? (
         <div
           className={`text-xs font-medium text-center flex-1 flex items-center justify-center ${isDragOver && dropAllowed
-              ? "text-green-600"
-              : isDragOver && !dropAllowed
-                ? "text-red-500"
-                : "text-gray-400"
+            ? "text-green-600"
+            : isDragOver && !dropAllowed
+              ? "text-red-500"
+              : "text-gray-400"
             }`}
         >
           {isDragOver && dropAllowed
@@ -262,6 +304,11 @@ const CabinSlot = React.memo(({
           }}
           className="cursor-pointer space-y-0.5"
         >
+          <div className="mb-1">
+            <span className="text-[10px] font-bold text-blue-700">
+              GV: {students[0].giao_vien}
+            </span>
+          </div>
           {students.slice(0, 2).map((s) => {
             const c = getKhoaColor(s.khoa_hoc);
             return (
@@ -308,10 +355,10 @@ const CabinSlot = React.memo(({
           {isDragOver && (
             <div
               className={`text-[10px] font-medium ${willSwap
-                  ? "text-yellow-600"
-                  : dropAllowed
-                    ? "text-green-600"
-                    : "text-red-500"
+                ? "text-yellow-600"
+                : dropAllowed
+                  ? "text-green-600"
+                  : "text-red-500"
                 }`}
             >
               {willSwap
@@ -347,28 +394,25 @@ const CabinSlot = React.memo(({
             className="flex flex-col text-[11px] font-medium text-gray-800 hover:underline cursor-pointer truncate"
             title={students[0].ho_ten}
           >
-            <span>
-              {students[0].ho_ten}{" "}
+            <span className="text-xs">
+              GV: {students[0].giao_vien}
               <span
                 className={`text-[11px] rounded w-fit mt-0.5 font-semibold ${khoaColor
-                    ? `${khoaColor.bg} ${khoaColor.text}`
-                    : "text-gray-500"
+                  ? `${khoaColor.bg} ${khoaColor.text}`
+                  : "text-gray-500"
                   }`}
               >
                 ({students[0].khoa_hoc})
               </span>
             </span>
-            <span className="text-[11px] text-gray-500 font-normal">
-              GV: {students[0].giao_vien}
-            </span>
           </div>
           {isDragOver && (
             <span
               className={`text-[10px] font-medium absolute -top-1 left-0 right-0 text-center ${willSwap
-                  ? "text-yellow-600"
-                  : dropAllowed
-                    ? "text-green-600"
-                    : "text-red-500"
+                ? "text-yellow-600"
+                : dropAllowed
+                  ? "text-green-600"
+                  : "text-red-500"
                 }`}
             >
               {willSwap ? "⇄" : dropAllowed ? "+" : "✕"}
