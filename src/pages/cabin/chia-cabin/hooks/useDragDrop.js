@@ -228,26 +228,6 @@ export const useDragDrop = ({
           message.error(
             `Cabin này đã đạt giới hạn ${globalConfig.maxPerCabin} học viên!`,
           );
-        } else {
-          const allInCabin = [...existingStudents, ...droppingStudents];
-          const totalAfter = calcCabinTime(allInCabin);
-          message.error(
-            `Tổng thời gian cần dùng vượt quá ca! ` +
-              `(Cần ${totalAfter} phút, ca chỉ có ${globalConfig.duration} phút. ` +
-              `Đã tính phút còn thiếu của mỗi HV + ${globalConfig.intervalMinutes} phút cách nhau)`,
-          );
-        }
-        setDragState(null);
-        return;
-      }
-
-      // Remove from source
-      if (source?.type === "cabin" || source?.type === "cabin-all") {
-        const sourceKey = `${source.di}-${source.sn}`;
-        if (newSchedule[sourceKey]) {
-          newSchedule[sourceKey].cabins[source.cn] = newSchedule[
-            sourceKey
-          ].cabins[source.cn].filter((id) => !maDks.includes(id));
         }
       }
 

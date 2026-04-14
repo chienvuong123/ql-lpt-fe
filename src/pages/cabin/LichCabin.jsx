@@ -217,7 +217,7 @@ const LichCabin = () => {
     canDropIntoCabin,
     toggleLock,
     getDayConfig,
-    isMakeupSlot,
+    isMakeupZone: isMakeupSlot,
     getSessions,
     handleDragOver,
     handleDragLeave,

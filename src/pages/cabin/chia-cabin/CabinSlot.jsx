@@ -71,7 +71,7 @@ const CabinSlot = React.memo(({
   setStudentDetail,
   setOpenPopover,
   getDayConfig,
-  isMakeupSlot,
+  isMakeupZone,
   getSessions,
 }) => {
   const key = `${dateIndex}-${sessionNum}`;
@@ -83,9 +83,6 @@ const CabinSlot = React.memo(({
   const dCfg = getDayConfig(dateIndex);
   const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
   const cType = Number(cabinNum) > 5 - b1Count ? "B1" : "B2";
-
-  const session = getSessions(dateIndex).find((s) => s?.num === sessionNum);
-  const isMakeupZone = session ? isMakeupSlot(dateIndex, session) : false;
 
   const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
   const isLocked = lockedCabins[slotKey] || false;
@@ -103,7 +100,7 @@ const CabinSlot = React.memo(({
     !isLocked &&
     !isEmpty &&
     draggingMaDks.length > 0 &&
-    canSwap(maDkList, draggingMaDks);
+    canSwap(maDkList, draggingMaDks, cabinNum);
 
   const dropAllowed = isLocked
     ? false
@@ -123,52 +120,49 @@ const CabinSlot = React.memo(({
     return "bg-blue-50 border-blue-200";
   }, [isEmpty, hasError, khoaColor]);
 
-  // ── Popover content ──────────────────────────────────────────────────────
   const popoverContent = (
-    <div className="w-64 space-y-2 max-h-80 overflow-y-auto">
+    <div className="w-64 space-y-2 max-h-80 overflow-y-auto p-1">
       <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-        <span className="font-semibold text-sm text-gray-700">
-          {/* Cabin {cabinNum} ({cType}) — {students.length}/
-          {globalConfig.maxPerCabin} HV */}
+        <span className="font-bold text-xs text-gray-500 uppercase text-[10px]">
+          Cabin {cabinNum} ({cType})
         </span>
         {totalTime > 0 && (
-          <Tag color={hasError ? "red" : "green"}>
-            Cần {totalTime}/{globalConfig.duration} ph
+          <Tag color={hasError ? "red" : "green"} className="!m-0 !text-[10px]">
+            {totalTime}/{globalConfig.duration} ph
           </Tag>
-        )}
-        {isMakeupZone && (
-          <Tag color="volcano" className="font-bold">Ô HỌC BÙ</Tag>
         )}
       </div>
 
-      {hasMultiple && (
-        <div
-          draggable
-          onDragStart={(e) =>
-            handleDragStartAll(e, maDkList, dateIndex, sessionNum, cabinNum)
-          }
-          onDragEnd={handleDragEnd}
-          className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 border border-blue-200 cursor-grab active:cursor-grabbing text-xs text-blue-700 font-medium select-none"
-        >
-          <DragOutlined />
-          Kéo toàn bộ {students.length} học viên
-        </div>
-      )}
+      <div className="flex flex-col gap-1.5 pt-1">
+        {hasMultiple && (
+          <div
+            draggable
+            onDragStart={(e) =>
+              handleDragStartAll(e, maDkList, dateIndex, sessionNum, cabinNum)
+            }
+            onDragEnd={handleDragEnd}
+            className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 border border-blue-200 cursor-grab active:cursor-grabbing text-xs text-blue-700 font-medium select-none"
+          >
+            <DragOutlined />
+            Kéo toàn bộ {students.length} học viên
+          </div>
+        )}
 
-      {students.map((student) => (
-        <StudentMiniCard
-          key={student.ma_dk}
-          student={student}
-          isDragging={dragState?.maDks?.includes(student.ma_dk)}
-          onViewDetail={(s) => {
-            setStudentDetail(s);
-            setOpenPopover(null);
-          }}
-          onRemove={() =>
-            handleRemoveStudent(dateIndex, sessionNum, cabinNum, student.ma_dk)
-          }
-        />
-      ))}
+        {students.map((student) => (
+          <StudentMiniCard
+            key={student.ma_dk}
+            student={student}
+            isDragging={dragState?.maDks?.includes(student.ma_dk)}
+            onViewDetail={(s) => {
+              setStudentDetail(s);
+              setOpenPopover(null);
+            }}
+            onRemove={() =>
+              handleRemoveStudent(dateIndex, sessionNum, cabinNum, student.ma_dk)
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 

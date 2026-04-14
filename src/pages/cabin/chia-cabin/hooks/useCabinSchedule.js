@@ -529,186 +529,152 @@ export const useCabinSchedule = (allStudents) => {
       });
       newAssignedThisWeek.forEach((id) => globalAssigned.add(id));
 
-      const newAssigned = new Set();
-
-      const unassigned = allStudents
+      // 1. Lọc và Sắp xếp học viên chưa được gán
+      const unassignedPool = allStudents
         .filter((s) => !globalAssigned.has(s.ma_dk))
         .sort((a, b) => {
-          // 0. Ưu tiên tuyệt đối khóa học được chọn "Khóa ưu tiên"
+          // Khóa ưu tiên
           if (priorityCourse !== "all") {
             const isAPriority = a.khoa_hoc === priorityCourse;
             const isBPriority = b.khoa_hoc === priorityCourse;
             if (isAPriority && !isBPriority) return -1;
             if (!isAPriority && isBPriority) return 1;
           }
-
-          // 1. Ưu tiên theo Khóa học
+          // Tên khóa
           const khoaA = a.khoa_hoc || "";
           const khoaB = b.khoa_hoc || "";
           if (khoaA !== khoaB) return khoaA.localeCompare(khoaB);
-
-          // 2. Ưu tiên theo Giáo viên (trong cùng một khóa)
-          const gvA = a.giao_vien || "";
-          const gvB = b.giao_vien || "";
-          if (gvA !== gvB) return gvA.localeCompare(gvB);
-
-          // 3. Ngày kết thúc (nếu có)
+          // Ngày kết thúc
           const dateA = new Date(a.ngay_ket_thuc || 0).getTime();
           const dateB = new Date(b.ngay_ket_thuc || 0).getTime();
           return dateA - dateB;
         });
 
-      // Phân tách học viên: Chính khóa vs Học bù
-      const normalStudents = unassigned.filter((s) => !s.is_makeup);
-      const makeupStudents = unassigned.filter((s) => s.is_makeup);
+      if (unassignedPool.length === 0) {
+        message.info("Không còn học viên nào chờ xếp lịch.");
+        return;
+      }
 
-      // Nhóm học viên chính khóa
-      const groupA_Normal = normalStudents.filter(isNoData);
-      const groupB_Normal = mode === "all"
-        ? normalStudents.filter((s) => {
-          if (!isHasData(s)) return false;
-          const remaining = getRemaining(s, globalConfig.duration);
-          return remaining > 0 && remaining <= globalConfig.duration;
-        })
-        : [];
-
-      // Nhóm học viên học bù
-      const groupA_Makeup = makeupStudents.filter(isNoData);
-      const groupB_Makeup = mode === "all"
-        ? makeupStudents.filter((s) => {
-          if (!isHasData(s)) return false;
-          const remaining = getRemaining(s, globalConfig.duration);
-          return remaining > 0 && remaining <= globalConfig.duration;
-        })
-        : [];
-
-      // Gom nhóm Bin-packing cho cả 2 nhóm
-      const getBins = (students) => {
-        const b1 = students.filter((s) => s.hang_xe === "B1");
-        const b2 = students.filter((s) => s.hang_xe === "B2");
-        const binsB1 = binPackStudents(b1, globalConfig.duration, globalConfig.maxPerCabin, globalConfig.intervalMinutes);
-        const binsB2 = binPackStudents(b2, globalConfig.duration, globalConfig.maxPerCabin, globalConfig.intervalMinutes);
-        return { binsB1, binsB2 };
+      // 2. Nhóm học viên theo giáo viên
+      const groupByTeacher = (students) => {
+        const groups = {};
+        students.forEach(s => {
+          const gv = s.giao_vien || "Chưa có GV";
+          if (!groups[gv]) groups[gv] = [];
+          groups[gv].push(s);
+        });
+        return groups;
       };
 
-      const normalBins = getBins(groupB_Normal);
-      const makeupBins = getBins(groupB_Makeup);
+      const normalPool = unassignedPool.filter(s => !s.is_makeup);
+      const makeupPool = unassignedPool.filter(s => s.is_makeup);
 
-      // Phân tách ô trống
-      const emptyNormalB1 = [];
-      const emptyNormalB2 = [];
-      const emptyMakeupB1 = [];
-      const emptyMakeupB2 = [];
+      const teachersNormal = groupByTeacher(normalPool);
+      const teachersMakeup = groupByTeacher(makeupPool);
 
-      Object.keys(initSchedule)
-        .sort((a, b) => {
-          const [diA, snA] = a.split("-").map(Number);
-          const [diB, snB] = b.split("-").map(Number);
-          if (diA !== diB) return diA - diB;
-          return snA - snB;
-        })
-        .forEach((key) => {
-          const [di, sn] = key.split("-").map(Number);
-          const session = getSessions(di).find((s) => s?.num === sn);
-          if (!session) return;
-
-          const isMakeup = isMakeupSlot(di, session);
-          const dCfg = getDayConfig(di);
-          const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
-
-          [1, 2, 3, 4, 5].forEach((cn) => {
-            const slotKey = `${key}-${cn}`;
-            if (lockedCabins[slotKey]) return;
-
-            const existingInSlot = newSchedule[key] ? newSchedule[key].cabins[cn] || [] : [];
-            const isB1 = Number(cn) > 5 - b1Count;
-            
-            // Nếu ô trống hoàn toàn
-            if (existingInSlot.length === 0) {
-              if (isMakeup) {
-                if (isB1) emptyMakeupB1.push({ key, cn });
-                else emptyMakeupB2.push({ key, cn });
-              } else {
-                if (isB1) emptyNormalB1.push({ key, cn });
-                else emptyNormalB2.push({ key, cn });
-              }
-            } 
-            // Nếu ô không trống, nhưng là Khóa Ưu Tiên được phép Đẩy Lịch
-            else if (priorityCourse !== "all") {
-              // Chỉ lấy ô nếu KHÔNG có học viên khóa ưu tiên nào trong đó
-              const hasPriorityInSlot = existingInSlot.some(id => getStudentByMaDk(id)?.khoa_hoc === priorityCourse);
-              if (!hasPriorityInSlot) {
-                if (isMakeup) {
-                  if (isB1) emptyMakeupB1.push({ key, cn, displace: true });
-                  else emptyMakeupB2.push({ key, cn, displace: true });
-                } else {
-                  if (isB1) emptyNormalB1.push({ key, cn, displace: true });
-                  else emptyNormalB2.push({ key, cn, displace: true });
-                }
-              }
-            }
-          });
+      // 3. Sắp xếp giáo viên theo độ ưu tiên (Số học viên nhìu nhất xếp trước)
+      const sortTeachers = (teacherGroups) => 
+        Object.keys(teacherGroups).sort((a, b) => {
+          // Vẫn giữ ưu tiên Khóa ưu tiên ở cấp độ thầy
+          if (priorityCourse !== "all") {
+             const aHasPri = teacherGroups[a].some(s => s.khoa_hoc === priorityCourse);
+             const bHasPri = teacherGroups[b].some(s => s.khoa_hoc === priorityCourse);
+             if (aHasPri && !bHasPri) return -1;
+             if (!aHasPri && bHasPri) return 1;
+          }
+          return teacherGroups[b].length - teacherGroups[a].length;
         });
 
-      // Ưu tiên ô trống TRƯỚC, ô cần đẩy lịch SAU
-      const sortSlots = (slots) => slots.sort((a, b) => (a.displace ? 1 : 0) - (b.displace ? 1 : 0));
-      sortSlots(emptyNormalB1);
-      sortSlots(emptyNormalB2);
-      sortSlots(emptyMakeupB1);
-      sortSlots(emptyMakeupB2);
+      const sortedNormalTeachers = sortTeachers(teachersNormal);
+      const sortedMakeupTeachers = sortTeachers(teachersMakeup);
 
-      const fillSlots = (items, isBin, emptySlots) => {
-        let slotIdx = 0;
-        for (const item of items) {
-          if (slotIdx >= emptySlots.length) break;
-          const { key, cn, displace } = emptySlots[slotIdx++];
-          
-          if (displace) {
-             // Thu hồi ô này: đưa các HV cũ về danh sách chờ
-             const oldMaDks = newSchedule[key].cabins[cn] || [];
-             oldMaDks.forEach(id => {
-               newAssignedThisWeek.delete(id);
-               newAssigned.delete(id); // Vừa thêm vào cũng xóa
-             });
-          }
+      // 4. Lấy danh sách ô trống
+      const getEmptySlots = (isMakeupZone) => {
+        const slots = [];
+        Object.keys(initSchedule)
+          .sort((a, b) => {
+            const [diA, snA] = a.split("-").map(Number);
+            const [diB, snB] = b.split("-").map(Number);
+            if (diA !== diB) return diA - diB;
+            return snA - snB;
+          })
+          .forEach((key) => {
+            const [di, sn] = key.split("-").map(Number);
+            const session = getSessions(di).find((s) => s?.num === sn);
+            if (!session) return;
+            if (isMakeupSlot(di, session) !== isMakeupZone) return;
 
-          const maDksToAssign = isBin ? item.map((s) => s.ma_dk) : [item.ma_dk];
-          newSchedule[key].cabins[cn] = maDksToAssign;
-          maDksToAssign.forEach((id) => newAssigned.add(id));
-        }
-        return emptySlots.slice(slotIdx);
+            const dCfg = getDayConfig(di);
+            const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
+
+            [1, 2, 3, 4, 5].forEach((cn) => {
+              const slotKey = `${key}-${cn}`;
+              if (lockedCabins[slotKey]) return;
+              if (newSchedule[key]?.cabins[cn]?.length > 0) return;
+              slots.push({ key, di, sn, cn, isB1: Number(cn) > 5 - b1Count });
+            });
+          });
+        return slots;
       };
 
-      // Điền học viên chính khóa vào ô thường
-      let remNormalB1 = fillSlots(groupA_Normal.filter(s => s.hang_xe === "B1"), false, emptyNormalB1);
-      fillSlots(normalBins.binsB1, true, remNormalB1);
-      let remNormalB2 = fillSlots(groupA_Normal.filter(s => s.hang_xe === "B2"), false, emptyNormalB2);
-      fillSlots(normalBins.binsB2, true, remNormalB2);
+      const normalEmptySlots = getEmptySlots(false);
+      const makeupEmptySlots = getEmptySlots(true);
 
-      // Điền học viên học bù vào ô học bù
-      let remMakeupB1 = fillSlots(groupA_Makeup.filter(s => s.hang_xe === "B1"), false, emptyMakeupB1);
-      fillSlots(makeupBins.binsB1, true, remMakeupB1);
-      let remMakeupB2 = fillSlots(groupA_Makeup.filter(s => s.hang_xe === "B2"), false, emptyMakeupB2);
-      fillSlots(makeupBins.binsB2, true, remMakeupB2);
+      // 5. Điền lịch và kiểm tra ràng buộc thầy
+      const busyTeachers = {}; // di-sn -> Set()
+      const fillGroups = (sortedTeachers, teacherGroups, emptySlots) => {
+        const newlyAssigned = new Set();
+        let currentEmptySlots = [...emptySlots];
+
+        for (const teacherName of sortedTeachers) {
+          const students = teacherGroups[teacherName];
+          for (const student of students) {
+            const isB1Needed = student.hang_xe === "B1";
+            
+            let foundIdx = -1;
+            for (let i = 0; i < currentEmptySlots.length; i++) {
+              const slot = currentEmptySlots[i];
+              if (slot.isB1 !== isB1Needed) continue;
+              
+              const sessionKey = `${slot.di}-${slot.sn}`;
+              if (!busyTeachers[sessionKey]) busyTeachers[sessionKey] = new Set();
+              
+              // RÀNG BUỘC: 1 thầy 1 ca
+              if (busyTeachers[sessionKey].has(teacherName)) continue;
+
+              foundIdx = i;
+              break;
+            }
+
+            if (foundIdx !== -1) {
+              const slot = currentEmptySlots[foundIdx];
+              const sessionKey = `${slot.di}-${slot.sn}`;
+              
+              if (!newSchedule[slot.key]) {
+                newSchedule[slot.key] = { cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
+              }
+              newSchedule[slot.key].cabins[slot.cn] = [student.ma_dk];
+              
+              busyTeachers[sessionKey].add(teacherName);
+              newlyAssigned.add(student.ma_dk);
+              currentEmptySlots.splice(foundIdx, 1);
+            }
+          }
+        }
+        return newlyAssigned;
+      };
+
+      const assignedNormal = fillGroups(sortedNormalTeachers, teachersNormal, normalEmptySlots);
+      const assignedMakeup = fillGroups(sortedMakeupTeachers, teachersMakeup, makeupEmptySlots);
+
+      const totalNewlyAssigned = new Set([...assignedNormal, ...assignedMakeup]);
 
       updateCurrentWeek(() => ({
-        schedule: newSchedule,
-        assignedMaDks: new Set([...newAssignedThisWeek, ...newAssigned]),
+          schedule: newSchedule,
+          assignedMaDks: new Set([...newAssignedThisWeek, ...totalNewlyAssigned]),
       }));
 
-      const cntA = groupA.filter((s) => newAssigned.has(s.ma_dk)).length;
-      const cntB =
-        mode === "all"
-          ? groupB.filter((s) => newAssigned.has(s.ma_dk)).length
-          : 0;
-      const skipped = unassigned.length - newAssigned.size;
-
-      let msg = `Đã chia ${newAssigned.size} học viên (${cntA} chưa có dữ liệu`;
-      if (cntB > 0) msg += `, ${cntB} có dữ liệu cabin`;
-      msg += `)`;
-      if (skipped > 0)
-        msg += `. Còn ${skipped} học viên chưa được xếp (hết slot).`;
-      message.success(msg, 5);
+      message.success(`Đã tự động chia xong ${totalNewlyAssigned.size} học viên.`, 5);
     } catch (err) {
       console.error("Auto-assign error:", err);
       message.error("Xảy ra lỗi khi tự động chia lịch. Vui lòng thử lại.");

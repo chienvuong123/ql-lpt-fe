@@ -144,6 +144,7 @@ const WaitingStudentList = ({
             ↓ Thả để trả về danh sách chờ
           </div>
         )}
+
         {availableStudents.length > 0 ? (
           availableStudents.map((student) => {
             const hasData = isHasData(student);
