@@ -52,17 +52,44 @@ export default function SearchStudents() {
         ? results.data
         : [];
 
-    return students.map((student) => {
-      return {
-        ...student,
-        MaDK: student.ma_dk,
-        HoTen: student.ho_ten,
-        TenKhoaHoc: student.ten_khoa,
-        NgaySinh: student.ngay_sinh,
-        srcAvatar: student.anh,
-        HangDaoTao: student.hang_gplx || student.hang || "",
-      };
-    });
+    const currentYear = dayjs().format("YY");
+
+    const getYear = (str) => {
+      const match = str?.match(/K(\d+)/i);
+      return match ? match[1] : null;
+    };
+
+    return students
+      .map((student) => {
+        return {
+          ...student,
+          MaDK: student.ma_dk,
+          HoTen: student.ho_ten,
+          TenKhoaHoc: student.ten_khoa,
+          NgaySinh: student.ngay_sinh,
+          srcAvatar: student.anh,
+          HangDaoTao: student.hang_gplx || student.hang || "",
+        };
+      })
+      .sort((a, b) => {
+        const yearA = getYear(a.TenKhoaHoc || a.ma_khoa);
+        const yearB = getYear(b.TenKhoaHoc || b.ma_khoa);
+
+        // Prioritize current year (e.g., K26)
+        const isCurrentA = yearA === currentYear;
+        const isCurrentB = yearB === currentYear;
+
+        if (isCurrentA && !isCurrentB) return -1;
+        if (!isCurrentA && isCurrentB) return 1;
+
+        // Then sort by year descending
+        if (yearA && yearB && yearA !== yearB) {
+          return parseInt(yearB, 10) - parseInt(yearA, 10);
+        }
+
+        // Final fallback: alphabetical by course name
+        return (a.TenKhoaHoc || "").localeCompare(b.TenKhoaHoc || "");
+      });
   }, [results]);
 
   const khoaHocOptions = useMemo(() => {
