@@ -132,9 +132,14 @@ export const useDragDrop = ({
       // Check for different teacher or different car class
       const needsNote = droppingStudents.some(s => {
         // Different teacher from what's currently there (if any)
-        const diffTeacher = targetStudents.length > 0 && s.giao_vien !== targetStudents[0].giao_vien;
-        // Different rank from the cabin's rank
-        const diffRank = s.hang_xe !== targetCabinType;
+        const diffTeacher = targetStudents.length > 0 && 
+                           s.giao_vien && targetStudents[0]?.giao_vien &&
+                           s.giao_vien !== targetStudents[0].giao_vien;
+        // Different rank from the cabin's rank (case-insensitive)
+        const sRank = (s.hang_xe || "").toUpperCase();
+        const tRank = (targetCabinType || "").toUpperCase();
+        const diffRank = sRank !== tRank;
+
         return diffTeacher || diffRank;
       });
 
@@ -159,11 +164,22 @@ export const useDragDrop = ({
              }
           }
           updateCurrentWeek((old) => ({ ...old, schedule: resultSchedule }));
-          const nameA = droppingStudents[0]?.ho_ten || maDks[0];
-          const nameB = targetStudents[0]?.ho_ten || swappedId;
-          message.success(`Đã hoán đổi thành công: ${nameA} ↔ ${nameB}`);
+          const teacherA = droppingStudents[0]?.giao_vien || "Chưa gán GV";
+          const teacherB = targetStudents[0]?.giao_vien || "Chưa gán GV";
+          message.success(`Đã hoán đổi slot GV ${teacherA} ↔ GV ${teacherB} thành công`);
         } else {
           // Regular move
+          // 1. Remove from source if it came from another cabin slot
+          if (source?.di !== undefined) {
+             const sourceKey = `${source.di}-${source.sn}`;
+             if (resultSchedule[sourceKey]) {
+                resultSchedule[sourceKey].cabins[source.cn] = resultSchedule[sourceKey].cabins[source.cn].filter(
+                   id => !maDks.includes(id)
+                );
+             }
+          }
+
+          // 2. Add to target
           const toAdd = maDks.filter(id => !resultSchedule[targetKey].cabins[targetCn].includes(id));
           resultSchedule[targetKey].cabins[targetCn] = [...resultSchedule[targetKey].cabins[targetCn], ...toAdd];
           

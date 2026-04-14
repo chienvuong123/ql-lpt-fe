@@ -961,7 +961,7 @@ export const useCabinSchedule = (allStudents) => {
                   cabin_so: Number(cn),
                   gio_bat_dau: slot.time.split("-")[0],
                   gio_ket_thuc: slot.time.split("-")[1],
-                  ghi_chu: student.ghi_chu || "",
+                  ghi_chu: slotNotes[`${di}-${sn}-${cn}`] || "",
                   ma_khoa: student.khoa_hoc,
                   giao_vien: student.giao_vien,
                   is_locked: isLocked,

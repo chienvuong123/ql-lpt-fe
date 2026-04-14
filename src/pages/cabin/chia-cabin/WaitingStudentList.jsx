@@ -166,45 +166,60 @@ const WaitingStudentList = ({
                   .filter(Boolean)
                   .join(" ")}
               >
-                <div className="font-medium text-gray-900 text-xs truncate">
-                  Họ tên: {student.ho_ten}
-                </div>
-                <div className="text-[11px] text-gray-500">
-                  Mã: {student.ma_dk}
-                </div>
-                <div className="flex gap-1 mt-1 flex-wrap">
-                  {student.hang_xe && (
-                    <Tag
-                      color={student.hang_xe === "B1" ? "magenta" : "geekblue"}
-                      className="!text-[10px] !px-1 !py-0 !m-0"
-                    >
-                      Hạng {student.hang_xe}
-                    </Tag>
-                  )}
-                  {student.is_makeup && (
-                    <Tag
-                      color="volcano"
-                      className="!text-[10px] !px-1 !py-0 !m-0"
-                    >
-                      Học bù
-                    </Tag>
-                  )}
-                  {student.khoa_hoc && (
-                    <Tag
-                      color="default"
-                      className="!text-[10px] !px-1 !py-0 !m-0"
-                    >
-                      {student.khoa_hoc}
-                    </Tag>
-                  )}
-                  {hasData ? (
-                    <>
+                {!hasData ? (
+                  // Simplified view for "No Data" students
+                  <>
+                    <div className="font-medium text-gray-900 text-xs truncate mb-1">
+                      Giáo viên: {student.giao_vien || "Chưa gán"}
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      <Tag
+                        color={student.hang_xe === "B1" ? "magenta" : "geekblue"}
+                        className="!text-[10px] !px-1 !py-0 !m-0"
+                      >
+                        Hạng {student.hang_xe}
+                      </Tag>
+                      <Tag
+                        color="default"
+                        className="!text-[10px] !px-1 !py-0 !m-0"
+                      >
+                        {student.khoa_hoc}
+                      </Tag>
+                      <Tag className="!text-[10px] !px-1 !py-0 !m-0 bg-gray-100 text-gray-500 border-none">
+                        Chưa có dữ liệu
+                      </Tag>
+                    </div>
+                  </>
+                ) : (
+                  // Detailed view for students with training data
+                  <>
+                    <div className="font-medium text-gray-900 text-xs truncate">
+                      Họ tên: {student.ho_ten}
+                    </div>
+                    <div className="text-[11px] text-gray-500 mb-1">
+                      Mã: {student.ma_dk}
+                    </div>
+                    <div className="flex gap-1 mb-1.5 flex-wrap">
+                      <Tag
+                        color={student.hang_xe === "B1" ? "magenta" : "geekblue"}
+                        className="!text-[10px] !px-1 !py-0 !m-0"
+                      >
+                        Hạng {student.hang_xe}
+                      </Tag>
+                      <Tag
+                        color="default"
+                        className="!text-[10px] !px-1 !py-0 !m-0"
+                      >
+                        {student.khoa_hoc}
+                      </Tag>
                       <Tag
                         color="blue"
                         className="!text-[10px] !px-1 !py-0 !m-0"
                       >
                         Bài {student.so_bai_hoc}
                       </Tag>
+                    </div>
+                    <div className="flex gap-1 flex-wrap mb-1">
                       <Tag
                         color="cyan"
                         className="!text-[10px] !px-1 !py-0 !m-0"
@@ -215,24 +230,14 @@ const WaitingStudentList = ({
                         color="orange"
                         className="!text-[10px] !px-1 !py-0 !m-0"
                       >
-                        Còn thiếu:{" "}
-                        {formatMinutesToHM(
-                          Math.max(
-                            0,
-                            globalConfig.duration - student.phut_cabin,
-                          ),
-                        )}
+                        Thiếu: {formatMinutesToHM(Math.max(0, globalConfig.duration - student.phut_cabin))}
                       </Tag>
-                    </>
-                  ) : (
-                    <Tag className="!text-[10px] !px-1 !py-0 !m-0">
-                      Chưa có DL
-                    </Tag>
-                  )}
-                </div>
-                <div className="text-[11px] text-gray-400 truncate">
-                  GV: {student.giao_vien}
-                </div>
+                    </div>
+                    <div className="text-[11px] text-gray-400 truncate mt-1">
+                      GV: {student.giao_vien}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })
