@@ -69,15 +69,19 @@ function remainingMinutes(student) {
 
 // ─── Build header merge groups ────────────────────────────────────────────────
 function buildHeaderGroups(dayCourses) {
+  const areSetsEqual = (a, b) =>
+    a.size === b.size && [...a].every((v) => b.has(v));
+
   const groups = [];
+  if (dayCourses.length === 0) return groups;
+
   let groupStart = 0;
-  let groupCourses = new Set(dayCourses[0]);
+  let groupCourses = dayCourses[0];
 
   for (let di = 1; di < 7; di++) {
     const cur = dayCourses[di];
-    const hasShared = [...cur].some((k) => groupCourses.has(k));
-    if (hasShared) {
-      cur.forEach((k) => groupCourses.add(k));
+    if (areSetsEqual(cur, groupCourses)) {
+      // Tiếp tục gộp
     } else {
       groups.push({
         startDi: groupStart,
@@ -85,7 +89,7 @@ function buildHeaderGroups(dayCourses) {
         courses: new Set(groupCourses),
       });
       groupStart = di;
-      groupCourses = new Set(cur);
+      groupCourses = cur;
     }
   }
   groups.push({
@@ -211,8 +215,9 @@ export async function exportCabinExcel({
       const startCol = grp.startDi + 2;
       const endCol = grp.endDi + 2;
       const khoas = [...grp.courses].sort();
+      // Màu header khớp với ô bên dưới (ks[0])
       const bg =
-        khoas[0] && courseColor[khoas[0]] ? courseColor[khoas[0]] : "EBF5FB";
+        khoas[0] && courseColor[khoas[0]] ? courseColor[khoas[0]] : "FFFFFF";
 
       const targetCell = sheet.getCell(1, startCol);
       targetCell.fill = getFill(bg);
@@ -242,6 +247,20 @@ export async function exportCabinExcel({
             size: 12,
           },
         });
+
+        // Chèn thông tin hết hạn ngay bên dưới tên khoá (Màu đỏ)
+        if (courseExpiry[k]) {
+          richText.push({
+            text: `\n(Hết hạn: ${courseExpiry[k]})`,
+            font: {
+              name: "Times New Roman",
+              bold: false,
+              italic: true,
+              color: { argb: RED_ARGB },
+              size: 10,
+            },
+          });
+        }
       });
 
       targetCell.value = { richText };
@@ -406,34 +425,6 @@ export async function exportCabinExcel({
     sheet.getRow(3).height = 20;
     for (let i = 4; i <= 3 + globalSessions.length; i++)
       sheet.getRow(i).height = 65;
-
-    // ── 8. Footer: Course Expiry Info ────────────────────────────────────────
-    const footerStartRow = globalSessions.length + 6;
-    const footerTitleCell = sheet.getCell(footerStartRow, 1);
-    footerTitleCell.value = "HẠN KẾT THÚC CABIN CÁC KHÓA:";
-    footerTitleCell.font = {
-      name: "Times New Roman",
-      bold: true,
-      size: 12,
-      underline: true,
-    };
-    sheet.mergeCells(footerStartRow, 1, footerStartRow, 3);
-
-    let currentFooterRow = footerStartRow + 1;
-    const sortedCourses = Object.keys(courseExpiry).sort();
-
-    sortedCourses.forEach((k) => {
-      const kCell = sheet.getCell(currentFooterRow, 1);
-      const eCell = sheet.getCell(currentFooterRow, 2);
-
-      kCell.value = k;
-      kCell.font = { name: "Times New Roman", bold: true };
-
-      eCell.value = `Hết hạn: ${courseExpiry[k]}`;
-      eCell.font = { name: "Times New Roman", italic: true, color: { argb: RED_ARGB } };
-
-      currentFooterRow++;
-    });
   }
 
   // ── Export file ───────────────────────────────────────────────────────────

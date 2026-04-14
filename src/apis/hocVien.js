@@ -26,6 +26,14 @@ export const HanhTrinh = async (params) => {
   });
 };
 
+export const searchStudent = async (params) => {
+  const response = await axios.get(`${baseURL}/sync/students`, {
+    params,
+  });
+
+  return response.data;
+};
+
 export const hocVienKyDAT = async (maHocVien) => {
   const response = await axios.get(`${baseURL}/ky-dat/${maHocVien}`);
 

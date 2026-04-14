@@ -98,7 +98,7 @@ const StudentDetail = ({ data }) => {
         ngaybatdau: "2020-01-01",
         ngayketthuc: `${today}T23:59:00`,
         ten: data?.MaDK,
-        makhoahoc: data?.MaKhoaHoc,
+        makhoahoc: data?.ma_khoa,
         limit: 20,
         page: 1,
       }),
@@ -788,7 +788,7 @@ const StudentDetail = ({ data }) => {
                         </Text>
 
                         {dataSource[0]?.HangDaoTao !== "B1" &&
-                        dataSource[0]?.HangDaoTao !== "B11" ? (
+                          dataSource[0]?.HangDaoTao !== "B11" ? (
                           <Text className="text-[#888888] font-medium">
                             Trải nghiệm hộp số tự động (17h-7h):{" "}
                             {fmtGio(summaryData.thoiGianTuDongGio)}
@@ -808,13 +808,13 @@ const StudentDetail = ({ data }) => {
                         {/* Tổng phiên không hợp lệ bị loại */}
                         {(summaryData.tongThoiGianLoiGio > 0 ||
                           summaryData.tongQuangDuongLoi > 0) && (
-                          <Text className="!text-red-500 font-medium">
-                            ⚠ Phiên không hợp lệ bị loại:{" "}
-                            {fmtGio(summaryData.tongThoiGianLoiGio)}
-                            {" - "}
-                            {summaryData.tongQuangDuongLoi.toFixed(2)} km
-                          </Text>
-                        )}
+                            <Text className="!text-red-500 font-medium">
+                              ⚠ Phiên không hợp lệ bị loại:{" "}
+                              {fmtGio(summaryData.tongThoiGianLoiGio)}
+                              {" - "}
+                              {summaryData.tongQuangDuongLoi.toFixed(2)} km
+                            </Text>
+                          )}
                       </Space>
                     </Space>
                   </Card>

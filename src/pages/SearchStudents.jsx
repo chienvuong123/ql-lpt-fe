@@ -15,7 +15,7 @@ import {
   Select,
 } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import { DanhSachHocVien } from "../apis/hocVien";
+import { searchStudent } from "../apis/hocVien";
 import StudentDetail from "./StudentDetail";
 import { exportReport } from "../apis/report";
 import dayjs from "dayjs";
@@ -30,9 +30,9 @@ export default function SearchStudents() {
   const [openedDrawer, setOpenedDrawer] = useState(false);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
 
-  const { data: results = {}, isLoading } = useQuery({
+  const { data: results = [], isLoading } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
-    queryFn: () => DanhSachHocVien(searchParams),
+    queryFn: () => searchStudent(searchParams),
     staleTime: 1000 * 60 * 5,
     retry: false,
     enabled: Object.keys(searchParams).length > 0,
@@ -46,27 +46,24 @@ export default function SearchStudents() {
   });
 
   const dataSource = useMemo(() => {
-    const students = Array.isArray(results?.data?.Data)
-      ? results.data.Data
-      : [];
-
-    const courses = Array.isArray(dataKhoaHoc?.data?.Data)
-      ? dataKhoaHoc.data.Data
-      : [];
+    const students = Array.isArray(results)
+      ? results
+      : Array.isArray(results?.data)
+        ? results.data
+        : [];
 
     return students.map((student) => {
-      const course = courses.find(
-        (c) => String(c.ID) === String(student.IDKhoaHoc),
-      );
-
       return {
         ...student,
-        TenKhoaHoc: course?.Ten || "",
-        MaKhoaHoc: course?.MaKhoaHoc || "",
-        IDKhoaHoc: course?.ID || "",
+        MaDK: student.ma_dk,
+        HoTen: student.ho_ten,
+        TenKhoaHoc: student.ten_khoa,
+        NgaySinh: student.ngay_sinh,
+        srcAvatar: student.anh,
+        HangDaoTao: student.hang_gplx || student.hang || "",
       };
     });
-  }, [results, dataKhoaHoc]);
+  }, [results]);
 
   const khoaHocOptions = useMemo(() => {
     const options = dataKhoaHoc?.data?.Data || [];
@@ -74,7 +71,7 @@ export default function SearchStudents() {
       { label: "Tất cả khóa học", value: "" },
       ...options.map((kh) => ({
         label: kh.Ten || kh.MaKhoaHoc || "Không có tên",
-        value: kh.ID || "",
+        value: kh.MaKhoaHoc || "",
       })),
     ];
   }, [dataKhoaHoc]);
@@ -83,11 +80,11 @@ export default function SearchStudents() {
     const params = {};
 
     if (searchText.trim().length >= 2) {
-      params.soCmt = searchText.trim();
+      params.search = searchText.trim();
     }
 
     if (selectedKhoaHoc) {
-      params.idkhoahoc = selectedKhoaHoc;
+      params.ma_khoa = selectedKhoaHoc;
     }
 
     if (Object.keys(params).length === 0) {
@@ -95,7 +92,7 @@ export default function SearchStudents() {
       return;
     }
 
-    setSearchParams({ ...params, page: 1, limit: 20 });
+    setSearchParams(params);
   };
 
   const handleView = (record) => {
