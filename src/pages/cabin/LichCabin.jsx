@@ -227,12 +227,16 @@ const LichCabin = () => {
   ]);
 
   // ── Shared CabinSlot props ────────────────────────────────────────────────
+  const handleSetStudentDetail = useCallback((s) => {
+    setStudentDetail(s);
+    setOpenPopover(null);
+  }, []);
+
   const cabinSlotProps = useMemo(() => ({
     fullSchedule,
     weekDates,
     globalConfig,
     lockedCabins,
-    dragOverSlot,
     dragState,
     openPopover,
     getStudentByMaDk,
@@ -243,17 +247,12 @@ const LichCabin = () => {
     getDayConfig,
     isMakeupZone: isMakeupSlot,
     getSessions,
-    handleDragOver,
-    handleDragLeave,
     handleDrop,
     handleDragStartAll,
     handleDragStartOne,
     handleDragEnd,
     handleRemoveStudent,
-    setStudentDetail: (s) => {
-      setStudentDetail(s);
-      setOpenPopover(null);
-    },
+    setStudentDetail: handleSetStudentDetail,
     setOpenPopover,
     slotNotes,
     onAddNote,
@@ -262,7 +261,6 @@ const LichCabin = () => {
     weekDates,
     globalConfig,
     lockedCabins,
-    dragOverSlot,
     dragState,
     openPopover,
     getStudentByMaDk,
@@ -273,14 +271,14 @@ const LichCabin = () => {
     getDayConfig,
     isMakeupSlot,
     getSessions,
-    handleDragOver,
-    handleDragLeave,
     handleDrop,
     handleDragStartAll,
     handleDragStartOne,
     handleDragEnd,
     handleRemoveStudent,
+    handleSetStudentDetail,
     slotNotes,
+    onAddNote,
   ]);
 
   return (

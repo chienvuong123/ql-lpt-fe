@@ -14,7 +14,6 @@ const CabinTable = ({
   fullSchedule,
   globalConfig,
   lockedCabins,
-  dragOverSlot,
   dragState,
   openPopover,
   getStudentByMaDk,
@@ -22,8 +21,6 @@ const CabinTable = ({
   canSwap,
   canDropIntoCabin,
   toggleLock,
-  handleDragOver,
-  handleDragLeave,
   handleDrop,
   handleDragStartAll,
   handleDragStartOne,
@@ -86,7 +83,6 @@ const CabinTable = ({
                     weekDates={weekDates}
                     globalConfig={globalConfig}
                     lockedCabins={lockedCabins}
-                    dragOverSlot={dragOverSlot}
                     dragState={dragState}
                     openPopover={openPopover}
                     getStudentByMaDk={getStudentByMaDk}
@@ -94,8 +90,6 @@ const CabinTable = ({
                     canSwap={canSwap}
                     canDropIntoCabin={canDropIntoCabin}
                     toggleLock={toggleLock}
-                    handleDragOver={handleDragOver}
-                    handleDragLeave={handleDragLeave}
                     handleDrop={handleDrop}
                     handleDragStartAll={handleDragStartAll}
                     handleDragStartOne={handleDragStartOne}
@@ -124,7 +118,6 @@ const CabinTable = ({
       fullSchedule,
       globalConfig,
       lockedCabins,
-      dragOverSlot,
       dragState,
       openPopover,
       slotNotes,

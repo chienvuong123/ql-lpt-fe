@@ -19,7 +19,6 @@ export const useDragDrop = ({
   onAddNote,
 }) => {
   const [dragState, setDragState] = useState(null);
-  const [dragOverSlot, setDragOverSlot] = useState(null);
   const [listDropOver, setListDropOver] = useState(false);
 
   // ── Drag start ────────────────────────────────────────────────────────────
@@ -44,23 +43,9 @@ export const useDragDrop = ({
     e.dataTransfer.setData("drag", JSON.stringify(ds));
   };
 
-  // ── Drag over / leave ─────────────────────────────────────────────────────
-  const handleDragOver = useCallback(
-    (e, di, sn, cn) => {
-      e.preventDefault();
-      const slotKey = `${di}-${sn}-${cn}`;
-      if (dragOverSlot !== slotKey) setDragOverSlot(slotKey);
-    },
-    [dragOverSlot],
-  );
-
-  const handleDragLeave = useCallback((e) => {
-    if (!e.currentTarget.contains(e.relatedTarget)) setDragOverSlot(null);
-  }, []);
 
   const handleDragEnd = useCallback(() => {
     setDragState(null);
-    setDragOverSlot(null);
     setListDropOver(false);
   }, []);
 
@@ -85,7 +70,6 @@ export const useDragDrop = ({
     (e, targetDi, targetSn, targetCn) => {
       e.preventDefault();
       e.stopPropagation();
-      setDragOverSlot(null);
 
       let ds = dragState;
       if (!ds) {
@@ -350,16 +334,14 @@ export const useDragDrop = ({
 
   return {
     dragState,
-    dragOverSlot,
+    setDragState,
     listDropOver,
     setListDropOver,
-    setDragState,
+    setDragStatus: setDragState,
     canSwap,
     handleDragStartFromList,
     handleDragStartOne,
     handleDragStartAll,
-    handleDragOver,
-    handleDragLeave,
     handleDragEnd,
     handleDrop,
   };

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Tag, Popover } from "antd";
 import {
   LockOutlined,
@@ -55,7 +55,6 @@ const CabinSlot = React.memo(({
   fullSchedule,
   globalConfig,
   lockedCabins,
-  dragOverSlot,
   dragState,
   openPopover,
   getStudentByMaDk,
@@ -63,8 +62,6 @@ const CabinSlot = React.memo(({
   canSwap,
   canDropIntoCabin,
   toggleLock,
-  handleDragOver,
-  handleDragLeave,
   handleDrop,
   handleDragStartAll,
   handleDragStartOne,
@@ -78,6 +75,8 @@ const CabinSlot = React.memo(({
   slotNotes,
   onAddNote,
 }) => {
+  const [isLocalDragOver, setIsLocalDragOver] = useState(false);
+  const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
   const key = `${dateIndex}-${sessionNum}`;
   const maDkList = fullSchedule[key]?.cabins[cabinNum] || [];
   const students = maDkList.map(getStudentByMaDk).filter(Boolean);
@@ -88,9 +87,7 @@ const CabinSlot = React.memo(({
   const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
   const cType = Number(cabinNum) > 5 - b1Count ? "B1" : "B2";
 
-  const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
   const isLocked = lockedCabins[slotKey] || false;
-  const isDragOver = dragOverSlot === slotKey;
   const isPopoverOpen = openPopover === slotKey;
 
   const totalTime = calcCabinTime(students);
@@ -109,11 +106,7 @@ const CabinSlot = React.memo(({
     draggingMaDks.length > 0 &&
     canSwap(maDkList, draggingMaDks, cabinNum);
 
-  const dropAllowed = isLocked
-    ? false
-    : willSwap
-      ? true
-      : canDropIntoCabin(maDkList, draggingMaDks, cabinNum, slotKey);
+  const dropAllowed = !isLocked && canDropIntoCabin(maDkList, draggingMaDks, cabinNum, slotKey);
 
   // ── Màu theo khóa học ────────────────────────────────────────────────────
   const dominantKhoa = students[0]?.khoa_hoc ?? null;
@@ -175,17 +168,32 @@ const CabinSlot = React.memo(({
 
   const slotDiv = (
     <div
-      onDragOver={(e) => handleDragOver(e, dateIndex, sessionNum, cabinNum)}
-      onDragLeave={handleDragLeave}
-      onDrop={(e) => handleDrop(e, dateIndex, sessionNum, cabinNum)}
+      onDragEnter={(e) => {
+        if (dragState) {
+          e.preventDefault();
+          setIsLocalDragOver(true);
+        }
+      }}
+      onDragOver={(e) => {
+        e.preventDefault(); // Always prevent default to allow drop
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+           setIsLocalDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        setIsLocalDragOver(false);
+        handleDrop(e, dateIndex, sessionNum, cabinNum);
+      }}
       className={[
         "relative border rounded-md px-1 py-1 flex flex-col transition-all duration-100 group min-h-[52px]",
         baseColorClass,
-        isDragOver && willSwap
+        isLocalDragOver && willSwap
           ? "!ring-2 !ring-yellow-400 !border-yellow-400 !bg-yellow-50 scale-[1.02]"
-          : isDragOver && dropAllowed
+          : isLocalDragOver && dropAllowed
             ? "!ring-2 !ring-green-400 !border-green-400 !bg-green-50 scale-[1.02]"
-            : isDragOver && !dropAllowed
+            : isLocalDragOver && !dropAllowed
               ? "!ring-2 !ring-red-400 !border-red-400 !bg-red-50"
               : "",
       ]
@@ -283,16 +291,16 @@ const CabinSlot = React.memo(({
       {/* Body */}
       {isEmpty ? (
         <div
-          className={`text-xs font-medium text-center flex-1 flex items-center justify-center ${isDragOver && dropAllowed
+          className={`text-xs font-medium text-center flex-1 flex items-center justify-center ${isLocalDragOver && dropAllowed
             ? "text-green-600"
-            : isDragOver && !dropAllowed
+            : isLocalDragOver && !dropAllowed
               ? "text-red-500"
               : "text-gray-400"
             }`}
         >
-          {isDragOver && dropAllowed
+          {isLocalDragOver && dropAllowed
             ? "↓ Thả vào đây"
-            : isDragOver && !dropAllowed
+            : isLocalDragOver && !dropAllowed
               ? "✕ Không hợp lệ"
               : "+ Thêm"}
         </div>
@@ -352,7 +360,7 @@ const CabinSlot = React.memo(({
               Cần {totalTime}/{globalConfig.duration} ph
             </div>
           )}
-          {isDragOver && (
+          {isLocalDragOver && (
             <div
               className={`text-[10px] font-medium ${willSwap
                 ? "text-yellow-600"
@@ -406,7 +414,7 @@ const CabinSlot = React.memo(({
               </span>
             </span>
           </div>
-          {isDragOver && (
+          {isLocalDragOver && (
             <span
               className={`text-[10px] font-medium absolute -top-1 left-0 right-0 text-center ${willSwap
                 ? "text-yellow-600"
