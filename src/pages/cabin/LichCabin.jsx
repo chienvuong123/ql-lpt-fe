@@ -70,6 +70,7 @@ const LichCabin = () => {
     slotNotes,
     slotRecordIds,
     updateSlotNoteLocal,
+    onlineStudents,
   } = schedule;
 
   const isGlobalLoading =
@@ -143,6 +144,35 @@ const LichCabin = () => {
   } = dragDrop;
 
   // ── Derived data ──────────────────────────────────────────────────────────
+  const teacherOnlineStatus = useMemo(() => {
+    // status[giao_vien] = "online" | "warning" | undefined
+    const status = {};
+    if (!onlineStudents || Object.keys(onlineStudents).length === 0) return status;
+
+    // Nhóm học viên theo giáo viên, chỉ xét những HV có trong onlineStudents
+    const teacherStudents = {};
+    allStudents.forEach((s) => {
+      if (!s.giao_vien || !onlineStudents.hasOwnProperty(s.ma_dk)) return;
+      if (!teacherStudents[s.giao_vien]) teacherStudents[s.giao_vien] = [];
+      teacherStudents[s.giao_vien].push(s.ma_dk);
+    });
+
+    Object.entries(teacherStudents).forEach(([teacher, maDks]) => {
+      // Kiểm tra nếu BẤT KỲ HV nào online → thầy online (chấm xanh)
+      const hasAnyOnline = maDks.some(
+        (mk) => onlineStudents[mk] === "online" || onlineStudents[mk] === true
+      );
+      if (hasAnyOnline) {
+        status[teacher] = "online";
+      } else {
+        // Tất cả HV đều warning → chấm đỏ
+        status[teacher] = "warning";
+      }
+    });
+
+    return status;
+  }, [onlineStudents, allStudents]);
+
   const uniqueKhoaHoc = useMemo(() => {
     const list = [
       ...new Set(allStudents.map((s) => s.khoa_hoc).filter(Boolean)),
@@ -256,6 +286,7 @@ const LichCabin = () => {
     setOpenPopover,
     slotNotes,
     onAddNote,
+    teacherOnlineStatus,
   }), [
     fullSchedule,
     weekDates,
@@ -279,6 +310,7 @@ const LichCabin = () => {
     handleSetStudentDetail,
     slotNotes,
     onAddNote,
+    teacherOnlineStatus,
   ]);
 
   return (

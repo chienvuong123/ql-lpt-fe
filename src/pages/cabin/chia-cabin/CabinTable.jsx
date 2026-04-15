@@ -32,6 +32,8 @@ const CabinTable = ({
   isMakeupSlot,
   slotNotes,
   onAddNote,
+  teacherOnlineStatus,
+  activeSlotKey,
 }) => {
   const columns = useMemo(
     () => [
@@ -102,6 +104,8 @@ const CabinTable = ({
                     getSessions={getSessions}
                     slotNotes={slotNotes}
                     onAddNote={onAddNote}
+                    teacherOnlineStatus={teacherOnlineStatus}
+                    activeSlotKey={activeSlotKey}
                   />
                 </div>
               ))}
@@ -122,6 +126,8 @@ const CabinTable = ({
       openPopover,
       slotNotes,
       onAddNote,
+      teacherOnlineStatus,
+      activeSlotKey,
     ],
   );
 

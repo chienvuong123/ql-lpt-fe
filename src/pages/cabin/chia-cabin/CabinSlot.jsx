@@ -74,6 +74,8 @@ const CabinSlot = React.memo(({
   getSessions,
   slotNotes,
   onAddNote,
+  teacherOnlineStatus,
+  activeSlotKey,
 }) => {
   const [isLocalDragOver, setIsLocalDragOver] = useState(false);
   const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
@@ -97,6 +99,11 @@ const CabinSlot = React.memo(({
 
   const currentNote = slotNotes[slotKey] || "";
   const isDoiHang = students.some(s => s.hang_xe !== cType);
+
+  const teacherName = students[0]?.giao_vien;
+  const hasOnlineData = teacherOnlineStatus && Object.keys(teacherOnlineStatus).length > 0;
+  const isTeacherOnline = hasOnlineData && !!teacherName && teacherOnlineStatus[teacherName] === "online";
+  const showRedDot = hasOnlineData && !!teacherName && teacherOnlineStatus[teacherName] === "warning";
 
   const draggingMaDks = dragState?.maDks ?? [];
 
@@ -179,7 +186,7 @@ const CabinSlot = React.memo(({
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) {
-           setIsLocalDragOver(false);
+          setIsLocalDragOver(false);
         }
       }}
       onDrop={(e) => {
@@ -200,6 +207,18 @@ const CabinSlot = React.memo(({
         .filter(Boolean)
         .join(" ")}
     >
+      {!isEmpty && (isTeacherOnline || showRedDot) && (
+        <div className="absolute top-1 right-1 z-20">
+          {isTeacherOnline ? (
+            <span className="relative flex h-2.5 w-2.5" title="Có học viên đang online">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+          ) : (
+            <span className="inline-flex rounded-full h-2.5 w-2.5 bg-red-500" title="Không có học viên nào online"></span>
+          )}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-0.5">
         <div className="flex items-center gap-1">
@@ -232,7 +251,7 @@ const CabinSlot = React.memo(({
               <UnlockOutlined style={{ fontSize: 10 }} />
             )}
           </button>
-          
+
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             {!currentNote && (
               <button
@@ -312,7 +331,7 @@ const CabinSlot = React.memo(({
           }}
           className="cursor-pointer space-y-0.5"
         >
-          <div className="mb-1">
+          <div className="mb-1 flex items-center gap-1">
             <span className="text-[10px] font-bold text-blue-700">
               GV: {students[0].giao_vien}
             </span>
@@ -402,7 +421,7 @@ const CabinSlot = React.memo(({
             className="flex flex-col text-[11px] font-medium text-gray-800 hover:underline cursor-pointer truncate"
             title={students[0].ho_ten}
           >
-            <span className="text-xs">
+            <span className="text-xs flex items-center gap-1">
               GV: {students[0].giao_vien}
               <span
                 className={`text-[11px] rounded w-fit mt-0.5 font-semibold ${khoaColor

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { message, Modal } from "antd";
 import {
@@ -10,7 +10,7 @@ import {
   minToTime,
   timeToMin,
 } from "../utils";
-import { saveLichCabin, getLichCabin, updateGhiChuLichCabin } from "../../../../apis/cabinApi";
+import { saveLichCabin, getLichCabin, updateGhiChuLichCabin, checkOnlineStatus } from "../../../../apis/cabinApi";
 
 const DEFAULT_CONFIG = {
   duration: 150,
@@ -32,6 +32,7 @@ export const useCabinSchedule = (allStudents) => {
   const [week, setWeek] = useState(new Date());
   const [loadingSync, setLoadingSync] = useState(false);
   const [priorityCourse, setPriorityCourse] = useState("all");
+  const [onlineStudents, setOnlineStudents] = useState({});
   const queryClient = useQueryClient();
 
   // ── Week key & current week data ──────────────────────────────────────────
@@ -579,14 +580,14 @@ export const useCabinSchedule = (allStudents) => {
       const teachersMakeup = groupByTeacher(makeupPool);
 
       // 3. Sắp xếp giáo viên theo độ ưu tiên (Số học viên nhìu nhất xếp trước)
-      const sortTeachers = (teacherGroups) => 
+      const sortTeachers = (teacherGroups) =>
         Object.keys(teacherGroups).sort((a, b) => {
           // Vẫn giữ ưu tiên Khóa ưu tiên ở cấp độ thầy
           if (priorityCourse !== "all") {
-             const aHasPri = teacherGroups[a].some(s => s.khoa_hoc === priorityCourse);
-             const bHasPri = teacherGroups[b].some(s => s.khoa_hoc === priorityCourse);
-             if (aHasPri && !bHasPri) return -1;
-             if (!aHasPri && bHasPri) return 1;
+            const aHasPri = teacherGroups[a].some(s => s.khoa_hoc === priorityCourse);
+            const bHasPri = teacherGroups[b].some(s => s.khoa_hoc === priorityCourse);
+            if (aHasPri && !bHasPri) return -1;
+            if (!aHasPri && bHasPri) return 1;
           }
           return teacherGroups[b].length - teacherGroups[a].length;
         });
@@ -636,15 +637,15 @@ export const useCabinSchedule = (allStudents) => {
           const students = teacherGroups[teacherName];
           for (const student of students) {
             const isB1Needed = student.hang_xe === "B1";
-            
+
             let foundIdx = -1;
             for (let i = 0; i < currentEmptySlots.length; i++) {
               const slot = currentEmptySlots[i];
               if (slot.isB1 !== isB1Needed) continue;
-              
+
               const sessionKey = `${slot.di}-${slot.sn}`;
               if (!busyTeachers[sessionKey]) busyTeachers[sessionKey] = new Set();
-              
+
               // RÀNG BUỘC: 1 thầy 1 ca
               if (busyTeachers[sessionKey].has(teacherName)) continue;
 
@@ -655,12 +656,12 @@ export const useCabinSchedule = (allStudents) => {
             if (foundIdx !== -1) {
               const slot = currentEmptySlots[foundIdx];
               const sessionKey = `${slot.di}-${slot.sn}`;
-              
+
               if (!newSchedule[slot.key]) {
                 newSchedule[slot.key] = { cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
               }
               newSchedule[slot.key].cabins[slot.cn] = [student.ma_dk];
-              
+
               busyTeachers[sessionKey].add(teacherName);
               newlyAssigned.add(student.ma_dk);
               currentEmptySlots.splice(foundIdx, 1);
@@ -676,8 +677,8 @@ export const useCabinSchedule = (allStudents) => {
       const totalNewlyAssigned = new Set([...assignedNormal, ...assignedMakeup]);
 
       updateCurrentWeek(() => ({
-          schedule: newSchedule,
-          assignedMaDks: new Set([...newAssignedThisWeek, ...totalNewlyAssigned]),
+        schedule: newSchedule,
+        assignedMaDks: new Set([...newAssignedThisWeek, ...totalNewlyAssigned]),
       }));
 
       message.success(`Đã tự động chia xong ${totalNewlyAssigned.size} học viên.`, 5);
@@ -690,7 +691,7 @@ export const useCabinSchedule = (allStudents) => {
   const doConfigBasedAutoAssign = (cabinNums) => {
     try {
       if (!cabinNums || cabinNums.length === 0) return;
-      
+
       const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
       const totalAssignedThisRun = new Set();
       const currentAssignedMaDks = new Set(assignedMaDks);
@@ -775,7 +776,7 @@ export const useCabinSchedule = (allStudents) => {
           while (filledForThisCourse < quota && poolsByCourse[courseName].length > 0 && slotIdx < emptySlots.length) {
             const student = poolsByCourse[courseName].shift();
             const { key } = emptySlots[slotIdx++];
-            
+
             if (!newSchedule[key]) newSchedule[key] = { cabins: {} };
             newSchedule[key].cabins[cabinNum] = [student.ma_dk];
             totalAssignedThisRun.add(student.ma_dk);
@@ -1101,6 +1102,104 @@ export const useCabinSchedule = (allStudents) => {
     });
   }, [updateCurrentWeek]);
 
+  // ── Online Status Refined ────────────────────────────────────────────────
+  const refreshOnlineStatus = useCallback(async () => {
+    const now = new Date();
+    // 1. Chỉ check nếu đang xem tuần hiện tại
+    if (getWeekKey(now) !== weekKey) return;
+
+    // 2. Tìm ca hiện tại (Active Session)
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const currentSess = globalSessions.find(
+      (s) => currentMin >= s.startMin && currentMin <= s.endMin
+    );
+
+    if (!currentSess) {
+      setOnlineStudents({});
+      return;
+    }
+
+    // 3. Lấy tất cả các giáo viên được gán vào bất kỳ cabin nào trong ca này
+    const di = (now.getDay() + 6) % 7; // T2: 0, ..., CN: 6
+    const key = `${di}-${currentSess.num}`;
+    const cabins = fullSchedule[key]?.cabins || {};
+
+    const assignedMaDksInSession = Object.values(cabins).flat().filter(Boolean);
+    const assignedStudents = assignedMaDksInSession.map(getStudentByMaDk).filter(Boolean);
+    const uniqueTeachers = new Set(assignedStudents.map((s) => s.giao_vien).filter(Boolean));
+
+    if (uniqueTeachers.size === 0) {
+      // Không reset nếu data có thể chưa load xong (allStudents rỗng)
+      if (allStudents.length > 0) {
+        setOnlineStudents({});
+      }
+      return;
+    }
+
+    // 4. Lấy TẤT CẢ mã học viên của các thầy giáo này (từ allStudents pool)
+    const targetMaDks = allStudents
+      .filter((s) => uniqueTeachers.has(s.giao_vien))
+      .map((s) => s.ma_dk);
+
+    if (targetMaDks.length === 0) {
+      setOnlineStudents({});
+      return;
+    }
+
+    // 5. Tính toán startTime/endTime chuẩn theo khung giờ ca hiện tại (GIỜ LOCAL)
+    const padZ = (n) => String(n).padStart(2, "0");
+    const formatLocalISO = (d) => {
+      return `${d.getFullYear()}-${padZ(d.getMonth() + 1)}-${padZ(d.getDate())}T${padZ(d.getHours())}:${padZ(d.getMinutes())}:${padZ(d.getSeconds())}Z`;
+    };
+
+    const startLocal = new Date(now);
+    startLocal.setHours(Math.floor(currentSess.startMin / 60), currentSess.startMin % 60, 0, 0);
+    const endLocal = new Date(now);
+    endLocal.setHours(Math.floor(currentSess.endMin / 60), currentSess.endMin % 60, 0, 0);
+
+    const startTimeStr = formatLocalISO(startLocal);
+    const endTimeStr = formatLocalISO(endLocal);
+
+    try {
+      const res = await checkOnlineStatus({
+        maDkList: targetMaDks,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+      });
+
+      // Chỗ set onlineStudents sau khi gọi API
+      if (res?.success && res?.data) {
+        const statusMap = {};
+        res.data.forEach((item) => {
+          const key = item.maDk || item.ma_dk;
+          if (key) statusMap[key] = item.status;
+        });
+        setOnlineStudents(statusMap);
+      }
+    } catch (err) {
+      console.error("Lỗi check online status:", err);
+    }
+  }, [weekKey, globalSessions, fullSchedule, allStudents, getStudentByMaDk]);
+
+  useEffect(() => {
+    // Delay lần đầu để đợi data (allStudents, fullSchedule) load xong
+    const initTimer = setTimeout(refreshOnlineStatus, 500);
+    const intervalTimer = setInterval(refreshOnlineStatus, 60000);
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(intervalTimer);
+    };
+  }, [refreshOnlineStatus]);
+
+  // Re-check khi allStudents load xong lần đầu
+  const allStudentsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (allStudents.length > 0 && !allStudentsLoadedRef.current) {
+      allStudentsLoadedRef.current = true;
+      refreshOnlineStatus();
+    }
+  }, [allStudents, refreshOnlineStatus]);
+
   return {
     // state
     globalConfig,
@@ -1151,5 +1250,7 @@ export const useCabinSchedule = (allStudents) => {
     handleSaveScheduleToServer,
     handleLoadScheduleFromServer,
     handleClearCurrentWeek,
+    onlineStudents,
+    refreshOnlineStatus,
   };
 };
