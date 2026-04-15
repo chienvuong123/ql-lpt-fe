@@ -229,7 +229,10 @@ const ModalTest = ({
   courseLabel,
   studentCheckInfo = null,
   rows = [],
+  bat_dau_dat = null,
+  ket_thuc_dat = null,
 }) => {
+
   const [statusMap, setStatusMap] = useState({});
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [approveState, setApproveState] = useState(INITIAL_APPROVE_STATE);
@@ -422,8 +425,19 @@ const ModalTest = ({
               <div className="!text-xs">
                 Năm sinh: {student?.user?.birth_year || "--"}
               </div>
+              {bat_dau_dat && (
+                <div className="!mt-1 !text-xs">
+                  Bắt đầu DAT: {dayjs(bat_dau_dat).format("DD/MM/YYYY")}
+                </div>
+              )}
+              {ket_thuc_dat && (
+                <div className="!text-xs">
+                  Kết thúc DAT: {dayjs(ket_thuc_dat).format("DD/MM/YYYY")}
+                </div>
+              )}
             </div>
             <Image
+
               src={student?.user?.avatar || student?.user?.default_avatar || ""}
               width={88}
               height={110}

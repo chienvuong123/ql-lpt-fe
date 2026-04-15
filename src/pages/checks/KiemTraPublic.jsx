@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import dayjs from "dayjs";
+
 import {
   Button,
   Card,
@@ -29,7 +31,9 @@ import {
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
+import { getTienDoDaoTaoByMaHocVienSql } from "../../apis/apiSynch";
 import ModalTest from "./ModalTest";
+
 import "./index.css";
 // import { getChiTietHocVienLyThuyet } from "../../apis/apiHocVienLopLyThuyet";
 
@@ -258,6 +262,17 @@ const KiemTraPublic = () => {
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
+
+  const { data: tienDoData } = useQuery({
+    queryKey: ["tienDoDaoTao", selectedKhoaHocCode],
+    queryFn: () => getTienDoDaoTaoByMaHocVienSql({ ma_khoa: selectedKhoaHocCode }),
+    enabled: !!selectedKhoaHocCode,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const progressData = useMemo(() => {
+    return tienDoData?.data?.[0] || null;
+  }, [tienDoData]);
 
   const cabinDataList = useMemo(() => {
     const list = dataCabin?.data || dataCabin?.Data || [];
@@ -686,17 +701,24 @@ const KiemTraPublic = () => {
                     >
                       {selectedStudent?.user?.name || "Không rõ tên"}
                     </Title>
-                    <Text className="!mt-2 !block !text-sm !text-[#72809a]">
+                    <Text className="!mt-2 !block !text-sm !text-[#151b2d] !font-medium">
                       Lớp ·{" "}
                       {selectedKhoaHocLabel || selectedStudent?.MaKhoaHoc || ""}
                     </Text>
-                    <Text className="!mt-1 !block !text-sm !font-bold !text-[#2b3243]">
+                    <Text className="!mt-1 !block !text-sm !text-[#151b2d] !font-medium">
                       CCCD:{" "}
                       {selectedStudent?.user?.identification_card ||
                         selectedStudent?.user?.code ||
                         ""}
                     </Text>
+                    <Text className="!mt-1 !block !text-sm !text-[#151b2d] !font-medium">
+                      Ngày tốt nghiệp:{" "}
+                      {progressData?.tot_nghiep && dayjs(progressData.tot_nghiep).isValid()
+                        ? dayjs(progressData.tot_nghiep).format("DD/MM/YYYY")
+                        : "Chưa có lịch"}
+                    </Text>
                   </Col>
+
                 </Row>
 
                 <Row gutter={8} className="!mt-3">
@@ -844,7 +866,10 @@ const KiemTraPublic = () => {
         courseLabel={selectedKhoaHocLabel}
         studentCheckInfo={studentCheckInfo}
         rows={datJourneyList}
+        bat_dau_dat={progressData?.bat_dau_dat}
+        ket_thuc_dat={progressData?.ket_thuc_dat}
       />
+
       <CabinModal
         open={isLyThuyetPassed && isCabinModalOpen}
         onCancel={() => setIsCabinModalOpen(false)}
