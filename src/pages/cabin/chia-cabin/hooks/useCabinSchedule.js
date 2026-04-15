@@ -33,7 +33,9 @@ export const useCabinSchedule = (allStudents) => {
   const [loadingSync, setLoadingSync] = useState(false);
   const [priorityCourse, setPriorityCourse] = useState("all");
   const [onlineStudents, setOnlineStudents] = useState({});
+  const [activeSlotKey, setActiveSlotKey] = useState(null);
   const queryClient = useQueryClient();
+
 
   // ── Week key & current week data ──────────────────────────────────────────
   const weekKey = useMemo(() => getWeekKey(week), [week]);
@@ -1106,9 +1108,13 @@ export const useCabinSchedule = (allStudents) => {
   const refreshOnlineStatus = useCallback(async () => {
     const now = new Date();
     // 1. Chỉ check nếu đang xem tuần hiện tại
-    if (getWeekKey(now) !== weekKey) return;
+    if (getWeekKey(now) !== weekKey) {
+      setActiveSlotKey(null);
+      return;
+    }
 
     // 2. Tìm ca hiện tại (Active Session)
+
     const currentMin = now.getHours() * 60 + now.getMinutes();
     const currentSess = globalSessions.find(
       (s) => currentMin >= s.startMin && currentMin <= s.endMin
@@ -1116,13 +1122,17 @@ export const useCabinSchedule = (allStudents) => {
 
     if (!currentSess) {
       setOnlineStudents({});
+      setActiveSlotKey(null);
       return;
     }
+
 
     // 3. Lấy tất cả các giáo viên được gán vào bất kỳ cabin nào trong ca này
     const di = (now.getDay() + 6) % 7; // T2: 0, ..., CN: 6
     const key = `${di}-${currentSess.num}`;
+    setActiveSlotKey(key);
     const cabins = fullSchedule[key]?.cabins || {};
+
 
     const assignedMaDksInSession = Object.values(cabins).flat().filter(Boolean);
     const assignedStudents = assignedMaDksInSession.map(getStudentByMaDk).filter(Boolean);
@@ -1252,5 +1262,7 @@ export const useCabinSchedule = (allStudents) => {
     handleClearCurrentWeek,
     onlineStudents,
     refreshOnlineStatus,
+    activeSlotKey,
   };
 };
+

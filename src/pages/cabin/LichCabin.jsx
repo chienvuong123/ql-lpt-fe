@@ -71,7 +71,9 @@ const LichCabin = () => {
     slotRecordIds,
     updateSlotNoteLocal,
     onlineStudents,
+    activeSlotKey,
   } = schedule;
+
 
   const isGlobalLoading =
     isFetchingStudents || isFetchingSchedule || loadingSync;
@@ -287,7 +289,9 @@ const LichCabin = () => {
     slotNotes,
     onAddNote,
     teacherOnlineStatus,
+    activeSlotKey,
   }), [
+
     fullSchedule,
     weekDates,
     globalConfig,
@@ -311,7 +315,9 @@ const LichCabin = () => {
     slotNotes,
     onAddNote,
     teacherOnlineStatus,
+    activeSlotKey,
   ]);
+
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
