@@ -24,6 +24,7 @@ import LyThuyetScoreModal from "./LyThuyetScoreModal";
 import CabinModal from "./CabinModal";
 import {
   DangNhapPublic,
+  getTienDoDaoTaoByMaHocVienSqlDeploy,
   HanhTrinhPublic,
   hocVienKyDATPublic,
   hocVienTheoKhoaPublic,
@@ -31,7 +32,6 @@ import {
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
-import { getTienDoDaoTaoByMaHocVienSql } from "../../apis/apiSynch";
 import ModalTest from "./ModalTest";
 
 import "./index.css";
@@ -265,7 +265,7 @@ const KiemTraPublic = () => {
 
   const { data: tienDoData } = useQuery({
     queryKey: ["tienDoDaoTao", selectedKhoaHocCode],
-    queryFn: () => getTienDoDaoTaoByMaHocVienSql({ ma_khoa: selectedKhoaHocCode }),
+    queryFn: () => getTienDoDaoTaoByMaHocVienSqlDeploy({ ma_khoa: selectedKhoaHocCode }),
     enabled: !!selectedKhoaHocCode,
     staleTime: 1000 * 60 * 5,
   });
