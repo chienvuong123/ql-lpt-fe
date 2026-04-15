@@ -122,6 +122,6 @@ export const optionLopLyThuyetPublic = async () => {
 };
 
 export const getTienDoDaoTaoByMaHocVienSqlDeploy = async (params = {}) => {
-  const response = await axios.get(`${url}/tien-do-dao-tao`, { params });
+  const response = await axios.get(`${url}tien-do-dao-tao`, { params });
   return response.data
 };
