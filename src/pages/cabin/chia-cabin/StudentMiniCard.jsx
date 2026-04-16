@@ -19,6 +19,11 @@ const StudentMiniCard = ({ student, onRemove, onViewDetail, isDragging }) => (
             Bài {student.so_bai_hoc}
           </Tag>
         )}
+        {student.isPlaceholder && (
+          <Tag color="error" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
+            THIẾU DỮ LIỆU
+          </Tag>
+        )}
         {student.hang_xe && (
           <Tag
             color={student.hang_xe === "B1" ? "magenta" : "geekblue"}

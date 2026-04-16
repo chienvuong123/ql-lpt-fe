@@ -22,6 +22,7 @@ const WaitingStudentList = ({
   setDragState,
   fullSchedule,
   assignedMaDks,
+  allAssignedMaDks,
   updateCurrentWeek,
   getStudentByMaDk,
   isHasData,
@@ -149,6 +150,7 @@ const WaitingStudentList = ({
           availableStudents.map((student) => {
             const hasData = isHasData(student);
             const isDraggingThis = dragState?.maDks?.includes(student.ma_dk);
+
             return (
               <div
                 key={student.ma_dk}

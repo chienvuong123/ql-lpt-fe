@@ -81,7 +81,19 @@ const CabinSlot = React.memo(({
   const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
   const key = `${dateIndex}-${sessionNum}`;
   const maDkList = fullSchedule[key]?.cabins[cabinNum] || [];
-  const students = maDkList.map(getStudentByMaDk).filter(Boolean);
+  const students = maDkList.map((id) => {
+    const s = getStudentByMaDk(id);
+    if (s) return s;
+    return {
+      ma_dk: id,
+      ho_ten: `Mã: ${id}`,
+      giao_vien: "N/A",
+      khoa_hoc: "N/A",
+      isPlaceholder: true,
+      phut_cabin: 0,
+      so_bai_hoc: 0,
+    };
+  });
   const isEmpty = students.length === 0;
   const hasMultiple = students.length > 1;
 

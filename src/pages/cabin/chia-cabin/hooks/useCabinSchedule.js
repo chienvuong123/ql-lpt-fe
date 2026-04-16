@@ -34,6 +34,7 @@ export const useCabinSchedule = (allStudents) => {
   const [priorityCourse, setPriorityCourse] = useState("all");
   const [onlineStudents, setOnlineStudents] = useState({});
   const [activeSlotKey, setActiveSlotKey] = useState(null);
+  const [serverStudents, setServerStudents] = useState({}); // Cache HV từ server (lịch sử)
   const queryClient = useQueryClient();
 
 
@@ -252,8 +253,35 @@ export const useCabinSchedule = (allStudents) => {
   }, [allStudents]);
 
   const getStudentByMaDk = useCallback(
-    (maDk) => studentsMap.get(maDk),
-    [studentsMap],
+    (maDk) => {
+      // 1. Tìm trong pool chính (HV đang chờ chia)
+      const student = studentsMap.get(maDk);
+      if (student) return student;
+
+      // 2. Tìm trong cache từ server (HV đã chia từ trước)
+      const srvStudent = serverStudents[maDk];
+      if (srvStudent) {
+        const maKhoa = srvStudent.ma_khoa || "";
+        let inferredHang = srvStudent.hang_xe || null;
+
+        if (!inferredHang) {
+          if (maKhoa.includes("B2")) inferredHang = "B2";
+          else if (maKhoa.includes("B1") || maKhoa.includes("B01")) inferredHang = "B1";
+          else if (maKhoa.includes("B")) inferredHang = "B2";
+        }
+
+        return {
+          ...srvStudent,
+          ho_ten: srvStudent.ho_ten || srvStudent.ma_dk,
+          khoa_hoc: maKhoa || "N/A",
+          hang_xe: inferredHang,
+          is_server_data: true,
+        };
+      }
+
+      return null;
+    },
+    [studentsMap, serverStudents],
   );
 
   // ── Global assigned (all weeks) ───────────────────────────────────────────
@@ -1031,6 +1059,7 @@ export const useCabinSchedule = (allStudents) => {
       const newAssigned = new Set();
       const newNotes = {};
       const newRecordIds = {};
+      const newServerStudents = {};
 
       data.forEach((item) => {
         const itemDate = new Date(item.ngay);
@@ -1056,9 +1085,23 @@ export const useCabinSchedule = (allStudents) => {
             if (item.id) {
               newRecordIds[`${key}-${item.cabin_so}`] = item.id;
             }
+            // Lưu metadata HV từ server
+            if (item.ma_dk) {
+              newServerStudents[item.ma_dk] = {
+                ma_dk: item.ma_dk,
+                ho_ten: item.ho_ten,
+                giao_vien: item.giao_vien,
+                ma_khoa: item.ma_khoa,
+                hang_xe: item.hang_xe,
+                phut_cabin: item.thoi_gian_hoc || 0,
+                so_bai_hoc: item.so_bai_hoc || 0,
+              };
+            }
           }
         }
       });
+
+      setServerStudents(prev => ({ ...prev, ...newServerStudents }));
 
       updateCurrentWeek(() => ({
         schedule: newSchedule,
