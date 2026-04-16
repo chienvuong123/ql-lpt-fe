@@ -425,16 +425,6 @@ const ModalTest = ({
               <div className="!text-xs">
                 Năm sinh: {student?.user?.birth_year || "--"}
               </div>
-              {bat_dau_dat && (
-                <div className="!mt-1 !text-xs">
-                  Bắt đầu DAT: {dayjs(bat_dau_dat).format("DD/MM/YYYY")}
-                </div>
-              )}
-              {ket_thuc_dat && (
-                <div className="!text-xs">
-                  Kết thúc DAT: {dayjs(ket_thuc_dat).format("DD/MM/YYYY")}
-                </div>
-              )}
             </div>
             <Image
 
@@ -449,6 +439,14 @@ const ModalTest = ({
 
         {rowsWithStatus.length > 0 ? (
           <>
+            <Card bodyStyle={{ padding: 8 }} className="!mb-2 !bg-[#dff4f7]">
+              <div className="!grid !grid-cols-2 !text-center">
+                <Text strong>Bắt đầu DAT: {dayjs(bat_dau_dat).format("DD/MM/YYYY")}</Text>
+                <Text strong>
+                  Kết thúc DAT: {dayjs(ket_thuc_dat).format("DD/MM/YYYY")}
+                </Text>
+              </div>
+            </Card>
             {/* Tổng km + giờ */}
             <Card bodyStyle={{ padding: 8 }} className="!mb-3 !bg-[#dff4f7]">
               <div className="!grid !grid-cols-2 !text-center">
@@ -462,39 +460,39 @@ const ModalTest = ({
             {/* Cảnh báo */}
             {(invalidSessionCount > 0 ||
               filteredSummaryWarnings.length > 0) && (
-              <Card
-                bodyStyle={{ padding: 8 }}
-                className="!mb-2 !bg-[#fff1f0] !border-[#ffa39e]"
-              >
-                <div className="!space-y-2">
-                  {invalidSessionCount > 0 && (
-                    <Text className="!text-[#cf1322] !text-xs !font-semibold">
-                      Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để
-                      kiểm tra chi tiết.
-                    </Text>
-                  )}
-                  {filteredSummaryWarnings.length > 0 && (
-                    <div>
-                      {filteredSummaryWarnings.map((w, i) => (
-                        <div
-                          key={i}
-                          className="flex items-start pb-0 text-[#cf1322]"
-                        >
-                          <div>
-                            <div className="text-[12px] font-semibold">
-                              {w.label}
-                            </div>
-                            <div className="text-[11px] text-gray-700">
-                              {w.detail}
+                <Card
+                  bodyStyle={{ padding: 8 }}
+                  className="!mb-2 !bg-[#fff1f0] !border-[#ffa39e]"
+                >
+                  <div className="!space-y-2">
+                    {invalidSessionCount > 0 && (
+                      <Text className="!text-[#cf1322] !text-xs !font-semibold">
+                        Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để
+                        kiểm tra chi tiết.
+                      </Text>
+                    )}
+                    {filteredSummaryWarnings.length > 0 && (
+                      <div>
+                        {filteredSummaryWarnings.map((w, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start pb-0 text-[#cf1322]"
+                          >
+                            <div>
+                              <div className="text-[12px] font-semibold">
+                                {w.label}
+                              </div>
+                              <div className="text-[11px] text-gray-700">
+                                {w.detail}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
             {/* Danh sách phiên */}
             <div className="!space-y-2 !overflow-y-auto !max-h-[56vh]">

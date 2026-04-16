@@ -711,12 +711,12 @@ const KiemTraPublic = () => {
                         selectedStudent?.user?.code ||
                         ""}
                     </Text>
-                    <Text className="!mt-1 !block !text-sm !text-[#151b2d] !font-medium">
+                    {/* <Text className="!mt-1 !block !text-sm !text-[#151b2d] !font-medium">
                       Ngày tốt nghiệp:{" "}
                       {progressData?.tot_nghiep && dayjs(progressData.tot_nghiep).isValid()
                         ? dayjs(progressData.tot_nghiep).format("DD/MM/YYYY")
                         : "Chưa có lịch"}
-                    </Text>
+                    </Text> */}
                   </Col>
 
                 </Row>
