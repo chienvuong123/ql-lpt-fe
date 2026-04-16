@@ -340,7 +340,11 @@ const QuanLyHocVienLyThuyet = () => {
   const buildPayload = (record, overrides = {}) => {
     const currentState = resolveCheckState(record);
     const loaiLyThuyet = overrides.loai_ly_thuyet ?? currentState.loaiLyThuyet;
-    const loaiHetMon = overrides.loai_het_mon ?? currentState.hetMonChecked;
+
+    // Nếu loai_ly_thuyet là false thì loai_het_mon bắt buộc là false
+    const rawLoaiHetMon = overrides.loai_het_mon ?? currentState.hetMonChecked;
+    const loaiHetMon = loaiLyThuyet ? rawLoaiHetMon : false;
+
     const userName = sessionStorage.getItem("name") || "unknown";
 
     return {
@@ -445,6 +449,7 @@ const QuanLyHocVienLyThuyet = () => {
       return;
     }
 
+    const loadingMsg = message.loading("Đang cập nhật trạng thái cho học viên...", 0);
     setIsSubmittingAll(true);
 
     try {
@@ -462,14 +467,17 @@ const QuanLyHocVienLyThuyet = () => {
       const notApproved = payloads.filter((p) => !p.loai_ly_thuyet);
       const approved = payloads.filter((p) => p.loai_ly_thuyet);
 
-      if (notApproved.length > 0) {
-        message.warning(
-          `${notApproved.length} học viên chưa được duyệt do chưa đạt lý thuyết`,
-        );
-      }
+      loadingMsg(); // Đóng loading
 
-      if (approved.length > 0) {
+      if (approved.length > 0 && notApproved.length > 0) {
+        message.success({
+          content: `Cập nhật thành công cho ${approved.length} học viên. (${notApproved.length} học viên chưa đủ điều kiện lý thuyết nên không được duyệt)`,
+          duration: 4,
+        });
+      } else if (approved.length > 0) {
         message.success(`Đã cập nhật hết môn cho ${approved.length} học viên.`);
+      } else {
+        message.warning(`Không có học viên nào đủ điều kiện lý thuyết để duyệt.`);
       }
 
       // Chỉ apply override cho học viên được duyệt
