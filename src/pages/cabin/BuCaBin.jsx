@@ -217,7 +217,7 @@ const BuCaBin = () => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-800">
-          Học viên học bù Cabin
+          Học bù Cabin
         </h1>
       </div>
 

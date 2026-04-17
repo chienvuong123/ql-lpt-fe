@@ -34,6 +34,7 @@ import KiemTraTrungXeGiaoVien from "./pages/dat/KiemTraTrungXeGiaoVien";
 import KiemTraDuLieuTotNghiep from "./pages/checks/KiemTraDuLieuTotNghiep";
 import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
 import DashboardCabin from "./pages/cabin/DashboardCabin";
+import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -207,6 +208,15 @@ function App() {
                   <GuardedRoute
                     path="/dashboard-ly-thuyet"
                     element={<DashboardLyThuyet />}
+                  />
+                }
+              />
+              <Route
+                path="hoc-bu-ly-thuyet"
+                element={
+                  <GuardedRoute
+                    path="/hoc-bu-ly-thuyet"
+                    element={<HocBuLyThuyet />}
                   />
                 }
               />

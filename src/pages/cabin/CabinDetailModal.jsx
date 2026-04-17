@@ -86,8 +86,8 @@ const CabinDetailModal = ({ visible, onClose, data }) => {
                   <Image
                     src={student?.anh}
                     className="!rounded-lg !border-2 !border-white !shadow-md"
-                    width={120}
-                    height={140}
+                    width={130}
+                    height={150}
                     fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
                   />
                 </Col>
@@ -95,6 +95,7 @@ const CabinDetailModal = ({ visible, onClose, data }) => {
                   <Flex vertical gap={4}>
                     <span> Họ tên: <Text strong className="!text-sm">{student?.ho_ten || "-"}</Text></span>
                     <span> Tên khóa: <Text strong className="!text-sm">{student?.ten_khoa || "-"}</Text></span>
+                    <span> Hạng: <Text strong className="!text-sm">{student?.hang || "-"}</Text></span>
                     <span> Giáo viên: <Text strong className="!text-sm">{student?.thay_giao || "-"}</Text></span>
                     <span> CCCD: <Text strong className="!text-sm">{student?.cccd || "-"}</Text></span>
                     <span> Ngày sinh: <Text strong className="!text-sm">{dayjs(student?.ngay_sinh).format("DD/MM/YYYY") || "-"}</Text></span>

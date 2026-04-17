@@ -50,7 +50,8 @@ const menuPathMap = {
   "dong-bo-du-lieu-he-thong": "/dong-bo-du-lieu-he-thong",
   "kiem-tra-trung-xe-giao-vien": "/kiem-tra-trung-xe-giao-vien",
   "kiem-tra-hoc-vien-sau-tot-nghiep": "/kiem-tra-hoc-vien-sau-tot-nghiep",
-  "dashboard-cabin": "/dashboard-cabin"
+  "dashboard-cabin": "/dashboard-cabin",
+  "hoc-bu-ly-thuyet": "/hoc-bu-ly-thuyet",
 };
 
 const LayoutTest = () => {
@@ -115,6 +116,7 @@ const LayoutTest = () => {
         { key: "dashboard-ly-thuyet", label: "Dashboard lý thuyết" },
         { key: "class-management", label: "Lớp học lý thuyết" },
         { key: "quan-ly-hoc-vien-ly-thuyet", label: "Quản lý học viên" },
+        { key: "hoc-bu-ly-thuyet", label: "Học bù lý thuyết" },
       ],
     },
     {
