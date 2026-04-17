@@ -33,6 +33,7 @@ import DashboardLyThuyet from "./pages/class/DashboardLYThuyet";
 import KiemTraTrungXeGiaoVien from "./pages/dat/KiemTraTrungXeGiaoVien";
 import KiemTraDuLieuTotNghiep from "./pages/checks/KiemTraDuLieuTotNghiep";
 import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
+import DashboardCabin from "./pages/cabin/DashboardCabin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -214,6 +215,10 @@ function App() {
               <Route
                 path="kiem-tra-hoc-vien-sau-tot-nghiep"
                 element={<KiemTraDuLieuTotNghiep />}
+              />
+              <Route
+                path="dashboard-cabin"
+                element={<DashboardCabin />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />

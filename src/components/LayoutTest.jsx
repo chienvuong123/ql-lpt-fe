@@ -50,6 +50,7 @@ const menuPathMap = {
   "dong-bo-du-lieu-he-thong": "/dong-bo-du-lieu-he-thong",
   "kiem-tra-trung-xe-giao-vien": "/kiem-tra-trung-xe-giao-vien",
   "kiem-tra-hoc-vien-sau-tot-nghiep": "/kiem-tra-hoc-vien-sau-tot-nghiep",
+  "dashboard-cabin": "/dashboard-cabin"
 };
 
 const LayoutTest = () => {
@@ -121,6 +122,7 @@ const LayoutTest = () => {
       icon: <BsCalendar3 />,
       label: "Cabin",
       children: [
+        { key: "dashboard-cabin", label: "Dashboard Cabin" },
         { key: "danh-sach-cabin", label: "Danh sách học viên Cabin" },
         { key: "lich-cabin", label: "Chia lịch Cabin" },
         { key: "hoc-bu-cabin", label: "Thiếu/bù giờ Cabin" },

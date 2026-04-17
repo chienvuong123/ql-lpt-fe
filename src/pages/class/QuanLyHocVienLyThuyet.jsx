@@ -348,7 +348,7 @@ const QuanLyHocVienLyThuyet = () => {
     const userName = sessionStorage.getItem("name") || "unknown";
 
     return {
-      ma_khoa: selectedClass?.name || selectedClass?.code || "",
+      ma_khoa: selectedClass?.code || "",
       loai_ly_thuyet: loaiLyThuyet,
       loai_het_mon: loaiHetMon,
       ghi_chu: overrides.ghi_chu ?? currentState.ghiChu,

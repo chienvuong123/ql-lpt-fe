@@ -45,6 +45,7 @@ const { Title, Text } = Typography;
 const today = new Date().toISOString().split("T")[0];
 
 const StudentDetail = ({ data }) => {
+  console.log(data);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckboxLoading, setIsCheckboxLoading] = useState(false);
   const [form] = Form.useForm();
@@ -418,7 +419,7 @@ const StudentDetail = ({ data }) => {
         ten_hoc_vien: data?.HoTen ?? null,
         ngay_sinh: data?.NgaySinh ?? null,
         khoa_hoc: data?.TenKhoaHoc ?? null,
-        ma_khoa: data?.MaKhoaHoc ?? null,
+        ma_khoa: data?.ma_khoa ?? null,
         hang_dao_tao: data?.HangDaoTao ?? null,
         gv_dat: dataSource?.[0]?.HoTenGV ?? null,
         anh: data?.srcAvatar,
