@@ -52,7 +52,12 @@ const DATDetailModal = ({ visible, onClose, student }) => {
         {shouldRender && mappedData ? (
           <StudentDetail data={mappedData} />
         ) : (
-          <div style={{ padding: '100px 0', textAlign: 'center' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh'
+          }}>
             <Spin size="middle" tip="Đang tải chi tiết hành trình..." />
           </div>
         )}

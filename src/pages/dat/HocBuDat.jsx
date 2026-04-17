@@ -18,6 +18,7 @@ import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import DATDetailModal from "./DATDetailModal";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
+import { formatMinutesToHM } from "../../util/helper";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -177,11 +178,11 @@ const HocBuDAT = () => {
         {
             title: "Thời gian học",
             key: "tong_thoi_gian",
-            width: 110,
+            width: 140,
             align: "center",
             render: (_, record) => (
                 <span className="font-medium text-orange-600">
-                    {record.tong_thoi_gian || 0} phút
+                    {formatMinutesToHM(record.tong_thoi_gian)}
                 </span>
             ),
         },
