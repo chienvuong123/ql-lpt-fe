@@ -110,3 +110,16 @@ export const formatMinutesToHM = (minutes = 0) => {
 
   return `${h}h ${m} phút`;
 };
+
+export const getRankCabinLesson = (name = "") => {
+  const n = name.toLowerCase();
+  if (n.includes("đô thị")) return 1;
+  if (n.includes("cao tốc")) return 2;
+  if (n.includes("đồi núi")) return 3;
+  if (n.includes("phà")) return 4;
+  if (n.includes("lầy")) return 5;
+  if (n.includes("ương mù") || n.includes("sương") || n.includes("xương")) return 6;
+  if (n.includes("ngầm") || n.includes("nước ngập")) return 7;
+  if (n.includes("tổng hợp")) return 8;
+  return 99;
+};

@@ -125,7 +125,7 @@ const LayoutTest = () => {
         { key: "dashboard-cabin", label: "Dashboard Cabin" },
         { key: "danh-sach-cabin", label: "Danh sách học viên Cabin" },
         { key: "lich-cabin", label: "Chia lịch Cabin" },
-        { key: "hoc-bu-cabin", label: "Thiếu/bù giờ Cabin" },
+        { key: "hoc-bu-cabin", label: "Học bù Cabin" },
       ],
     },
     {
