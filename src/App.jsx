@@ -35,6 +35,7 @@ import KiemTraDuLieuTotNghiep from "./pages/checks/KiemTraDuLieuTotNghiep";
 import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
 import DashboardCabin from "./pages/cabin/DashboardCabin";
 import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
+import HocBuDAT from "./pages/dat/HocBuDat";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -217,6 +218,15 @@ function App() {
                   <GuardedRoute
                     path="/hoc-bu-ly-thuyet"
                     element={<HocBuLyThuyet />}
+                  />
+                }
+              />
+              <Route
+                path="hoc-bu-dat"
+                element={
+                  <GuardedRoute
+                    path="/hoc-bu-dat"
+                    element={<HocBuDAT />}
                   />
                 }
               />

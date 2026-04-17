@@ -1,4 +1,4 @@
-﻿import {
+import {
   Card,
   Row,
   Col,
@@ -45,7 +45,6 @@ const { Title, Text } = Typography;
 const today = new Date().toISOString().split("T")[0];
 
 const StudentDetail = ({ data }) => {
-  console.log(data);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckboxLoading, setIsCheckboxLoading] = useState(false);
   const [form] = Form.useForm();

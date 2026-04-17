@@ -20,3 +20,8 @@ export const getDanhSachHocVienHocBuLyThuyetDetail = async (params = {}) => {
     const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/ly-thuyet/detail`, { params });
     return response.data;
 };
+
+export const getDanhSachHocVienHocBuDat = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/dat`, { params });
+    return response.data;
+};

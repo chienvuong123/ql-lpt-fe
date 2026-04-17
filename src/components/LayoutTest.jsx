@@ -52,6 +52,7 @@ const menuPathMap = {
   "kiem-tra-hoc-vien-sau-tot-nghiep": "/kiem-tra-hoc-vien-sau-tot-nghiep",
   "dashboard-cabin": "/dashboard-cabin",
   "hoc-bu-ly-thuyet": "/hoc-bu-ly-thuyet",
+  "hoc-bu-dat": "/hoc-bu-dat",
 };
 
 const LayoutTest = () => {
@@ -137,6 +138,7 @@ const LayoutTest = () => {
       children: [
         { key: "dashboard-dat", label: "Dashboard DAT" },
         { key: "student-report", label: "Báo cáo học viên" },
+        { key: "hoc-bu-dat", label: "Học bù DAT" },
         {
           key: "hoc-vien-theo-giao-vien",
           label: "DS học viên theo GV",
