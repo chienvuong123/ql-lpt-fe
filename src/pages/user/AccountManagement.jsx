@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   Table,
   Button,
-  Drawer,
+  Modal,
   Form,
   Input,
   Select,
@@ -14,109 +14,88 @@ import {
   Col,
 } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { DanhSachTaiKhoan } from "../../apis/taiKhoan";
-import { useQuery } from "@tanstack/react-query";
+import {
+  getAllUsers,
+  getDetailUser,
+  createUser,
+  updateUser,
+  deleteUser,
+} from "../../apis/apiUser";
+import { ROLE_OPTIONS } from "../../constants";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const AccountManagement = () => {
   const [form] = Form.useForm();
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [users, setUsers] = useState([
-    {
-      id: 5,
-      fullName: "Phạm Đức Trường",
-      email: "truongpd@apphuongthanh.vn",
-      role: "admin",
-    },
-    {
-      id: 4,
-      fullName: "Phạm Anh Tuấn",
-      email: "tuanpa@apphuongthanh.vn",
-      role: "admin",
-    },
-    {
-      id: 3,
-      fullName: "Xuân Hạ Thu Đông",
-      email: "gnurthnahtuv@gmail.com",
-      role: "user",
-    },
-    {
-      id: 2,
-      fullName: "Nguyễn Minh Hiếu",
-      email: "minhhieuoc123@gmail.com",
-      role: "admin",
-    },
-    {
-      id: 1,
-      fullName: "Trung",
-      email: "dulieuquocgia@gmail.com",
-      role: "admin",
-    },
-  ]);
-
+  const queryClient = useQueryClient();
   const { data: dataAccount = {}, isLoading: isLoadingAccount } = useQuery({
-    queryKey: ["danhSachTaiKhoan"],
-    queryFn: () => DanhSachTaiKhoan(),
+    queryKey: ["users"],
+    queryFn: () => getAllUsers(),
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
   const dataSource = useMemo(() => {
-    const accounts = Array.isArray(dataAccount?.data?.Data)
-      ? dataAccount.data.Data
-      : [];
-
-    return accounts;
+    return Array.isArray(dataAccount?.data) ? dataAccount.data : [];
   }, [dataAccount]);
 
   const handleAddAccount = () => {
     form.resetFields();
     setEditingId(null);
-    setDrawerVisible(true);
+    setIsModalOpen(true);
   };
 
-  const handleEditAccount = (record) => {
-    setEditingId(record.id);
-    form.setFieldsValue({
-      fullName: record.fullName,
-      email: record.email,
-      role: record.role,
-    });
-    setDrawerVisible(true);
+  const handleEditAccount = async (record) => {
+    try {
+      setEditingId(record.id);
+      const res = await getDetailUser(record.id);
+      if (res?.data) {
+        form.setFieldsValue({
+          ho_ten: res.data.ho_ten,
+          email: res.data.email,
+          role_id: res.data.role_id,
+          username: res.data.username,
+        });
+        setIsModalOpen(true);
+      }
+    } catch (error) {
+      console.error(error);
+      message.error("Không thể lấy thông tin chi tiết người dùng");
+    }
   };
 
-  const handleDrawerClose = () => {
-    setDrawerVisible(false);
+  const handleModalClose = () => {
+    setIsModalOpen(false);
     form.resetFields();
   };
 
   const handleSubmit = async (values) => {
     try {
       if (editingId) {
-        setUsers(
-          users.map((user) =>
-            user.id === editingId ? { ...user, ...values } : user,
-          ),
-        );
+        await updateUser(editingId, values);
         message.success("Cập nhật tài khoản thành công");
       } else {
-        const newUser = {
-          id: Math.max(...users.map((u) => u.id), 0) + 1,
-          ...values,
-        };
-        setUsers([newUser, ...users]);
+        await createUser(values);
         message.success("Tạo tài khoản thành công");
       }
-      handleDrawerClose();
+      queryClient.invalidateQueries(["users"]);
+      handleModalClose();
     } catch (error) {
       console.log(error);
-      message.error("Có lỗi xảy ra");
+      message.error(error?.response?.data?.message || "Có lỗi xảy ra");
     }
   };
 
-  const handleDeleteAccount = (id) => {
-    setUsers(users.filter((user) => user.id !== id));
-    message.success("Xóa tài khoản thành công");
+  const handleDeleteAccount = async (id) => {
+    try {
+      await deleteUser(id);
+      message.success("Xóa tài khoản thành công");
+      queryClient.invalidateQueries(["users"]);
+    } catch (error) {
+      console.error(error);
+      message.error("Xóa tài khoản thất bại");
+    }
   };
 
   //   const handleChangePassword = (id) => {
@@ -138,41 +117,32 @@ const AccountManagement = () => {
     },
     {
       title: "Mã",
-      dataIndex: "ID",
-      key: "ID",
+      dataIndex: "id",
+      key: "id",
     },
     {
       title: "Họ tên",
-      dataIndex: "Name",
-      key: "Name",
+      dataIndex: "ho_ten",
+      key: "ho_ten",
     },
     {
       title: "Tài Khoản",
-      dataIndex: "Username",
-      key: "Username",
+      dataIndex: "username",
+      key: "username",
     },
     {
       title: "Email",
-      dataIndex: "Email",
-      key: "Email",
+      dataIndex: "email",
+      key: "email",
     },
     {
-      title: "Phân hệ",
-      dataIndex: "AppModuleType",
-      key: "AppModuleType",
-      width: 120,
+      title: "Vai trò",
+      dataIndex: "role_name",
+      key: "role_name",
+      width: 150,
       align: "center",
       render: (value) => {
-        let label = value;
-        let color = "default";
-
-        if (value === 3) {
-          label = "Cả 2";
-        } else if (value === 2) {
-          label = "Học thực hành";
-        }
-
-        return <Tag color={color}>{label}</Tag>;
+        return <Tag color="blue">{value}</Tag>;
       },
     },
     {
@@ -210,57 +180,62 @@ const AccountManagement = () => {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto min-h-screen">
-      <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
-        Quản lý tài khoản
-      </h1>
-      <p className="text-[#64748b] text-sm">
-        Tạo mới, phân quyền, đổi mật khẩu, xóa hoặc ép đăng xuất người dùng
-      </p>
+    <div className="w-full">
+      <div className="mb-4">
+        <h1 className="text-2xl !font-bold text-gray-900 !mb-1">
+          Quản lý tài khoản
+        </h1>
+        <p className="text-[#64748b] text-sm">
+          Tạo mới, phân quyền, đổi mật khẩu, xóa hoặc ép đăng xuất người dùng
+        </p>
+      </div>
 
-      <Row gutter={[12, 12]} className="mt-8">
-        <Col>
+      <div className="flex justify-end mb-4">
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAddAccount}
+          className="bg-blue-600 hover:bg-blue-700 h-10 px-6 rounded-md shadow-sm"
+        >
+          Thêm tài khoản
+        </Button>
+      </div>
+
+      <div className="w-full">
+        <Table
+          columns={columns}
+          dataSource={dataSource}
+          loading={isLoadingAccount}
+          rowKey="id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            className: "px-4",
+          }}
+          bordered
+          size="small"
+          scroll={{ x: 1200 }}
+          className="table-blue-header shadow-sm border border-gray-100 rounded-lg overflow-hidden"
+        />
+      </div>
+
+      <Modal
+        title={editingId ? "Sửa tài khoản" : "Thêm tài khoản"}
+        onCancel={handleModalClose}
+        open={isModalOpen}
+        footer={[
+          <Button key="cancel" onClick={handleModalClose}>
+            Hủy
+          </Button>,
           <Button
+            key="submit"
             type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddAccount}
+            onClick={() => form.submit()}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            Thêm tài khoản
-          </Button>
-        </Col>
-        <Col>
-          <Table
-            columns={columns}
-            dataSource={dataSource}
-            loading={isLoadingAccount}
-            rowKey="id"
-            pagination={false}
-            bordered
-            size="middle"
-            className="rounded-lg overflow-hidden"
-          />
-        </Col>
-      </Row>
-
-      <Drawer
-        title={editingId ? "Sửa tài khoản" : "Thêm tài khoản"}
-        placement="right"
-        onClose={handleDrawerClose}
-        open={drawerVisible}
-        size={500}
-        footer={
-          <div className="flex justify-end gap-2">
-            <Button onClick={handleDrawerClose}>Hủy</Button>
-            <Button
-              type="primary"
-              onClick={() => form.submit()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {editingId ? "Cập nhật" : "Thêm"}
-            </Button>
-          </div>
-        }
+            {editingId ? "Cập nhật" : "Thêm"}
+          </Button>,
+        ]}
       >
         <Form
           form={form}
@@ -270,13 +245,24 @@ const AccountManagement = () => {
         >
           <Form.Item
             label="Họ tên"
-            name="fullName"
+            name="ho_ten"
             rules={[
               { required: true, message: "Vui lòng nhập họ tên" },
               { min: 2, message: "Họ tên phải có ít nhất 2 ký tự" },
             ]}
           >
             <Input placeholder="Nhập họ tên" aria-label="họ tên" />
+          </Form.Item>
+
+          <Form.Item
+            label="Tài khoản"
+            name="username"
+            rules={[
+              { required: true, message: "Vui lòng nhập tên tài khoản" },
+              { min: 3, message: "Tên tài khoản phải có ít nhất 3 ký tự" },
+            ]}
+          >
+            <Input placeholder="Nhập tài khoản" disabled={!!editingId} />
           </Form.Item>
 
           <Form.Item
@@ -290,18 +276,20 @@ const AccountManagement = () => {
             <Input
               placeholder="Nhập email"
               type="email"
-              disabled={!!editingId}
             />
           </Form.Item>
 
           <Form.Item
             label="Quyền"
-            name="role"
+            name="role_id"
             rules={[{ required: true, message: "Vui lòng chọn quyền" }]}
           >
             <Select placeholder="Chọn quyền">
-              <Select.Option value="admin">Admin</Select.Option>
-              <Select.Option value="user">User</Select.Option>
+              {ROLE_OPTIONS.map(option => (
+                <Select.Option key={option.value} value={option.value}>
+                  {option.label}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 
@@ -318,7 +306,7 @@ const AccountManagement = () => {
             </Form.Item>
           )}
         </Form>
-      </Drawer>
+      </Modal>
     </div>
   );
 };

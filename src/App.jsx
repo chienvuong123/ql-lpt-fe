@@ -69,6 +69,10 @@ function App() {
                 element={<GuardedRoute path="/" element={<Dashboard />} />}
               />
               <Route
+                path="tai-khoan"
+                element={<GuardedRoute path="/tai-khoan" element={<AccountManagement />} />}
+              />
+              <Route
                 path="dashboard"
                 element={
                   <GuardedRoute path="/dashboard" element={<Dashboard />} />

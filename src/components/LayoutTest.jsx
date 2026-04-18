@@ -53,6 +53,7 @@ const menuPathMap = {
   "dashboard-cabin": "/dashboard-cabin",
   "hoc-bu-ly-thuyet": "/hoc-bu-ly-thuyet",
   "hoc-bu-dat": "/hoc-bu-dat",
+  "tai-khoan": "/tai-khoan",
 };
 
 const LayoutTest = () => {
@@ -168,6 +169,11 @@ const LayoutTest = () => {
         { key: "dong-bo-du-lieu-he-thong", label: "Đồng bộ dữ liệu hệ thống" },
         { key: "them-tien-do-dao-tao", label: "Thêm tiến độ đào tạo" },
       ]
+    },
+    {
+      key: "tai-khoan",
+      icon: <UserOutlined />,
+      label: "Quản lý tài khoản",
     },
     {
       key: "annual-check",
