@@ -1,6 +1,7 @@
 import { Card, Form, Input, Button, Typography, Row, Col, message } from "antd";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import { DangNhap } from "../../apis/auth";
+import { loginUser } from "../../apis/apiUser";
 
 import "./loginAntd.css";
 import { useState } from "react";
@@ -15,24 +16,41 @@ export default function LoginAntd() {
     const { username, password } = values;
     setIsLoading(true);
 
-    const res = await DangNhap({
-      Username: username,
-      Password: password,
-    });
-
-    if (res.data.ID !== 0) {
-      setIsLoading(false);
-      sessionStorage.setItem("token", res?.data?.Token);
-      sessionStorage.setItem("name", res?.data?.Name);
-      window.location.href = "/";
-    } else {
-      message.error({
-        content: res?.data?.Name || "Lỗi đăng nhập, vui lòng thử lại!",
-        className: "!text-red-500",
+    try {
+      // 1. Đăng nhập hệ thống chính (loginUser)
+      const resNew = await loginUser({
+        username: username,
+        password: password,
       });
 
+      if (resNew?.data?.token) {
+        // 2. Đăng nhập ngầm hệ thống cũ (DangNhap) bằng tài khoản từ .env
+        const resOld = await DangNhap({
+          Username: import.meta.env.VITE_PUBLIC_CHECK_USERNAME,
+          Password: import.meta.env.VITE_PUBLIC_CHECK_PASSWORD,
+        });
+
+        sessionStorage.setItem("userToken", resNew?.data?.token);
+        sessionStorage.setItem("name", resNew?.data?.user?.ho_ten);
+
+        if (resOld?.data?.ID !== 0) {
+          sessionStorage.setItem("token", resOld?.data?.Token);
+        }
+
+        setIsLoading(false);
+        message.success("Đăng nhập thành công");
+        window.location.href = "/";
+      } else {
+        message.error({
+          content: resNew?.message || "Hệ thống mới từ chối đăng nhập",
+          className: "!text-red-500",
+        });
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      message.error("Có lỗi xảy ra khi kết nối đến máy chủ");
       setIsLoading(false);
-      return;
     }
   };
 

@@ -116,11 +116,6 @@ const AccountManagement = () => {
       render: (text, record, index) => index + 1,
     },
     {
-      title: "Mã",
-      dataIndex: "id",
-      key: "id",
-    },
-    {
       title: "Họ tên",
       dataIndex: "ho_ten",
       key: "ho_ten",
@@ -141,8 +136,19 @@ const AccountManagement = () => {
       key: "role_name",
       width: 150,
       align: "center",
-      render: (value) => {
-        return <Tag color="blue">{value}</Tag>;
+      render: (_, record) => {
+        let label = "Nhân viên";
+        let color = "blue";
+
+        if (record.role_id === 1) {
+          label = "Admin";
+          color = "red";
+        } else if (record.role_id === 2) {
+          label = "Quản lý";
+          color = "orange";
+        }
+
+        return <Tag color={color}>{label}</Tag>;
       },
     },
     {
