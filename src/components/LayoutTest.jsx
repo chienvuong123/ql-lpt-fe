@@ -189,24 +189,30 @@ const LayoutTest = () => {
 
   ];
 
-  // Key giáo viên được phép thấy
-  const GIAO_VIEN_ALLOWED_KEYS = [
-    "class",
-    "class-management",
-    "quan-ly-hoc-vien-ly-thuyet",
-    "dashboard-ly-thuyet",
-  ];
+  const storedRoleId = sessionStorage.getItem("role_id");
+  const role_id = storedRoleId ? parseInt(storedRoleId) : null;
 
-  const menuItems = isGiaoVien
-    ? allMenuItems
-      .filter((item) => GIAO_VIEN_ALLOWED_KEYS.includes(item.key))
-      .map((item) => ({
-        ...item,
-        children: item.children?.filter((child) =>
-          GIAO_VIEN_ALLOWED_KEYS.includes(child.key),
-        ),
-      }))
-    : allMenuItems;
+  // Map role_id to allowed keys
+  const roleAccessMap = {
+    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Admin
+    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Trưởng phòng
+    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Tổ nghiệp vụ
+    4: ["dashboard", "class"], // Tổ lý thuyết
+    5: ["dashboard", "cabin", "reports"], // Tổ thực hành
+    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Tổ công nghệ
+  };
+
+  // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard
+  // Hoặc nếu là role 1, 2, 3, 6 thì xem tất cả
+  let allowedKeys = ["dashboard"];
+  if (role_id && roleAccessMap[role_id]) {
+    allowedKeys = roleAccessMap[role_id];
+  } else if (token && !role_id) {
+    // Fallback cho tài khoản cũ hoặc khi chưa có role_id: cho xem tất cả để tránh bị chặn
+    allowedKeys = roleAccessMap[1];
+  }
+
+  const menuItems = allMenuItems.filter((item) => allowedKeys.includes(item.key));
 
   return (
     <Layout style={{ minHeight: "100vh" }}>

@@ -30,8 +30,15 @@ export default function LoginAntd() {
           Password: import.meta.env.VITE_PUBLIC_CHECK_PASSWORD,
         });
 
-        sessionStorage.setItem("userToken", resNew?.data?.token);
-        sessionStorage.setItem("name", resNew?.data?.user?.ho_ten);
+        const userToken = resNew.data.token;
+        const name = resNew.data.user?.ho_ten;
+        const role_id = resNew.data.user?.role_id;
+
+        sessionStorage.setItem("userToken", userToken);
+        if (name) sessionStorage.setItem("name", name);
+        if (role_id !== undefined && role_id !== null) {
+          sessionStorage.setItem("role_id", String(role_id));
+        }
 
         if (resOld?.data?.ID !== 0) {
           sessionStorage.setItem("token", resOld?.data?.Token);

@@ -291,7 +291,7 @@ const AccountManagement = () => {
             rules={[{ required: true, message: "Vui lòng chọn quyền" }]}
           >
             <Select placeholder="Chọn quyền">
-              {ROLE_OPTIONS.map(option => (
+              {ROLE_OPTIONS.filter(opt => opt.value <= 6).map(option => (
                 <Select.Option key={option.value} value={option.value}>
                   {option.label}
                 </Select.Option>
