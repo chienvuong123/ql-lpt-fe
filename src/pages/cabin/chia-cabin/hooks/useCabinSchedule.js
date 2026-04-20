@@ -352,14 +352,6 @@ export const useCabinSchedule = (allStudents) => {
         .filter(Boolean);
 
       if (droppingStudents.some((s) => s.hang_xe !== targetType)) return false;
-      
-      // Ràng buộc cấu hình Cabin riêng (khóa học được phép)
-      const cabinCfg = cabinConfigs[targetCn];
-      if (cabinCfg && cabinCfg.courses && cabinCfg.courses.length > 0) {
-        if (droppingStudents.some(s => !cabinCfg.courses.includes(s.khoa_hoc))) {
-          return false;
-        }
-      }
 
       // Ràng buộc học bù
       const session = getSessions(di).find((s) => s?.num === sn);

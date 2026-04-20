@@ -439,8 +439,8 @@ const ModalTest = ({
 
         {rowsWithStatus.length > 0 ? (
           <>
-            <Card bodyStyle={{ padding: 8 }} className="!mb-2 !bg-[#dff4f7]">
-              <div className="!grid !grid-cols-2 !text-center">
+            <Card bodyStyle={{ padding: 5 }} className="!mb-2 !bg-[#dff4f7]">
+              <div className="flex justify-around">
                 <Text strong>Bắt đầu DAT: {dayjs(bat_dau_dat).format("DD/MM/YYYY")}</Text>
                 <Text strong>
                   Kết thúc DAT: {dayjs(ket_thuc_dat).format("DD/MM/YYYY")}
@@ -448,7 +448,7 @@ const ModalTest = ({
               </div>
             </Card>
             {/* Tổng km + giờ */}
-            <Card bodyStyle={{ padding: 8 }} className="!mb-3 !bg-[#dff4f7]">
+            <Card bodyStyle={{ padding: 5 }} className="!mb-3 !bg-[#dff4f7]">
               <div className="!grid !grid-cols-2 !text-center">
                 <Text strong>Tổng Km: {totalDistance.toFixed(2)} km</Text>
                 <Text strong>

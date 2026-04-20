@@ -149,6 +149,7 @@ const WaitingStudentList = ({
         {availableStudents.length > 0 ? (
           availableStudents.map((student) => {
             const hasData = isHasData(student);
+            const isChiaLan2 = student.so_lan_chia === 2;
             const isDraggingThis = dragState?.maDks?.includes(student.ma_dk);
 
             return (
@@ -171,7 +172,7 @@ const WaitingStudentList = ({
                 {!hasData ? (
                   // Simplified view for "No Data" students
                   <>
-                    <div className="font-medium text-gray-900 text-xs truncate mb-1">
+                    <div className={`font-medium text-gray-900 text-xs mb-1 ${isChiaLan2 ? "" : "truncate"}`}>
                       Giáo viên: {student.giao_vien || "Chưa gán"}
                     </div>
                     <div className="flex gap-1 flex-wrap">
@@ -190,12 +191,17 @@ const WaitingStudentList = ({
                       <Tag className="!text-[10px] !px-1 !py-0 !m-0 bg-gray-100 text-gray-500 border-none">
                         Chưa có dữ liệu
                       </Tag>
+                      {isChiaLan2 && (
+                        <Tag color="red" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
+                          chia lần 2
+                        </Tag>
+                      )}
                     </div>
                   </>
                 ) : (
                   // Detailed view for students with training data
                   <>
-                    <div className="font-medium text-gray-900 text-xs truncate">
+                    <div className={`font-medium text-gray-900 text-xs ${isChiaLan2 ? "" : "truncate"}`}>
                       Họ tên: {student.ho_ten}
                     </div>
                     <div className="text-[11px] text-gray-500 mb-1">
@@ -218,24 +224,29 @@ const WaitingStudentList = ({
                         color="blue"
                         className="!text-[10px] !px-1 !py-0 !m-0"
                       >
-                        Bài {student.so_bai_hoc}
+                        Bài {student.so_bai_hoc || 0}
                       </Tag>
+                      {isChiaLan2 && (
+                        <Tag color="red" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
+                          chia lần 2
+                        </Tag>
+                      )}
                     </div>
                     <div className="flex gap-1 flex-wrap mb-1">
                       <Tag
                         color="cyan"
                         className="!text-[10px] !px-1 !py-0 !m-0"
                       >
-                        Đã học: {formatMinutesToHM(student.phut_cabin)}
+                        Đã học: {formatMinutesToHM(student.phut_cabin || 0)}
                       </Tag>
                       <Tag
                         color="orange"
                         className="!text-[10px] !px-1 !py-0 !m-0"
                       >
-                        Thiếu: {formatMinutesToHM(Math.max(0, globalConfig.duration - student.phut_cabin))}
+                        Thiếu: {formatMinutesToHM(Math.max(0, globalConfig.duration - (student.phut_cabin || 0)))}
                       </Tag>
                     </div>
-                    <div className="text-[11px] text-gray-400 truncate mt-1">
+                    <div className={`text-[11px] text-gray-400 mt-1 ${isChiaLan2 ? "" : "truncate"}`}>
                       GV: {student.giao_vien}
                     </div>
                   </>
