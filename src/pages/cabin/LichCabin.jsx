@@ -128,6 +128,7 @@ const LichCabin = () => {
     getSessions,
     isMakeupSlot,
     onAddNote,
+    cabinConfigs,
   });
   const {
     dragState,
@@ -181,6 +182,17 @@ const LichCabin = () => {
     ];
     return list.sort();
   }, [allStudents]);
+
+  const courseRankMap = useMemo(() => {
+    const map = {};
+    allStudents.forEach((s) => {
+      if (s.khoa_hoc && s.hang_xe) {
+        map[s.khoa_hoc] = s.hang_xe;
+      }
+    });
+    return map;
+  }, [allStudents]);
+
   const deferredSearch = useDeferredValue(search);
 
   const availableStudents = useMemo(
@@ -422,6 +434,7 @@ const LichCabin = () => {
         cabinConfigs={cabinConfigs}
         setCabinConfigs={setCabinConfigs}
         uniqueKhoaHoc={uniqueKhoaHoc}
+        courseRankMap={courseRankMap}
         setSchedule={setSchedule}
       />
 

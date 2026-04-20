@@ -17,6 +17,7 @@ export const useDragDrop = ({
   getSessions,
   isMakeupSlot,
   onAddNote,
+  cabinConfigs,
 }) => {
   const [dragState, setDragState] = useState(null);
   const [listDropOver, setListDropOver] = useState(false);
@@ -256,7 +257,9 @@ export const useDragDrop = ({
 
         const existingStudents = existingInTarget
 
-        if (droppingStudents.some(isNoData) && existingStudents.length > 0) {
+        if (lockedCabins[targetSlotKey]) {
+          message.error("Cabin này đang bị khóa, không thể thêm học viên!");
+        } else if (droppingStudents.some(isNoData) && existingStudents.length > 0) {
           if (existingStudents.some(isHasData)) {
             message.error(
               "Học viên chưa học Cabin không thể ghép với học viên đã có dữ liệu!",
@@ -274,6 +277,11 @@ export const useDragDrop = ({
           )
         ) {
           message.error("Học viên không khớp Hạng Xe với Cabin này!");
+        } else if (
+          cabinConfigs?.[targetCn]?.courses?.length > 0 &&
+          droppingStudents.some(s => !cabinConfigs[targetCn].courses.includes(s.khoa_hoc))
+        ) {
+          message.error(`Cabin ${targetCn} chỉ dành cho các khóa: ${cabinConfigs[targetCn].courses.join(", ")}`);
         } else if (existingStudents.some(isNoData)) {
           message.error(
             "Cabin này đang có học viên chưa học Cabin (phải ở riêng), không thể thêm vào!",
@@ -286,6 +294,8 @@ export const useDragDrop = ({
             `Cabin này đã đạt giới hạn ${globalConfig.maxPerCabin} học viên!`,
           );
         }
+        setDragState(null);
+        return;
       }
 
       // Add to target

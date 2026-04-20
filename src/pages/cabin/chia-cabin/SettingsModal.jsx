@@ -14,8 +14,20 @@ const SettingsModal = ({
   setCabinConfigs,
   uniqueKhoaHoc,
   setSchedule,
+  courseRankMap = {},
 }) => {
   const [selectedCabin, setSelectedCabin] = useState(1);
+
+  // Xác định hạng của Cabin đang chọn
+  const b1Count = globalConfig.b1Cabins;
+  const cabinType = Number(selectedCabin) > 5 - b1Count ? "B1" : "B2";
+
+  // Lọc danh sách khóa học theo hạng của Cabin
+  const filteredKhoaHoc = uniqueKhoaHoc.filter((k) => {
+    const courseRank = (courseRankMap[k] || "").toUpperCase();
+    return courseRank === cabinType;
+  });
+
   return (
     <Modal
       title="Cài đặt thời gian"
@@ -317,7 +329,7 @@ const SettingsModal = ({
                             }
                           });
                         }}
-                        options={uniqueKhoaHoc.map(k => ({ value: k, label: k }))}
+                        options={filteredKhoaHoc.map((k) => ({ value: k, label: k }))}
                       />
                     </div>
 
