@@ -13,6 +13,8 @@ const WaitingStudentList = ({
   setFilterStatus,
   filterType,
   setFilterType,
+  filterChiaLan2,
+  setFilterChiaLan2,
   search,
   setSearch,
   uniqueKhoaHoc,
@@ -38,24 +40,30 @@ const WaitingStudentList = ({
     const { maDks, source } = dragState;
     if (!maDks?.length) return;
 
-    const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
-    const sourceKey = `${source.di}-${source.sn}`;
-    if (newSchedule[sourceKey]) {
-      newSchedule[sourceKey].cabins[source.cn] = newSchedule[sourceKey].cabins[
-        source.cn
-      ].filter((id) => !maDks.includes(id));
-    }
-    const newAssigned = new Set(assignedMaDks);
-    maDks.forEach((id) => {
-      const stillExists = Object.keys(newSchedule).some((k) =>
-        Object.values(newSchedule[k].cabins).some((c) => c.includes(id)),
-      );
-      if (!stillExists) newAssigned.delete(id);
+    updateCurrentWeek((old) => {
+      const nextSchedule = JSON.parse(JSON.stringify(old.schedule));
+      const sourceKey = `${source.di}-${source.sn}`;
+      if (nextSchedule[sourceKey]) {
+        nextSchedule[sourceKey].cabins[source.cn] = (
+          nextSchedule[sourceKey].cabins[source.cn] || []
+        ).filter((id) => !maDks.includes(id));
+      }
+
+      const nextAssigned = new Set(old.assignedMaDks);
+      maDks.forEach((id) => {
+        const stillExists = Object.keys(nextSchedule).some((k) =>
+          Object.values(nextSchedule[k].cabins || {}).some((c) =>
+            Array.isArray(c) && c.includes(id)
+          )
+        );
+        if (!stillExists) nextAssigned.delete(id);
+      });
+
+      return {
+        schedule: nextSchedule,
+        assignedMaDks: nextAssigned,
+      };
     });
-    updateCurrentWeek(() => ({
-      schedule: newSchedule,
-      assignedMaDks: newAssigned,
-    }));
     setDragState(null);
     const label =
       maDks.length > 1
@@ -103,11 +111,22 @@ const WaitingStudentList = ({
           value={filterType}
           onChange={setFilterType}
           size="small"
-          className="w-full"
+          className="flex-1"
           options={[
             { value: "all", label: "Tất cả loại hv" },
             { value: "normal", label: "Học viên chính khóa" },
             { value: "makeup", label: "Học viên học bù" },
+          ]}
+        />
+        <Select
+          value={filterChiaLan2}
+          onChange={setFilterChiaLan2}
+          size="small"
+          className="flex-1"
+          options={[
+            { value: "all", label: "Tất cả học viên" },
+            { value: "da_chia", label: "Học viên đã chia" },
+            { value: "chua_chia", label: "Học viên chưa chia" },
           ]}
         />
       </div>
@@ -149,7 +168,7 @@ const WaitingStudentList = ({
         {availableStudents.length > 0 ? (
           availableStudents.map((student) => {
             const hasData = isHasData(student);
-            const isChiaLan2 = student.so_lan_chia === 2;
+            const isChiaLan2 = student.so_lan_chia === 2 && !student.is_makeup;
             const isDraggingThis = dragState?.maDks?.includes(student.ma_dk);
 
             return (

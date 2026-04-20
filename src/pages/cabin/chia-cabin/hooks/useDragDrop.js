@@ -95,88 +95,78 @@ export const useDragDrop = ({
       }
 
       const targetKey = `${targetDi}-${targetSn}`;
-      const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
-
-      if (!newSchedule[targetKey]) {
-        newSchedule[targetKey] = {
-          time: "",
-          cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
-        };
-      }
-
       const targetSlotKey = `${targetDi}-${targetSn}-${targetCn}`;
-      const existingInTarget = newSchedule[targetKey].cabins[targetCn];
       
+      // We'll calculate requirements based on current derived state (props)
+      // but the actual MODIFICATION will happen inside updateCurrentWeek.
+      const currentSlotData = fullSchedule[targetKey]?.cabins[targetCn] || [];
       const droppingStudents = maDks.map(getStudentByMaDk).filter(Boolean);
-      const targetStudents = existingInTarget.map(getStudentByMaDk).filter(Boolean);
+      const targetStudents = currentSlotData.map(getStudentByMaDk).filter(Boolean);
 
       const dCfg = getDayConfig(targetDi);
       const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
       const targetCabinType = Number(targetCn) > 5 - b1Count ? "B1" : "B2";
 
-      // Check for different teacher or different car class
       const needsNote = droppingStudents.some(s => {
-        // Different teacher from what's currently there (if any)
         const diffTeacher = targetStudents.length > 0 && 
                            s.giao_vien && targetStudents[0]?.giao_vien &&
                            s.giao_vien !== targetStudents[0].giao_vien;
-        // Different rank from the cabin's rank (case-insensitive)
         const sRank = (s.hang_xe || "").toUpperCase();
         const tRank = (targetCabinType || "").toUpperCase();
         const diffRank = sRank !== tRank;
-
         return diffTeacher || diffRank;
       });
 
       const executeFinalMove = () => {
-        const resultSchedule = JSON.parse(JSON.stringify(fullSchedule));
-        if (!resultSchedule[targetKey]) {
-          resultSchedule[targetKey] = {
-            time: "",
-            cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
-          };
-        }
-        
-        const shouldSwap = canSwap(existingInTarget, maDks, targetCn);
-        
-        if (shouldSwap) {
-          const swappedId = existingInTarget[0];
-          resultSchedule[targetKey].cabins[targetCn] = [maDks[0]];
-          if (source?.di !== undefined) {
-             const sourceKey = `${source.di}-${source.sn}`;
-             if (resultSchedule[sourceKey]) {
-                resultSchedule[sourceKey].cabins[source.cn] = [swappedId];
-             }
+        updateCurrentWeek((old) => {
+          const nextSchedule = JSON.parse(JSON.stringify(old.schedule || {}));
+          if (!nextSchedule[targetKey]) {
+            nextSchedule[targetKey] = {
+              time: "",
+              cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+            };
           }
-          updateCurrentWeek((old) => ({ ...old, schedule: resultSchedule }));
-          const teacherA = droppingStudents[0]?.giao_vien || "Chưa gán GV";
-          const teacherB = targetStudents[0]?.giao_vien || "Chưa gán GV";
-          message.success(`Đã hoán đổi slot GV ${teacherA} ↔ GV ${teacherB} thành công`);
-        } else {
-          // Regular move
-          // 1. Remove from source if it came from another cabin slot
-          if (source?.di !== undefined) {
-             const sourceKey = `${source.di}-${source.sn}`;
-             if (resultSchedule[sourceKey]) {
-                resultSchedule[sourceKey].cabins[source.cn] = resultSchedule[sourceKey].cabins[source.cn].filter(
-                   id => !maDks.includes(id)
-                );
-             }
-          }
+          
+          const existingInTarget = nextSchedule[targetKey].cabins[targetCn] || [];
+          const shouldSwap = canSwap(existingInTarget, maDks, targetCn);
+          const nextAssigned = new Set(old.assignedMaDks);
 
-          // 2. Add to target
-          const toAdd = maDks.filter(id => !resultSchedule[targetKey].cabins[targetCn].includes(id));
-          resultSchedule[targetKey].cabins[targetCn] = [...resultSchedule[targetKey].cabins[targetCn], ...toAdd];
-          
-          const newAssigned = new Set(assignedMaDks);
-          maDks.forEach(id => newAssigned.add(id));
-          
-          updateCurrentWeek(() => ({
-            schedule: resultSchedule,
-            assignedMaDks: newAssigned,
-          }));
-          message.success(`Đã chuyển học viên vào Cabin ${targetCn}`);
-        }
+          if (shouldSwap) {
+            const swappedId = existingInTarget[0];
+            nextSchedule[targetKey].cabins[targetCn] = [maDks[0]];
+            if (source?.di !== undefined) {
+               const sourceKey = `${source.di}-${source.sn}`;
+               if (nextSchedule[sourceKey]) {
+                  nextSchedule[sourceKey].cabins[source.cn] = [swappedId];
+               }
+            }
+            nextAssigned.add(maDks[0]);
+            
+            const teacherA = droppingStudents[0]?.giao_vien || "Chưa gán GV";
+            const teacherB = targetStudents[0]?.giao_vien || "Chưa gán GV";
+            message.success(`Đã hoán đổi slot GV ${teacherA} \u2194 GV ${teacherB} thành công`);
+            
+            return { schedule: nextSchedule, assignedMaDks: nextAssigned };
+          } else {
+            if (source?.di !== undefined) {
+               const sourceKey = `${source.di}-${source.sn}`;
+               if (nextSchedule[sourceKey]) {
+                  nextSchedule[sourceKey].cabins[source.cn] = nextSchedule[sourceKey].cabins[source.cn].filter(
+                     id => !maDks.includes(id)
+                  );
+               }
+            }
+
+            const currentTargetList = nextSchedule[targetKey].cabins[targetCn] || [];
+            const toAdd = maDks.filter(id => !currentTargetList.includes(id));
+            nextSchedule[targetKey].cabins[targetCn] = [...currentTargetList, ...toAdd];
+            
+            maDks.forEach(id => nextAssigned.add(id));
+            
+            message.success(`\u0110\u00e3 chuy\u1ec3n h\u1ecdc vi\u00ean v\u00e0o Cabin ${targetCn}`);
+            return { schedule: nextSchedule, assignedMaDks: nextAssigned };
+          }
+        });
         setDragState(null);
       };
 
@@ -185,161 +175,109 @@ export const useDragDrop = ({
         return;
       }
 
-      const shouldSwap = canSwap(existingInTarget, maDks, targetCn);
+      const shouldSwap = canSwap(currentSlotData, maDks, targetCn);
 
       if (shouldSwap) {
-        const swappedId = existingInTarget[0];
+        const swappedId = currentSlotData[0];
         const nameA = getStudentByMaDk(maDks[0])?.ho_ten || maDks[0];
         const nameB = getStudentByMaDk(swappedId)?.ho_ten || swappedId;
 
-        newSchedule[targetKey].cabins[targetCn] = [maDks[0]];
-
-        if (source?.type === "cabin" || source?.type === "cabin-all") {
-          const sourceKey = `${source.di}-${source.sn}`;
-          if (newSchedule[sourceKey]) {
-            newSchedule[sourceKey].cabins[source.cn] = [swappedId];
+        updateCurrentWeek((old) => {
+          const nextSchedule = JSON.parse(JSON.stringify(old.schedule || {}));
+          if (!nextSchedule[targetKey]) {
+             nextSchedule[targetKey] = { time: "", cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
           }
-          updateCurrentWeek((old) => ({ ...old, schedule: newSchedule }));
-        } else {
-          const newAssigned = new Set(assignedMaDks);
-          newAssigned.add(maDks[0]);
-          newAssigned.delete(swappedId);
-          updateCurrentWeek(() => ({
-            schedule: newSchedule,
-            assignedMaDks: newAssigned,
-          }));
-        }
+          nextSchedule[targetKey].cabins[targetCn] = [maDks[0]];
+
+          const nextAssigned = new Set(old.assignedMaDks);
+          if (source?.type === "cabin" || source?.type === "cabin-all") {
+            const sourceKey = `${source.di}-${source.sn}`;
+            if (nextSchedule[sourceKey]) {
+              nextSchedule[sourceKey].cabins[source.cn] = [swappedId];
+            }
+          } else {
+            nextAssigned.add(maDks[0]);
+            nextAssigned.delete(swappedId);
+          }
+          return { schedule: nextSchedule, assignedMaDks: nextAssigned };
+        });
 
         setDragState(null);
-        message.success(`Đã hoán đổi: ${nameA} ↔ ${nameB}`, 3);
+        message.success(`\u0110\u00e3 ho\u00e1n \u0111\u1ed5i: ${nameA} \u2194 ${nameB}`, 3);
         return;
       }
 
       const isPriority = priorityCourse !== "all" && droppingStudents.some(s => s.khoa_hoc === priorityCourse);
 
-      if (!canDropIntoCabin(existingInTarget, maDks, targetCn, targetSlotKey)) {
-        // Nếu là khóa ưu tiên, xem xét việc đẩy lịch thay vì chặn
+      if (!canDropIntoCabin(currentSlotData, maDks, targetCn, targetSlotKey)) {
         if (isPriority) {
-          // Kiểm tra hạng xe và vùng học bù trước (ràng buộc cứng)
-          const dCfg = getDayConfig(targetDi);
           const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
-          
-          // Re-validate basic rules: Hang xe
           const targetType = Number(targetCn) > 5 - b1Count ? "B1" : "B2";
           if (droppingStudents.some(s => s.hang_xe !== targetType)) {
-             message.error("Học viên ưu tiên cũng phải đúng Hạng xe với Cabin!");
+             message.error("H\u1ecdc vi\u00ean \u01b0u ti\u00ean c\u0169ng ph\u1ea3i \u0111\u00fang H\u1ea1ng xe v\u1edbi Cabin!");
              setDragState(null);
              return;
           }
 
-          // Kiểm tra vùng học bù (ràng buộc cứng cho cả khóa ưu tiên)
           const session = getSessions(targetDi).find((s) => s?.num === targetSn);
           if (session) {
             const isMakeupZone = isMakeupSlot(targetDi, session);
             const hasMakeup = droppingStudents.some(s => s.is_makeup);
             if (isMakeupZone && !hasMakeup) {
-              message.error("Ô học bù chỉ dành cho học viên học bù!");
+              message.error("\u00d4 h\u1ecdc b\u00f9 ch\u1ec9 d\u00e0nh cho h\u1ecdc vi\u00ean h\u1ecdc b\u00f9!");
               setDragState(null);
               return;
             }
             if (!isMakeupZone && hasMakeup) {
-              message.error("Học viên học bù không thể xếp vào ca chính khóa!");
+              message.error("H\u1ecdc vi\u00ean h\u1ecdc b\u00f9 kh\u00f4ng th\u1ec3 x\u1ebfp v\u00e0o ca ch\u00ednh kh\u00f3a!");
               setDragState(null);
               return;
             }
           }
           
-          // Trigger Priority Insert
           handlePriorityInsert(maDks, targetDi, targetSn, targetCn);
           setDragState(null);
           return;
         }
 
-        const existingStudents = existingInTarget
-
         if (lockedCabins[targetSlotKey]) {
-          message.error("Cabin này đang bị khóa, không thể thêm học viên!");
-        } else if (droppingStudents.some(isNoData) && existingStudents.length > 0) {
-          if (existingStudents.some(isHasData)) {
-            message.error(
-              "Học viên chưa học Cabin không thể ghép với học viên đã có dữ liệu!",
-            );
-          } else {
-            message.error(
-              "Học viên chưa học Cabin phải ở riêng 1 cabin, không thể ghép nhóm!",
-            );
-          }
-        } else if (
-          droppingStudents.some(
-            (s) =>
-              s.hang_xe !==
-              (Number(targetCn) > 5 - globalConfig.b1Cabins ? "B1" : "B2"),
-          )
-        ) {
-          message.error("Học viên không khớp Hạng Xe với Cabin này!");
-        } else if (
-          cabinConfigs?.[targetCn]?.courses?.length > 0 &&
-          droppingStudents.some(s => !cabinConfigs[targetCn].courses.includes(s.khoa_hoc))
-        ) {
-          message.error(`Cabin ${targetCn} chỉ dành cho các khóa: ${cabinConfigs[targetCn].courses.join(", ")}`);
-        } else if (existingStudents.some(isNoData)) {
-          message.error(
-            "Cabin này đang có học viên chưa học Cabin (phải ở riêng), không thể thêm vào!",
-          );
-        } else if (
-          [...existingStudents, ...droppingStudents].length >
-          globalConfig.maxPerCabin
-        ) {
-          message.error(
-            `Cabin này đã đạt giới hạn ${globalConfig.maxPerCabin} học viên!`,
-          );
+          message.error("Cabin n\u00e0y \u0111ang b\u1ecb kh\u00f3a, kh\u00f4ng th\u1ec3 th\u00eam h\u1ecdc vi\u00ean!");
+        } else if (droppingStudents.some(isNoData) && currentSlotData.length > 0) {
+          message.error("H\u1ecdc vi\u00ean ch\u01b0a h\u1ecdc Cabin ph\u1ea3i \u1edf ri\u00eang!");
+        } else if (droppingStudents.some(s => s.hang_xe !== (Number(targetCn) > 5 - globalConfig.b1Cabins ? "B1" : "B2"))) {
+          message.error("H\u1ecdc vi\u00ean kh\u00f4ng kh\u1edbp H\u1ea1ng Xe v\u1edbi Cabin n\u00e0y!");
+        } else if (cabinConfigs?.[targetCn]?.courses?.length > 0 && droppingStudents.some(s => !cabinConfigs[targetCn].courses.includes(s.khoa_hoc))) {
+          message.error(`Cabin ${targetCn} ch\u1ec9 d\u00e0nh cho c\u00e1c kh\u00f3a: ${cabinConfigs[targetCn].courses.join(", ")}`);
+        } else if ([...currentSlotData, ...droppingStudents].length > globalConfig.maxPerCabin) {
+          message.error(`Cabin n\u00e0y \u0111\u00e3 \u0111\u1ea1t gi\u1edbi h\u1ea1n h\u1ecdc vi\u00ean!`);
         }
         setDragState(null);
         return;
       }
 
-      // Add to target
-      const toAdd = maDks.filter(
-        (id) => !newSchedule[targetKey].cabins[targetCn].includes(id),
-      );
-      newSchedule[targetKey].cabins[targetCn] = [
-        ...newSchedule[targetKey].cabins[targetCn],
-        ...toAdd,
-      ];
+      updateCurrentWeek((old) => {
+        const nextSchedule = JSON.parse(JSON.stringify(old.schedule || {}));
+        if (!nextSchedule[targetKey]) {
+          nextSchedule[targetKey] = {
+            time: "",
+            cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+          };
+        }
+        const currentTargetList = nextSchedule[targetKey].cabins[targetCn] || [];
+        const toAdd = maDks.filter(id => !currentTargetList.includes(id));
+        nextSchedule[targetKey].cabins[targetCn] = [...currentTargetList, ...toAdd];
 
-      const newAssigned = new Set(assignedMaDks);
-      maDks.forEach((id) => newAssigned.add(id));
+        const nextAssigned = new Set(old.assignedMaDks);
+        maDks.forEach((id) => nextAssigned.add(id));
+        
+        return { schedule: nextSchedule, assignedMaDks: nextAssigned };
+      });
 
-      updateCurrentWeek(() => ({
-        schedule: newSchedule,
-        assignedMaDks: newAssigned,
-      }));
       setDragState(null);
-
-      const label =
-        maDks.length > 1
-          ? `${maDks.length} học viên`
-          : getStudentByMaDk(maDks[0])?.giao_vien || "Giáo viên";
-      message.success(`Đã chuyển ${label} sang Cabin ${targetCn}`);
+      const label = maDks.length > 1 ? `${maDks.length} h\u1ecdc vi\u00ean` : getStudentByMaDk(maDks[0])?.giao_vien || "Gi\u00e1o vi\u00ean";
+      message.success(`\u0110\u00e3 chuy\u1ec3n ${label} sang Cabin ${targetCn}`);
     },
-    [
-      dragState,
-      fullSchedule,
-      canDropIntoCabin,
-      canSwap,
-      assignedMaDks,
-      getStudentByMaDk,
-      globalConfig,
-      calcCabinTime,
-      updateCurrentWeek,
-      lockedCabins,
-      priorityCourse,
-      handlePriorityInsert,
-      getDayConfig,
-      getSessions,
-      isMakeupSlot,
-      onAddNote,
-    ],
+    [dragState, fullSchedule, canDropIntoCabin, canSwap, getStudentByMaDk, globalConfig, updateCurrentWeek, lockedCabins, priorityCourse, handlePriorityInsert, getDayConfig, getSessions, isMakeupSlot, onAddNote, cabinConfigs]
   );
 
   return {

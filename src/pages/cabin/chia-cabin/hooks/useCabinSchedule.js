@@ -444,67 +444,84 @@ export const useCabinSchedule = (allStudents) => {
   const handlePriorityInsert = useCallback(
     (maDks, di, sn, cn) => {
       const targetKey = `${di}-${sn}`;
-      const targetSlotKey = `${di}-${sn}-${cn}`;
-      const existingInTarget = fullSchedule[targetKey]?.cabins[cn] || [];
+      let actualKickedCount = 0;
+      let actuallyPushed = 0;
 
-      let currentSchedule = JSON.parse(JSON.stringify(fullSchedule));
-      const newAssigned = new Set(assignedMaDks);
-      maDks.forEach((id) => newAssigned.add(id));
+      updateCurrentWeek((old) => {
+        const nextSchedule = JSON.parse(JSON.stringify(old.schedule || {}));
+        const nextAssigned = new Set(old.assignedMaDks);
+        maDks.forEach((id) => nextAssigned.add(id));
 
-      // 1. Gỡ học viên cũ ra
-      currentSchedule[targetKey].cabins[cn] = [];
+        const existingInTarget = nextSchedule[targetKey]?.cabins[cn] || [];
+        actuallyPushed = existingInTarget.length;
 
-      // 2. Chèn học viên mới vào
-      currentSchedule[targetKey].cabins[cn] = maDks;
-
-      // 3. Tìm chỗ mới cho từng học viên bị đẩy đi
-      let finalSchedule = currentSchedule;
-      let kickedCount = 0;
-
-      for (const oldMaDk of existingInTarget) {
-        const shifted = shiftOneStudent(oldMaDk, di, sn, cn, finalSchedule);
-        if (shifted) {
-          finalSchedule = shifted;
-        } else {
-          // Không tìm được chỗ trống trong tuần -> trả về danh sách chờ
-          newAssigned.delete(oldMaDk);
-          kickedCount++;
+        // 1. Gỡ học viên cũ ra
+        if (!nextSchedule[targetKey]) {
+           nextSchedule[targetKey] = { time: "", cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
         }
-      }
+        nextSchedule[targetKey].cabins[cn] = [];
 
-      updateCurrentWeek(() => ({
-        schedule: finalSchedule,
-        assignedMaDks: newAssigned,
-      }));
+        // 2. Chèn học viên mới vào
+        nextSchedule[targetKey].cabins[cn] = maDks;
 
-      if (kickedCount > 0) {
-        message.warning(`Đã đẩy ${existingInTarget.length} HV. Trong đó ${kickedCount} HV phải về danh sách chờ vì hết chỗ trống.`);
-      } else if (existingInTarget.length > 0) {
-        message.success(`Đã đẩy ${existingInTarget.length} học viên cũ sang các ca trống tiếp theo.`);
+        // 3. Tìm chỗ mới cho từng học viên bị đẩy đi
+        let finalSchedule = nextSchedule;
+        let kickedCount = 0;
+
+        for (const oldMaDk of existingInTarget) {
+          const shifted = shiftOneStudent(oldMaDk, di, sn, cn, finalSchedule);
+          if (shifted) {
+            finalSchedule = shifted;
+          } else {
+            // Không tìm được chỗ trống trong tuần -> trả về danh sách chờ
+            nextAssigned.delete(oldMaDk);
+            kickedCount++;
+          }
+        }
+        actualKickedCount = kickedCount;
+
+        return {
+          schedule: finalSchedule,
+          assignedMaDks: nextAssigned,
+        };
+      });
+
+      if (actualKickedCount > 0) {
+        message.warning(`Đã đẩy ${actuallyPushed} HV. Trong đó ${actualKickedCount} HV phải về danh sách chờ vì hết chỗ trống.`);
+      } else if (actuallyPushed > 0) {
+        message.success(`Đã đẩy ${actuallyPushed} học viên cũ sang các ca trống tiếp theo.`);
       }
     },
-    [fullSchedule, assignedMaDks, shiftOneStudent, updateCurrentWeek],
+    [shiftOneStudent, updateCurrentWeek],
   );
 
   // ── Remove student ────────────────────────────────────────────────────────
   const handleRemoveStudent = useCallback(
     (di, sn, cn, maDk) => {
-      const key = `${di}-${sn}`;
-      const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
-      newSchedule[key].cabins[cn] = newSchedule[key].cabins[cn].filter(
-        (id) => id !== maDk,
-      );
-      const stillExists = Object.keys(newSchedule).some((k) =>
-        Object.values(newSchedule[k].cabins).some((c) => c.includes(maDk)),
-      );
-      const newAssigned = new Set(assignedMaDks);
-      if (!stillExists) newAssigned.delete(maDk);
-      updateCurrentWeek(() => ({
-        schedule: newSchedule,
-        assignedMaDks: newAssigned,
-      }));
+      updateCurrentWeek((old) => {
+        const nextSchedule = JSON.parse(JSON.stringify(old.schedule || {}));
+        const key = `${di}-${sn}`;
+        if (nextSchedule[key]) {
+          nextSchedule[key].cabins[cn] = (nextSchedule[key].cabins[cn] || []).filter(
+            (id) => id !== maDk,
+          );
+        }
+
+        const stillExists = Object.keys(nextSchedule).some((k) =>
+          Object.values(nextSchedule[k].cabins || {}).some((c) => 
+            Array.isArray(c) && c.includes(maDk)
+          ),
+        );
+        const nextAssigned = new Set(old.assignedMaDks);
+        if (!stillExists) nextAssigned.delete(maDk);
+        
+        return {
+          schedule: nextSchedule,
+          assignedMaDks: nextAssigned,
+        };
+      });
     },
-    [fullSchedule, assignedMaDks, updateCurrentWeek],
+    [updateCurrentWeek],
   );
 
   // ── Auto-assign ───────────────────────────────────────────────────────────
