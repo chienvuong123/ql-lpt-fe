@@ -60,7 +60,7 @@ const WaitingStudentList = ({
     const label =
       maDks.length > 1
         ? `${maDks.length} học viên`
-        : getStudentByMaDk(maDks[0])?.ho_ten || "Học viên";
+        : getStudentByMaDk(maDks[0])?.giao_vien || "Giáo viên";
     message.success(`Đã trả ${label} về danh sách chờ`);
   };
 

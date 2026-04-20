@@ -198,6 +198,8 @@ const LichCabin = () => {
   const availableStudents = useMemo(
     () =>
       allStudents.filter((s) => {
+        if (allAssignedMaDks.has(s.ma_dk)) return false;
+
         // Lọc theo cấu hình cabin nếu đang xem 1 cabin cụ thể
         if (filterCabin && filterCabin !== "all") {
           const cfg = cabinConfigs[String(filterCabin)];

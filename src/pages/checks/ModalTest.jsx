@@ -441,10 +441,14 @@ const ModalTest = ({
           <>
             <Card bodyStyle={{ padding: 5 }} className="!mb-2 !bg-[#dff4f7]">
               <div className="flex justify-around">
-                <Text strong>Bắt đầu DAT: {dayjs(bat_dau_dat).format("DD/MM/YYYY")}</Text>
-                <Text strong>
-                  Kết thúc DAT: {dayjs(ket_thuc_dat).format("DD/MM/YYYY")}
-                </Text>
+                <div className="flex flex-col items-center">
+                  <Text >Bắt đầu DAT</Text>
+                  <Text strong>{dayjs(bat_dau_dat).format("DD/MM/YYYY")}</Text>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Text >Kết thúc DAT</Text>
+                  <Text strong>{dayjs(ket_thuc_dat).format("DD/MM/YYYY")}</Text>
+                </div>
               </div>
             </Card>
             {/* Tổng km + giờ */}
