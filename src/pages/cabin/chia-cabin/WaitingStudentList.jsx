@@ -13,8 +13,6 @@ const WaitingStudentList = ({
   setFilterStatus,
   filterType,
   setFilterType,
-  filterChiaLan2,
-  setFilterChiaLan2,
   search,
   setSearch,
   uniqueKhoaHoc,
@@ -94,39 +92,29 @@ const WaitingStudentList = ({
           ]}
         />
         <Select
-          value={filterStatus}
-          onChange={setFilterStatus}
+          value={filterType}
+          onChange={setFilterType}
           size="small"
           className="flex-1"
           options={[
-            { value: "all", label: "Tất cả trạng thái" },
-            { value: "noData", label: "Chưa học Cabin" },
-            { value: "hasData", label: "Đã học / Thiếu giờ" },
+            { value: "all", label: "Lọc theo loại HV" },
+            { value: "normal", label: "Học viên chính khóa" },
+            { value: "makeup", label: "Học viên học bù" },
           ]}
         />
       </div>
 
       <div className="flex gap-2 mb-2">
         <Select
-          value={filterType}
-          onChange={setFilterType}
+          value={filterStatus}
+          onChange={setFilterStatus}
           size="small"
-          className="flex-1"
+          className="w-full"
           options={[
-            { value: "all", label: "Tất cả loại hv" },
-            { value: "normal", label: "Học viên chính khóa" },
-            { value: "makeup", label: "Học viên học bù" },
-          ]}
-        />
-        <Select
-          value={filterChiaLan2}
-          onChange={setFilterChiaLan2}
-          size="small"
-          className="flex-1"
-          options={[
-            { value: "all", label: "Tất cả học viên" },
-            { value: "da_chia", label: "Học viên đã chia" },
-            { value: "chua_chia", label: "Học viên chưa chia" },
+            { value: "all", label: "Tất cả trạng thái / Lần chia" },
+            { value: "noData", label: "Chưa học Cabin" },
+            { value: "hasData", label: "Đã học / Thiếu giờ" },
+            { value: "previouslyAssigned", label: "Đã từng được chia cabin" },
           ]}
         />
       </div>

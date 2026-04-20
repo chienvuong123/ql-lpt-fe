@@ -102,7 +102,6 @@ const LichCabin = () => {
   const [filterKhoa, setFilterKhoa] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all"); // all, normal, makeup
-  const [filterChiaLan2, setFilterChiaLan2] = useState("all");
   const [filterCabin, setFilterCabin] = useState("all");
   const [settingsModal, setSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState("global");
@@ -221,12 +220,10 @@ const LichCabin = () => {
         if (filterKhoa !== "all" && s.khoa_hoc !== filterKhoa) return false;
         if (filterStatus === "noData" && !isNoData(s)) return false;
         if (filterStatus === "hasData" && !isHasData(s)) return false;
+        if (filterStatus === "previouslyAssigned" && Number(s.so_lan_chia || 0) < 2) return false;
+        
         if (filterType === "makeup" && !s.is_makeup) return false;
         if (filterType === "normal" && s.is_makeup) return false;
-
-        // Lọc theo số lần chia (Đã chia / Chưa chia)
-        if (filterChiaLan2 === "da_chia" && Number(s.so_lan_chia || 0) < 2) return false;
-        if (filterChiaLan2 === "chua_chia" && Number(s.so_lan_chia || 0) >= 2) return false;
 
         const searchLower = (deferredSearch || "").toLowerCase();
         return (
@@ -235,7 +232,7 @@ const LichCabin = () => {
           (s.giao_vien || "").toLowerCase().includes(searchLower)
         );
       }),
-    [allStudents, assignedMaDks, allAssignedMaDks, deferredSearch, filterKhoa, filterStatus, filterType, filterChiaLan2, filterCabin, cabinConfigs],
+    [allStudents, assignedMaDks, allAssignedMaDks, deferredSearch, filterKhoa, filterStatus, filterType, filterCabin, cabinConfigs],
   );
 
   const unassignedNoData = allStudents.filter(
@@ -408,8 +405,6 @@ const LichCabin = () => {
               setFilterStatus={setFilterStatus}
               filterType={filterType}
               setFilterType={setFilterType}
-              filterChiaLan2={filterChiaLan2}
-              setFilterChiaLan2={setFilterChiaLan2}
               search={search}
               setSearch={setSearch}
               uniqueKhoaHoc={uniqueKhoaHoc}
