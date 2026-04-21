@@ -84,17 +84,17 @@ const fmtDateStr = (str) => {
   return isNaN(d)
     ? str
     : d.toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 };
 
 const removeBirthYear = (name = "") => name.replace(/\(\d{4}\)/g, "").trim();
 
 const normalizeForCompare = (name = "") =>
-  removeBirthYear(name).replace(/\s+/g, " ").trim().toUpperCase();
+  removeBirthYear(name || "").normalize("NFC").replace(/\s+/g, " ").trim().toUpperCase();
 
 // ─── Xác định biển số xe tự động ─────────────────────────────────────────────
 
@@ -176,14 +176,22 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null) {
   } else {
     const gvCount = {};
     dataSource.forEach((item) => {
-      const ten = (item.HoTenGV || "").trim();
-      if (ten) gvCount[ten] = (gvCount[ten] || 0) + 1;
+      const tenNorm = normalizeForCompare(item.HoTenGV || "");
+      if (tenNorm) gvCount[tenNorm] = (gvCount[tenNorm] || 0) + 1;
     });
     const gvEntries = Object.entries(gvCount);
-    tenGVHopLe =
-      gvEntries.length > 0
-        ? gvEntries.reduce((max, cur) => (cur[1] > max[1] ? cur : max))[0]
-        : null;
+    if (gvEntries.length > 0) {
+      const tenGVHopLeNorm = gvEntries.reduce((max, cur) =>
+        cur[1] > max[1] ? cur : max,
+      )[0];
+      // Tìm tên hiển thị gốc cho GV xuất hiện nhiều nhất
+      tenGVHopLe =
+        dataSource.find(
+          (item) => normalizeForCompare(item.HoTenGV || "") === tenGVHopLeNorm,
+        )?.HoTenGV || tenGVHopLeNorm;
+    } else {
+      tenGVHopLe = null;
+    }
   }
 
   // 1. Tốc độ TB < 18 km/h
@@ -436,28 +444,34 @@ export function evaluateSaiGiaoVien(dataSource) {
   // Tên GV xuất hiện nhiều nhất = hợp lệ
   const gvCount = {};
   dataSource.forEach((item) => {
-    const ten = (item.HoTenGV || "").trim();
-    if (ten) gvCount[ten] = (gvCount[ten] || 0) + 1;
+    const tenNorm = normalizeForCompare(item.HoTenGV || "");
+    if (tenNorm) gvCount[tenNorm] = (gvCount[tenNorm] || 0) + 1;
   });
   const gvEntries = Object.entries(gvCount);
   if (gvEntries.length === 0) return [];
-  const tenGVHopLe = gvEntries.reduce((max, cur) =>
+  const tenGVHopLeNorm = gvEntries.reduce((max, cur) =>
     cur[1] > max[1] ? cur : max,
   )[0];
 
+  // Tìm tên hiển thị gốc cho GV hợp lệ
+  const tenGVHopLeDisplay =
+    dataSource.find(
+      (item) => normalizeForCompare(item.HoTenGV || "") === tenGVHopLeNorm,
+    )?.HoTenGV || tenGVHopLeNorm;
+
   return dataSource.reduce((acc, phien, idx) => {
-    const ten = (phien.HoTenGV || "").trim();
-    if (!ten) {
+    const tenNorm = normalizeForCompare(phien.HoTenGV || "");
+    if (!tenNorm) {
       acc.push({
         type: "warning",
         label: "Sai tên giáo viên",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): không có tên giáo viên (GV hợp lệ: "${tenGVHopLe}").`,
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): không có tên giáo viên (GV hợp lệ: "${tenGVHopLeDisplay}").`,
       });
-    } else if (ten !== tenGVHopLe) {
+    } else if (tenNorm !== tenGVHopLeNorm) {
       acc.push({
         type: "warning",
         label: "Sai tên giáo viên",
-        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): tên GV "${ten}" khác với GV hợp lệ "${tenGVHopLe}".`,
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): tên GV "${phien.HoTenGV}" khác với GV hợp lệ "${tenGVHopLeDisplay}".`,
       });
     }
     return acc;
@@ -483,6 +497,8 @@ export function evaluatePhienDuoi5Phut(dataSource) {
 }
 
 function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
+  if (!studentInfo) return [];
+
   const registeredTeacherNorm = normalizeForCompare(studentInfo.giaoVien || "");
   if (!registeredTeacherNorm) {
     return [
@@ -889,6 +905,8 @@ export function evaluate(
       else warnings.push(issue);
     }
   });
+
+  console.log("Evaluation check - studentInfo:", studentInfo);
 
   if (studentInfo) {
     warnings.push(

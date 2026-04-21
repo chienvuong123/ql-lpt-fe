@@ -155,6 +155,12 @@ const DatTab = ({ data }) => {
             render: (v) => dayjs(v).format("DD/MM/YYYY HH:mm:ss")
         },
         {
+            title: "Giao viên",
+            dataIndex: "HoTenGV",
+            width: 100,
+            align: "center",
+        },
+        {
             title: "Biển số",
             dataIndex: "BienSo",
             width: 100,
@@ -166,6 +172,13 @@ const DatTab = ({ data }) => {
             width: 120,
             align: "center",
             render: (v) => <span className="text-blue-600 font-medium">{v} km</span>
+        },
+        {
+            title: "Thời gian",
+            dataIndex: "TongThoiGian",
+            width: 120,
+            align: "center",
+            render: (v) => <span className="text-blue-600 font-medium">{v} phút</span>
         },
         {
             title: "Trạng thái",

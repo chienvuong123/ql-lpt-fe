@@ -375,6 +375,7 @@ const StudentDetail = ({ data }) => {
   );
 
   const evaluationData = useMemo(() => {
+    console.log("StudentDetail evaluation - annualStudentInfo:", annualStudentInfo);
     if (!hasJourneyData) {
       return { status: "fail", errors: [], warnings: [] };
     }
@@ -385,6 +386,8 @@ const StudentDetail = ({ data }) => {
       loTrinhResults?.data || [],
       annualStudentInfo,
     );
+
+    console.log("StudentDetail evaluation - results:", fullCourseEvaluation);
 
     return {
       status: fullCourseEvaluation.status,
