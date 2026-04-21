@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { getRankCabinLesson } from "../../util/helper";
+import { getRankCabinLesson, formatSecondsToTime } from "../../util/helper";
 
 const { Text } = Typography;
 
@@ -145,52 +145,48 @@ const DatTab = ({ data }) => {
             render: (_, __, i) => i + 1
         },
         {
-            title: "Thời điểm đăng nhập",
+            title: "Ngày đào tạo",
             dataIndex: "ThoiDiemDangNhap",
-            render: (v) => dayjs(v).format("DD/MM/YYYY HH:mm:ss")
-        },
-        {
-            title: "Thời điểm đăng xuất",
-            dataIndex: "ThoiDiemDangXuat",
-            render: (v) => dayjs(v).format("DD/MM/YYYY HH:mm:ss")
-        },
-        {
-            title: "Giao viên",
-            dataIndex: "HoTenGV",
             width: 100,
+            align: "center",
+            render: (v) => dayjs(v).format("DD/MM/YYYY")
+        },
+        {
+            title: "Phiên học",
+            width: 110,
+            align: "center",
+            render: (_, record) => {
+                const start = dayjs(record.ThoiDiemDangNhap).format("HH:mm");
+                const end = dayjs(record.ThoiDiemDangXuat).format("HH:mm");
+                return `${start} - ${end}`;
+            }
+        },
+        {
+            title: "Giáo viên",
+            dataIndex: "HoTenGV",
+            width: 150,
             align: "center",
         },
         {
             title: "Biển số",
             dataIndex: "BienSo",
-            width: 100,
+            width: 70,
             align: "center",
         },
         {
             title: "Quãng đường",
             dataIndex: "TongQuangDuong",
-            width: 120,
+            width: 100,
             align: "center",
-            render: (v) => <span className="text-blue-600 font-medium">{v} km</span>
+            render: (v) => <span className="font-medium">{v} km</span>
         },
         {
             title: "Thời gian",
             dataIndex: "TongThoiGian",
-            width: 120,
+            width: 100,
             align: "center",
-            render: (v) => <span className="text-blue-600 font-medium">{v} phút</span>
+            render: (v) => <span className="font-medium">{formatSecondsToTime(v)}</span>
         },
-        {
-            title: "Trạng thái",
-            dataIndex: "TrangThai",
-            width: 120,
-            align: "center",
-            render: (v) => (
-                <Tag color={v === "DA_DUYET" ? "green" : "orange"}>
-                    {v === "DA_DUYET" ? "Đã duyệt" : "Chờ duyệt"}
-                </Tag>
-            )
-        }
     ];
 
     return (
@@ -217,6 +213,11 @@ const DatTab = ({ data }) => {
                 size="small"
                 bordered
                 className="table-blue-header"
+                rowClassName={(record) => {
+                    const hour = dayjs(record.ThoiDiemDangNhap).hour();
+                    if (hour >= 18) return "!bg-gray-50 hover:!bg-gray-100 transition-colors cursor-default";
+                    return "";
+                }}
             />
 
             <div className={`p-4 rounded-lg border ${summary.evaluationStatus === "pass" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>

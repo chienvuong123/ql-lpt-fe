@@ -37,7 +37,7 @@ import {
 import TrackingPage from "./map/TrackingPage";
 import { fetchCheckStudents } from "../apis/kiemTra";
 import { getDuLieuCabin } from "../apis/searchPublic";
-import { formatLocalTime } from "../util/helper";
+import { formatLocalTime, formatSecondsToTime } from "../util/helper";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -235,18 +235,34 @@ const StudentDetail = ({ data }) => {
       render: (_text, _record, index) => index + 1,
     },
     {
-      title: "Tên học viên",
-      dataIndex: "HoTen",
-      key: "HoTen",
-      width: 150,
-      fixed: "left",
-      render: (text) => renderValue(text),
+      title: "Ngày đào tạo",
+      dataIndex: "ThoiDiemDangNhap",
+      key: "NgayDaoTao",
+      width: 110,
+      align: "center",
+      render: (v) => renderValue(v ? dayjs(v).format("DD/MM/YYYY") : ""),
+    },
+    {
+      title: "Phiên học",
+      key: "PhienHoc",
+      width: 105,
+      align: "center",
+      render: (_, record) => {
+        const start = record.ThoiDiemDangNhap
+          ? dayjs(record.ThoiDiemDangNhap).format("HH:mm")
+          : "-";
+        const end = record.ThoiDiemDangXuat
+          ? dayjs(record.ThoiDiemDangXuat).format("HH:mm")
+          : "-";
+        return `${start} - ${end}`;
+      },
     },
     {
       title: "Tên giáo viên",
       dataIndex: "HoTenGV",
       key: "HoTenGV",
       width: 150,
+      align: "center",
       render: (text) => renderValue(text),
     },
     {
@@ -265,44 +281,20 @@ const StudentDetail = ({ data }) => {
       render: (url) => <Image src={url} width={110} height={76} preview />,
     },
     {
-      title: "Đăng nhập",
-      dataIndex: "DangNhap",
-      key: "DangNhap",
-      width: 160,
-      ellipsis: true,
-      render: (text) => renderValue(text),
-    },
-    {
-      title: "Đăng xuất",
-      dataIndex: "DangXuat",
-      key: "DangXuat",
-      width: 160,
-      ellipsis: true,
-      render: (text) => renderValue(text),
-    },
-    {
       title: "Thời lượng",
-      dataIndex: "TongTG",
-      key: "TongTG",
-      width: 100,
+      dataIndex: "TongThoiGian",
+      key: "TongThoiGian",
+      width: 90,
       align: "center",
-      render: (text) => <Text>{text} h</Text>,
+      render: (text) => <Text>{formatSecondsToTime(text)}</Text>,
     },
     {
       title: "Quãng đường",
       dataIndex: "TongQD",
       key: "TongQD",
       width: 110,
-      align: "right",
+      align: "center",
       responsive: ["md"],
-      render: (text) => renderValue(text),
-    },
-    {
-      title: "Phiên đào tạo",
-      dataIndex: "MaKhoaHoc",
-      key: "MaKhoaHoc",
-      width: 140,
-      ellipsis: true,
       render: (text) => renderValue(text),
     },
     {
@@ -314,29 +306,22 @@ const StudentDetail = ({ data }) => {
       render: (text) => renderValue(text),
     },
     {
-      title: "Tỉ lệ nhận diện",
+      title: "Nhận diện",
       dataIndex: "Tile",
       key: "Tile",
-      width: 120,
+      width: 90,
       align: "center",
       responsive: ["lg"],
       render: (text) => <Text>{Math.floor(text * 10) / 10}%</Text>,
     },
     {
-      title: "Hạng đào tạo",
+      title: "Hạng",
       dataIndex: "HangDaoTao",
       key: "HangDaoTao",
-      width: 110,
+      width: 60,
       align: "center",
       responsive: ["md"],
       render: (text) => renderValue(text),
-    },
-    {
-      title: "Ngày đào tạo",
-      dataIndex: "ThoiDiemDangNhap",
-      key: "ThoiDiemDangNhap",
-      width: 110,
-      render: (text) => <Text>{dayjs(text).format("DD/MM/YYYY") || "-"}</Text>,
     },
     {
       title: "Tốc độ TB",
@@ -375,7 +360,6 @@ const StudentDetail = ({ data }) => {
   );
 
   const evaluationData = useMemo(() => {
-    console.log("StudentDetail evaluation - annualStudentInfo:", annualStudentInfo);
     if (!hasJourneyData) {
       return { status: "fail", errors: [], warnings: [] };
     }
@@ -386,8 +370,6 @@ const StudentDetail = ({ data }) => {
       loTrinhResults?.data || [],
       annualStudentInfo,
     );
-
-    console.log("StudentDetail evaluation - results:", fullCourseEvaluation);
 
     return {
       status: fullCourseEvaluation.status,
@@ -679,8 +661,16 @@ const StudentDetail = ({ data }) => {
                 columns={columns}
                 dataSource={dataSource || []}
                 pagination={false}
-                size="middle"
+                size="small"
                 scroll={{ x: 1200 }}
+                className="table-blue-header"
+                bordered
+                rowClassName={(record) => {
+                  const hour = dayjs(record.ThoiDiemDangNhap).hour();
+                  if (hour >= 18)
+                    return "!bg-gray-50 hover:!bg-gray-200 transition-colors cursor-default";
+                  return "";
+                }}
                 locale={{
                   emptyText:
                     "Không có phiên đào tạo nào trong khoảng thời gian đã chọn.",

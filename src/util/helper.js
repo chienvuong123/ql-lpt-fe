@@ -111,6 +111,14 @@ export const formatMinutesToHM = (minutes = 0) => {
   return `${h}h ${m} phút`;
 };
 
+export const formatSecondsToTime = (seconds = 0) => {
+  if (!seconds || isNaN(seconds)) return "0h 00'";
+  const hours = seconds / 3600;
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return `${h}h ${m.toString().padStart(2, "0")}'`;
+};
+
 export const getRankCabinLesson = (name = "") => {
   const n = name.toLowerCase();
   if (n.includes("đô thị")) return 1;
