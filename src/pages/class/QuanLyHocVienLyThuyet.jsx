@@ -659,6 +659,7 @@ const QuanLyHocVienLyThuyet = () => {
       key: "select_all",
       width: 40,
       align: "center",
+      fixed: "left",
       render: (_, record) => (
         <Checkbox
           checked={selectedRowKeys.includes(getRowKey(record))}
@@ -679,7 +680,8 @@ const QuanLyHocVienLyThuyet = () => {
       title: "HỌC VIÊN",
       dataIndex: "user",
       key: "user",
-      width: 360,
+      width: 300,
+      fixed: "left",
       render: (user) => (
         <div className="flex items-center gap-2">
           <Image
@@ -693,27 +695,14 @@ const QuanLyHocVienLyThuyet = () => {
             </span>
             <Text
               className="text-xs text-gray-500"
-              copyable={user?.code ? { text: user.code } : false}
+            // copyable={user?.code ? { text: user.code } : false}
             >
-              {user?.code || "-"}
+              {/* {user?.code || "-"} */}
+              {selectedClass?.suffix_name}
             </Text>
           </div>
         </div>
       ),
-    },
-    {
-      title: "SỐ ĐIỆN THOẠI",
-      width: 80,
-      key: "phone",
-      align: "center",
-      render: (value) => value?.user?.phone || "-",
-    },
-    {
-      title: "KHÓA",
-      width: 80,
-      key: "khoa",
-      align: "center",
-      render: () => selectedClass?.suffix_name || "-",
     },
     {
       title: "TIẾN ĐỘ",
@@ -809,7 +798,7 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "LÀM BÀI HẾT MÔN",
       key: "last_login",
-      width: 140,
+      width: 120,
       align: "center",
       render: (_, record) => {
         const studentCode = getStudentCode(record);
@@ -845,6 +834,27 @@ const QuanLyHocVienLyThuyet = () => {
       width: 90,
       align: "center",
       render: (value) => `${value?.so_bai_hoc || 0} bài`,
+    },
+    {
+      title: "SỐ ĐIỆN THOẠI",
+      width: 110,
+      key: "phone",
+      align: "center",
+      render: (value) => value?.user?.phone || "-",
+    },
+    {
+      title: "GIÁO VIÊN BC1",
+      width: 170,
+      key: "phone",
+      align: "center",
+      render: (value) => value?.user?.phone || "-",
+    },
+    {
+      title: "GIÁO VIÊN",
+      width: 170,
+      key: "phone",
+      align: "center",
+      render: (value) => value?.user?.phone || "-",
     },
     {
       title: "GHI CHÚ",
@@ -997,7 +1007,7 @@ const QuanLyHocVienLyThuyet = () => {
         rowKey={getRowKey}
         size="small"
         bordered
-        scroll={{ x: 1800 }}
+        scroll={{ x: 1600 }}
         className="overflow-hidden table-blue-header"
       />
 
