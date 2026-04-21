@@ -30,7 +30,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 const { Header, Sider, Content } = Layout;
 const menuPathMap = {
   dashboard: "/dashboard",
-  "class-management": "/class-management",
   "student-report": "/student-report",
   "check-full-course": "/check-full-course",
   "sync-teacher-car": "/sync-teacher-car",
@@ -119,7 +118,6 @@ const LayoutTest = () => {
       label: "Lý thuyết",
       children: [
         { key: "dashboard-ly-thuyet", label: "Dashboard lý thuyết" },
-        { key: "class-management", label: "Lớp học lý thuyết" },
         { key: "quan-ly-hoc-vien-ly-thuyet", label: "Quản lý học viên" },
         { key: "hoc-bu-ly-thuyet", label: "Học bù lý thuyết" },
       ],
@@ -255,13 +253,6 @@ const LayoutTest = () => {
           mode="inline"
           selectedKeys={[selectedMenuKey]}
           onClick={({ key }) => {
-            if (key === "class-management") {
-              const currentToken = sessionStorage.getItem("token");
-              if (!currentToken) {
-                navigate("/login-ly-thuyet");
-                return;
-              }
-            }
             const nextPath = menuPathMap[key];
             if (nextPath) navigate(nextPath);
           }}

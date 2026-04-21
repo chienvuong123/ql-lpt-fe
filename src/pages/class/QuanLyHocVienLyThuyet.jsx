@@ -14,6 +14,7 @@ import {
   message,
   Tag,
   Modal,
+  Typography,
 } from "antd";
 import { useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,22 +26,7 @@ import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
 import StudentDetailModal from "./StudentDetailModal";
 
-const formatDateTime = (value) => {
-  if (!value) return "-";
-
-  const raw = Number(value);
-  const date =
-    Number.isFinite(raw) && raw > 0
-      ? new Date(raw > 1e12 ? raw : raw * 1000)
-      : new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  const datePart = date.toLocaleDateString("vi-VN");
-  const timePart = date.toLocaleTimeString("vi-VN");
-
-  return `${datePart} ${timePart}`;
-};
+const { Text } = Typography;
 
 const normalizeApiList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -669,26 +655,35 @@ const QuanLyHocVienLyThuyet = () => {
             <span className="font-bold text-gray-600 text-sm">
               {user?.name || "-"}
             </span>
-            <span className="text-xs text-gray-500">{user?.code || "-"}</span>
+            <Text
+              className="text-xs text-gray-500"
+              copyable={user?.code ? { text: user.code } : false}
+            >
+              {user?.code || "-"}
+            </Text>
           </div>
         </div>
       ),
     },
+    // {
+    //   title: "Ngày sinh",
+    //   dataIndex: "user",
+    //   key: "birthday",
+    //   width: 100,
+    //   align: "center",
+    //   render: (user) => (
+    //     <span>
+    //       {user?.birthday ? dayjs.unix(user.birthday).format("DD/MM/YYYY") : "-"}
+    //     </span>
+    //   ),
+    // },
     {
-      title: "CCCD",
+      title: "Số điện thoại",
       dataIndex: "user",
-      key: "cccd",
-      width: 120,
+      key: "phone",
+      width: 100,
       align: "center",
-      render: (user) => <span>{user?.identification_card || "-"}</span>,
-    },
-    {
-      title: "Năm sinh",
-      dataIndex: "user",
-      key: "birth_year",
-      width: 90,
-      align: "center",
-      render: (user) => <span>{user?.birth_year || "-"}</span>,
+      render: (user) => user?.phone || "-",
     },
     {
       title: "Khóa",
@@ -702,18 +697,18 @@ const QuanLyHocVienLyThuyet = () => {
         program_code ||
         "-",
     },
-    {
-      title: "Điều kiện học Cabin",
-      key: "progress",
-      width: 160,
-      align: "center",
-      render: (_, record) =>
-        resolveCheckState(record).isDuDieuKien ? (
-          <span className="text-green-600 font-medium">Đủ điều kiện</span>
-        ) : (
-          <span className="text-red-500 font-medium">Chưa đủ điều kiện</span>
-        ),
-    },
+    // {
+    //   title: "Điều kiện học Cabin",
+    //   key: "progress",
+    //   width: 160,
+    //   align: "center",
+    //   render: (_, record) =>
+    //     resolveCheckState(record).isDuDieuKien ? (
+    //       <span className="text-green-600 font-medium">Đủ điều kiện</span>
+    //     ) : (
+    //       <span className="text-red-500 font-medium">Chưa đủ điều kiện</span>
+    //     ),
+    // },
     {
       title: "Lý thuyết online",
       key: "passed_total",
@@ -786,14 +781,14 @@ const QuanLyHocVienLyThuyet = () => {
       align: "center",
       render: (value) => `${value?.so_bai_hoc || 0} bài`,
     },
-    {
-      title: "Thời gian đổi trạng thái",
-      key: "status_updated_at",
-      width: 190,
-      align: "center",
-      render: (_, record) =>
-        formatDateTime(resolveCheckState(record).statusUpdatedAt),
-    },
+    // {
+    //   title: "Thời gian đổi trạng thái",
+    //   key: "status_updated_at",
+    //   width: 190,
+    //   align: "center",
+    //   render: (_, record) =>
+    //     formatDateTime(resolveCheckState(record).statusUpdatedAt),
+    // },
     // {
     //   title: "Tốt nghiệp",
     //   key: "detail",

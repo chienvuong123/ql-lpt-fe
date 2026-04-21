@@ -6,13 +6,11 @@ import SearchStudents from "./pages/SearchStudents";
 import StudentDetail from "./pages/StudentDetail";
 import Login from "./pages/auth/LoginAntd";
 import LayoutApp from "./components/LayoutApp";
-import LayoutDashboard from "./components/LayoutDashboard";
 import Dashboard from "./pages/dashboard";
 import DongBoGiaoVienVaoXe from "./pages/synchronous/DongBoGiaoVienVaoXe";
 import DongBoHocVienVaoXe from "./pages/synchronous/DongBoHocVienVaoXe";
 import TrackingPage from "./pages/map/TrackingPage";
 import AccountManagement from "./pages/user/AccountManagement";
-import ClassManagement from "./pages/class/ClassManagement";
 import Member from "./pages/class/Member";
 import KiemTraToanKhoa from "./pages/checks/KiemTraToanKhoa";
 import KiemTraHangNam from "./pages/checks/KiemTraHangNam";
@@ -94,15 +92,6 @@ function App() {
               />
 
               {/* Các route còn lại cần guard */}
-              <Route
-                path="class-management"
-                element={
-                  <GuardedRoute
-                    path="/class-management"
-                    element={<ClassManagement />}
-                  />
-                }
-              />
               <Route
                 path="hoc-bu-cabin"
                 element={
