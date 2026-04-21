@@ -16,6 +16,8 @@ import {
   Modal,
   Typography,
 } from "antd";
+import { CloseCircleFilled } from "@ant-design/icons";
+import { BsCheck } from "react-icons/bs";
 import { useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -53,6 +55,40 @@ const secondsToHourMinute = (seconds) => {
   const minutes = Math.floor((total % 3600) / 60);
 
   return `${hours}h${minutes}p`;
+};
+
+const getRubricResult = (record, targetName) => {
+  const rubricList = record?.learning?.score_by_rubrik || record?.learning || [];
+  if (!Array.isArray(rubricList)) return { score: 0, passed: false };
+
+  const item = rubricList.find((r) =>
+    String(r?.name || "")
+      .toLowerCase()
+      .includes(targetName.toLowerCase()),
+  );
+
+  return {
+    score: item?.score ?? 0,
+    passed: Number(item?.passed) === 1,
+  };
+};
+
+const ProgressCell = ({ result }) => {
+  const { score, passed } = result;
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 py-1">
+      {passed ? (
+        <BsCheck className="!text-blue-600 !text-2xl !font-bold mb-[-3px]" />
+      ) : (
+        <CloseCircleFilled className="!text-red-500 text-base !font-bold" />
+      )}
+      <span
+        className={`text-[13px] font-medium ${passed ? "text-green-700" : "text-red-500"}`}
+      >
+        {score}
+      </span>
+    </div>
+  );
 };
 
 const QuanLyHocVienLyThuyet = () => {
@@ -621,7 +657,7 @@ const QuanLyHocVienLyThuyet = () => {
         />
       ),
       key: "select_all",
-      width: 52,
+      width: 40,
       align: "center",
       render: (_, record) => (
         <Checkbox
@@ -635,15 +671,15 @@ const QuanLyHocVienLyThuyet = () => {
     {
       title: "#",
       key: "stt",
-      width: 35,
+      width: 45,
       align: "center",
       render: (_, __, index) => index + 1,
     },
     {
-      title: "Học viên",
+      title: "HỌC VIÊN",
       dataIndex: "user",
       key: "user",
-      width: 260,
+      width: 360,
       render: (user) => (
         <div className="flex items-center gap-2">
           <Image
@@ -665,84 +701,113 @@ const QuanLyHocVienLyThuyet = () => {
         </div>
       ),
     },
-    // {
-    //   title: "Ngày sinh",
-    //   dataIndex: "user",
-    //   key: "birthday",
-    //   width: 100,
-    //   align: "center",
-    //   render: (user) => (
-    //     <span>
-    //       {user?.birthday ? dayjs.unix(user.birthday).format("DD/MM/YYYY") : "-"}
-    //     </span>
-    //   ),
-    // },
     {
-      title: "Số điện thoại",
-      dataIndex: "user",
+      title: "SỐ ĐIỆN THOẠI",
+      width: 80,
       key: "phone",
-      width: 100,
       align: "center",
-      render: (user) => user?.phone || "-",
+      render: (value) => value?.user?.phone || "-",
     },
     {
-      title: "Khóa",
+      title: "KHÓA",
       width: 80,
       key: "khoa",
       align: "center",
-      render: () =>
-        selectedClass?.name ||
-        selectedClass?.suffix_name ||
-        selectedClass?.code ||
-        program_code ||
-        "-",
+      render: () => selectedClass?.suffix_name || "-",
     },
-    // {
-    //   title: "Điều kiện học Cabin",
-    //   key: "progress",
-    //   width: 160,
-    //   align: "center",
-    //   render: (_, record) =>
-    //     resolveCheckState(record).isDuDieuKien ? (
-    //       <span className="text-green-600 font-medium">Đủ điều kiện</span>
-    //     ) : (
-    //       <span className="text-red-500 font-medium">Chưa đủ điều kiện</span>
-    //     ),
-    // },
     {
-      title: "Lý thuyết online",
-      key: "passed_total",
-      width: 130,
+      title: "TIẾN ĐỘ",
+      children: [
+        {
+          title: "KỸ THUẬT LÁI XE",
+          width: 100,
+          align: "center",
+          render: (_, record) => (
+            <ProgressCell result={getRubricResult(record, "Kỹ thuật lái xe")} />
+          ),
+        },
+        {
+          title: "CẤU TẠO SỬA CHỮA",
+          width: 100,
+          align: "center",
+          render: (_, record) => (
+            <ProgressCell result={getRubricResult(record, "Cấu tạo")} />
+          ),
+        },
+        {
+          title: "ĐẠO ĐỨC, VHGT, PCCC",
+          width: 120,
+          align: "center",
+          render: (_, record) => (
+            <ProgressCell result={getRubricResult(record, "Đạo đức")} />
+          ),
+        },
+        {
+          title: "PHÁP LUẬT GTĐB",
+          children: [
+            {
+              title: "PL1 - LUẬT TRẬT TỰ, ATGT",
+              width: 120,
+              align: "center",
+              render: (_, record) => (
+                <ProgressCell result={getRubricResult(record, "PL1")} />
+              ),
+            },
+            {
+              title: "PL2 - BIỂN BÁO",
+              width: 100,
+              align: "center",
+              render: (_, record) => (
+                <ProgressCell result={getRubricResult(record, "PL2")} />
+              ),
+            },
+            {
+              title: "PL3 - XỬ LÝ THGT",
+              width: 100,
+              align: "center",
+              render: (_, record) => (
+                <ProgressCell result={getRubricResult(record, "PL3")} />
+              ),
+            },
+            {
+              title: "TỔNG ÔN TẬP",
+              width: 100,
+              align: "center",
+              render: (_, record) => (
+                <ProgressCell result={getRubricResult(record, "Tổng ôn tập")} />
+              ),
+            },
+          ],
+        },
+        {
+          title: "MÔ PHỎNG",
+          width: 100,
+          align: "center",
+          render: (_, record) => (
+            <ProgressCell result={getRubricResult(record, "Mô phỏng")} />
+          ),
+        },
+      ],
+    },
+    {
+      title: "ĐẠT CHƯƠNG TRÌNH ĐÀO TẠO",
+      width: 120,
       align: "center",
       render: (_, record) => {
-        const { lyThuyetDat } = resolveCheckState(record);
-
+        const isQualified = resolveCheckState(record).lyThuyetDat;
         return (
-          <div
-            role="button"
-            tabIndex={0}
-            className="w-full h-full cursor-pointer flex items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenStudentDetail(record);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                handleOpenStudentDetail(record);
-              }
-            }}
-          >
-            <Tag color={lyThuyetDat ? "green" : "error"} variant="solid">
-              {lyThuyetDat ? "Đạt" : "Chưa đạt"}
-            </Tag>
+          <div className="flex items-center justify-center">
+            {isQualified ? (
+              <BsCheck className="!text-blue-500 text-2xl" />
+            ) : (
+              <CloseCircleFilled className="!text-red-500 text-base" />
+            )}
           </div>
         );
       },
     },
     {
-      title: "Làm bài hết môn",
+      title: "LÀM BÀI HẾT MÔN",
       key: "last_login",
       width: 140,
       align: "center",
@@ -766,7 +831,7 @@ const QuanLyHocVienLyThuyet = () => {
       },
     },
     {
-      title: "Phút cabin",
+      title: "PHÚT CABIN",
       dataIndex: "cabin",
       key: "thoi_gian_cabin_text",
       width: 100,
@@ -774,41 +839,17 @@ const QuanLyHocVienLyThuyet = () => {
       render: (value) => secondsToHourMinute(value?.tong_thoi_gian || 0),
     },
     {
-      title: "Bài cabin",
+      title: "BÀI CABIN",
       dataIndex: "cabin",
       key: "so_bai_cabin",
       width: 90,
       align: "center",
       render: (value) => `${value?.so_bai_hoc || 0} bài`,
     },
-    // {
-    //   title: "Thời gian đổi trạng thái",
-    //   key: "status_updated_at",
-    //   width: 190,
-    //   align: "center",
-    //   render: (_, record) =>
-    //     formatDateTime(resolveCheckState(record).statusUpdatedAt),
-    // },
-    // {
-    //   title: "Tốt nghiệp",
-    //   key: "detail",
-    //   width: 110,
-    //   align: "center",
-    //   render: (_, record) => {
-    //     const checked = resolveCheckState(record).totNghiepChecked;
-    //     return (
-    //       <span
-    //         className={checked ? "text-green-600 font-medium" : "text-gray-400"}
-    //       >
-    //         {checked ? "Đạt" : "-"}
-    //       </span>
-    //     );
-    //   },
-    // },
     {
-      title: "Ghi chú",
+      title: "GHI CHÚ",
       key: "ghi_chu",
-      width: 280,
+      width: 180,
       align: "center",
       render: (_, record) => {
         const state = resolveCheckState(record);
@@ -956,7 +997,7 @@ const QuanLyHocVienLyThuyet = () => {
         rowKey={getRowKey}
         size="small"
         bordered
-        scroll={{ x: 1200 }}
+        scroll={{ x: 1800 }}
         className="overflow-hidden table-blue-header"
       />
 
