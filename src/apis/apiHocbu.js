@@ -25,3 +25,8 @@ export const getDanhSachHocVienHocBuDat = async (params = {}) => {
     const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/dat`, { params });
     return response.data;
 };
+
+export const getDanhSachHocVienHocBuDetail = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/detail`, { params });
+    return response.data;
+};

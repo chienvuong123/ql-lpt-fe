@@ -11,8 +11,9 @@ import {
   SyncOutlined,
   SafetyOutlined,
   AppstoreAddOutlined,
+  RetweetOutlined,
 } from "@ant-design/icons";
-import { BsCalendar3, BsCardChecklist } from "react-icons/bs";
+import { BsCalendar3 } from "react-icons/bs";
 import {
   Avatar,
   Button,
@@ -54,6 +55,8 @@ const menuPathMap = {
   "hoc-bu-ly-thuyet": "/hoc-bu-ly-thuyet",
   "hoc-bu-dat": "/hoc-bu-dat",
   "tai-khoan": "/tai-khoan",
+  "hoc-bu": "/hoc-bu",
+  "kiem-tra": "/kiem-tra"
 };
 
 const LayoutTest = () => {
@@ -171,22 +174,30 @@ const LayoutTest = () => {
       ]
     },
     {
+      key: "kiem-tra",
+      icon: <SafetyOutlined />,
+      label: "Kiểm tra", children: [
+        {
+          key: "kiem-tra-hoc-vien-sau-tot-nghiep",
+          label: "Kiểm tra HV sau tốt nghiệp",
+        },
+        {
+          key: "annual-check",
+          label: "Kiểm tra hàng năm",
+        },
+        { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên public" },
+      ]
+    },
+    {
+      key: "hoc-bu",
+      icon: <RetweetOutlined />,
+      label: "Học bù",
+    },
+    {
       key: "tai-khoan",
       icon: <UserOutlined />,
       label: "Quản lý tài khoản",
     },
-    {
-      key: "annual-check",
-      icon: <SafetyOutlined />,
-      label: "Kiểm tra hàng năm",
-    },
-    {
-      key: "kiem-tra-hoc-vien-sau-tot-nghiep",
-      icon: <SafetyOutlined />,
-      label: "Kiểm tra HV sau tốt nghiệp",
-    },
-    { key: "kiem-tra-hoc-vien", label: "Kiểm tra học viên public" },
-
   ];
 
   const storedRoleId = sessionStorage.getItem("role_id");
@@ -194,12 +205,12 @@ const LayoutTest = () => {
 
   // Map role_id to allowed keys
   const roleAccessMap = {
-    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Admin
-    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Trưởng phòng
-    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Tổ nghiệp vụ
+    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Admin
+    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Trưởng phòng
+    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Tổ nghiệp vụ
     4: ["dashboard", "class"], // Tổ lý thuyết
     5: ["dashboard", "cabin", "reports"], // Tổ thực hành
-    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "tai-khoan", "annual-check", "kiem-tra-hoc-vien-sau-tot-nghiep", "kiem-tra-hoc-vien"], // Tổ công nghệ
+    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Tổ công nghệ
   };
 
   // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard

@@ -36,6 +36,7 @@ import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
 import DashboardCabin from "./pages/cabin/DashboardCabin";
 import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
 import HocBuDAT from "./pages/dat/HocBuDat";
+import HocBu from "./pages/make-up-lessons/HocBu";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -231,6 +232,15 @@ function App() {
                   <GuardedRoute
                     path="/hoc-bu-dat"
                     element={<HocBuDAT />}
+                  />
+                }
+              />
+              <Route
+                path="hoc-bu"
+                element={
+                  <GuardedRoute
+                    path="/hoc-bu"
+                    element={<HocBu />}
                   />
                 }
               />
