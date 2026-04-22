@@ -11,7 +11,7 @@ import LichSuTab from "./tabs/LichSuTab";
 
 const { Text, Title } = Typography;
 
-const TheoryStudentDetailModal = ({ visible, onClose, studentData }) => {
+const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlanIid }) => {
   const [activeTab, setActiveTab] = useState("1");
   console.log(studentData);
 
@@ -42,7 +42,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData }) => {
     {
       key: "2",
       label: "Tiến độ hoàn thành",
-      children: <TienDoTab />,
+      children: <TienDoTab studentData={studentData} enrolmentPlanIid={enrolmentPlanIid} visible={visible} />,
     },
     {
       key: "3",
@@ -66,7 +66,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData }) => {
       open={visible}
       onCancel={onClose}
       footer={null}
-      width="80vw"
+      width="75vw"
       styles={{
         body: {
           maxHeight: 'calc(95vh - 90px)',

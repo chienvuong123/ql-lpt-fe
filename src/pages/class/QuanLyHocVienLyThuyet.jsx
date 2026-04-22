@@ -1057,6 +1057,7 @@ const QuanLyHocVienLyThuyet = () => {
         visible={isTheoryDetailOpen}
         onClose={handleCloseTheoryDetail}
         studentData={selectedStudent}
+        enrolmentPlanIid={enrolmentPlanIid}
       />
     </Spin>
   );

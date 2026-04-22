@@ -37,3 +37,13 @@ export const getDashboardLyThuyet = async (payload = {}) => {
   const response = await axios.post(`${url}/dashboard`, payload);
   return response.data;
 };
+
+export const getTienDoHoanThanh = async (params = {}) => {
+  const response = await axios.post(`${baseURL}/student-detail/tien-do-hoan-thanh`, params);
+  return response.data;
+}
+
+export const getDiemTheoRubric = async (params = {}) => {
+  const response = await axios.post(`${baseURL}/student-detail/score-by-rubric`, params);
+  return response.data;
+}
