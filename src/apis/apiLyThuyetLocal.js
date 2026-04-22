@@ -47,3 +47,13 @@ export const getDiemTheoRubric = async (params = {}) => {
   const response = await axios.post(`${baseURL}/student-detail/score-by-rubric`, params);
   return response.data;
 }
+
+export const getCameraSnapshot = async (params = {}) => {
+  const response = await axios.post(`${baseURL}/student-detail/camera-snapshot`, params);
+  return response.data;
+}
+
+export const getTimeTrackingLog = async (params = {}) => {
+  const response = await axios.post(`${baseURL}/student-detail/time-tracking`, params);
+  return response.data;
+}

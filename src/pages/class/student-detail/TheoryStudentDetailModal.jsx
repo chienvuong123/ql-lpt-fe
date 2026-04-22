@@ -47,7 +47,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
     {
       key: "3",
       label: "Minh chứng học tập",
-      children: <MinhChungTab />,
+      children: <MinhChungTab studentData={studentData} enrolmentPlanIid={enrolmentPlanIid} visible={visible} />,
     },
     {
       key: "4",
