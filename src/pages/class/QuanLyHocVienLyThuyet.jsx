@@ -27,6 +27,8 @@ import {
 import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
 import StudentDetailModal from "./StudentDetailModal";
+import TheoryStudentDetailModal from "./student-detail/TheoryStudentDetailModal";
+import { EyeOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
@@ -102,6 +104,7 @@ const QuanLyHocVienLyThuyet = () => {
   const [trangThaiLamBaiHetMon, setTrangThaiLamBaiHetMon] = useState(null);
   const [locBatThuong, setLocBatThuong] = useState(false);
   const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false);
+  const [isTheoryDetailOpen, setIsTheoryDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const keywordInputRef = useRef(null);
   const [params, setParams] = useState({
@@ -266,6 +269,16 @@ const QuanLyHocVienLyThuyet = () => {
 
   const handleCloseStudentDetail = () => {
     setIsStudentDetailOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const handleOpenTheoryDetail = (record) => {
+    setSelectedStudent(buildStudentDetailData(record));
+    setIsTheoryDetailOpen(true);
+  };
+
+  const handleCloseTheoryDetail = () => {
+    setIsTheoryDetailOpen(false);
     setSelectedStudent(null);
   };
 
@@ -875,6 +888,23 @@ const QuanLyHocVienLyThuyet = () => {
         );
       },
     },
+    {
+      title: "THAO TÁC",
+      key: "actions",
+      width: 100,
+      align: "center",
+      fixed: "right",
+      render: (_, record) => (
+        <Button
+          type="text"
+          icon={<EyeOutlined className="text-blue-500 text-lg" />}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenTheoryDetail(record);
+          }}
+        />
+      ),
+    },
   ];
 
   return (
@@ -1021,6 +1051,12 @@ const QuanLyHocVienLyThuyet = () => {
         program_code={program_code}
         program_name={selectedClass?.name || selectedClass?.suffix_name || ""}
         maKhoaHoc={selectedClass?.code || selectedClass?.name || ""}
+      />
+
+      <TheoryStudentDetailModal
+        visible={isTheoryDetailOpen}
+        onClose={handleCloseTheoryDetail}
+        studentData={selectedStudent}
       />
     </Spin>
   );
