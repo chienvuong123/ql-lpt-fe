@@ -1,13 +1,20 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Table, Typography, Space, Spin, Button } from "antd";
 import { EyeOutlined, FieldTimeOutlined } from "@ant-design/icons";
 import { BsCheck } from "react-icons/bs";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { getTienDoHoanThanh, getDiemTheoRubric } from "../../../../apis/apiLyThuyetLocal";
+import SelfStudyTimeModal from "../components/SelfStudyTimeModal";
 
 const { Text, Title } = Typography;
 
 const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
+  const [detailModal, setDetailModal] = useState({
+    visible: false,
+    courseIid: null,
+    itemNtype: "video",
+  });
+
   // 1. Fetch the main list of courses
   const courseListQuery = useQuery({
     queryKey: ["getTienDoHoanThanh", studentData?.user?.iid, enrolmentPlanIid],
@@ -86,18 +93,59 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
       key: "action",
       align: "center",
       width: "12%",
-      render: () => (
-        <Button
-          type="primary"
-          size="small"
-          className="!bg-orange-500 hover:!bg-orange-600 border-none !px-3 !h-8 flex items-center gap-1"
-          icon={<EyeOutlined className="text-[13px]" />}
-        >
-          <span className="text-[13px] font-medium">Xem chi tiết</span>
-        </Button>
-      ),
+      render: (_, record, index) => {
+        // Find the course parent this rubric belongs to
+        // This is a bit tricky since the table is rendered inside combinedData.map
+        // I'll need to pass the course.iid down
+        return (
+          <Button
+            type="primary"
+            size="small"
+            className="!bg-orange-500 hover:!bg-orange-600 border-none !px-3 !h-8 flex items-center gap-1"
+            icon={<EyeOutlined className="text-[13px]" />}
+            onClick={() => {
+              // We'll need the course iid. I'll adjust the render to capture it from a closure or pass it.
+              // Let's assume the render is redefined inside the map below or we use a helper.
+            }}
+          >
+            <span className="text-[13px] font-medium">Xem chi tiết</span>
+          </Button>
+        );
+      },
     },
   ];
+
+  const getColumns = (courseIid) => [
+    ...columns.slice(0, 2),
+    {
+      title: "Chi tiết",
+      key: "action",
+      align: "center",
+      width: "12%",
+      render: (_, record) => {
+        let ntype = "video";
+        if (record.name?.includes("giáo trình")) ntype = "video";
+        // Map other names to types if necessary
+
+        return (
+          <Button
+            type="primary"
+            size="small"
+            className="!bg-orange-500 hover:!bg-orange-600 border-none !px-3 !h-8 flex items-center gap-1"
+            icon={<EyeOutlined className="text-[13px]" />}
+            onClick={() => setDetailModal({
+              visible: true,
+              courseIid: courseIid,
+              itemNtype: ntype
+            })}
+          >
+            <span className="text-[13px] font-medium">Xem chi tiết</span>
+          </Button>
+        );
+      },
+    },
+  ];
+
 
   const isInitiallyLoading = courseListQuery.isLoading;
 
@@ -147,7 +195,7 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
           </Title>
 
           <Table
-            columns={columns}
+            columns={getColumns(course.iid)}
             dataSource={course.details?.score_by_rubrik?.filter(item =>
               ["Xem giáo trình", "Ôn luyện", "Ôn tập"].some(name => item.name?.includes(name))
             ) || []}
@@ -155,7 +203,7 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
             size="small"
             bordered
             loading={course.isLoadingDetails}
-            className="theory-detail-table [&_.ant-table-thead_th]:!bg-[#E6F7FF] [&_.ant-table-thead_th]:!text-gray-800 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-[14px] [&_.ant-table-cell]:text-[14px]"
+            className="theory-detail-table [&_.ant-table-thead_th]:!bg-[#E6F7FF] [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-thead_th]:!text-gray-800 [&_.ant-table-thead_th]:!text-[14px] [&_.ant-table-cell]:text-[14px]"
           />
 
           {/* Footer Formula Info */}
@@ -182,6 +230,14 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
           Không có dữ liệu tiến độ hoàn thành.
         </div>
       )}
+
+      <SelfStudyTimeModal
+        visible={detailModal.visible}
+        onClose={() => setDetailModal({ ...detailModal, visible: false })}
+        userIid={studentData?.user?.iid}
+        courseIid={detailModal.courseIid}
+        itemNtype={detailModal.itemNtype}
+      />
     </div>
   );
 };

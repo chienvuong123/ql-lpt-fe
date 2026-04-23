@@ -62,3 +62,24 @@ export const getLearningTimeTracking = async (params = {}) => {
   const response = await axios.post(`${baseURL}/student-detail/learning-time`, params);
   return response.data;
 }
+
+export const getDetailLearningTime = async (params = {}) => {
+  const response = await axios.post(`${baseURL}/student-detail/detail-learning-time`, params);
+  return response.data;
+}
+
+import Papa from "papaparse";
+
+export const getSheetData = async () => {
+  const url = `https://docs.google.com/spreadsheets/d/1TEeB_qAGJz_aLCzjDOUxEitgrwNWohcy6VjU3k6DppU/export?format=csv&gid=1754545655`;
+
+  const res = await fetch(url);
+  const csv = await res.text();
+
+  const { data } = Papa.parse(csv, {
+    header: true,       // dòng đầu làm key
+    skipEmptyLines: true,
+  });
+
+  return data;
+}

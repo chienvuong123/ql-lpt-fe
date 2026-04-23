@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Modal, Tabs, Row, Col, Image, Typography, Divider, Space } from "antd";
+import { Modal, Tabs, Image, Typography } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -7,7 +7,7 @@ import HoanThanhTab from "./tabs/HoanThanhTab";
 import TienDoTab from "./tabs/TienDoTab";
 import MinhChungTab from "./tabs/MinhChungTab";
 import ThoiGianTab from "./tabs/ThoiGianTab";
-import LichSuTab from "./tabs/LichSuTab";
+import { getSheetData } from "../../../apis/apiLyThuyetLocal";
 
 const { Text, Title } = Typography;
 
@@ -15,11 +15,15 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
   const [activeTab, setActiveTab] = useState("1");
   const contentRef = useRef(null);
 
+  const res = getSheetData()
+  console.log(res);
+
+
   // Reset tab về "1" và scroll top mỗi khi mở Modal
   useEffect(() => {
     if (visible) {
       setActiveTab("1");
-      
+
       // Delay nhỏ để đảm bảo Modal đã render xong DOM
       const timer = setTimeout(() => {
         if (contentRef.current) {
@@ -72,18 +76,18 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
       key: "4",
       label: "Thời gian học",
       children: (
-        <ThoiGianTab 
-          studentData={studentData} 
-          enrolmentPlanIid={enrolmentPlanIid} 
-          visible={visible} 
+        <ThoiGianTab
+          studentData={studentData}
+          enrolmentPlanIid={enrolmentPlanIid}
+          visible={visible}
         />
       ),
     },
-    {
-      key: "5",
-      label: "Lịch sử hoạt động",
-      children: <LichSuTab />,
-    },
+    // {
+    //   key: "5",
+    //   label: "Lịch sử hoạt động",
+    //   children: <LichSuTab />,
+    // },
   ];
 
   return (
