@@ -7,16 +7,12 @@ import HoanThanhTab from "./tabs/HoanThanhTab";
 import TienDoTab from "./tabs/TienDoTab";
 import MinhChungTab from "./tabs/MinhChungTab";
 import ThoiGianTab from "./tabs/ThoiGianTab";
-import { getSheetData } from "../../../apis/apiLyThuyetLocal";
 
 const { Text, Title } = Typography;
 
 const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlanIid }) => {
   const [activeTab, setActiveTab] = useState("1");
   const contentRef = useRef(null);
-
-  const res = getSheetData()
-  console.log(res);
 
 
   // Reset tab về "1" và scroll top mỗi khi mở Modal
@@ -96,7 +92,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
       onCancel={onClose}
       footer={null}
       width="75vw"
-      destroyOnClose={true}
+      destroyOnHidden={true}
       styles={{
         body: {
           maxHeight: 'calc(95vh - 90px)',

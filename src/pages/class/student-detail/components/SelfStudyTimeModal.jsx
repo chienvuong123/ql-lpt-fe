@@ -115,7 +115,7 @@ const SelfStudyTimeModal = ({ visible, onClose, userIid, courseIid, itemNtype })
       footer={null}
       width={1100}
       centered
-      destroyOnClose
+      destroyOnHidden
       styles={{
         body: {
           maxHeight: 'calc(90vh - 100px)',
