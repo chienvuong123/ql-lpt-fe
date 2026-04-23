@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Modal, Tabs, Row, Col, Image, Typography, Divider, Space } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -13,7 +13,26 @@ const { Text, Title } = Typography;
 
 const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlanIid }) => {
   const [activeTab, setActiveTab] = useState("1");
-  console.log(studentData);
+  const contentRef = useRef(null);
+
+  // Reset tab về "1" và scroll top mỗi khi mở Modal
+  useEffect(() => {
+    if (visible) {
+      setActiveTab("1");
+      
+      // Delay nhỏ để đảm bảo Modal đã render xong DOM
+      const timer = setTimeout(() => {
+        if (contentRef.current) {
+          const modalBody = contentRef.current.closest('.ant-modal-body');
+          if (modalBody) {
+            modalBody.scrollTop = 0;
+          }
+        }
+      }, 50);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
 
   const user = studentData?.user || {};
   const studentName = user?.name || "Học viên";
@@ -52,7 +71,13 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
     {
       key: "4",
       label: "Thời gian học",
-      children: <ThoiGianTab />,
+      children: (
+        <ThoiGianTab 
+          studentData={studentData} 
+          enrolmentPlanIid={enrolmentPlanIid} 
+          visible={visible} 
+        />
+      ),
     },
     {
       key: "5",
@@ -67,6 +92,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
       onCancel={onClose}
       footer={null}
       width="75vw"
+      destroyOnClose={true}
       styles={{
         body: {
           maxHeight: 'calc(95vh - 90px)',
@@ -87,7 +113,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
       }
       centered
     >
-      <div className="">
+      <div ref={contentRef} className="">
         {/* Header Title */}
         <Title level={4} className="!mb-6 !text-gray-700 !font-semibold">
           {studentName.toUpperCase()} (#{studentId})

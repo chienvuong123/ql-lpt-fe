@@ -57,3 +57,8 @@ export const getTimeTrackingLog = async (params = {}) => {
   const response = await axios.post(`${baseURL}/student-detail/time-tracking`, params);
   return response.data;
 }
+
+export const getLearningTimeTracking = async (params = {}) => {
+  const response = await axios.post(`${baseURL}/student-detail/learning-time`, params);
+  return response.data;
+}
