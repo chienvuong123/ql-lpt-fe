@@ -231,6 +231,8 @@ const QuanLyHocVienLyThuyet = () => {
   const [selectedStudentMap, setSelectedStudentMap] = useState({});
   const [studentStatusOverrides, setStudentStatusOverrides] = useState({});
   const [trangThaiLamBaiHetMon, setTrangThaiLamBaiHetMon] = useState(null);
+  const [trangThaiLyThuyetOnline, setTrangThaiLyThuyetOnline] = useState(null);
+  const [trangThaiDangNhap, setTrangThaiDangNhap] = useState(null);
   const [locBatThuong, setLocBatThuong] = useState(false);
   const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false);
   const [isTheoryDetailOpen, setIsTheoryDetailOpen] = useState(false);
@@ -242,7 +244,10 @@ const QuanLyHocVienLyThuyet = () => {
     text: "",
     loai_het_mon: null,
     loc_bat_thuong: false,
+    loc_ly_thuyet_online: null,
+    loc_dang_nhap: null,
   });
+
 
   const location = useLocation();
   const { program_code } = location?.state || {};
@@ -288,7 +293,10 @@ const QuanLyHocVienLyThuyet = () => {
         params.text,
         params.loai_het_mon,
         params.loc_bat_thuong,
+        params.loc_ly_thuyet_online,
+        params.loc_dang_nhap,
       ],
+
       queryFn: () =>
         ketQuaKiemTra(enrolmentPlanIid, {
           page: params.page,
@@ -299,7 +307,14 @@ const QuanLyHocVienLyThuyet = () => {
             ? {}
             : { loai_het_mon: params.loai_het_mon }),
           ...(params.loc_bat_thuong ? { loc_bat_thuong: true } : {}),
+          ...(params.loc_ly_thuyet_online === null
+            ? {}
+            : { loc_ly_thuyet_online: params.loc_ly_thuyet_online }),
+          ...(params.loc_dang_nhap === null
+            ? {}
+            : { loc_dang_nhap: params.loc_dang_nhap }),
         }),
+
       staleTime: 1000 * 60 * 5,
       retry: false,
       enabled: Boolean(enrolmentPlanIid),
@@ -648,8 +663,11 @@ const QuanLyHocVienLyThuyet = () => {
       text,
       loai_het_mon: trangThaiLamBaiHetMon,
       loc_bat_thuong: locBatThuong,
+      loc_ly_thuyet_online: trangThaiLyThuyetOnline,
+      loc_dang_nhap: trangThaiDangNhap,
     });
   };
+
 
   const handleReset = () => {
     if (keywordInputRef.current?.input) {
@@ -657,6 +675,8 @@ const QuanLyHocVienLyThuyet = () => {
     }
     clearSelectedStudents();
     setTrangThaiLamBaiHetMon(null);
+    setTrangThaiLyThuyetOnline(null);
+    setTrangThaiDangNhap(null);
     setLocBatThuong(false);
     setParams({
       page: 1,
@@ -664,8 +684,11 @@ const QuanLyHocVienLyThuyet = () => {
       text: "",
       loai_het_mon: null,
       loc_bat_thuong: false,
+      loc_ly_thuyet_online: null,
+      loc_dang_nhap: null,
     });
   };
+
 
   const handleToggleSelectRecord = (record, checked) => {
     const rowKey = getRowKey(record);
@@ -901,14 +924,14 @@ const QuanLyHocVienLyThuyet = () => {
       width: 170,
       key: "gv_bc1",
       align: "center",
-      render: (_, record) => record?.sheet_info?.nguoi_tuyen_sinh || "-",
+      render: (_, record) => record?.giao_vien_theo_xe?.giao_vien || "-",
     },
     {
-      title: "GIÁO VIÊN",
+      title: "GIÁO VIÊN TUYỂN SINH",
       width: 170,
-      key: "gv",
+      key: "gv_ts",
       align: "center",
-      render: (_, record) => record?.giao_vien_theo_xe?.giao_vien || "-",
+      render: (_, record) => record?.sheet_info?.nguoi_tuyen_sinh || "-",
     },
     {
       title: "GHI CHÚ",
@@ -958,7 +981,7 @@ const QuanLyHocVienLyThuyet = () => {
 
       <Card className="!mt-5 !mb-4">
         <Row gutter={[12, 12]} align="bottom">
-          <Col span={6}>
+          <Col span={4}>
             <label className="block text-xs text-gray-500 uppercase">
               Khóa Học
             </label>
@@ -980,7 +1003,7 @@ const QuanLyHocVienLyThuyet = () => {
             />
           </Col>
 
-          <Col span={6}>
+          <Col span={4}>
             <label className="block text-xs text-gray-500 uppercase">
               Từ khóa
             </label>
@@ -991,10 +1014,11 @@ const QuanLyHocVienLyThuyet = () => {
               onPressEnter={handleFilter}
             />
           </Col>
-          <Col span={6}>
+          <Col span={4}>
             <label className="block text-xs text-gray-500 uppercase">
-              Trạng thái làm bài hết môn
+              Hết môn
             </label>
+
             <Select
               className="w-full"
               placeholder="--Chọn trạng thái--"
@@ -1017,7 +1041,38 @@ const QuanLyHocVienLyThuyet = () => {
               allowClear
             />
           </Col>
-          <Col span={6}>
+          <Col span={4}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Lý thuyết online
+            </label>
+            <Select
+              className="w-full"
+              placeholder="--Chọn trạng thái--"
+              value={trangThaiLyThuyetOnline ?? undefined}
+              onChange={(value) => setTrangThaiLyThuyetOnline(value ?? null)}
+              options={[
+                { label: "Đạt", value: "dat" },
+                { label: "Chưa đạt", value: "chua_dat" },
+              ]}
+              allowClear
+            />
+          </Col>
+          <Col span={4}>
+            <label className="block text-xs text-gray-500 uppercase">
+              Trạng thái đăng nhập
+            </label>
+            <Select
+              className="w-full"
+              placeholder="--Chọn trạng thái--"
+              value={trangThaiDangNhap ?? undefined}
+              onChange={(value) => setTrangThaiDangNhap(value ?? null)}
+              options={[
+                { label: "Chưa đăng nhập", value: "chua_login" },
+              ]}
+              allowClear
+            />
+          </Col>
+          <Col span={4}>
             <label className="block text-xs text-gray-500 uppercase">
               Lọc bất thường
             </label>
@@ -1035,6 +1090,7 @@ const QuanLyHocVienLyThuyet = () => {
               allowClear
             />
           </Col>
+
           <Col>
             <Space>
               <Button
