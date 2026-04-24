@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, forwardRef, useImperativeHandle } from "react";
+
 import { Modal, Progress, Table, Card, Row, Col, Flex, Image } from "antd";
 import {
   CheckCircleFilled,
@@ -8,14 +9,30 @@ import {
 import dayjs from "dayjs";
 import { LICENSE_PLATE_LABEL } from "../../constants";
 
-const StudentDetailModal = ({
-  visible,
+const StudentDetailModal = forwardRef(({
   onClose,
-  studentData,
   program_code,
   program_name,
   maKhoaHoc,
-}) => {
+}, ref) => {
+  const [visible, setVisible] = useState(false);
+  const [studentData, setStudentData] = useState(null);
+
+  useImperativeHandle(ref, () => ({
+    open: (data) => {
+      setStudentData(data);
+      setVisible(true);
+    },
+    close: () => {
+      setVisible(false);
+    }
+  }));
+
+  const handleClose = () => {
+    setVisible(false);
+    if (onClose) onClose();
+  };
+
   const columns = [
     {
       title: "Tên chỉ tiêu",
@@ -95,11 +112,13 @@ const StudentDetailModal = ({
     <Modal
       title="Chi tiết học viên"
       open={visible}
-      onCancel={onClose}
+      onCancel={handleClose}
       footer={null}
       width={900}
       closeIcon={<CloseOutlined />}
+      destroyOnClose={true}
     >
+
       <Card className="!mt-4">
         <div className="mb-4">
           <h3 className="text-xl !font-semibold text-gray-800 !mb-0">
@@ -210,6 +229,7 @@ const StudentDetailModal = ({
       </div>
     </Modal>
   );
-};
+});
+
 
 export default StudentDetailModal;

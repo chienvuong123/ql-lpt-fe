@@ -154,7 +154,7 @@ const ProgressCell = React.memo(({ result }) => {
   );
 });
 
-const UserCell = React.memo(({ user, suffixName }) => (
+const UserCell = React.memo(({ user, suffixName, onClick }) => (
   <div className="flex items-center gap-2">
     <img
       src={user?.avatar || user?.default_avatar}
@@ -167,7 +167,10 @@ const UserCell = React.memo(({ user, suffixName }) => (
       }}
     />
     <div className="flex flex-col">
-      <span className="font-bold text-gray-600 text-sm">
+      <span
+        className="font-bold text-gray-600 text-sm cursor-pointer hover:text-blue-500 transition-colors"
+        onClick={onClick}
+      >
         {user?.name || "-"}
       </span>
       <span className="text-xs text-gray-500">
@@ -176,6 +179,7 @@ const UserCell = React.memo(({ user, suffixName }) => (
     </div>
   </div>
 ));
+
 
 const QualifiedCell = React.memo(({ isQualified }) => (
   <div className="flex items-center justify-center">
@@ -210,16 +214,7 @@ const NoteCell = React.memo(({ maDk, ghiChu, disabled, onBlur }) => (
   />
 ));
 
-const ActionCell = React.memo(({ onOpenDetail }) => (
-  <Button
-    type="text"
-    icon={<EyeOutlined className="text-blue-500 text-lg" />}
-    onClick={(e) => {
-      e.stopPropagation();
-      onOpenDetail();
-    }}
-  />
-));
+
 
 
 const QuanLyHocVienLyThuyet = () => {
@@ -234,10 +229,12 @@ const QuanLyHocVienLyThuyet = () => {
   const [trangThaiLyThuyetOnline, setTrangThaiLyThuyetOnline] = useState(null);
   const [trangThaiDangNhap, setTrangThaiDangNhap] = useState(null);
   const [locBatThuong, setLocBatThuong] = useState(false);
-  const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false);
-  const [isTheoryDetailOpen, setIsTheoryDetailOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+
   const keywordInputRef = useRef(null);
+  const theoryModalRef = useRef(null);
+  const studentModalRef = useRef(null);
+
+
   const [params, setParams] = useState({
     page: 1,
     limit: 50,
@@ -350,24 +347,16 @@ const QuanLyHocVienLyThuyet = () => {
   });
 
   const handleOpenStudentDetail = (record) => {
-    setSelectedStudent(buildStudentDetailData(record));
-    setIsStudentDetailOpen(true);
+    const detailData = buildStudentDetailData(record);
+    studentModalRef.current?.open(detailData);
   };
 
-  const handleCloseStudentDetail = () => {
-    setIsStudentDetailOpen(false);
-    setSelectedStudent(null);
-  };
 
   const handleOpenTheoryDetail = (record) => {
-    setSelectedStudent(buildStudentDetailData(record));
-    setIsTheoryDetailOpen(true);
+    const detailData = buildStudentDetailData(record);
+    theoryModalRef.current?.open(detailData);
   };
 
-  const handleCloseTheoryDetail = () => {
-    setIsTheoryDetailOpen(false);
-    setSelectedStudent(null);
-  };
 
   const resolveCheckState = (record) => {
     const maDk = getStudentCode(record);
@@ -790,10 +779,15 @@ const QuanLyHocVienLyThuyet = () => {
       key: "user",
       width: 300,
       fixed: "left",
-      render: (user) => (
-        <UserCell user={user} suffixName={selectedClass?.suffix_name} />
+      render: (user, record) => (
+        <UserCell
+          user={user}
+          suffixName={selectedClass?.suffix_name}
+          onClick={() => handleOpenTheoryDetail(record)}
+        />
       ),
     },
+
     {
       title: "TIẾN ĐỘ",
       children: [
@@ -951,16 +945,7 @@ const QuanLyHocVienLyThuyet = () => {
         );
       },
     },
-    {
-      title: "THAO TÁC",
-      key: "actions",
-      width: 100,
-      align: "center",
-      fixed: "right",
-      render: (_, record) => (
-        <ActionCell onOpenDetail={() => handleOpenTheoryDetail(record)} />
-      ),
-    },
+
   ], [
     isAllSelected,
     isIndeterminate,
@@ -1141,23 +1126,18 @@ const QuanLyHocVienLyThuyet = () => {
       />
 
       <StudentDetailModal
-        studentData={selectedStudent}
-        visible={isStudentDetailOpen}
-        onClose={handleCloseStudentDetail}
-        progress={getCompletionStats(selectedStudent).phanTramHoanThanh}
-        passed={getCompletionStats(selectedStudent).soMonDat}
-        total={getCompletionStats(selectedStudent).tongSoMon}
+        ref={studentModalRef}
         program_code={program_code}
         program_name={selectedClass?.name || selectedClass?.suffix_name || ""}
         maKhoaHoc={selectedClass?.code || selectedClass?.name || ""}
       />
 
+
       <TheoryStudentDetailModal
-        visible={isTheoryDetailOpen}
-        onClose={handleCloseTheoryDetail}
-        studentData={selectedStudent}
+        ref={theoryModalRef}
         enrolmentPlanIid={enrolmentPlanIid}
       />
+
     </Spin>
   );
 };

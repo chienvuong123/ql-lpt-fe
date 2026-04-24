@@ -122,7 +122,7 @@ const MinhChungTab = ({ studentData, enrolmentPlanIid, visible }) => {
   if (isPhotosLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Spin size="large" tip="Đang tải minh chứng học tập..." />
+        <Spin size="small" tip="Đang tải minh chứng học tập..." />
       </div>
     );
   }

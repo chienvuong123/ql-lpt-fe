@@ -152,7 +152,7 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
   if (isInitiallyLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Spin size="large" tip="Đang tải danh sách môn học..." />
+        <Spin size="small" tip="Đang tải danh sách môn học..." />
       </div>
     );
   }

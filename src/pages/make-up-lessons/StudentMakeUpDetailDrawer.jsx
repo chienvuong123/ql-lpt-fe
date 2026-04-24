@@ -3,21 +3,19 @@ import {
     Drawer,
     Tabs,
     Image,
-    Descriptions,
     Typography,
     Tag,
     Empty,
     Table,
-    Card,
     Space,
     Divider,
     Button,
 } from "antd";
-import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getRankCabinLesson, formatSecondsToTime } from "../../util/helper";
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 const TheoryTab = ({ data }) => {
     if (!data) return <Empty description="Chưa có dữ liệu lý thuyết" />;
@@ -163,26 +161,26 @@ const DatTab = ({ data }) => {
         },
         {
             title: "Giáo viên",
-            dataIndex: "HoTenGV",
+            dataIndex: "ho_ten_gv",
             width: 150,
             align: "center",
         },
         {
             title: "Biển số",
-            dataIndex: "BienSo",
+            dataIndex: "bien_so_xe",
             width: 70,
             align: "center",
         },
         {
             title: "Quãng đường",
-            dataIndex: "TongQuangDuong",
+            dataIndex: "tong_km",
             width: 100,
             align: "center",
             render: (v) => <span className="font-medium">{v} km</span>
         },
         {
             title: "Thời gian",
-            dataIndex: "TongThoiGian",
+            dataIndex: "thoi_gian",
             width: 100,
             align: "center",
             render: (v) => <span className="font-medium">{formatSecondsToTime(v)}</span>
@@ -250,75 +248,101 @@ const DatTab = ({ data }) => {
 };
 
 const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
+    const studentName = student?.ho_ten || "Học viên";
+    const studentId = student?.ma_dk || "";
+
+    const infoItems = [
+        { label: "Mã", value: studentId || "-" },
+        { label: "Tên", value: studentName },
+        { label: "Ngày sinh", value: student?.ngay_sinh ? dayjs(student.ngay_sinh).format("DD/MM/YYYY") : "-" },
+        { label: "CCCD/CMT", value: student?.cccd || "-" },
+        { label: "Khóa học", value: student?.ten_khoa || "-" },
+        { label: "Giáo viên", value: student?.thay_giao || "-" },
+    ];
+
+    const tabItems = [
+        {
+            key: "theory",
+            label: "Lý thuyết",
+            children: <TheoryTab data={student?.detail?.theoryInfo} />,
+        },
+        {
+            key: "cabin",
+            label: "Cabin",
+            children: <CabinTab data={student?.detail?.cabinInfo} />,
+        },
+        {
+            key: "dat",
+            label: "DAT",
+            children: <DatTab data={student?.detail?.datInfo} />,
+        },
+    ];
+
     return (
         <Drawer
-            title={<span className="text-xl font-bold">Chi tiết quá trình đào tạo</span>}
+            title={
+                <div className="text-gray-600 font-medium text-md mx-[-24px] px-[36px]">
+                    {studentName.toUpperCase()}
+                </div>
+            }
             placement="right"
             onClose={onClose}
             open={open}
             width={900}
             destroyOnClose
+            closable={false}
             extra={
-                <Space>
-                    <Button onClick={onClose}>Đóng</Button>
-                </Space>
+                <div
+                    className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-400 cursor-pointer hover:bg-gray-500 transition-colors"
+                    onClick={onClose}
+                >
+                    <CloseOutlined className="!text-white text-[10px]" />
+                </div>
             }
         >
             {student && (
-                <div className="space-y-6">
-                    {/* 1. Thông tin học viên */}
-                    <div className="bg-gray-50 p-4 rounded-lg flex gap-6">
-                        <Image
-                            src={student.anh}
-                            width={120}
-                            height={120}
-                            className="rounded-lg object-cover shadow-sm"
-                            fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                        />
-                        <div className="flex-1 grid grid-cols-2 gap-4">
-                            <Descriptions column={1} size="small">
-                                <Descriptions.Item label="Họ tên">
-                                    <Text strong>{student.ho_ten}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Mã ĐK">
-                                    <Text strong copyable>{student.ma_dk}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="CCCD">
-                                    <Text strong>{student.cccd}</Text>
-                                </Descriptions.Item>
-                            </Descriptions>
-                            <Descriptions column={1} size="small">
-                                <Descriptions.Item label="Ngày sinh">
-                                    <Text strong>{student.ngay_sinh ? dayjs(student.ngay_sinh).format("DD/MM/YYYY") : "-"}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Khóa học">
-                                    <Text strong>{student.ten_khoa}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Giáo viên">
-                                    <Text strong>{student.thay_giao}</Text>
-                                </Descriptions.Item>
-                            </Descriptions>
+                <div className="">
+                    {/* Header Title */}
+                    <Title level={4} className="!mb-6 !text-gray-700 !font-semibold">
+                        {studentName.toUpperCase()} (#{studentId})
+                    </Title>
+
+                    {/* Profile Info Section */}
+                    <div className="flex flex-row gap-10 mb-8 border-b border-gray-200 pb-8">
+                        <div className="flex-shrink-0">
+                            <div className="relative">
+                                <Image
+                                    src={student.anh}
+                                    alt="avatar"
+                                    className="!w-48 !h-48 rounded-full object-cover border-4 border-white shadow-sm"
+                                    fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-grow">
+                            <div className="flex flex-col gap-y-0">
+                                {infoItems.map((item, index) => (
+                                    <div key={index} className="flex gap-2 items-baseline">
+                                        <Text className="text-gray-400 min-w-[120px] text-[13px]">{item.label}:</Text>
+                                        <Text strong className="text-gray-700 text-[13px]">{item.value}</Text>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
-                    <Divider className="!my-2" />
-
-                    {/* 2. Tabs quá trình đào tạo */}
-                    <Tabs defaultActiveKey="theory" type="card">
-                        <Tabs.TabPane tab="Lý thuyết" key="theory">
-                            <TheoryTab data={student.detail?.theoryInfo} />
-                        </Tabs.TabPane>
-                        <Tabs.TabPane tab="Cabin" key="cabin">
-                            <CabinTab data={student.detail?.cabinInfo} />
-                        </Tabs.TabPane>
-                        <Tabs.TabPane tab="DAT" key="dat">
-                            <DatTab data={student.detail?.datInfo} />
-                        </Tabs.TabPane>
-                    </Tabs>
+                    {/* Tabs Section */}
+                    <Tabs
+                        defaultActiveKey="theory"
+                        items={tabItems}
+                        className="theory-tabs"
+                    />
                 </div>
             )}
         </Drawer>
     );
 };
+
 
 export default StudentMakeUpDetailDrawer;

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
+
+
 import { Modal, Tabs, Image, Typography } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -10,17 +12,31 @@ import ThoiGianTab from "./tabs/ThoiGianTab";
 
 const { Text, Title } = Typography;
 
-const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlanIid }) => {
+const TheoryStudentDetailModal = React.memo(forwardRef(({ onClose, enrolmentPlanIid }, ref) => {
+  const [visible, setVisible] = useState(false);
+  const [studentData, setStudentData] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
   const contentRef = useRef(null);
 
+  useImperativeHandle(ref, () => ({
+    open: (data) => {
+      setStudentData(data);
+      setVisible(true);
+      setActiveTab("1");
+    },
+    close: () => {
+      setVisible(false);
+    }
+  }));
 
-  // Reset tab về "1" và scroll top mỗi khi mở Modal
+  const handleClose = () => {
+    setVisible(false);
+    if (onClose) onClose();
+  };
+
+  // Scroll top mỗi khi mở Modal
   useEffect(() => {
     if (visible) {
-      setActiveTab("1");
-
-      // Delay nhỏ để đảm bảo Modal đã render xong DOM
       const timer = setTimeout(() => {
         if (contentRef.current) {
           const modalBody = contentRef.current.closest('.ant-modal-body');
@@ -29,7 +45,6 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
           }
         }
       }, 50);
-
       return () => clearTimeout(timer);
     }
   }, [visible]);
@@ -38,7 +53,7 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
   const studentName = user?.name || "Học viên";
   const studentId = user?.iid || user?.code || "";
 
-  const infoItems = [
+  const infoItems = useMemo(() => [
     { label: "Mã", value: user?.identification_card || user?.code || "-" },
     { label: "Tên", value: studentName },
     { label: "Giới tính", value: user?.sex === "1" ? "Nam" : "Nữ" },
@@ -50,9 +65,9 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
     { label: "Đơn vị", value: user?.organization_name || "Trung tâm dạy nghề và sát hạch lái xe Lập Phương Thành" },
     { label: "Phòng ban", value: user?.department || "-" },
     { label: "Là giảng viên", value: "Không" },
-  ];
+  ], [user, studentName]);
 
-  const tabItems = [
+  const tabItems = useMemo(() => [
     {
       key: "1",
       label: "Hoàn thành",
@@ -79,20 +94,17 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
         />
       ),
     },
-    // {
-    //   key: "5",
-    //   label: "Lịch sử hoạt động",
-    //   children: <LichSuTab />,
-    // },
-  ];
+  ], [studentData, enrolmentPlanIid, visible]);
+
+  if (!visible && !studentData) return null;
 
   return (
     <Modal
       open={visible}
-      onCancel={onClose}
+      onCancel={handleClose}
       footer={null}
       width="75vw"
-      destroyOnHidden={true}
+      destroyOnClose={true}
       styles={{
         body: {
           maxHeight: 'calc(95vh - 90px)',
@@ -154,6 +166,8 @@ const TheoryStudentDetailModal = ({ visible, onClose, studentData, enrolmentPlan
       </div>
     </Modal>
   );
-};
+}));
+
+
 
 export default TheoryStudentDetailModal;
