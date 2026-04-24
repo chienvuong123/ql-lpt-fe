@@ -8,7 +8,8 @@ import SelfStudyTimeModal from "../components/SelfStudyTimeModal";
 
 const { Text, Title } = Typography;
 
-const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
+const TienDoTab = ({ studentData, enrolmentPlanIid, visible, activeTab }) => {
+
   const [detailModal, setDetailModal] = useState({
     visible: false,
     courseIid: null,
@@ -26,7 +27,8 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
         page: 1,
         items_per_page: 10,
       }),
-    enabled: !!studentData?.user?.iid && !!enrolmentPlanIid && !!visible,
+    enabled: !!studentData?.user?.iid && !!enrolmentPlanIid && !!visible && activeTab === "2",
+
   });
 
   const coursesList = courseListQuery.data?.result || [];
@@ -43,7 +45,8 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
           recalculate: 1,
           submit: 1,
         }),
-      enabled: !!course.iid && !!studentData?.user?.iid && !!visible,
+      enabled: !!course.iid && !!studentData?.user?.iid && !!visible && activeTab === "2",
+
     })),
   });
 
@@ -57,8 +60,9 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
       const actualHours = course.p || 0;
       const completionPercentage = course.cp || 100;
       const totalHours = completionPercentage > 0
-        ? Math.round((actualHours / (completionPercentage / 100)) * 100) / 100
+        ? Math.floor((actualHours / (completionPercentage / 100)) * 10) / 10
         : actualHours;
+
 
       return {
         ...course,
@@ -157,6 +161,7 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
     );
   }
 
+
   return (
     <div className="flex flex-col gap-6 py-4 pr-4">
       {combinedData.map((course) => (
@@ -171,15 +176,17 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
             ) : (
               <FieldTimeOutlined className="text-gray-400 text-lg cursor-pointer" />
             )}
+
           </div>
 
           {/* Overall Progress Summary */}
           <div className="text-center mb-3">
             <Text className="!text-base flex items-center justify-center gap-2">
               <span className="font-bold text-gray-600 pr-1">Số giờ</span>
-              <span className="text-orange-500 font-medium"> {course.p}
+              <span className="text-orange-500 font-medium"> {typeof course.p === 'number' ? Math.floor(course.p * 10) / 10 : course.p}
                 <span className="text-gray-600">/{course.totalHours}</span>
               </span>
+
               {"-"}
               {course.pf === 1 && (
                 <Space size={4} className="align-middle">
@@ -242,4 +249,5 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible }) => {
   );
 };
 
-export default TienDoTab;
+export default React.memo(TienDoTab);
+

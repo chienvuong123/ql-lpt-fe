@@ -6,7 +6,8 @@ import { getLearningTimeTracking } from "../../../../apis/apiLyThuyetLocal";
 
 const { Text, Title } = Typography;
 
-const ThoiGianTab = ({ studentData, enrolmentPlanIid, visible }) => {
+const ThoiGianTab = ({ studentData, enrolmentPlanIid, visible, activeTab }) => {
+
   const [dateRange, setDateRange] = useState([null, null]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -26,7 +27,8 @@ const ThoiGianTab = ({ studentData, enrolmentPlanIid, visible }) => {
         end_date: dateRange[1] ? dateRange[1].endOf("day").unix() : undefined,
         submit: 1,
       }),
-    enabled: !!userIid && !!enrolmentPlanIid && !!visible,
+    enabled: !!userIid && !!enrolmentPlanIid && !!visible && activeTab === "4",
+
   });
 
   const results = trackingData?.result || [];
@@ -134,6 +136,7 @@ const ThoiGianTab = ({ studentData, enrolmentPlanIid, visible }) => {
           columns={columns}
           dataSource={results}
           loading={isLoading}
+
           rowKey="id"
           pagination={{
             total: totalRecords,
@@ -166,4 +169,5 @@ const ThoiGianTab = ({ studentData, enrolmentPlanIid, visible }) => {
   );
 };
 
-export default ThoiGianTab;
+export default React.memo(ThoiGianTab);
+

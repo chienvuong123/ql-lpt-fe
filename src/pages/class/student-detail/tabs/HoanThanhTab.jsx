@@ -44,10 +44,11 @@ const HoanThanhTab = ({ studentData }) => {
       const plParent = {
         key: "pl-gtdb-parent",
         name: "Pháp luật GTĐB",
-        score: plItems.reduce((acc, curr) => acc + curr.score, 0) / plItems.length, // Average or as per business logic
+        score: plItems.reduce((acc, curr) => acc + curr.score, 0) / plItems.length,
         passed: plItems.every(i => i.passed),
         children: plItems,
       };
+
 
       if (daoDucIndex !== -1) {
         dataSource.splice(daoDucIndex + 1, 0, plParent);
@@ -73,11 +74,15 @@ const HoanThanhTab = ({ studentData }) => {
       key: "score",
       align: "center",
       width: "20%",
-      render: (score) => (
-        <span className={`font-medium ${score >= 10 ? "text-orange-500" : "text-orange-400"}`}>
-          {score}
-        </span>
-      ),
+      render: (score) => {
+        const formattedScore = typeof score === 'number' ? Math.floor(score * 10) / 10 : score;
+        return (
+          <span className={`font-medium ${score >= 10 ? "text-orange-500" : "text-orange-400"}`}>
+            {formattedScore}
+          </span>
+        );
+      },
+
     },
   ];
 
@@ -126,4 +131,5 @@ const HoanThanhTab = ({ studentData }) => {
   );
 };
 
-export default HoanThanhTab;
+export default React.memo(HoanThanhTab);
+

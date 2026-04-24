@@ -6,7 +6,8 @@ import { getCameraSnapshot, getTimeTrackingLog } from "../../../../apis/apiLyThu
 
 const { Text, Title } = Typography;
 
-const MinhChungTab = ({ studentData, enrolmentPlanIid, visible }) => {
+const MinhChungTab = ({ studentData, enrolmentPlanIid, visible, activeTab }) => {
+
   const scrollRef = useRef(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -20,7 +21,8 @@ const MinhChungTab = ({ studentData, enrolmentPlanIid, visible }) => {
         ep_iid: enrolmentPlanIid,
         submit: 1,
       }),
-    enabled: !!studentData?.user?.iid && !!enrolmentPlanIid && !!visible,
+    enabled: !!studentData?.user?.iid && !!enrolmentPlanIid && !!visible && activeTab === "3",
+
   });
 
   const snapshots = photoData?.result?.snapshots || [];
@@ -36,7 +38,7 @@ const MinhChungTab = ({ studentData, enrolmentPlanIid, visible }) => {
         items_per_page: pageSize,
         submit: 1,
       }),
-    enabled: !!studentData?.user?.iid && !!enrolmentPlanIid && !!visible,
+    enabled: !!studentData?.user?.iid && !!enrolmentPlanIid && !!visible && activeTab === "3",
   });
 
   const logs = logData?.result || [];
@@ -126,6 +128,7 @@ const MinhChungTab = ({ studentData, enrolmentPlanIid, visible }) => {
       </div>
     );
   }
+
 
   return (
     <div className="flex flex-col gap-8 py-4 pr-1">
@@ -227,4 +230,5 @@ const MinhChungTab = ({ studentData, enrolmentPlanIid, visible }) => {
   );
 };
 
-export default MinhChungTab;
+export default React.memo(MinhChungTab);
+

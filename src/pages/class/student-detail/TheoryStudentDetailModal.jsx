@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle, useDeferredValue } from "react";
+
 
 
 import { Modal, Tabs, Image, Typography } from "antd";
@@ -16,7 +17,9 @@ const TheoryStudentDetailModal = React.memo(forwardRef(({ onClose, enrolmentPlan
   const [visible, setVisible] = useState(false);
   const [studentData, setStudentData] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
+  const deferredActiveTab = useDeferredValue(activeTab);
   const contentRef = useRef(null);
+
 
   useImperativeHandle(ref, () => ({
     open: (data) => {
@@ -71,17 +74,17 @@ const TheoryStudentDetailModal = React.memo(forwardRef(({ onClose, enrolmentPlan
     {
       key: "1",
       label: "Hoàn thành",
-      children: <HoanThanhTab studentData={studentData} />,
+      children: <HoanThanhTab studentData={studentData} activeTab={deferredActiveTab} />,
     },
     {
       key: "2",
       label: "Tiến độ hoàn thành",
-      children: <TienDoTab studentData={studentData} enrolmentPlanIid={enrolmentPlanIid} visible={visible} />,
+      children: <TienDoTab studentData={studentData} enrolmentPlanIid={enrolmentPlanIid} visible={visible} activeTab={deferredActiveTab} />,
     },
     {
       key: "3",
       label: "Minh chứng học tập",
-      children: <MinhChungTab studentData={studentData} enrolmentPlanIid={enrolmentPlanIid} visible={visible} />,
+      children: <MinhChungTab studentData={studentData} enrolmentPlanIid={enrolmentPlanIid} visible={visible} activeTab={deferredActiveTab} />,
     },
     {
       key: "4",
@@ -91,10 +94,12 @@ const TheoryStudentDetailModal = React.memo(forwardRef(({ onClose, enrolmentPlan
           studentData={studentData}
           enrolmentPlanIid={enrolmentPlanIid}
           visible={visible}
+          activeTab={deferredActiveTab}
         />
       ),
     },
-  ], [studentData, enrolmentPlanIid, visible]);
+  ], [studentData, enrolmentPlanIid, visible, deferredActiveTab]);
+
 
   if (!visible && !studentData) return null;
 
