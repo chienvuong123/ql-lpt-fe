@@ -97,6 +97,14 @@ const ThoiGianTab = ({ studentData, enrolmentPlanIid, visible, activeTab }) => {
     },
   ];
 
+  if (isLoading || trackingData === undefined) {
+    return (
+      <div className="flex justify-center items-center h-[500px]">
+        <Spin size="small" tip="Đang tải dữ liệu thời gian học..." />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 py-4">
       {/* 1. Summary Label */}

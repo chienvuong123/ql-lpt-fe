@@ -113,6 +113,7 @@ const TheoryStudentDetailModal = React.memo(forwardRef(({ onClose, enrolmentPlan
       styles={{
         body: {
           maxHeight: 'calc(95vh - 90px)',
+          minHeight: 'calc(95vh - 90px)',
           overflowY: 'auto',
           marginRight: '-24px',
           padding: '16px',

@@ -151,15 +151,16 @@ const TienDoTab = ({ studentData, enrolmentPlanIid, visible, activeTab }) => {
   ];
 
 
-  const isInitiallyLoading = courseListQuery.isLoading;
+  const isLoading = courseListQuery.isLoading || courseListQuery.isFetching;
 
-  if (isInitiallyLoading) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center py-20">
+      <div className="flex justify-center items-center h-[500px]">
         <Spin size="small" tip="Đang tải danh sách môn học..." />
       </div>
     );
   }
+
 
 
   return (
