@@ -59,6 +59,67 @@ const secondsToHourMinute = (seconds) => {
   return `${hours}h${minutes}p`;
 };
 
+const getStudentCode = (record) =>
+  String(
+    record?.ma_dk ||
+    record?.user?.admission_code ||
+    record?.user?.code ||
+    record?.id ||
+    "",
+  );
+
+const getRowKey = (record) =>
+  String(record?.user?.iid || record?.ma_dk || record?.id || "");
+
+const isPassAllLyThuyet = (record) => {
+  const scoreByRubrik = record?.learning?.score_by_rubrik;
+  if (!Array.isArray(scoreByRubrik) || scoreByRubrik.length === 0) {
+    return Boolean(record?.learning?.passed);
+  }
+  return scoreByRubrik.every((item) => Number(item?.passed) !== 0);
+};
+
+const parseGhiChu = (value) => {
+  if (value === null || value === undefined) return "";
+  if (typeof value !== "string") return String(value);
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (typeof parsed?.note === "string") return parsed.note;
+    return "";
+  } catch {
+    return value;
+  }
+};
+
+const getCompletionStats = (record) => {
+  if (!record) return { soMonDat: 0, tongSoMon: 0, phanTramHoanThanh: 0 };
+  const scoreByRubrik = record?.learning?.learning_progress || [];
+
+  const monHoc = scoreByRubrik.filter((mon) => {
+    const tenMon = String(mon?.name || "");
+    return (
+      !tenMon.includes("Bảng tổng hợp") &&
+      !tenMon.includes("Điểm kiểm tra tổng hợp") &&
+      !tenMon.includes("Tổng thời gian học")
+    );
+  });
+
+  const tongSoMon = monHoc.length;
+  const soMonDat = monHoc.filter((mon) => Number(mon?.passed) === 1).length;
+  const phanTramHoanThanh =
+    tongSoMon > 0 ? Math.round((soMonDat / tongSoMon) * 100) : 0;
+
+  return {
+    soMonDat,
+    tongSoMon,
+    phanTramHoanThanh,
+  };
+};
+
+
 const getRubricResult = (record, targetName) => {
   const rubricList = record?.learning?.score_by_rubrik || record?.learning || [];
   if (!Array.isArray(rubricList)) return { score: 0, passed: false };
@@ -75,7 +136,7 @@ const getRubricResult = (record, targetName) => {
   };
 };
 
-const ProgressCell = ({ result }) => {
+const ProgressCell = React.memo(({ result }) => {
   const { score, passed } = result;
   return (
     <div className="flex flex-col items-center justify-center gap-1 py-1">
@@ -91,7 +152,75 @@ const ProgressCell = ({ result }) => {
       </span>
     </div>
   );
-};
+});
+
+const UserCell = React.memo(({ user, suffixName }) => (
+  <div className="flex items-center gap-2">
+    <img
+      src={user?.avatar || user?.default_avatar}
+      className="!h-10 !w-10 rounded-lg object-cover"
+      alt="av"
+      loading="lazy"
+      onError={(e) => {
+        e.target.onerror = null;
+        e.target.src = user?.default_avatar;
+      }}
+    />
+    <div className="flex flex-col">
+      <span className="font-bold text-gray-600 text-sm">
+        {user?.name || "-"}
+      </span>
+      <span className="text-xs text-gray-500">
+        {suffixName}
+      </span>
+    </div>
+  </div>
+));
+
+const QualifiedCell = React.memo(({ isQualified }) => (
+  <div className="flex items-center justify-center">
+    {isQualified ? (
+      <BsCheck className="!text-blue-500 text-2xl" />
+    ) : (
+      <CloseCircleFilled className="!text-red-500 text-base" />
+    )}
+  </div>
+));
+
+const ExamCell = React.memo(({ checked, isSaving, onToggle }) => (
+  <div className="flex items-center justify-center">
+    <Spin spinning={isSaving} size="small">
+      <Checkbox
+        checked={checked}
+        disabled={isSaving}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => onToggle(e.target.checked)}
+      />
+    </Spin>
+  </div>
+));
+
+const NoteCell = React.memo(({ maDk, ghiChu, disabled, onBlur }) => (
+  <Input
+    key={`${maDk}-${ghiChu}`}
+    defaultValue={ghiChu}
+    disabled={disabled}
+    onClick={(e) => e.stopPropagation()}
+    onBlur={(e) => onBlur(e.target.value)}
+  />
+));
+
+const ActionCell = React.memo(({ onOpenDetail }) => (
+  <Button
+    type="text"
+    icon={<EyeOutlined className="text-blue-500 text-lg" />}
+    onClick={(e) => {
+      e.stopPropagation();
+      onOpenDetail();
+    }}
+  />
+));
+
 
 const QuanLyHocVienLyThuyet = () => {
   const [selectedClassIid, setSelectedClassIid] = useState("");
@@ -191,64 +320,7 @@ const QuanLyHocVienLyThuyet = () => {
 
   const totalSelectableStudents = totalStudents || students.length;
 
-  const getStudentCode = (record) =>
-    String(
-      record?.ma_dk ||
-      record?.user?.admission_code ||
-      record?.user?.code ||
-      record?.id ||
-      "",
-    );
 
-  const getRowKey = (record) =>
-    String(record?.user?.iid || record?.ma_dk || record?.id || "");
-
-  const isPassAllLyThuyet = (record) => {
-    const scoreByRubrik = record?.learning?.score_by_rubrik;
-    if (!Array.isArray(scoreByRubrik) || scoreByRubrik.length === 0) {
-      return Boolean(record?.learning?.passed);
-    }
-    return scoreByRubrik.every((item) => Number(item?.passed) !== 0);
-  };
-
-  const parseGhiChu = (value) => {
-    if (value === null || value === undefined) return "";
-    if (typeof value !== "string") return String(value);
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (typeof parsed?.note === "string") return parsed.note;
-      return "";
-    } catch {
-      return value;
-    }
-  };
-
-  const getCompletionStats = (record) => {
-    const scoreByRubrik = record?.learning?.learning_progress || [];
-
-    const monHoc = scoreByRubrik.filter((mon) => {
-      const tenMon = String(mon?.name || "");
-      return (
-        !tenMon.includes("Bảng tổng hợp") &&
-        !tenMon.includes("Điểm kiểm tra tổng hợp") &&
-        !tenMon.includes("Tổng thời gian học")
-      );
-    });
-
-    const tongSoMon = monHoc.length;
-    const soMonDat = monHoc.filter((mon) => Number(mon?.passed) === 1).length;
-    const phanTramHoanThanh =
-      tongSoMon > 0 ? Math.round((soMonDat / tongSoMon) * 100) : 0;
-
-    return {
-      soMonDat,
-      tongSoMon,
-      phanTramHoanThanh,
-    };
-  };
 
   const buildStudentDetailData = (record) => ({
     ...record,
@@ -659,7 +731,7 @@ const QuanLyHocVienLyThuyet = () => {
     selectedRowKeys.length > 0 &&
     selectedRowKeys.length < totalSelectableStudents;
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: (
         <Checkbox
@@ -696,25 +768,7 @@ const QuanLyHocVienLyThuyet = () => {
       width: 300,
       fixed: "left",
       render: (user) => (
-        <div className="flex items-center gap-2">
-          <Image
-            src={user?.avatar || user?.default_avatar}
-            className="!h-10 !w-10 rounded-lg"
-            alt="av"
-          />
-          <div className="flex flex-col">
-            <span className="font-bold text-gray-600 text-sm">
-              {user?.name || "-"}
-            </span>
-            <Text
-              className="text-xs text-gray-500"
-            // copyable={user?.code ? { text: user.code } : false}
-            >
-              {/* {user?.code || "-"} */}
-              {selectedClass?.suffix_name}
-            </Text>
-          </div>
-        </div>
+        <UserCell user={user} suffixName={selectedClass?.suffix_name} />
       ),
     },
     {
@@ -797,15 +851,7 @@ const QuanLyHocVienLyThuyet = () => {
       align: "center",
       render: (_, record) => {
         const isQualified = resolveCheckState(record).lyThuyetDat;
-        return (
-          <div className="flex items-center justify-center">
-            {isQualified ? (
-              <BsCheck className="!text-blue-500 text-2xl" />
-            ) : (
-              <CloseCircleFilled className="!text-red-500 text-base" />
-            )}
-          </div>
-        );
+        return <QualifiedCell isQualified={isQualified} />;
       },
     },
     {
@@ -819,16 +865,11 @@ const QuanLyHocVienLyThuyet = () => {
         const isSaving = savingStudentCode === studentCode;
 
         return (
-          <Spin spinning={isSaving} size="small">
-            <Checkbox
-              checked={checked}
-              disabled={isSaving}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) =>
-                handleToggleCheckbox(record, "loai_het_mon", e.target.checked)
-              }
-            />
-          </Spin>
+          <ExamCell
+            checked={checked}
+            isSaving={isSaving}
+            onToggle={(val) => handleToggleCheckbox(record, "loai_het_mon", val)}
+          />
         );
       },
     },
@@ -878,12 +919,11 @@ const QuanLyHocVienLyThuyet = () => {
         const state = resolveCheckState(record);
         const maDk = getStudentCode(record);
         return (
-          <Input
-            key={`${maDk}-${state.ghiChu}`}
-            defaultValue={state.ghiChu}
+          <NoteCell
+            maDk={maDk}
+            ghiChu={state.ghiChu}
             disabled={savingStudentCode === maDk}
-            onClick={(e) => e.stopPropagation()}
-            onBlur={(e) => handleBlurGhiChu(record, e.target.value)}
+            onBlur={(val) => handleBlurGhiChu(record, val)}
           />
         );
       },
@@ -895,17 +935,20 @@ const QuanLyHocVienLyThuyet = () => {
       align: "center",
       fixed: "right",
       render: (_, record) => (
-        <Button
-          type="text"
-          icon={<EyeOutlined className="text-blue-500 text-lg" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenTheoryDetail(record);
-          }}
-        />
+        <ActionCell onOpenDetail={() => handleOpenTheoryDetail(record)} />
       ),
     },
-  ];
+  ], [
+    isAllSelected,
+    isIndeterminate,
+    isSubmittingAll,
+    isLoadingHocVien,
+    isSelectingAllPages,
+    selectedRowKeys,
+    savingStudentCode,
+    selectedClass,
+  ]);
+
 
   return (
     <Spin spinning={isLoadingHocVien || isLoadingKhoaHoc}>
