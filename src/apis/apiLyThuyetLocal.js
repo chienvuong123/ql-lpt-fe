@@ -1,5 +1,4 @@
 import axios from "axios";
-import Papa from "papaparse";
 import { baseURL } from "../constants/base";
 
 const url = `${baseURL}/ly-thuyet`;
