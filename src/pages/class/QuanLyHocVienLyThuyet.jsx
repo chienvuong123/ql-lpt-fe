@@ -158,7 +158,7 @@ const UserCell = React.memo(({ user, suffixName, onClick }) => (
   <div className="flex items-center gap-2">
     <img
       src={user?.avatar || user?.default_avatar}
-      className="!h-10 !w-10 rounded-lg object-cover"
+      className="!h-10 !w-10 rounded-lg"
       alt="av"
       loading="lazy"
       onError={(e) => {

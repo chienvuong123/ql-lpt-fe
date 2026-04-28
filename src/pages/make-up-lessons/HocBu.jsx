@@ -11,7 +11,7 @@ import {
     Tag,
     Space,
 } from "antd";
-import { EyeOutlined } from "@ant-design/icons";
+import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { getDanhSachHocVienHocBu } from "../../apis/apiHocbu";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
@@ -114,7 +114,7 @@ const HocBu = () => {
                             src={value.anh}
                             width={40}
                             height={40}
-                            className="rounded-lg object-cover"
+                            className="rounded-md"
                             fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
                         />
                         <div className="flex flex-col">
@@ -236,13 +236,21 @@ const HocBu = () => {
             width: 80,
             align: "center",
             render: (_, record) => (
-                <Button
-                    type="primary"
-                    className="!bg-[#3366cc]"
-                    icon={<EyeOutlined />}
-                    size="small"
-                    onClick={() => handleOpenDetail(record)}
-                />
+                <Space>
+                    <Button
+                        type="primary"
+                        className="!bg-[#3366cc]"
+                        icon={<EyeOutlined />}
+                        size="small"
+                        onClick={() => handleOpenDetail(record)}
+                    />
+                    <Button
+                        type="primary"
+                        className="!bg-[#52c41a]"
+                        icon={<PlusOutlined />}
+                        size="small"
+                    />
+                </Space>
             ),
         },
     ];

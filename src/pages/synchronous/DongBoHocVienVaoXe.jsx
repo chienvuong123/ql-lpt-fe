@@ -167,7 +167,7 @@ export default function DongBoHocVienVaoXe() {
       {
         title: "Mã học viên",
         dataIndex: "MaDK",
-        width: 100,
+        width: 150,
         ellipsis: true,
       },
       {
@@ -180,7 +180,7 @@ export default function DongBoHocVienVaoXe() {
       {
         title: "Số CCCD",
         dataIndex: "SoCMT",
-        width: 90,
+        width: 80,
         ellipsis: true,
       },
     ],
@@ -209,6 +209,11 @@ export default function DongBoHocVienVaoXe() {
           );
           return loaiXe ? loaiXe.Ten : "";
         },
+      },
+      {
+        title: "Trạng thái",
+        // dataIndex: "IMEI",
+        width: 140,
       },
     ],
     [carLoaiXeList],
@@ -302,13 +307,16 @@ export default function DongBoHocVienVaoXe() {
     const hide = message.loading("Đang xử lý dữ liệu...", 0);
 
     try {
-      await DanhSachXe({
+      const payload = {
         dsBienSo: selectedCarKeys.join(","),
-        dsMaDk: isAllStudentsSelected
-          ? undefined
-          : selectedStudentKeys.join(","),
         idkhoahoc: selectedKhoaHoc,
-      });
+      };
+
+      if (!isAllStudentsSelected) {
+        payload.dsMaDk = selectedStudentKeys.join(",");
+      }
+
+      await DanhSachXe(payload);
 
       if (selectedTeacherKeys.length > 0) {
         await DanhSachXe({
@@ -338,8 +346,7 @@ export default function DongBoHocVienVaoXe() {
           : selectedCarKeys.join(", ");
 
       message.success(
-        `Đồng bộ học viên ${studentLabel}${
-          teacherLabel ? `, giáo viên ${teacherLabel}` : ""
+        `Đồng bộ học viên ${studentLabel}${teacherLabel ? `, giáo viên ${teacherLabel}` : ""
         } vào xe ${carLabel} thành công!`,
         3,
       );
@@ -459,6 +466,7 @@ export default function DongBoHocVienVaoXe() {
               rowSelection={{
                 selectedRowKeys: selectedStudentKeys,
                 onChange: (keys) => setSelectedStudentKeys(keys),
+                hideSelectAll: true,
               }}
               locale={{
                 emptyText: (
@@ -523,6 +531,7 @@ export default function DongBoHocVienVaoXe() {
               rowSelection={{
                 selectedRowKeys: selectedCarKeys,
                 onChange: (keys) => setSelectedCarKeys(keys),
+                hideSelectAll: true,
               }}
               locale={{
                 emptyText: (
