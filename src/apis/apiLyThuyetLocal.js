@@ -67,3 +67,8 @@ export const getDetailLearningTime = async (params = {}) => {
   const response = await axios.post(`${baseURL}/student-detail/detail-learning-time`, params);
   return response.data;
 }
+
+export const getChiTietHocVienLyThuyet = async (enrolmentPlanIid, studentId) => {
+  const response = await axios.get(`${url}/hoc-vien/${enrolmentPlanIid}/chi-tiet/${studentId}`);
+  return response.data;
+};

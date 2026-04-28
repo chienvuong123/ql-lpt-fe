@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
     Drawer,
     Tabs,
@@ -10,41 +10,110 @@ import {
     Space,
     Divider,
     Button,
+    Spin,
 } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getRankCabinLesson, formatSecondsToTime } from "../../util/helper";
+import { useQuery } from "@tanstack/react-query";
+import { getChiTietHocVienLyThuyet } from "../../apis/apiLyThuyetLocal";
+import {
+    computeSummary as computeSummaryHangLoat,
+    evaluate as evaluateHangLoat,
+} from "../checks/DieuKienKiemTra";
 
 const { Text, Title } = Typography;
 
-const TheoryTab = ({ data }) => {
-    if (!data) return <Empty description="Chưa có dữ liệu lý thuyết" />;
+const TheoryTab = ({ data, studentId, enrolmentPlanIid }) => {
+    console.log("studentId", studentId);
+    console.log("enrolmentPlanIid", enrolmentPlanIid);
+    const { data: theoryDetail, isLoading } = useQuery({
+        queryKey: ["chiTietHocVienLyThuyet", enrolmentPlanIid, studentId],
+        queryFn: () => getChiTietHocVienLyThuyet(enrolmentPlanIid, studentId),
+        enabled: !!studentId && !!enrolmentPlanIid,
+    });
+
+    const progressData = theoryDetail?.data?.learning_progress || theoryDetail?.learning_progress;
+
+    if (!data && !progressData && !isLoading) return <Empty description="Chưa có dữ liệu lý thuyết" />;
+
+    const columns = [
+        {
+            title: "#",
+            width: 50,
+            align: "center",
+            render: (_, __, i) => i + 1
+        },
+        {
+            title: "Tên bài",
+            dataIndex: "name",
+            key: "name",
+        },
+        {
+            title: "Điểm",
+            dataIndex: "score",
+            key: "score",
+            width: 100,
+            align: "center",
+            render: (v) => <span className="font-medium">{v}</span>
+        },
+        {
+            title: "Trạng thái",
+            key: "status",
+            width: 120,
+            align: "center",
+            render: (_, record) => {
+                const isPass = record.passed === 1;
+                return (
+                    <Tag
+                        color={isPass ? "green" : "red"}
+                        className="m-0"
+                        icon={isPass ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                    >
+                        <span className="font-medium">{isPass ? "Đạt" : "Không đạt"}</span>
+                    </Tag>
+                );
+            }
+        }
+    ];
 
     return (
-        <div className="p-4 bg-white border rounded-lg">
-            <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
-                        <span className="text-gray-600">Đủ điều kiện dự thi lý thuyết:</span>
-                        <Tag color={data.loai_ly_thuyet ? "green" : "red"} className="m-0">
-                            {data.loai_ly_thuyet ? "ĐẠT" : "CHƯA ĐẠT"}
-                        </Tag>
+        <Spin spinning={isLoading}>
+            <div className="space-y-4">
+                {progressData && (
+                    <div className="bg-gray-50 p-4 rounded-lg flex justify-between items-center border border-gray-200">
+                        <div>
+                            <span className="text-gray-600">Lý thuyết online:</span>
+                            <span className="ml-2 font-bold">
+                                {progressData.passed === 1 ? "Đạt" : "Không đạt"}
+                            </span>
+                        </div>
+                        <div>
+                            <span className="text-gray-600">Làm bài hết môn:</span>
+                            <span className="ml-2 font-bold">
+                                {progressData.learned ? "Đã làm" : "Chưa làm"}
+                            </span>
+                        </div>
+                        <div>
+                            <span className="text-gray-600">Tiến độ:</span>
+                            <span className="ml-2 font-bold">{progressData.progress}%</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
-                        <span className="text-gray-600">Trạng thái thi hết môn:</span>
-                        <Tag color={data.loai_het_mon ? "green" : "red"} className="m-0">
-                            {data.loai_het_mon ? "ĐÃ HOÀN THÀNH" : "CHƯA HOÀN THÀNH"}
-                        </Tag>
-                    </div>
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-gray-500 text-xs uppercase font-semibold mb-1">Ghi chú lý thuyết</span>
-                    <div className="flex-1 p-3 bg-blue-50 border border-blue-100 rounded text-blue-800">
-                        {data.ghi_chu || "Chưa có ghi chú chi tiết."}
-                    </div>
-                </div>
+                )}
+
+                {progressData?.score_by_rubrik && (
+                    <Table
+                        dataSource={progressData.score_by_rubrik.filter(item => item.name !== "Pháp luật GTĐB")}
+                        columns={columns}
+                        rowKey="iid"
+                        pagination={false}
+                        size="small"
+                        bordered
+                        className="table-blue-header"
+                    />
+                )}
             </div>
-        </div>
+        </Spin>
     );
 };
 
@@ -129,11 +198,35 @@ const CabinTab = ({ data }) => {
     );
 };
 
-const DatTab = ({ data }) => {
+const DatTab = ({ data, student }) => {
     if (!data) return <Empty description="Chưa có dữ liệu DAT" />;
 
     const sessions = data.datDetails?.sessions || [];
     const summary = data.datDetails?.summary || {};
+
+    const mappedSessions = useMemo(() => {
+        return sessions.map(s => ({
+            ThoiDiemDangNhap: s.gio_vao,
+            ThoiDiemDangXuat: s.gio_ra,
+            TongThoiGian: Number(s.thoi_gian || 0),
+            TongQuangDuong: Number(s.tong_km || 0),
+            BienSo: s.bien_so_xe,
+            HoTenGV: s.ho_ten_gv,
+            HangDaoTao: student?.HangDaoTao || student?.hang_dao_tao || data?.hang_dao_tao || "B1",
+        }));
+    }, [sessions, student, data]);
+
+    const summaryData = useMemo(() => {
+        return computeSummaryHangLoat(mappedSessions, student?.HangDaoTao || student?.hang_dao_tao || "B1", null);
+    }, [mappedSessions, student]);
+
+    const evaluationData = useMemo(() => {
+        if (mappedSessions.length === 0) return { status: "fail", errors: [], warnings: [] };
+        return evaluateHangLoat(summaryData, mappedSessions, [], null);
+    }, [summaryData, mappedSessions]);
+
+    const allIssues = [...(evaluationData.warnings || []), ...(evaluationData.errors || [])];
+    const isPass = evaluationData.status === "pass";
 
     const columns = [
         {
@@ -144,18 +237,18 @@ const DatTab = ({ data }) => {
         },
         {
             title: "Ngày đào tạo",
-            dataIndex: "ThoiDiemDangNhap",
+            dataIndex: "gio_vao",
             width: 100,
             align: "center",
-            render: (v) => dayjs(v).format("DD/MM/YYYY")
+            render: (v) => v ? dayjs(v).format("DD/MM/YYYY") : "-"
         },
         {
             title: "Phiên học",
             width: 110,
             align: "center",
             render: (_, record) => {
-                const start = dayjs(record.ThoiDiemDangNhap).format("HH:mm");
-                const end = dayjs(record.ThoiDiemDangXuat).format("HH:mm");
+                const start = record.gio_vao ? dayjs(record.gio_vao).format("HH:mm") : "-";
+                const end = record.gio_ra ? dayjs(record.gio_ra).format("HH:mm") : "-";
                 return `${start} - ${end}`;
             }
         },
@@ -212,30 +305,33 @@ const DatTab = ({ data }) => {
                 bordered
                 className="table-blue-header"
                 rowClassName={(record) => {
-                    const hour = dayjs(record.ThoiDiemDangNhap).hour();
+                    if (!record.gio_vao) return "";
+                    const hour = dayjs(record.gio_vao).hour();
                     if (hour >= 18) return "!bg-gray-50 hover:!bg-gray-100 transition-colors cursor-default";
                     return "";
                 }}
             />
 
-            <div className={`p-4 rounded-lg border ${summary.evaluationStatus === "pass" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+            <div className={`p-4 rounded-lg border ${isPass ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
                 <div className="flex items-center gap-2 mb-3">
                     <span className="font-bold">Kết quả đánh giá:</span>
-                    <Tag color={summary.evaluationStatus === "pass" ? "success" : "error"} icon={summary.evaluationStatus === "pass" ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
-                        {summary.evaluationStatus === "pass" ? "Đạt" : "Chưa đạt"}
+                    <Tag color={isPass ? "success" : "error"} icon={isPass ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
+                        {isPass ? "Đạt" : "Chưa đạt"}
                     </Tag>
                 </div>
 
-                {summary.errors?.length > 0 && (
+                {allIssues.length > 0 && (
                     <div className="space-y-2">
-                        <p className="font-semibold text-red-700 m-0">Lý do chưa đạt:</p>
-                        <ul className="list-disc pl-5 text-red-600 space-y-1">
-                            {summary.errors.map((error, idx) => (
-                                <li key={idx}>
+                        <p className="font-semibold text-gray-700 m-0">Lý do:</p>
+                        <ul className="list-none p-0 m-0 space-y-2">
+                            {allIssues.map((issue, idx) => (
+                                <li key={idx} className={issue.type === "error" ? "text-red-700" : "text-orange-600"}>
                                     <Space>
-                                        <WarningOutlined />
-                                        <span className="font-medium">{error.label}:</span>
-                                        {error.message}
+                                        {issue.type === "warning" ? <WarningOutlined /> : <CloseCircleOutlined />}
+                                        <span className="font-medium">
+                                            {issue.type === "warning" && "Cảnh báo: "}
+                                            {issue.message}
+                                        </span>
                                     </Space>
                                 </li>
                             ))}
@@ -250,6 +346,7 @@ const DatTab = ({ data }) => {
 const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
     const studentName = student?.ho_ten || "Học viên";
     const studentId = student?.ma_dk || "";
+    const enrolmentPlanIid = student?.ma_khoa || "";
 
     const infoItems = [
         { label: "Mã", value: studentId || "-" },
@@ -264,7 +361,7 @@ const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
         {
             key: "theory",
             label: "Lý thuyết",
-            children: <TheoryTab data={student?.detail?.theoryInfo} />,
+            children: <TheoryTab data={student?.detail?.theoryInfo} studentId={studentId} enrolmentPlanIid={enrolmentPlanIid} />,
         },
         {
             key: "cabin",
@@ -274,7 +371,7 @@ const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
         {
             key: "dat",
             label: "DAT",
-            children: <DatTab data={student?.detail?.datInfo} />,
+            children: <DatTab data={student?.detail?.datInfo} student={student} />,
         },
     ];
 
