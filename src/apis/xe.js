@@ -21,3 +21,11 @@ export const DanhSachLoaiXe = async () => {
     url: "/loaixe",
   });
 };
+
+
+export const DanhSachXeOnline = async () => {
+  return apiClient({
+    method: "get",
+    url: "/XeOnline",
+  });
+};

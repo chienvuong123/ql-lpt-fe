@@ -43,3 +43,8 @@ export const getTienDoDaoTaoByMaHocVienSql = async (params = {}) => {
     const response = await axios.get(`${baseURL}/tien-do-dao-tao`, { params });
     return response.data
 };
+
+export const getHocVienByMaKhoaSql = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/sync/students`, { params });
+    return response.data;
+};

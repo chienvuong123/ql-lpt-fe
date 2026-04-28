@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, Input, Button, Table, Row, Col, message, Select } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { DanhSachGiaoVien } from "../../apis/giaoVien";
-import { DanhSachHocVien, DanhSachKhoaHoc } from "../../apis/hocVien";
-import { DanhSachLoaiXe, DanhSachXe } from "../../apis/xe";
+import { DanhSachKhoaHoc } from "../../apis/hocVien";
+import { getHocVienByMaKhoaSql } from "../../apis/apiSynch";
+import { DanhSachLoaiXe, DanhSachXe, DanhSachXeOnline } from "../../apis/xe";
 
 message.config({
   top: 100,
@@ -17,6 +18,9 @@ export default function DongBoHocVienVaoXe() {
   const [searchText, setSearchText] = useState("");
   const [searchCar, setSearchCar] = useState("");
   const [debouncedSearchCar, setDebouncedSearchCar] = useState(searchCar);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const debounceTeacherTimer = useRef(null);
+  const hasInitializedCourse = useRef(false);
   const [selectedStudentKeys, setSelectedStudentKeys] = useState([]);
   const [selectedTeacherKeys, setSelectedTeacherKeys] = useState([]);
   const [selectedCarKeys, setSelectedCarKeys] = useState([]);
@@ -32,6 +36,24 @@ export default function DongBoHocVienVaoXe() {
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
+
+  const { data: dataOnline = {} } = useQuery({
+    queryKey: ["danhSachXeOnline"],
+    queryFn: () => DanhSachXeOnline(),
+    refetchInterval: 30000,
+    retry: false,
+  });
+
+  const onlineMap = useMemo(() => {
+    const list = dataOnline?.data?.XeOnlines || [];
+    const map = {};
+    list.forEach(item => {
+      if (item.BienSo) {
+        map[item.BienSo.toLowerCase()] = item.IsOnline;
+      }
+    });
+    return map;
+  }, [dataOnline]);
 
   const { data: dataLoaiXe = {} } = useQuery({
     queryKey: ["danhSachLoaiXe"],
@@ -50,22 +72,21 @@ export default function DongBoHocVienVaoXe() {
   const { data: dataStudents = {}, isLoading: isLoadingStudents } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
     queryFn: () =>
-      DanhSachHocVien({
-        page: 1,
-        limit: 20,
-        soCmt: searchParams.soCmt || undefined,
-        idkhoahoc: searchParams.idkhoahoc || undefined,
+      getHocVienByMaKhoaSql({
+        search: searchParams.ho_ten || undefined,
+        ma_khoa: searchParams.ma_khoa || undefined,
       }),
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
   const { data: dataTeachers = {}, isLoading: isLoadingTeachers } = useQuery({
-    queryKey: ["danhSachGiaoVien"],
+    queryKey: ["danhSachGiaoVien", teacherSearch],
     queryFn: () =>
       DanhSachGiaoVien({
         page: 1,
-        limit: 1000,
+        limit: 20,
+        soCmt: teacherSearch || undefined,
       }),
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -85,10 +106,29 @@ export default function DongBoHocVienVaoXe() {
       : [];
 
     return courses.map((course) => ({
-      value: course.ID,
+      value: course.MaKhoaHoc,
       label: course.Ten,
+      id: course.ID,
     }));
   }, [resultsCourse]);
+
+  useEffect(() => {
+    if (khoaHocOptions.length > 0 && !hasInitializedCourse.current) {
+      hasInitializedCourse.current = true;
+      const firstOption = khoaHocOptions[0];
+      setSelectedKhoaHoc(firstOption.value);
+
+      setSearchParams((prev) => {
+        if (!prev.ma_khoa && !prev.ho_ten) {
+          return {
+            ...prev,
+            ma_khoa: firstOption.value,
+          };
+        }
+        return prev;
+      });
+    }
+  }, [khoaHocOptions]);
 
   const teacherData = useMemo(
     () =>
@@ -117,11 +157,20 @@ export default function DongBoHocVienVaoXe() {
     [dataLoaiXe],
   );
 
-  const studentData = useMemo(
-    () =>
-      Array.isArray(dataStudents?.data?.Data) ? dataStudents.data.Data : [],
-    [dataStudents],
-  );
+  const studentData = useMemo(() => {
+    const list = Array.isArray(dataStudents?.data)
+      ? dataStudents.data
+      : Array.isArray(dataStudents?.data?.Data)
+        ? dataStudents.data.Data
+        : [];
+
+    return list.map(item => ({
+      ...item,
+      MaDK: item.ma_dk || item.MaDK,
+      HoTen: item.ho_ten || item.HoTen,
+      SoCMT: item.cccd || item.SoCMT,
+    }));
+  }, [dataStudents]);
 
   const carList = useMemo(
     () => (Array.isArray(dataCart?.data?.Data) ? dataCart.data.Data : []),
@@ -193,16 +242,19 @@ export default function DongBoHocVienVaoXe() {
         title: "Biển số",
         dataIndex: "BienSo",
         width: 100,
+        align: "center",
       },
       {
         title: "Số IMEI",
         dataIndex: "IMEI",
         width: 140,
+        align: "center",
       },
       {
         title: "Loại xe",
         dataIndex: "IDLoaiXe",
         width: 70,
+        align: "center",
         render: (idLoaiXe) => {
           const loaiXe = carLoaiXeList.find(
             (item) => String(item.ID) === String(idLoaiXe),
@@ -212,11 +264,25 @@ export default function DongBoHocVienVaoXe() {
       },
       {
         title: "Trạng thái",
-        // dataIndex: "IMEI",
+        key: "TrangThai",
         width: 140,
+        align: "center",
+        render: (_, record) => {
+          const isOnline = onlineMap[record.BienSo?.toLowerCase()];
+          return (
+            <div className="flex justify-center items-center">
+              <div
+                className={`w-4 h-4 rounded-full animate-pulse ${isOnline
+                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"
+                  : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                  }`}
+              />
+            </div>
+          );
+        },
       },
     ],
-    [carLoaiXeList],
+    [carLoaiXeList, onlineMap],
   );
 
   const handleSearch = useCallback(() => {
@@ -224,23 +290,51 @@ export default function DongBoHocVienVaoXe() {
     const next = {};
 
     if (trimmed.length >= 2) {
-      next.soCmt = trimmed;
+      next.ho_ten = trimmed;
     }
 
     if (selectedKhoaHoc) {
-      next.idkhoahoc = selectedKhoaHoc;
+      const selectedOption = khoaHocOptions.find(o => o.value === selectedKhoaHoc);
+      if (selectedOption) {
+        next.ma_khoa = selectedOption.value;
+      }
     }
 
     setSearchParams(next);
-  }, [searchText, selectedKhoaHoc]);
+  }, [searchText, selectedKhoaHoc, khoaHocOptions]);
 
   const handleSearchChange = useCallback((value) => {
     setSearchText(value);
   }, []);
 
+  const handleTeacherSearch = useCallback((value) => {
+    if (debounceTeacherTimer.current) {
+      clearTimeout(debounceTeacherTimer.current);
+    }
+
+    debounceTeacherTimer.current = setTimeout(() => {
+      setTeacherSearch(value.trim());
+    }, 500);
+  }, []);
+
   const handleKhoaHocChange = useCallback((value) => {
     setSelectedKhoaHoc(value || "");
-  }, []);
+
+    const next = {};
+    const trimmed = searchText.trim();
+    if (trimmed.length >= 2) {
+      next.ho_ten = trimmed;
+    }
+
+    if (value) {
+      const selectedOption = khoaHocOptions.find(o => o.value === value);
+      if (selectedOption) {
+        next.ma_khoa = selectedOption.value;
+      }
+    }
+
+    setSearchParams(next);
+  }, [searchText, khoaHocOptions]);
 
   const handleTeacherChange = useCallback((value) => {
     setSelectedTeacherKeys(value || []);
@@ -289,8 +383,11 @@ export default function DongBoHocVienVaoXe() {
   );
 
   const handleSubmit = async () => {
-    if (selectedStudentKeys.length === 0) {
-      message.error("Vui lòng chọn ít nhất 1 học viên!", 3);
+    const hasStudents = selectedStudentKeys.length > 0;
+    const hasTeachers = selectedTeacherKeys.length > 0;
+
+    if (!hasStudents && !hasTeachers) {
+      message.error("Vui lòng chọn ít nhất 1 học viên hoặc 1 giáo viên!", 3);
       return;
     }
 
@@ -299,34 +396,38 @@ export default function DongBoHocVienVaoXe() {
       return;
     }
 
-    if (!selectedKhoaHoc) {
+    if (hasStudents && !selectedKhoaHoc) {
       message.error("Vui lòng chọn khóa học của học viên!", 3);
       return;
     }
 
-    const hide = message.loading("Đang xử lý dữ liệu...", 0);
+    const hide = message.loading("Đang tiến hành đồng bộ...", 0);
 
     try {
-      const payload = {
-        dsBienSo: selectedCarKeys.join(","),
-        idkhoahoc: selectedKhoaHoc,
-      };
+      const dsBienSo = selectedCarKeys.join(",");
+      const apiCalls = [];
 
-      if (!isAllStudentsSelected) {
-        payload.dsMaDk = selectedStudentKeys.join(",");
+      if (hasStudents) {
+        const selectedOption = khoaHocOptions.find((k) => k.value === selectedKhoaHoc);
+        apiCalls.push(
+          DanhSachXe({
+            dsBienSo,
+            idkhoahoc: selectedOption ? selectedOption.id : selectedKhoaHoc,
+            dsMaDk: isAllStudentsSelected ? "" : selectedStudentKeys.join(","),
+          })
+        );
       }
 
-      await DanhSachXe(payload);
-
-      if (selectedTeacherKeys.length > 0) {
-        await DanhSachXe({
-          dsBienSo: selectedCarKeys.join(","),
-          dsMaGV:
-            selectedTeacherKeys.length > 0
-              ? selectedTeacherKeys.join(",")
-              : undefined,
-        });
+      if (hasTeachers) {
+        apiCalls.push(
+          DanhSachXe({
+            dsBienSo,
+            dsMaGV: selectedTeacherKeys.join(","),
+          })
+        );
       }
+
+      await Promise.all(apiCalls);
 
       const khoaHocName =
         khoaHocOptions.find((k) => k.value === selectedKhoaHoc)?.label || "";
@@ -336,20 +437,27 @@ export default function DongBoHocVienVaoXe() {
         : selectedStudentNames.length > 0
           ? selectedStudentNames.join(", ")
           : selectedStudentKeys.join(", ");
+
       const teacherLabel =
         selectedTeacherNames.length > 0
           ? selectedTeacherNames.join(", ")
           : selectedTeacherKeys.join(", ");
+
       const carLabel =
         selectedCarNames.length > 0
           ? selectedCarNames.join(", ")
           : selectedCarKeys.join(", ");
 
-      message.success(
-        `Đồng bộ học viên ${studentLabel}${teacherLabel ? `, giáo viên ${teacherLabel}` : ""
-        } vào xe ${carLabel} thành công!`,
-        3,
-      );
+      let successMsg = "Đồng bộ ";
+      if (hasStudents && hasTeachers) {
+        successMsg += `học viên ${studentLabel}, giáo viên ${teacherLabel} vào xe ${carLabel} thành công!`;
+      } else if (hasStudents) {
+        successMsg += `học viên ${studentLabel} vào xe ${carLabel} thành công!`;
+      } else if (hasTeachers) {
+        successMsg += `giáo viên ${teacherLabel} vào xe ${carLabel} thành công!`;
+      }
+
+      message.success(successMsg, 3);
     } catch (error) {
       console.error("Lỗi API:", error);
       message.error("Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại!");
@@ -400,12 +508,8 @@ export default function DongBoHocVienVaoXe() {
                   showSearch
                   mode="multiple"
                   loading={isLoadingTeachers}
-                  optionFilterProp="label"
-                  filterOption={(input, option) =>
-                    (option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
+                  onSearch={handleTeacherSearch}
+                  filterOption={false}
                   options={teacherOptions}
                 />
               </Col>
