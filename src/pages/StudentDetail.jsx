@@ -32,6 +32,8 @@ import {
   computeSummary as computeSummaryHangLoat,
   evaluate as evaluateHangLoat,
   fmtGio,
+  getBienSoTuDong,
+  normalizePlate,
 } from "./checks/DieuKienKiemTra";
 
 import TrackingPage from "./map/TrackingPage";
@@ -223,6 +225,17 @@ const StudentDetail = ({ data }) => {
     setIsModalOpen(false);
   };
 
+  const admissionCode = data?.MaDK ?? "";
+  const annualStudentInfo = useMemo(() => {
+    const code = String(admissionCode).trim();
+    if (!code) return null;
+    return studentMap.get(code) || null;
+  }, [studentMap, admissionCode]);
+
+  const bienSoTuDong = useMemo(() => {
+    return getBienSoTuDong(dataSource, annualStudentInfo);
+  }, [dataSource, annualStudentInfo]);
+
   const columns = [
     {
       title: "#",
@@ -232,7 +245,22 @@ const StudentDetail = ({ data }) => {
       width: 30,
       fixed: "left",
       responsive: ["sm"],
-      render: (_text, _record, index) => index + 1,
+      render: (_text, record, index) => {
+        const isTuDong = bienSoTuDong && normalizePlate(record.BienSo) === normalizePlate(bienSoTuDong);
+        const hour = dayjs(record.ThoiDiemDangNhap).hour();
+
+        let className = "";
+        if (isTuDong) {
+          className = "!bg-blue-500 text-white";
+        } else if (hour >= 18) {
+          className = "!bg-gray-300";
+        }
+
+        return {
+          props: { className },
+          children: index + 1,
+        };
+      },
     },
     {
       title: "Ngày đào tạo",
@@ -341,13 +369,6 @@ const StudentDetail = ({ data }) => {
   ];
 
   const hasJourneyData = dataSource.length > 0;
-
-  const admissionCode = data?.MaDK ?? "";
-  const annualStudentInfo = useMemo(() => {
-    const code = String(admissionCode).trim();
-    if (!code) return null;
-    return studentMap.get(code) || null;
-  }, [studentMap, admissionCode]);
 
   const summaryData = useMemo(
     () =>
@@ -663,14 +684,9 @@ const StudentDetail = ({ data }) => {
                 pagination={false}
                 size="small"
                 scroll={{ x: 1200 }}
-                className="table-blue-header"
+                // className="table-blue-header"
                 bordered
-                rowClassName={(record) => {
-                  const hour = dayjs(record.ThoiDiemDangNhap).hour();
-                  if (hour >= 18)
-                    return "!bg-gray-50 hover:!bg-gray-200 transition-colors cursor-default";
-                  return "";
-                }}
+                rowClassName={() => ""}
                 locale={{
                   emptyText:
                     "Không có phiên đào tạo nào trong khoảng thời gian đã chọn.",
@@ -679,7 +695,7 @@ const StudentDetail = ({ data }) => {
             </Col>
           </Row>
           {dataSource.length > 0 && (
-            <div>
+            <div className="mt-10">
               <Row gutter={[12, 12]}>
                 <Title level={4}>Tổng hợp</Title>
                 <Col span={24} className="pl-20">

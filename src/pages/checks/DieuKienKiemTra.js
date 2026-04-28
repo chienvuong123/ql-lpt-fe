@@ -102,7 +102,7 @@ const normalizeForCompare = (name = "") =>
  * Biển số xuất hiện ít nhất = xe tự động.
  * Chỉ có 1 loại biển → trả null.
  */
-function getBienSoTuDong(dataSource, studentInfo = null) {
+export function getBienSoTuDong(dataSource, studentInfo = null) {
   if (!dataSource || dataSource.length === 0) return null;
 
   const count = {};

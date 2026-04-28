@@ -8,9 +8,8 @@ import {
     Empty,
     Table,
     Space,
-    Divider,
-    Button,
     Spin,
+    Card,
 } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -20,6 +19,8 @@ import { getChiTietHocVienLyThuyet } from "../../apis/apiLyThuyetLocal";
 import {
     computeSummary as computeSummaryHangLoat,
     evaluate as evaluateHangLoat,
+    getBienSoTuDong,
+    normalizePlate,
 } from "../checks/DieuKienKiemTra";
 
 const { Text, Title } = Typography;
@@ -216,6 +217,10 @@ const DatTab = ({ data, student }) => {
         }));
     }, [sessions, student, data]);
 
+    const bienSoTuDong = useMemo(() => {
+        return getBienSoTuDong(mappedSessions, null);
+    }, [mappedSessions]);
+
     const summaryData = useMemo(() => {
         return computeSummaryHangLoat(mappedSessions, student?.HangDaoTao || student?.hang_dao_tao || "B1", null);
     }, [mappedSessions, student]);
@@ -293,7 +298,7 @@ const DatTab = ({ data, student }) => {
                 </div>
                 <div>
                     <span className="text-gray-500">Số phiên:</span>
-                    <span className="ml-2 font-bold">{summary.soPhien || 0}</span>
+                    <span className="ml-2 font-bold">{mappedSessions.length || 0}</span>
                 </div>
             </div>
 
@@ -306,39 +311,84 @@ const DatTab = ({ data, student }) => {
                 className="table-blue-header"
                 rowClassName={(record) => {
                     if (!record.gio_vao) return "";
+                    const isTuDong = bienSoTuDong && normalizePlate(record.bien_so_xe) === normalizePlate(bienSoTuDong);
+                    if (isTuDong) {
+                        return "!bg-blue-300 hover:!bg-blue-400 transition-colors cursor-default";
+                    }
                     const hour = dayjs(record.gio_vao).hour();
-                    if (hour >= 18) return "!bg-gray-50 hover:!bg-gray-100 transition-colors cursor-default";
+                    if (hour >= 18) return "!bg-gray-200 hover:!bg-gray-300 transition-colors cursor-default";
                     return "";
                 }}
             />
 
-            <div className={`p-4 rounded-lg border ${isPass ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-                <div className="flex items-center gap-2 mb-3">
-                    <span className="font-bold">Kết quả đánh giá:</span>
-                    <Tag color={isPass ? "success" : "error"} icon={isPass ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
-                        {isPass ? "Đạt" : "Chưa đạt"}
-                    </Tag>
-                </div>
+            <Card
+                style={{
+                    marginTop: 16,
+                    borderColor: isPass ? "#52c41a" : "#ff4d4f",
+                    backgroundColor: isPass ? "#f6ffed" : "#fff2f0",
+                }}
+            >
+                <Space
+                    direction="vertical"
+                    size="middle"
+                    style={{ width: "100%" }}
+                >
+                    <Space>
+                        <Text strong style={{ fontSize: 14 }}>
+                            Kết quả đánh giá:
+                        </Text>
+                        <Tag
+                            color={isPass ? "success" : "error"}
+                            icon={
+                                isPass ? (
+                                    <CheckCircleOutlined />
+                                ) : (
+                                    <CloseCircleOutlined />
+                                )
+                            }
+                            style={{ fontSize: 14 }}
+                        >
+                            {isPass ? "Đạt" : "Chưa đạt"}
+                        </Tag>
+                    </Space>
 
-                {allIssues.length > 0 && (
-                    <div className="space-y-2">
-                        <p className="font-semibold text-gray-700 m-0">Lý do:</p>
-                        <ul className="list-none p-0 m-0 space-y-2">
-                            {allIssues.map((issue, idx) => (
-                                <li key={idx} className={issue.type === "error" ? "text-red-700" : "text-orange-600"}>
-                                    <Space>
-                                        {issue.type === "warning" ? <WarningOutlined /> : <CloseCircleOutlined />}
-                                        <span className="font-medium">
+                    {allIssues.length > 0 && (
+                        <div>
+                            <Text strong>Lý do:</Text>
+                            <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+                                {allIssues.map((issue, index) => (
+                                    <li
+                                        key={index}
+                                        style={{
+                                            color:
+                                                issue.type === "error"
+                                                    ? "#990000"
+                                                    : "#CC9966",
+                                            marginBottom: 8,
+                                        }}
+                                    >
+                                        {issue.type === "warning" ? (
+                                            <WarningOutlined
+                                                style={{ color: "#CC9966", marginRight: 4 }}
+                                            />
+                                        ) : (
+                                            <CloseCircleOutlined
+                                                style={{ marginRight: 4 }}
+                                            />
+                                        )}
+                                        <span className="font-medium text-[#CC9966]">
                                             {issue.type === "warning" && "Cảnh báo: "}
+                                        </span>
+                                        <span className="font-medium ">
                                             {issue.message}
                                         </span>
-                                    </Space>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </Space>
+            </Card>
         </div>
     );
 };
