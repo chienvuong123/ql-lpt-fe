@@ -20,7 +20,6 @@ const TheoryStudentDetailModal = React.memo(forwardRef(({ onClose, enrolmentPlan
   const deferredActiveTab = useDeferredValue(activeTab);
   const contentRef = useRef(null);
 
-
   useImperativeHandle(ref, () => ({
     open: (data) => {
       setStudentData(data);

@@ -10,6 +10,7 @@ import {
     Space,
     Spin,
     Card,
+    Button,
 } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -26,8 +27,6 @@ import {
 const { Text, Title } = Typography;
 
 const TheoryTab = ({ data, studentId, enrolmentPlanIid }) => {
-    console.log("studentId", studentId);
-    console.log("enrolmentPlanIid", enrolmentPlanIid);
     const { data: theoryDetail, isLoading } = useQuery({
         queryKey: ["chiTietHocVienLyThuyet", enrolmentPlanIid, studentId],
         queryFn: () => getChiTietHocVienLyThuyet(enrolmentPlanIid, studentId),
@@ -484,6 +483,11 @@ const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
                         defaultActiveKey="theory"
                         items={tabItems}
                         className="theory-tabs"
+                        tabBarExtraContent={
+                            <Button type="primary">
+                                Đăng ký học bù
+                            </Button>
+                        }
                     />
                 </div>
             )}

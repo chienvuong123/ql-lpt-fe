@@ -12,11 +12,13 @@ import {
   Table,
   Tag,
   Typography,
+  Modal,
 } from "antd";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { SearchOutlined } from "@ant-design/icons";
+import { RetweetOutlined, SearchOutlined } from "@ant-design/icons";
 import { cabinNote, danhSachHocVienCaBin } from "../../apis/apiCabinLocal";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
+import { addHocBu } from "../../apis/apiHocbu";
 
 const { Title } = Typography;
 
@@ -60,6 +62,10 @@ const DanhSachChiaCabin = () => {
     hoTen: "",
     trang_thai_cabin: undefined,
   });
+
+  const [hocBuModalVisible, setHocBuModalVisible] = useState(false);
+  const [hocBuRecord, setHocBuRecord] = useState(null);
+  const [hocBuNote, setHocBuNote] = useState("");
 
   const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
     queryKey: ["optionLopLyThuyet"],
@@ -168,14 +174,52 @@ const DanhSachChiaCabin = () => {
       }
       message.error(
         error?.response?.data?.message ||
-          error?.message ||
-          "Lưu ghi chú thất bại",
+        error?.message ||
+        "Lưu ghi chú thất bại",
       );
     },
     onSettled: () => {
       setSavingNoteKey("");
     },
   });
+
+  const { mutate: mutateHocBu, isLoading: isHocBuLoading } = useMutation({
+    mutationFn: (variables) => addHocBu(variables),
+    onSuccess: () => {
+      message.success("Chuyển học viên sang học bù thành công");
+      setHocBuModalVisible(false);
+      setHocBuRecord(null);
+      setHocBuNote("");
+      queryClient.invalidateQueries({
+        queryKey: ["danhSachHocVienCaBin", activeCourseIid],
+      });
+    },
+    onError: (error) => {
+      message.error(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Chuyển học bù thất bại",
+      );
+    },
+  });
+
+  const handleConfirmHocBu = useCallback(() => {
+    if (!hocBuNote.trim()) {
+      message.warning("Vui lòng nhập ghi chú");
+      return;
+    }
+    const maDk = hocBuRecord?.ma_dk || hocBuRecord?.user?.code || hocBuRecord?.user?.iid;
+    if (!maDk) {
+      message.warning("Không tìm thấy mã học viên");
+      return;
+    }
+    mutateHocBu({
+      ma_dk: maDk,
+      ma_khoa: selectedCourseCode,
+      loai: 3,
+      ghi_chu: hocBuNote,
+    });
+  }, [hocBuNote, hocBuRecord, mutateHocBu, selectedCourseCode]);
 
   const handleSearch = useCallback(() => {
     const nextSearchText = searchInputRef.current?.input?.value?.trim() || "";
@@ -286,7 +330,7 @@ const DanhSachChiaCabin = () => {
         title: "CCCD",
         dataIndex: "user",
         key: "cccd",
-        width: 110,
+        width: 120,
         render: (user) => user?.identification_card,
       },
       {
@@ -371,6 +415,25 @@ const DanhSachChiaCabin = () => {
             </Spin>
           );
         },
+      },
+      {
+        title: "Thao tác",
+        key: "action",
+        width: 70,
+        align: "center",
+        fixed: "right",
+        render: (_, record) => (
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => {
+              setHocBuRecord(record);
+              setHocBuNote("");
+              setHocBuModalVisible(true);
+            }}
+            icon={<RetweetOutlined />}
+          />
+        ),
       },
     ],
     [
@@ -487,6 +550,31 @@ const DanhSachChiaCabin = () => {
         bordered
         className="overflow-hidden table-blue-header"
       />
+
+      <Modal
+        title="Xác nhận chuyển học bù"
+        open={hocBuModalVisible}
+        onCancel={() => setHocBuModalVisible(false)}
+        onOk={handleConfirmHocBu}
+        confirmLoading={isHocBuLoading}
+        okButtonProps={{ disabled: !hocBuNote.trim() }}
+        destroyOnClose
+      >
+        <p>
+          Bạn có chắc chắn chuyển <strong>{hocBuRecord?.user?.name || ""}</strong> sang học bù không?
+        </p>
+        <div style={{ marginTop: 16 }}>
+          <label className="block mb-2 text-sm font-medium text-gray-700">
+            Lý do học bù (bắt buộc):
+          </label>
+          <Input.TextArea
+            rows={4}
+            placeholder="Nhập lý do học bù tại đây..."
+            value={hocBuNote}
+            onChange={(e) => setHocBuNote(e.target.value)}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

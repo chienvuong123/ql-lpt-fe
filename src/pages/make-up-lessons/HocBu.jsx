@@ -104,7 +104,7 @@ const HocBu = () => {
         {
             title: "Học viên",
             key: "hoc_vien",
-            width: 300,
+            width: 270,
             render: (value) => {
                 if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
 
@@ -159,13 +159,13 @@ const HocBu = () => {
         {
             title: "Giáo viên",
             key: "thay_giao",
-            width: 150,
+            width: 180,
             render: (_, record) => record.thay_giao || "-",
         },
         {
             title: "Lý thuyết",
             key: "theory_status",
-            width: 100,
+            width: 70,
             align: "center",
             render: (_, record) => {
                 const theory = record.detail?.theoryInfo;
@@ -206,7 +206,7 @@ const HocBu = () => {
         {
             title: "Thời gian học",
             key: "tong_thoi_gian",
-            width: 140,
+            width: 120,
             align: "center",
             render: (_, record) => (
                 <span className="font-medium">
@@ -214,22 +214,39 @@ const HocBu = () => {
                 </span>
             ),
         },
+        // {
+        //     title: "Trạng thái ký",
+        //     key: "ky_dat",
+        //     width: 110,
+        //     align: "center",
+        //     render: (_, record) => (
+        //         <Tag color={record.student?.ky_dat === "da_ky" ? "green" : "default"}>
+        //             {record.student?.ky_dat === "da_ky" ? "Đã ký" : "Chưa ký"}
+        //         </Tag>
+        //     ),
+        // },
         {
-            title: "Trạng thái ký",
-            key: "ky_dat",
-            width: 110,
+            title: "Trạng thái học bù",
+            key: "trang_thai_hoc_bu",
             align: "center",
+            width: 140,
             render: (_, record) => (
-                <Tag color={record.student?.ky_dat === "da_ky" ? "green" : "default"}>
-                    {record.student?.ky_dat === "da_ky" ? "Đã ký" : "Chưa ký"}
+                <Tag color={record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "green" : "default"}>
+                    {record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "Đã học bù" : "Chưa học bù"}
                 </Tag>
             ),
         },
-        // {
-        //     title: "Ghi chú",
-        //     key: "ghi_chu",
-        //     render: (_, record) => record.ghi_chu || "-",
-        // },
+        {
+            title: "Thời gian đăng ký học bù",
+            key: "created_at",
+            width: 180,
+            align: "center",
+            render: (_, record) => (
+                <span >
+                    {dayjs(record.created_at).format("DD/MM/YYYY HH:mm:ss")}
+                </span>
+            ),
+        },
         {
             title: "Thao tác",
             key: "action",
@@ -325,6 +342,21 @@ const HocBu = () => {
                 scroll={{ x: 1300 }}
                 bordered
                 className="table-blue-header"
+                rowClassName={(record) => {
+                    const graduationDate = record.ngay_tot_nghiep || record.student?.ngay_tot_nghiep;
+                    if (!graduationDate) return "";
+
+                    const deadline = dayjs(graduationDate).add(1, "year");
+                    const today = dayjs();
+                    const monthsLeft = deadline.diff(today, "month", true);
+
+                    if (monthsLeft < 3) {
+                        return "!bg-red-100 hover:!bg-red-200 transition-colors";
+                    } else if (monthsLeft <= 6) {
+                        return "!bg-blue-50 hover:!bg-blue-200 transition-colors";
+                    }
+                    return "";
+                }}
             />
 
             <StudentMakeUpDetailDrawer
