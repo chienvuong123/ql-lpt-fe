@@ -115,6 +115,14 @@ const TienDoDaoTao = () => {
             render: (text) => <Text strong>{text ? text : '-'}</Text>
         },
         {
+            title: 'Hạng',
+            dataIndex: 'hang',
+            key: 'hang',
+            width: 70,
+            align: 'center',
+            render: (text) => <Tag color="blue">{text || '-'}</Tag>
+        },
+        {
             title: 'SL',
             dataIndex: 'luu_luong',
             key: 'luu_luong',

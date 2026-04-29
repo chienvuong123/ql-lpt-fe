@@ -48,14 +48,42 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
         value: item?.ma_khoa || item?.code || item?.iid,
     }));
 
+    const calculateDates = (ngayKG) => {
+        if (!ngayKG) return {};
+        const kg = dayjs(ngayKG);
+        const bdlt = kg;
+        const ktlt = bdlt.add(20, 'day');
+        const kthm = ktlt.add(1, 'day');
+        const bdc = kthm.add(3, 'day');
+        const ktc = bdc.add(20, 'day');
+        const bdd = ktc.add(1, 'day');
+        const ktd = bdd.add(25, 'day');
+        const bg = kg.add(80, 'day');
+
+        return {
+            bat_dau_ly_thuyet: bdlt,
+            ket_thuc_ly_thuyet: ktlt,
+            kiem_tra_het_mon: kthm,
+            bat_dau_cabin: bdc,
+            ket_thuc_cabin: ktc,
+            bat_dau_dat: bdd,
+            ket_thuc_dat: ktd,
+            be_giang: bg
+        };
+    };
+
     const handleCourseChange = (maKhoa) => {
         const courses = normalizeApiList(dataKhoaHoc);
         const selectedCourse = courses.find(c => (c.ma_khoa || c.code || c.iid) === maKhoa);
 
         if (selectedCourse) {
+            const ngayKG = selectedCourse.ngay_bat_dau ? dayjs(selectedCourse.ngay_bat_dau) : null;
+            const automatedDates = calculateDates(ngayKG);
+
             form.setFieldsValue({
                 luu_luong: selectedCourse.total_member || 0,
-                ngay_khai_giang: selectedCourse.ngay_bat_dau ? dayjs(selectedCourse.ngay_bat_dau) : null,
+                ngay_khai_giang: ngayKG,
+                ...automatedDates
             });
         }
     };
@@ -65,7 +93,6 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
             if (action === 'add') {
                 form.resetFields();
             } else if (data) {
-                // Convert string dates to dayjs objects
                 const formattedData = { ...data };
                 const dateFields = [
                     'ngay_khai_giang', 'bat_dau_ly_thuyet', 'ket_thuc_ly_thuyet', 'kiem_tra_het_mon',
@@ -75,7 +102,6 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
 
                 dateFields.forEach(field => {
                     if (data[field]) {
-                        // Handle ISO strings from API
                         formattedData[field] = dayjs(data[field]);
                     }
                 });
@@ -84,6 +110,23 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
             }
         }
     }, [visible, action, data, form]);
+
+    const handleValuesChange = (changedValues, allValues) => {
+        const { ngay_khai_giang, tot_nghiep } = changedValues;
+
+        if (ngay_khai_giang) {
+            const automatedDates = calculateDates(ngay_khai_giang);
+            form.setFieldsValue(automatedDates);
+        }
+
+        if (tot_nghiep) {
+            const tn = dayjs(tot_nghiep);
+            const gk = tn.subtract(7, 'day');
+            form.setFieldsValue({
+                ghep_tot_nghiep: gk
+            });
+        }
+    };
 
     const handleOk = () => {
         if (action === 'view') {
@@ -148,10 +191,11 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
                 layout="vertical"
                 disabled={isReadOnly}
                 requiredMark={!isReadOnly}
+                onValuesChange={handleValuesChange}
             >
                 <Space><Text strong className='!text-base'>Thông tin chung</Text></Space>
                 <Row gutter={16} className='mt-1'>
-                    <Col span={8}>
+                    <Col span={6}>
                         <Form.Item
                             name="ma_khoa"
                             label="Khóa học"
@@ -169,12 +213,24 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col span={6}>
+                        <Form.Item name="hang" label="Hạng">
+                            <Select
+                                placeholder="Chọn hạng"
+                                options={[
+                                    { label: 'B1', value: 'B1' },
+                                    { label: 'B2', value: 'B2' },
+                                    { label: 'C1', value: 'C1' },
+                                ]}
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col span={6}>
                         <Form.Item name="luu_luong" label="Lưu lượng" className='!w-full'>
                             <InputNumber placeholder="0" className="!w-full" min={0} />
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col span={6}>
                         <Form.Item name="ngay_khai_giang" label="Ngày khai giảng" className='w-full'>
                             <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" />
                         </Form.Item>
