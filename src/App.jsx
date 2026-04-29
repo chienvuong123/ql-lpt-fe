@@ -35,6 +35,8 @@ import DashboardCabin from "./pages/cabin/DashboardCabin";
 import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
 import HocBuDAT from "./pages/dat/HocBuDat";
 import HocBu from "./pages/make-up-lessons/HocBu";
+import TienDoHocBu from "./pages/make-up-lessons/TienDoHocBu";
+import ChoDuyetHocBu from "./pages/make-up-lessons/ChoDuyetHocBu";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -230,6 +232,24 @@ function App() {
                   <GuardedRoute
                     path="/hoc-bu"
                     element={<HocBu />}
+                  />
+                }
+              />
+              <Route
+                path="cho-duyet"
+                element={
+                  <GuardedRoute
+                    path="/cho-duyet"
+                    element={<ChoDuyetHocBu />}
+                  />
+                }
+              />
+              <Route
+                path="tien-do-hoc-bu"
+                element={
+                  <GuardedRoute
+                    path="/tien-do-hoc-bu"
+                    element={<TienDoHocBu />}
                   />
                 }
               />

@@ -55,7 +55,9 @@ const menuPathMap = {
   "hoc-bu-dat": "/hoc-bu-dat",
   "tai-khoan": "/tai-khoan",
   "hoc-bu": "/hoc-bu",
-  "kiem-tra": "/kiem-tra"
+  "kiem-tra": "/kiem-tra",
+  "cho-duyet": "/cho-duyet",
+  "tien-do-hoc-bu": "/tien-do-hoc-bu",
 };
 
 const LayoutTest = () => {
@@ -190,6 +192,11 @@ const LayoutTest = () => {
       key: "hoc-bu",
       icon: <RetweetOutlined />,
       label: "Học bù",
+      children: [
+        { key: "hoc-bu", label: "Danh sách học bù" },
+        { key: "cho-duyet", label: "Chờ duyệt học bù" },
+        { key: "tien-do-hoc-bu", label: "Tiến độ học bù" },
+      ]
     },
     {
       key: "tai-khoan",

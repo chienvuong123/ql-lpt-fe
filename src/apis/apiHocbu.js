@@ -35,3 +35,9 @@ export const addHocBu = async (data) => {
     const response = await axios.post(`${baseURL}/tien-do-dao-tao/hoc-bu`, data);
     return response.data;
 };
+
+export const updateHocBuStatus = async (data = {}) => {
+    const response = await axios.post(`${baseURL}/tien-do-dao-tao/hoc-bu/update-status`, data);
+    return response.data;
+};
+
