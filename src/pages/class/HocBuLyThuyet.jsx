@@ -261,7 +261,14 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
 const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
   const [ma_khoa, setMaKhoa] = useState(null);
   const [searchText, setSearchText] = useState("");
-  const [appliedFilters, setAppliedFilters] = useState({ ma_khoa: null, text: "" });
+  const [trangThai, setTrangThai] = useState([]);
+  const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({
+    ma_khoa: null,
+    text: "",
+    trang_thai: [2, 3],
+    trang_thai_hoc_bu: [],
+  });
   const [pagination, setPagination] = useState({ page: 1, limit: 10 });
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -271,6 +278,8 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       "hocVienHocBuChoDuyetLyThuyet",
       appliedFilters.ma_khoa,
       appliedFilters.text,
+      appliedFilters.trang_thai,
+      appliedFilters.trang_thai_hoc_bu,
       pagination.page,
       pagination.limit,
     ],
@@ -279,6 +288,8 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
         loai: 1,
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
+        trang_thai: appliedFilters.trang_thai,
+        trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
         page: pagination.page,
         limit: pagination.limit,
       }),
@@ -289,21 +300,40 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     const list = normalizeApiList(studentData);
     return list.filter((item) => {
       const st = item?.trang_thai ?? item?.student?.trang_thai;
-      return st === 2 || st === 3 || st === "2" || st === "3";
+      const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
+
+      // Match appliedFilters.trang_thai
+      const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
+        ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
+        : (String(st) === "2" || String(st) === "3");
+
+      // Match appliedFilters.trang_thai_hoc_bu
+      const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
+        ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
+        : true;
+
+      return matchTrangThai && matchTrangThaiHocBu;
     });
-  }, [studentData]);
+  }, [studentData, appliedFilters]);
 
   const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
   const handleApplyFilter = () => {
-    setAppliedFilters({ ma_khoa, text: searchText });
+    setAppliedFilters({
+      ma_khoa,
+      text: searchText,
+      trang_thai: trangThai,
+      trang_thai_hoc_bu: trangThaiHocBu,
+    });
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleResetFilter = () => {
     setMaKhoa(null);
     setSearchText("");
-    setAppliedFilters({ ma_khoa: null, text: "" });
+    setTrangThai([2, 3]);
+    setTrangThaiHocBu([]);
+    setAppliedFilters({ ma_khoa: null, text: "", trang_thai: [2, 3], trang_thai_hoc_bu: [] });
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -314,7 +344,8 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
 
   const handleDuyet = async (recordId) => {
     try {
-      await updateHocBuStatus({ id: recordId, trang_thai: 3 });
+      const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+      await updateHocBuStatus({ id: recordId, trang_thai: 3, nguoi_update: username, updated_at: new Date().toISOString() });
       message.success("Duyệt học bù thành công!");
       refetchStudents();
     } catch (err) {
@@ -324,7 +355,8 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
 
   const handleHuyDuyet = async (recordId) => {
     try {
-      await updateHocBuStatus({ id: recordId, trang_thai: 2 });
+      const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+      await updateHocBuStatus({ id: recordId, trang_thai: 2, nguoi_update: username, updated_at: new Date().toISOString() });
       message.success("Hủy duyệt học bù thành công!");
       refetchStudents();
     } catch (err) {
@@ -343,7 +375,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Học viên",
       key: "hoc_vien",
-      width: 290,
+      width: 310,
       render: (value) => {
         if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
 
@@ -393,7 +425,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Giáo viên",
       key: "thay_giao",
-      width: 180,
+      width: 200,
       render: (_, record) => record.thay_giao || "-",
     },
     {
@@ -405,7 +437,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
         const theory = record.detail?.theoryInfo;
         const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
         return (
-          <Tag color={isPass ? "green" : "red"}>
+          <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
             {isPass ? "Đạt" : "Chưa đạt"}
           </Tag>
         );
@@ -420,7 +452,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
         const cabin = record.detail?.cabinInfo;
         const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
         return (
-          <Tag color={isPass ? "green" : "red"}>
+          <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
             {isPass ? "Đạt" : "Chưa đạt"}
           </Tag>
         );
@@ -440,7 +472,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Thời gian học",
       key: "tong_thoi_gian",
-      width: 110,
+      width: 115,
       align: "center",
       render: (_, record) => (
         <span className="font-medium">
@@ -452,7 +484,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       title: "Trạng thái",
       key: "trang_thai",
       align: "center",
-      width: 120,
+      width: 100,
       render: (_, record) => {
         const st = record?.trang_thai ?? record?.student?.trang_thai;
         if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
@@ -477,7 +509,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       },
     },
     {
-      title: "Thời gian đăng ký học bù",
+      title: "Thời gian đăng ký bù",
       key: "created_at",
       width: 180,
       align: "center",
@@ -547,7 +579,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     <div>
       <Card className="!mb-5">
         <Row gutter={[16, 16]} align="bottom">
-          <Col xs={24} sm={10} md={8} lg={6}>
+          <Col xs={24} sm={10} md={8} lg={5}>
             <label className="block text-xs text-gray-500 uppercase">Khóa Học</label>
             <Select
               className="w-full"
@@ -561,7 +593,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
               options={courseOptions}
             />
           </Col>
-          <Col xs={24} sm={10} md={8} lg={6}>
+          <Col xs={24} sm={10} md={8} lg={5}>
             <label className="block text-xs text-gray-500 uppercase">Học viên / Mã DK</label>
             <Input
               placeholder="Nhập tên hoặc mã học viên"
@@ -570,7 +602,39 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
               onPressEnter={handleApplyFilter}
             />
           </Col>
-          <Col xs={24} sm={4} md={8} lg={6}>
+          <Col xs={24} sm={10} md={8} lg={5}>
+            <label className="block text-xs text-gray-500 uppercase">Trạng thái</label>
+            <Select
+              className="w-full"
+              mode="multiple"
+              placeholder="Chọn trạng thái"
+              value={trangThai}
+              onChange={setTrangThai}
+              allowClear
+              maxTagCount="responsive"
+              options={[
+                { label: "Chờ duyệt", value: 2 },
+                { label: "Đã duyệt", value: 3 },
+              ]}
+            />
+          </Col>
+          <Col xs={24} sm={10} md={8} lg={5}>
+            <label className="block text-xs text-gray-500 uppercase">Trạng thái học bù</label>
+            <Select
+              className="w-full"
+              mode="multiple"
+              placeholder="Chọn trạng thái học bù"
+              value={trangThaiHocBu}
+              onChange={setTrangThaiHocBu}
+              allowClear
+              maxTagCount="responsive"
+              options={[
+                { label: "Chưa đăng ký", value: 1 },
+                { label: "Đã đăng ký", value: 2 },
+              ]}
+            />
+          </Col>
+          <Col xs={24} sm={4} md={8} lg={4}>
             <Space>
               <Button type="primary" className="!bg-[#3366cc]" onClick={handleApplyFilter}>
                 Tìm kiếm

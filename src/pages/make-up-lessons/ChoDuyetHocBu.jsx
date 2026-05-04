@@ -31,10 +31,18 @@ const normalizeApiList = (payload) => {
 const ChoDuyetHocBu = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
+    const [trangThai, setTrangThai] = useState([2, 3]);
+    const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
+    const [loai, setLoai] = useState([]);
+
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
-        text: "",
+        search: "",
+        trang_thai: [2, 3],
+        trang_thai_hoc_bu: [],
+        loai: [],
     });
+
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -59,14 +67,20 @@ const ChoDuyetHocBu = () => {
         queryKey: [
             "hocVienHocBuChoDuyet",
             appliedFilters.ma_khoa,
-            appliedFilters.text,
+            appliedFilters.search,
+            appliedFilters.trang_thai,
+            appliedFilters.trang_thai_hoc_bu,
+            appliedFilters.loai,
             pagination.page,
             pagination.limit,
         ],
         queryFn: () =>
             getDanhSachHocVienHocBuChoDuyet({
                 ma_khoa: appliedFilters.ma_khoa,
-                text: appliedFilters.text,
+                search: appliedFilters.search,
+                trang_thai: appliedFilters.trang_thai,
+                trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
+                loai: appliedFilters.loai,
                 page: pagination.page,
                 limit: pagination.limit,
             }),
@@ -77,20 +91,67 @@ const ChoDuyetHocBu = () => {
         const list = normalizeApiList(studentData);
         return list.filter((item) => {
             const st = item?.trang_thai ?? item?.student?.trang_thai;
-            return st === 2 || st === 3 || st === "2" || st === "3";
+            const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
+            const itemLoai = item?.loai ?? item?.student?.loai;
+
+            // Match appliedFilters.trang_thai
+            const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
+                ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
+                : (String(st) === "2" || String(st) === "3");
+
+            // Match appliedFilters.trang_thai_hoc_bu
+            const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
+                ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
+                : true;
+
+            // Match appliedFilters.loai
+            const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
+                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
+                : true;
+
+            // Match appliedFilters search text locally
+            const kw = (appliedFilters.search || appliedFilters.text || "").trim().toLowerCase();
+            const s = item?.student || item;
+            const matchSearch = kw
+                ? (String(s?.ho_ten || "").toLowerCase().includes(kw) || String(s?.ma_dk || "").toLowerCase().includes(kw) || String(s?.cccd || "").toLowerCase().includes(kw))
+                : true;
+
+            return matchTrangThai && matchTrangThaiHocBu && matchLoai && matchSearch;
         });
-    }, [studentData]);
+    }, [studentData, appliedFilters]);
+
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
-        setAppliedFilters({ ma_khoa, text: searchText });
+        let mappedLoai = [];
+        if (loai.includes("ly_thuyet")) mappedLoai.push(1);
+        if (loai.includes("thuc_hanh")) {
+            mappedLoai.push(2);
+            mappedLoai.push(3);
+        }
+        setAppliedFilters({
+            ma_khoa,
+            text: searchText,
+            trang_thai: trangThai,
+            trang_thai_hoc_bu: trangThaiHocBu,
+            loai: mappedLoai,
+        });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setAppliedFilters({ ma_khoa: null, text: "" });
+        setTrangThai([2, 3]);
+        setTrangThaiHocBu([]);
+        setLoai([]);
+        setAppliedFilters({
+            ma_khoa: null,
+            text: "",
+            trang_thai: [2, 3],
+            trang_thai_hoc_bu: [],
+            loai: [],
+        });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
@@ -101,7 +162,8 @@ const ChoDuyetHocBu = () => {
 
     const handleDuyet = async (recordId) => {
         try {
-            await updateHocBuStatus({ id: recordId, trang_thai: 3 });
+            const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+            await updateHocBuStatus({ id: recordId, trang_thai: 3, nguoi_update: username, updated_at: new Date().toISOString() });
             message.success("Duyệt học bù thành công!");
             refetchStudents();
         } catch (err) {
@@ -111,7 +173,8 @@ const ChoDuyetHocBu = () => {
 
     const handleHuyDuyet = async (recordId) => {
         try {
-            await updateHocBuStatus({ id: recordId, trang_thai: 2 });
+            const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+            await updateHocBuStatus({ id: recordId, trang_thai: 2, nguoi_update: username, updated_at: new Date().toISOString() });
             message.success("Hủy duyệt học bù thành công!");
             refetchStudents();
         } catch (err) {
@@ -241,17 +304,6 @@ const ChoDuyetHocBu = () => {
                 </span>
             ),
         },
-        // {
-        //     title: "Trạng thái ký",
-        //     key: "ky_dat",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <Tag color={record.student?.ky_dat === "da_ky" ? "green" : "default"}>
-        //             {record.student?.ky_dat === "da_ky" ? "Đã ký" : "Chưa ký"}
-        //         </Tag>
-        //     ),
-        // },
         {
             title: "Trạng thái",
             key: "trang_thai",
@@ -357,7 +409,7 @@ const ChoDuyetHocBu = () => {
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={6}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -373,7 +425,7 @@ const ChoDuyetHocBu = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={6}>
+                    <Col xs={24} sm={10} md={8} lg={4}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -384,8 +436,62 @@ const ChoDuyetHocBu = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={4} md={8} lg={6}>
-                        <Space>
+                    <Col xs={24} sm={10} md={8} lg={4}>
+                        <label className="block text-xs text-gray-500 uppercase">
+                            Trạng thái
+                        </label>
+                        <Select
+                            className="w-full"
+                            mode="multiple"
+                            placeholder="Chọn trạng thái"
+                            value={trangThai}
+                            onChange={setTrangThai}
+                            allowClear
+                            maxTagCount="responsive"
+                            options={[
+                                { label: "Chờ duyệt", value: 2 },
+                                { label: "Đã duyệt", value: 3 },
+                            ]}
+                        />
+                    </Col>
+                    <Col xs={24} sm={10} md={8} lg={4}>
+                        <label className="block text-xs text-gray-500 uppercase">
+                            Trạng thái học bù
+                        </label>
+                        <Select
+                            className="w-full"
+                            mode="multiple"
+                            placeholder="Chọn trạng thái"
+                            value={trangThaiHocBu}
+                            onChange={setTrangThaiHocBu}
+                            allowClear
+                            maxTagCount="responsive"
+                            options={[
+                                { label: "Chưa đăng ký", value: 1 },
+                                { label: "Đã đăng ký", value: 2 },
+                            ]}
+                        />
+                    </Col>
+                    <Col xs={24} sm={10} md={8} lg={4}>
+                        <label className="block text-xs text-gray-500 uppercase">
+                            Loại học bù
+                        </label>
+                        <Select
+                            className="w-full"
+                            mode="multiple"
+                            placeholder="Chọn loại học bù"
+                            value={loai}
+                            onChange={setLoai}
+                            allowClear
+                            maxTagCount="responsive"
+                            options={[
+                                { label: "Lý thuyết", value: "ly_thuyet" },
+                                { label: "Thực hành", value: "thuc_hanh" },
+                            ]}
+                        />
+                    </Col>
+                    <Col xs={24} sm={4} md={8} lg={3}>
+                        <Space className="w-full justify-end">
                             <Button
                                 type="primary"
                                 className="!bg-[#3366cc]"
