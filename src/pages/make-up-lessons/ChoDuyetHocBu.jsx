@@ -10,15 +10,16 @@ import {
     Image,
     Tag,
     Space,
+    Popconfirm,
+    message,
 } from "antd";
-import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import { EyeOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBu } from "../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuChoDuyet, updateHocBuStatus } from "../../apis/apiHocbu";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "./StudentMakeUpDetailDrawer";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
-import { formatMinutesToHM } from "../../util/helper";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -54,16 +55,16 @@ const ChoDuyetHocBu = () => {
     }, [dataKhoaHoc]);
 
     // 2. Lấy danh sách học viên cần bù
-    const { data: studentData, isFetching: isFetchingStudents } = useQuery({
+    const { data: studentData, isFetching: isFetchingStudents, refetch: refetchStudents } = useQuery({
         queryKey: [
-            "hocVienHocBu",
+            "hocVienHocBuChoDuyet",
             appliedFilters.ma_khoa,
             appliedFilters.text,
             pagination.page,
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBu({
+            getDanhSachHocVienHocBuChoDuyet({
                 ma_khoa: appliedFilters.ma_khoa,
                 text: appliedFilters.text,
                 page: pagination.page,
@@ -72,7 +73,13 @@ const ChoDuyetHocBu = () => {
         keepPreviousData: true,
     });
 
-    const students = useMemo(() => normalizeApiList(studentData), [studentData]);
+    const students = useMemo(() => {
+        const list = normalizeApiList(studentData);
+        return list.filter((item) => {
+            const st = item?.trang_thai ?? item?.student?.trang_thai;
+            return st === 2 || st === 3 || st === "2" || st === "3";
+        });
+    }, [studentData]);
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
@@ -92,6 +99,26 @@ const ChoDuyetHocBu = () => {
         setIsDetailOpen(true);
     };
 
+    const handleDuyet = async (recordId) => {
+        try {
+            await updateHocBuStatus({ id: recordId, trang_thai: 3 });
+            message.success("Duyệt học bù thành công!");
+            refetchStudents();
+        } catch (err) {
+            message.error("Duyệt học bù thất bại!");
+        }
+    };
+
+    const handleHuyDuyet = async (recordId) => {
+        try {
+            await updateHocBuStatus({ id: recordId, trang_thai: 2 });
+            message.success("Hủy duyệt học bù thành công!");
+            refetchStudents();
+        } catch (err) {
+            message.error("Hủy duyệt học bù thất bại!");
+        }
+    };
+
     const columns = [
         {
             title: "#",
@@ -104,7 +131,7 @@ const ChoDuyetHocBu = () => {
         {
             title: "Học viên",
             key: "hoc_vien",
-            width: 270,
+            width: 310,
             render: (value) => {
                 if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
 
@@ -133,7 +160,7 @@ const ChoDuyetHocBu = () => {
         {
             title: "CCCD",
             key: "cccd",
-            width: 120,
+            width: 100,
             align: "center",
             render: (_, record) => record.cccd || "-",
         },
@@ -171,7 +198,7 @@ const ChoDuyetHocBu = () => {
                 const theory = record.detail?.theoryInfo;
                 const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
                 return (
-                    <Tag color={isPass ? "green" : "red"}>
+                    <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
                         {isPass ? "Đạt" : "Chưa đạt"}
                     </Tag>
                 );
@@ -186,7 +213,7 @@ const ChoDuyetHocBu = () => {
                 const cabin = record.detail?.cabinInfo;
                 const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
                 return (
-                    <Tag color={isPass ? "green" : "red"}>
+                    <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
                         {isPass ? "Đạt" : "Chưa đạt"}
                     </Tag>
                 );
@@ -206,7 +233,7 @@ const ChoDuyetHocBu = () => {
         {
             title: "Thời gian học",
             key: "tong_thoi_gian",
-            width: 120,
+            width: 115,
             align: "center",
             render: (_, record) => (
                 <span className="font-medium">
@@ -226,15 +253,32 @@ const ChoDuyetHocBu = () => {
         //     ),
         // },
         {
+            title: "Trạng thái",
+            key: "trang_thai",
+            align: "center",
+            width: 120,
+            render: (_, record) => {
+                const st = record?.trang_thai ?? record?.student?.trang_thai;
+                if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
+                if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
+                return <Tag color="default">-</Tag>;
+            },
+        },
+        {
             title: "Trạng thái học bù",
             key: "trang_thai_hoc_bu",
             align: "center",
             width: 140,
-            render: (_, record) => (
-                <Tag color={record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "green" : "default"}>
-                    {record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "Đã học bù" : "Chưa học bù"}
-                </Tag>
-            ),
+            render: (_, record) => {
+                const st = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
+                if (String(st) === "1") {
+                    return <Tag color="red">Chưa đăng ký</Tag>;
+                }
+                if (String(st) === "2") {
+                    return <Tag color="blue">Đã đăng ký</Tag>;
+                }
+                return <Tag color="default">Chưa đăng ký</Tag>;
+            },
         },
         {
             title: "Thời gian đăng ký học bù",
@@ -252,17 +296,54 @@ const ChoDuyetHocBu = () => {
             key: "action",
             width: 80,
             align: "center",
-            render: (_, record) => (
-                <Space>
-                    <Button
-                        type="primary"
-                        className="!bg-[#3366cc]"
-                        icon={<EyeOutlined />}
-                        size="small"
-                        onClick={() => handleOpenDetail(record)}
-                    />
-                </Space>
-            ),
+            render: (_, record) => {
+                const st = record?.trang_thai ?? record?.student?.trang_thai;
+                const isChoDuyet = String(st) === "2";
+                const isDaDuyet = String(st) === "3";
+                return (
+                    <Space>
+                        <Button
+                            type="primary"
+                            className="!bg-[#3366cc]"
+                            icon={<EyeOutlined />}
+                            size="small"
+                            onClick={() => handleOpenDetail(record)}
+                        />
+                        {isChoDuyet && (
+                            <Popconfirm
+                                title="Duyệt học bù"
+                                description="Bạn có chắc chắn muốn duyệt không?"
+                                onConfirm={() => handleDuyet(record.id)}
+                                okText="Có"
+                                cancelText="Không"
+                            >
+                                <Button
+                                    type="primary"
+                                    className="!bg-green-600 hover:!bg-green-700 border-none"
+                                    icon={<CheckOutlined />}
+                                    size="small"
+                                />
+                            </Popconfirm>
+                        )}
+                        {isDaDuyet && (
+                            <Popconfirm
+                                title="Hủy duyệt học bù"
+                                description="Bạn có chắc chắn muốn hủy duyệt không?"
+                                onConfirm={() => handleHuyDuyet(record.id)}
+                                okText="Có"
+                                cancelText="Không"
+                            >
+                                <Button
+                                    type="primary"
+                                    className="!bg-red-500 hover:!bg-red-600 border-none"
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                />
+                            </Popconfirm>
+                        )}
+                    </Space>
+                );
+            },
         },
     ];
 

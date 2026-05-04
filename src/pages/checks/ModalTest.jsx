@@ -192,6 +192,22 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     });
   }
 
+  if (hangDaoTao === "B2" || hangDaoTao === "B" || hangDaoTao === "C" || hangDaoTao === "C1") {
+    const soSanGio = tongGio - tuDongGio;
+    const soSanKm = tongKm - tuDongKm;
+    const thieu_soSanGio = 18 - soSanGio;
+    const thieu_soSanKm = 730 - soSanKm;
+
+    if (thieu_soSanGio > 0 || thieu_soSanKm > 0) {
+      warnings.push({
+        key: "duyet_tong",
+        color: "#FF0000",
+        label: "Thời gian và quãng đường số sàn chưa đạt.",
+        detail: "",
+      });
+    }
+  }
+
   const thieu_demGio = yeuCau.thoiGian.banDem - demGio;
   const thieu_demKm = yeuCau.quangDuong.banDem - demKm;
   if (thieu_demGio > 0 || thieu_demKm > 0) {

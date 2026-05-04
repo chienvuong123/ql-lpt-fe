@@ -41,3 +41,8 @@ export const updateHocBuStatus = async (data = {}) => {
     return response.data;
 };
 
+export const getDanhSachHocVienHocBuChoDuyet = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/cho-duyet`, { params });
+    return response.data;
+};
+
