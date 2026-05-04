@@ -14,7 +14,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBuChoDuyet, updateHocBuStatus } from "../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuDangHocBu, updateHocBuStatus } from "../../apis/apiHocbu";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { dongBoTienDoDaoTaoSql } from "../../apis/apiSynch";
 import StudentMakeUpDetailDrawer from "./StudentMakeUpDetailDrawer";
@@ -29,7 +29,7 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
-const ChoDuyetHocBu = () => {
+const DangHocBu = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
     const [trangThai, setTrangThai] = useState([2, 3]);
@@ -48,45 +48,7 @@ const ChoDuyetHocBu = () => {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
-    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-    const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
 
-    const [isSavingCourse, setIsSavingCourse] = useState(false);
-
-    const handleCourseSubmit = async (values) => {
-        const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
-        const payload = {
-            ...values,
-            loai: 1,
-            luu_luong: selectedRowKeys.length,
-            created_by: userName,
-            updated_by: userName,
-        };
-
-        setIsSavingCourse(true);
-        try {
-            await dongBoTienDoDaoTaoSql(payload);
-
-            const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
-            await Promise.all(selectedStudents.map(async (st) => {
-                await updateHocBuStatus({
-                    ...st,
-                    trang_thai_hoc_bu: 2,
-                    khoa_bu: values.ma_khoa,
-                    thoi_gian_xep: new Date().toISOString(),
-                });
-            }));
-
-            message.success('Thêm mới tiến độ thành công');
-            setIsCourseModalOpen(false);
-            setSelectedRowKeys([]);
-            refetchStudents?.();
-        } catch (err) {
-            message.error(err.response?.data?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
-        } finally {
-            setIsSavingCourse(false);
-        }
-    };
 
     // 1. Lấy danh sách khóa học
     const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
@@ -106,7 +68,7 @@ const ChoDuyetHocBu = () => {
     // 2. Lấy danh sách học viên cần bù
     const { data: studentData, isFetching: isFetchingStudents, refetch: refetchStudents } = useQuery({
         queryKey: [
-            "hocVienHocBuChoDuyet",
+            "hocVienHocBuDangHocBu",
             appliedFilters.ma_khoa,
             appliedFilters.search,
             appliedFilters.trang_thai,
@@ -116,7 +78,7 @@ const ChoDuyetHocBu = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBuChoDuyet({
+            getDanhSachHocVienHocBuDangHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
@@ -259,11 +221,18 @@ const ChoDuyetHocBu = () => {
             },
         },
         {
-            title: "Khóa",
+            title: "Khóa học CK",
             key: "ten_khoa",
             width: 100,
             align: "center",
             render: (_, record) => record.ten_khoa || "-",
+        },
+        {
+            title: "Khóa bù",
+            key: "khoa_bu",
+            width: 100,
+            align: "center",
+            render: (_, record) => record.khoa_bu || "-",
         },
         {
             title: "Giáo viên",
@@ -272,68 +241,53 @@ const ChoDuyetHocBu = () => {
             render: (_, record) => record.thay_giao || "-",
         },
         {
-            title: "Lý thuyết",
-            key: "theory_status",
-            width: 70,
-            align: "center",
-            render: (_, record) => {
-                const theory = record.detail?.theoryInfo;
-                const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
-                return (
-                    <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-                        {isPass ? "Đạt" : "Chưa đạt"}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: "Cabin",
-            key: "cabin_status",
-            width: 100,
-            align: "center",
-            render: (_, record) => {
-                const cabin = record.detail?.cabinInfo;
-                const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
-                return (
-                    <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-                        {isPass ? "Đạt" : "Chưa đạt"}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: "Km đã học",
-            key: "tong_quang_duong",
+            title: "Bắt đầu Cabin",
+            key: "bat_dau_cabin",
             width: 110,
             align: "center",
-            render: (_, record) => (
-                <span className="font-medium">
-                    {record.detail?.datInfo?.tong_quang_duong || 0} km
-                </span>
-            ),
+            render: (_, record) => record.bat_dau_cabin ? dayjs(record.bat_dau_cabin).format("DD/MM/YYYY") : "-",
         },
         {
-            title: "Thời gian học",
-            key: "tong_thoi_gian",
-            width: 115,
+            title: "Kết thúc Cabin",
+            key: "ket_thuc_cabin",
+            width: 110,
             align: "center",
-            render: (_, record) => (
-                <span className="font-medium">
-                    {record.detail?.datInfo?.tong_thoi_gian}
-                </span>
-            ),
+            render: (_, record) => record.ket_thuc_cabin ? dayjs(record.ket_thuc_cabin).format("DD/MM/YYYY") : "-",
         },
         {
-            title: "Trạng thái",
-            key: "trang_thai",
+            title: "Bắt đầu DAT",
+            key: "bat_dau_dat",
+            width: 110,
             align: "center",
-            width: 120,
-            render: (_, record) => {
-                const st = record?.trang_thai ?? record?.student?.trang_thai;
-                if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
-                if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
-                return <Tag color="default">-</Tag>;
-            },
+            render: (_, record) => record.bat_dau_dat ? dayjs(record.bat_dau_dat).format("DD/MM/YYYY") : "-",
+        },
+        {
+            title: "Kết thúc DAT",
+            key: "ket_thuc_dat",
+            width: 110,
+            align: "center",
+            render: (_, record) => record.ket_thuc_dat ? dayjs(record.ket_thuc_dat).format("DD/MM/YYYY") : "-",
+        },
+        {
+            title: "Xe B1",
+            key: "xe_b1",
+            width: 110,
+            align: "center",
+            render: (_, record) => record.xe_b1 || "-",
+        },
+        {
+            title: "Xe B2",
+            key: "xe_b2",
+            width: 110,
+            align: "center",
+            render: (_, record) => record.xe_b2 || "-",
+        },
+        {
+            title: "Kết thúc môn",
+            key: "kiem_tra_het_mon",
+            width: 110,
+            align: "center",
+            render: (_, record) => record.kiem_tra_het_mon ? dayjs(record.kiem_tra_het_mon).format("DD/MM/YYYY") : "-",
         },
         {
             title: "Trạng thái học bù",
@@ -351,17 +305,6 @@ const ChoDuyetHocBu = () => {
                 return <Tag color="default">Chưa đăng ký</Tag>;
             },
         },
-        // {
-        //     title: "Thời gian đăng ký học bù",
-        //     key: "created_at",
-        //     width: 180,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span >
-        //             {dayjs(record.created_at).format("DD/MM/YYYY HH:mm:ss")}
-        //         </span>
-        //     ),
-        // },
         {
             title: "Thao tác",
             key: "action",
@@ -385,7 +328,7 @@ const ChoDuyetHocBu = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Danh sách chờ duyệt học bù
+                    Học viên đang học bù
                 </h1>
             </div>
 
@@ -487,35 +430,9 @@ const ChoDuyetHocBu = () => {
                         </Space>
                     </Col>
                 </Row>
-                <Row className="mt-4">
-                    <Col>
-                        <Space>
-                            <Button
-                                type="primary"
-                                icon={<PlusCircleOutlined />}
-                                onClick={() => setIsCourseModalOpen(true)}
-                                className="!bg-green-600 hover:!bg-green-700 border-none"
-                                disabled={selectedRowKeys.length === 0}
-                            >
-                                Thêm vào khóa ({selectedRowKeys.length})
-                            </Button>
-                        </Space>
-                    </Col>
-                </Row>
             </Card>
 
             <Table
-                rowSelection={{
-                    selectedRowKeys,
-                    onChange: (keys) => setSelectedRowKeys(keys),
-                    getCheckboxProps: (record) => {
-                        const st = record?.trang_thai ?? record?.student?.trang_thai;
-                        return {
-                            disabled: String(st) !== "3",
-                            name: record.ho_ten || record.student?.ho_ten,
-                        };
-                    }
-                }}
                 columns={columns}
                 dataSource={students}
                 rowKey={(record) => record.id || record.ma_dk}
@@ -528,7 +445,7 @@ const ChoDuyetHocBu = () => {
                     onChange: (page, limit) => setPagination({ page, limit }),
                 }}
                 size="small"
-                scroll={{ x: 1300 }}
+                scroll={{ x: 1800 }}
                 bordered
                 className="table-blue-header"
                 rowClassName={(record) => {
@@ -553,16 +470,8 @@ const ChoDuyetHocBu = () => {
                 onClose={() => setIsDetailOpen(false)}
                 student={selectedStudent}
             />
-
-            <TienDoHocBuModal
-                visible={isCourseModalOpen}
-                onCancel={() => setIsCourseModalOpen(false)}
-                selectedCount={selectedRowKeys.length}
-                onSubmit={handleCourseSubmit}
-                loading={isSavingCourse}
-            />
         </div>
     );
 };
 
-export default ChoDuyetHocBu;
+export default DangHocBu;

@@ -58,6 +58,7 @@ const menuPathMap = {
   "kiem-tra": "/kiem-tra",
   "cho-duyet": "/cho-duyet",
   "tien-do-hoc-bu": "/tien-do-hoc-bu",
+  "hoc-vien-hoc-bu": "/hoc-vien-hoc-bu",
 };
 
 const LayoutTest = () => {
@@ -196,6 +197,7 @@ const LayoutTest = () => {
         { key: "hoc-bu", label: "Danh sách học bù" },
         { key: "cho-duyet", label: "Chờ duyệt học bù" },
         { key: "tien-do-hoc-bu", label: "Tiến độ học bù" },
+        { key: "hoc-vien-hoc-bu", label: "Học viên đang học bù" },
       ]
     },
     {
@@ -211,11 +213,11 @@ const LayoutTest = () => {
   // Map role_id to allowed keys
   const roleAccessMap = {
     1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Admin
-    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Trưởng phòng
-    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Tổ nghiệp vụ
+    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu"], // Trưởng phòng
+    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu"], // Tổ nghiệp vụ
     4: ["dashboard", "class"], // Tổ lý thuyết
     5: ["dashboard", "cabin", "reports"], // Tổ thực hành
-    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Tổ công nghệ
+    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu"], // Tổ công nghệ
   };
 
   // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard

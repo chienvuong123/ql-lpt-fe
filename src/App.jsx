@@ -37,6 +37,7 @@ import HocBuDAT from "./pages/dat/HocBuDat";
 import HocBu from "./pages/make-up-lessons/HocBu";
 import TienDoHocBu from "./pages/make-up-lessons/TienDoHocBu";
 import ChoDuyetHocBu from "./pages/make-up-lessons/ChoDuyetHocBu";
+import DangHocBu from "./pages/make-up-lessons/DangHocBu";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -250,6 +251,15 @@ function App() {
                   <GuardedRoute
                     path="/tien-do-hoc-bu"
                     element={<TienDoHocBu />}
+                  />
+                }
+              />
+              <Route
+                path="hoc-vien-hoc-bu"
+                element={
+                  <GuardedRoute
+                    path="/hoc-vien-hoc-bu"
+                    element={<DangHocBu />}
                   />
                 }
               />
