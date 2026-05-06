@@ -34,14 +34,13 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const [searchText, setSearchText] = useState("");
     const [trangThai, setTrangThai] = useState([2, 3]);
     const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
-    const [loai, setLoai] = useState([]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
         trang_thai: [2, 3],
         trang_thai_hoc_bu: [],
-        loai: [],
+        loai: [2, 3],
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -164,18 +163,12 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
-        let mappedLoai = [];
-        if (loai.includes("ly_thuyet")) mappedLoai.push(1);
-        if (loai.includes("thuc_hanh")) {
-            mappedLoai.push(2);
-            mappedLoai.push(3);
-        }
         setAppliedFilters({
             ma_khoa,
             text: searchText,
             trang_thai: trangThai,
             trang_thai_hoc_bu: trangThaiHocBu,
-            loai: mappedLoai,
+            loai: [2, 3],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -185,13 +178,12 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
         setSearchText("");
         setTrangThai([2, 3]);
         setTrangThaiHocBu([]);
-        setLoai([]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
             trang_thai: [2, 3],
             trang_thai_hoc_bu: [],
-            loai: [],
+            loai: [2, 3],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -213,7 +205,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
         {
             title: "Học viên",
             key: "hoc_vien",
-            width: 310,
+            width: 280,
             render: (value) => {
                 if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
 
@@ -272,16 +264,32 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             render: (_, record) => record.thay_giao || "-",
         },
         {
+            title: "Xe B1",
+            key: "xe_b1",
+            width: 95,
+            align: "center",
+            render: (_, record) => record.xe_b1 || "-",
+        },
+        {
+            title: "Xe B2",
+            key: "xe_b2",
+            width: 95,
+            align: "center",
+            render: (_, record) => record.xe_b2 || "-",
+        },
+        {
             title: "Lý thuyết",
             key: "theory_status",
-            width: 70,
+            width: 100,
             align: "center",
             render: (_, record) => {
-                const theory = record.detail?.theoryInfo;
-                const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
+                const itemLoai = record?.loai ?? record?.student?.loai;
+                const isDuyet = (String(itemLoai) === "2" || String(itemLoai) === "3")
+                    ? true
+                    : !!record.trang_thai_duyet?.[0];
                 return (
-                    <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-                        {isPass ? "Đạt" : "Chưa đạt"}
+                    <Tag color={isDuyet ? "green" : "orange"}>
+                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
                     </Tag>
                 );
             }
@@ -292,63 +300,83 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             width: 100,
             align: "center",
             render: (_, record) => {
-                const cabin = record.detail?.cabinInfo;
-                const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
+                const isDuyet = record.trang_thai_duyet?.[1];
                 return (
-                    <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-                        {isPass ? "Đạt" : "Chưa đạt"}
+                    <Tag color={isDuyet ? "green" : "orange"}>
+                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
                     </Tag>
                 );
             }
         },
         {
-            title: "Km đã học",
-            key: "tong_quang_duong",
-            width: 110,
+            title: "DAT",
+            key: "dat_status",
+            width: 100,
             align: "center",
-            render: (_, record) => (
-                <span className="font-medium">
-                    {record.detail?.datInfo?.tong_quang_duong || 0} km
-                </span>
-            ),
-        },
-        {
-            title: "Thời gian học",
-            key: "tong_thoi_gian",
-            width: 115,
-            align: "center",
-            render: (_, record) => (
-                <span className="font-medium">
-                    {record.detail?.datInfo?.tong_thoi_gian}
-                </span>
-            ),
-        },
-        {
-            title: "Trạng thái",
-            key: "trang_thai",
-            align: "center",
-            width: 120,
             render: (_, record) => {
-                const st = record?.trang_thai ?? record?.student?.trang_thai;
-                if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
-                if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
-                return <Tag color="default">-</Tag>;
-            },
+                const isDuyet = record.trang_thai_duyet?.[2];
+                return (
+                    <Tag color={isDuyet ? "green" : "orange"}>
+                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
+                    </Tag>
+                );
+            }
         },
+        // {
+        //     title: "Km đã học",
+        //     key: "tong_quang_duong",
+        //     width: 110,
+        //     align: "center",
+        //     render: (_, record) => (
+        //         <span className="font-medium">
+        //             {record.detail?.datInfo?.tong_quang_duong || 0} km
+        //         </span>
+        //     ),
+        // },
+        // {
+        //     title: "Thời gian học",
+        //     key: "tong_thoi_gian",
+        //     width: 115,
+        //     align: "center",
+        //     render: (_, record) => (
+        //         <span className="font-medium">
+        //             {record.detail?.datInfo?.tong_thoi_gian}
+        //         </span>
+        //     ),
+        // },
+        // {
+        //     title: "Trạng thái",
+        //     key: "trang_thai",
+        //     align: "center",
+        //     width: 120,
+        //     render: (_, record) => {
+        //         const st = record?.trang_thai ?? record?.student?.trang_thai;
+        //         if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
+        //         if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
+        //         return <Tag color="default">-</Tag>;
+        //     },
+        // },
         {
             title: "Trạng thái học bù",
             key: "trang_thai_hoc_bu",
             align: "center",
-            width: 140,
+            width: 100,
             render: (_, record) => {
-                const st = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
-                if (String(st) === "1") {
-                    return <Tag color="red">Chưa đăng ký</Tag>;
+                const val = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
+                if (val === null || val === undefined) {
+                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
                 }
-                if (String(st) === "2") {
-                    return <Tag color="blue">Đã đăng ký</Tag>;
+                const numVal = Number(val);
+                if (isNaN(numVal)) {
+                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
                 }
-                return <Tag color="default">Chưa đăng ký</Tag>;
+                if (numVal === 1) {
+                    return <Tag variant="solid" color="orange">Đang đăng ký</Tag>;
+                }
+                if (numVal >= 2) {
+                    return <Tag variant="solid" color="green">Lần {numVal - 1}</Tag>;
+                }
+                return <Tag variant="solid" color="default">Chưa học bù</Tag>;
             },
         },
         // {
@@ -385,7 +413,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Danh sách chờ duyệt học bù lý thuyết
+                    Danh sách chờ duyệt học bù thực hành
                 </h1>
             </div>
 
@@ -454,24 +482,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                             ]}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Loại học bù
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn loại học bù"
-                            value={loai}
-                            onChange={setLoai}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Lý thuyết", value: "ly_thuyet" },
-                                { label: "Thực hành", value: "thuc_hanh" },
-                            ]}
-                        />
-                    </Col>
+
                     <Col xs={24} sm={14} md={12} lg={4}>
                         <Space className="w-full justify-start flex-wrap">
                             <Button

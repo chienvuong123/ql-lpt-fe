@@ -333,10 +333,12 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     setIsDetailOpen(true);
   };
 
-  const handleDuyet = async (recordId) => {
+  const handleDuyet = async (recordId, record) => {
     try {
       const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
-      await updateHocBuStatus({ id: recordId, trang_thai: 3, nguoi_update: username, updated_at: new Date().toISOString() });
+      const newTrangThaiDuyet = [...record.trang_thai_duyet];
+      newTrangThaiDuyet[2] = true;
+      await updateHocBuStatus({ id: recordId, trang_thai: 3, nguoi_update: username, updated_at: new Date().toISOString(), trang_thai_duyet: newTrangThaiDuyet });
       message.success("Duyệt học bù thành công!");
       refetchStudents();
     } catch (err) {
@@ -344,10 +346,12 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     }
   };
 
-  const handleHuyDuyet = async (recordId) => {
+  const handleHuyDuyet = async (recordId, record) => {
     try {
       const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
-      await updateHocBuStatus({ id: recordId, trang_thai: 2, nguoi_update: username, updated_at: new Date().toISOString() });
+      const newTrangThaiDuyet = [...record.trang_thai_duyet];
+      newTrangThaiDuyet[2] = false;
+      await updateHocBuStatus({ id: recordId, trang_thai: 2, nguoi_update: username, updated_at: new Date().toISOString(), trang_thai_duyet: newTrangThaiDuyet });
       message.success("Hủy duyệt học bù thành công!");
       refetchStudents();
     } catch (err) {
