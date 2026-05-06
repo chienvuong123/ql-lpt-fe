@@ -163,7 +163,7 @@ const HocBu = () => {
         {
             title: "Học viên",
             key: "hoc_vien",
-            width: 270,
+            width: 280,
             render: (value) => {
                 if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
 

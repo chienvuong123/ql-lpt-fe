@@ -31,14 +31,13 @@ const DanhSachDaDuyetLyThuyet = () => {
     const [searchText, setSearchText] = useState("");
     const [trangThai, setTrangThai] = useState([2, 3]);
     const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
-    const [loai, setLoai] = useState([]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
         trang_thai: [2, 3],
         trang_thai_hoc_bu: [],
-        loai: [],
+        loai: [1],
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -123,18 +122,12 @@ const DanhSachDaDuyetLyThuyet = () => {
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
-        let mappedLoai = [];
-        if (loai.includes("ly_thuyet")) mappedLoai.push(1);
-        if (loai.includes("thuc_hanh")) {
-            mappedLoai.push(2);
-            mappedLoai.push(3);
-        }
         setAppliedFilters({
             ma_khoa,
             text: searchText,
             trang_thai: trangThai,
             trang_thai_hoc_bu: trangThaiHocBu,
-            loai: mappedLoai,
+            loai: [1],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -144,13 +137,12 @@ const DanhSachDaDuyetLyThuyet = () => {
         setSearchText("");
         setTrangThai([2, 3]);
         setTrangThaiHocBu([]);
-        setLoai([]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
             trang_thai: [2, 3],
             trang_thai_hoc_bu: [],
-            loai: [],
+            loai: [1],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -238,6 +230,20 @@ const DanhSachDaDuyetLyThuyet = () => {
             render: (_, record) => record.thay_giao || "-",
         },
         {
+            title: "Xe B1",
+            key: "xe_b1",
+            width: 110,
+            align: "center",
+            render: (_, record) => record.xe_b1 || "-",
+        },
+        {
+            title: "Xe B2",
+            key: "xe_b2",
+            width: 110,
+            align: "center",
+            render: (_, record) => record.xe_b2 || "-",
+        },
+        {
             title: "Bắt đầu Cabin",
             key: "bat_dau_cabin",
             width: 110,
@@ -264,20 +270,6 @@ const DanhSachDaDuyetLyThuyet = () => {
             width: 110,
             align: "center",
             render: (_, record) => record.ket_thuc_dat ? dayjs(record.ket_thuc_dat).format("DD/MM/YYYY") : "-",
-        },
-        {
-            title: "Xe B1",
-            key: "xe_b1",
-            width: 110,
-            align: "center",
-            render: (_, record) => record.xe_b1 || "-",
-        },
-        {
-            title: "Xe B2",
-            key: "xe_b2",
-            width: 110,
-            align: "center",
-            render: (_, record) => record.xe_b2 || "-",
         },
         {
             title: "Kết thúc môn",
@@ -338,7 +330,7 @@ const DanhSachDaDuyetLyThuyet = () => {
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -354,7 +346,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -365,7 +357,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Trạng thái
                         </label>
@@ -383,7 +375,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                             ]}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Trạng thái học bù
                         </label>
@@ -398,24 +390,6 @@ const DanhSachDaDuyetLyThuyet = () => {
                             options={[
                                 { label: "Chưa đăng ký", value: 1 },
                                 { label: "Đã đăng ký", value: 2 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Loại học bù
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn loại học bù"
-                            value={loai}
-                            onChange={setLoai}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Lý thuyết", value: "ly_thuyet" },
-                                { label: "Thực hành", value: "thuc_hanh" },
                             ]}
                         />
                     </Col>
