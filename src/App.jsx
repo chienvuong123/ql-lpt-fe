@@ -34,10 +34,16 @@ import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
 import DashboardCabin from "./pages/cabin/DashboardCabin";
 import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
 import HocBuDAT from "./pages/dat/HocBuDat";
+import DanhSachLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachLyThuyet";
+import DanhSachChoDuyetHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachChoDuyetLyThuyet";
+import DanhSachDaDuyetLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachDaDuyetLyThuyet";
+import TienDoHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/TienDoHocBuLyThuyet";
+
+import DanhSachThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachThucHanh";
+import DanhSachChoDuyetHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachChoDuyetThucHanh";
+import DanhSachDaDuyetThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachDaDuyetThucHanh";
+import TienDoHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/TienDoHocBuThucHanh";
 import HocBu from "./pages/make-up-lessons/HocBu";
-import TienDoHocBu from "./pages/make-up-lessons/TienDoHocBu";
-import ChoDuyetHocBu from "./pages/make-up-lessons/ChoDuyetHocBu";
-import DangHocBu from "./pages/make-up-lessons/DangHocBu";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -228,38 +234,84 @@ function App() {
                 }
               />
               <Route
-                path="hoc-bu"
+                path="danh-sach-hoc-bu"
                 element={
                   <GuardedRoute
-                    path="/hoc-bu"
+                    path="/danh-sach-hoc-bu"
                     element={<HocBu />}
                   />
                 }
               />
               <Route
-                path="cho-duyet"
+                path="danh-sach-ly-thuyet"
                 element={
                   <GuardedRoute
-                    path="/cho-duyet"
-                    element={<ChoDuyetHocBu />}
+                    path="/danh-sach-ly-thuyet"
+                    element={<DanhSachLyThuyet />}
                   />
                 }
               />
               <Route
-                path="tien-do-hoc-bu"
+                path="danh-sach-cho-duyet-ly-thuyet"
                 element={
                   <GuardedRoute
-                    path="/tien-do-hoc-bu"
-                    element={<TienDoHocBu />}
+                    path="/danh-sach-cho-duyet-ly-thuyet"
+                    element={<DanhSachChoDuyetHocBuLyThuyet />}
                   />
                 }
               />
               <Route
-                path="hoc-vien-hoc-bu"
+                path="danh-sach-da-duyet-ly-thuyet"
                 element={
                   <GuardedRoute
-                    path="/hoc-vien-hoc-bu"
-                    element={<DangHocBu />}
+                    path="/danh-sach-da-duyet-ly-thuyet"
+                    element={<DanhSachDaDuyetLyThuyet />}
+                  />
+                }
+              />
+              <Route
+                path="tien-do-hoc-bu-ly-thuyet"
+                element={
+                  <GuardedRoute
+                    path="/tien-do-hoc-bu-ly-thuyet"
+                    element={<TienDoHocBuLyThuyet />}
+                  />
+                }
+              />
+
+              <Route
+                path="danh-sach-thuc-hanh"
+                element={
+                  <GuardedRoute
+                    path="/danh-sach-thuc-hanh"
+                    element={<DanhSachThucHanh />}
+                  />
+                }
+              />
+              <Route
+                path="danh-sach-cho-duyet-thuc-hanh"
+                element={
+                  <GuardedRoute
+                    path="/danh-sach-cho-duyet-thuc-hanh"
+                    element={<DanhSachChoDuyetHocBuThucHanh />}
+                  />
+                }
+              />
+              <Route
+                path="danh-sach-da-duyet-thuc-hanh"
+                element={
+                  <GuardedRoute
+                    path="/danh-sach-da-duyet-thuc-hanh"
+                    element={<DanhSachDaDuyetThucHanh />}
+                  />
+                }
+              />
+              <Route
+                path="tien-do-hoc-bu-thuc-hanh"
+                element={
+                  <GuardedRoute
+                    path="/tien-do-hoc-bu-thuc-hanh"
+                    element={<TienDoHocBuThucHanh />}
                   />
                 }
               />

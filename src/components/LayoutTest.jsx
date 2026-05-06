@@ -54,11 +54,16 @@ const menuPathMap = {
   "hoc-bu-ly-thuyet": "/hoc-bu-ly-thuyet",
   "hoc-bu-dat": "/hoc-bu-dat",
   "tai-khoan": "/tai-khoan",
-  "hoc-bu": "/hoc-bu",
+  "danh-sach-hoc-bu": "/danh-sach-hoc-bu",
   "kiem-tra": "/kiem-tra",
-  "cho-duyet": "/cho-duyet",
-  "tien-do-hoc-bu": "/tien-do-hoc-bu",
-  "hoc-vien-hoc-bu": "/hoc-vien-hoc-bu",
+  "danh-sach-ly-thuyet": "/danh-sach-ly-thuyet",
+  "danh-sach-cho-duyet-ly-thuyet": "/danh-sach-cho-duyet-ly-thuyet",
+  "danh-sach-da-duyet-ly-thuyet": "/danh-sach-da-duyet-ly-thuyet",
+  "tien-do-hoc-bu-ly-thuyet": "/tien-do-hoc-bu-ly-thuyet",
+  "danh-sach-thuc-hanh": "/danh-sach-thuc-hanh",
+  "danh-sach-cho-duyet-thuc-hanh": "/danh-sach-cho-duyet-thuc-hanh",
+  "danh-sach-da-duyet-thuc-hanh": "/danh-sach-da-duyet-thuc-hanh",
+  "tien-do-hoc-bu-thuc-hanh": "/tien-do-hoc-bu-thuc-hanh",
 };
 
 const LayoutTest = () => {
@@ -194,10 +199,21 @@ const LayoutTest = () => {
       icon: <RetweetOutlined />,
       label: "Học bù",
       children: [
-        { key: "hoc-bu", label: "Danh sách học bù" },
-        { key: "cho-duyet", label: "Chờ duyệt học bù" },
-        { key: "tien-do-hoc-bu", label: "Tiến độ học bù" },
-        { key: "hoc-vien-hoc-bu", label: "Học viên đang học bù" },
+        { key: "danh-sach-hoc-bu", label: "Danh sách học bù" },
+        {
+          key: "danh-sach-ly-thuyet", label: "Danh sách lý thuyết", children: [
+            { key: "danh-sach-cho-duyet-ly-thuyet", label: "Danh sách chờ duyệt" },
+            { key: "danh-sach-da-duyet-ly-thuyet", label: "Danh sách đã duyệt" },
+            { key: "tien-do-hoc-bu-ly-thuyet", label: "Tiến độ học bù" },
+          ]
+        },
+        {
+          key: "danh-sach-thuc-hanh", label: "Danh sách thực hành", children: [
+            { key: "danh-sach-cho-duyet-thuc-hanh", label: "Danh sách chờ duyệt" },
+            { key: "danh-sach-da-duyet-thuc-hanh", label: "Danh sách đã duyệt" },
+            { key: "tien-do-hoc-bu-thuc-hanh", label: "Tiến độ học bù" },
+          ]
+        },
       ]
     },
     {
