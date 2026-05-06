@@ -12,7 +12,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 
-const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading }) => {
+const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading, type }) => {
     const [form] = Form.useForm();
 
     const calculateDates = (ngayKG) => {
@@ -26,6 +26,22 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading 
         const bdd = ktc.add(1, 'day');
         const ktd = bdd.add(25, 'day');
         const bg = kg.add(80, 'day');
+
+        if (type === "theory") {
+            return {
+                bat_dau_ly_thuyet: bdlt,
+                ket_thuc_ly_thuyet: ktlt,
+                kiem_tra_het_mon: kthm
+            };
+        } else if (type === "practice") {
+            return {
+                bat_dau_cabin: bdc,
+                ket_thuc_cabin: ktc,
+                bat_dau_dat: bdd,
+                ket_thuc_dat: ktd,
+                be_giang: bg
+            };
+        }
 
         return {
             bat_dau_ly_thuyet: bdlt,
@@ -145,17 +161,17 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading 
                 <Row gutter={16} className='mt-1'>
                     <Col span={8}>
                         <Form.Item name="bat_dau_ly_thuyet" label="Bắt đầu">
-                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" />
+                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" disabled={type === "practice"} />
                         </Form.Item>
                     </Col>
                     <Col span={8}>
                         <Form.Item name="ket_thuc_ly_thuyet" label="Kết thúc">
-                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" />
+                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" disabled={type === "practice"} />
                         </Form.Item>
                     </Col>
                     <Col span={8}>
                         <Form.Item name="kiem_tra_het_mon" label="Kiểm tra hết môn">
-                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" />
+                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" disabled={type === "practice"} />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -167,12 +183,12 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading 
                         <Row gutter={8}>
                             <Col span={12}>
                                 <Form.Item name="bat_dau_cabin">
-                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Bắt đầu" />
+                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Bắt đầu" disabled={type === "theory"} />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
                                 <Form.Item name="ket_thuc_cabin">
-                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Kết thúc" />
+                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Kết thúc" disabled={type === "theory"} />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -182,12 +198,12 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading 
                         <Row gutter={8}>
                             <Col span={12}>
                                 <Form.Item name="bat_dau_dat">
-                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Bắt đầu" />
+                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Bắt đầu" disabled={type === "theory"} />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
                                 <Form.Item name="ket_thuc_dat">
-                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Kết thúc" />
+                                    <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Kết thúc" disabled={type === "theory"} />
                                 </Form.Item>
                             </Col>
                         </Row>

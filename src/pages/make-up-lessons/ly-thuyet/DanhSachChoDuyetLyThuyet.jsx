@@ -531,6 +531,7 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
                 selectedCount={selectedRowKeys.length}
                 onSubmit={handleCourseSubmit}
                 loading={isSavingCourse}
+                type="theory"
             />
         </div>
     );

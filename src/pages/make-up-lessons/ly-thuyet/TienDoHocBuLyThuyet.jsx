@@ -503,6 +503,7 @@ const TienDoHocBuLyThuyet = () => {
                 onCancel={() => setIsModalOpen(false)}
                 onSubmit={handleModalSubmit}
                 loading={isSaving}
+                type="theory"
             />
         </div>
     );

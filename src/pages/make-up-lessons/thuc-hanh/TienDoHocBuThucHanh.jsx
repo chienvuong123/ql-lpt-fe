@@ -503,6 +503,7 @@ const TienDoHocBuThucHanh = () => {
                 onCancel={() => setIsModalOpen(false)}
                 onSubmit={handleModalSubmit}
                 loading={isSaving}
+                type="practice"
             />
         </div>
     );

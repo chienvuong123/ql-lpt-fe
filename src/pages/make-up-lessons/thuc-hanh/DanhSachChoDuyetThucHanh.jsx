@@ -579,6 +579,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                 selectedCount={selectedRowKeys.length}
                 onSubmit={handleCourseSubmit}
                 loading={isSavingCourse}
+                type="practice"
             />
         </div>
     );
