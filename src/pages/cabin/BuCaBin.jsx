@@ -336,8 +336,9 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
   const handleDuyet = async (recordId, record) => {
     try {
       const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
-      const newTrangThaiDuyet = [...record.trang_thai_duyet];
-      newTrangThaiDuyet[2] = true;
+      const currentDuyet = Array.isArray(record?.trang_thai_duyet) ? record.trang_thai_duyet : [false, false, false];
+      const newTrangThaiDuyet = [...currentDuyet];
+      newTrangThaiDuyet[1] = true;
       await updateHocBuStatus({ id: recordId, trang_thai: 3, nguoi_update: username, updated_at: new Date().toISOString(), trang_thai_duyet: newTrangThaiDuyet });
       message.success("Duyệt học bù thành công!");
       refetchStudents();
@@ -349,8 +350,9 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
   const handleHuyDuyet = async (recordId, record) => {
     try {
       const username = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
-      const newTrangThaiDuyet = [...record.trang_thai_duyet];
-      newTrangThaiDuyet[2] = false;
+      const currentDuyet = Array.isArray(record?.trang_thai_duyet) ? record.trang_thai_duyet : [false, false, false];
+      const newTrangThaiDuyet = [...currentDuyet];
+      newTrangThaiDuyet[1] = false;
       await updateHocBuStatus({ id: recordId, trang_thai: 2, nguoi_update: username, updated_at: new Date().toISOString(), trang_thai_duyet: newTrangThaiDuyet });
       message.success("Hủy duyệt học bù thành công!");
       refetchStudents();
@@ -536,7 +538,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
               <Popconfirm
                 title="Duyệt học bù"
                 description="Bạn có chắc chắn muốn duyệt không?"
-                onConfirm={() => handleDuyet(record.id)}
+                onConfirm={() => handleDuyet(record.id, record)}
                 okText="Có"
                 cancelText="Không"
               >
@@ -552,7 +554,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
               <Popconfirm
                 title="Hủy duyệt học bù"
                 description="Bạn có chắc chắn muốn hủy duyệt không?"
-                onConfirm={() => handleHuyDuyet(record.id)}
+                onConfirm={() => handleHuyDuyet(record.id, record)}
                 okText="Có"
                 cancelText="Không"
               >

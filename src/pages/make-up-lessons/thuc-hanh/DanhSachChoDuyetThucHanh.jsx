@@ -520,9 +520,17 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                     getCheckboxProps: (record) => {
-                        const st = record?.trang_thai ?? record?.student?.trang_thai;
+                        const itemLoai = record?.loai ?? record?.student?.loai;
+                        const isTheoryApproved = (String(itemLoai) === "2" || String(itemLoai) === "3")
+                            ? true
+                            : !!record.trang_thai_duyet?.[0];
+                        const isCabinApproved = !!record.trang_thai_duyet?.[1];
+                        const isDatApproved = !!record.trang_thai_duyet?.[2];
+
+                        const isAllApproved = isTheoryApproved && isCabinApproved && isDatApproved;
+
                         return {
-                            disabled: String(st) !== "3",
+                            disabled: !isAllApproved,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }

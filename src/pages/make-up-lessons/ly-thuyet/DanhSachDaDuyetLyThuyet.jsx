@@ -292,14 +292,21 @@ const DanhSachDaDuyetLyThuyet = () => {
             align: "center",
             width: 140,
             render: (_, record) => {
-                const st = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
-                if (String(st) === "1") {
-                    return <Tag color="red">Chưa đăng ký</Tag>;
+                const val = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
+                if (val === null || val === undefined) {
+                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
                 }
-                if (String(st) === "2") {
-                    return <Tag color="blue">Đã đăng ký</Tag>;
+                const numVal = Number(val);
+                if (isNaN(numVal)) {
+                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
                 }
-                return <Tag color="default">Chưa đăng ký</Tag>;
+                if (numVal === 1) {
+                    return <Tag variant="solid" color="orange">Đang đăng ký</Tag>;
+                }
+                if (numVal >= 2) {
+                    return <Tag variant="solid" color="green">Lần {numVal - 1}</Tag>;
+                }
+                return <Tag variant="solid" color="default">Chưa học bù</Tag>;
             },
         },
         {
