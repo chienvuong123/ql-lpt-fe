@@ -11,6 +11,8 @@ import {
     Tag,
     Space,
     message,
+    Checkbox,
+    Modal,
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -19,8 +21,6 @@ import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
-import TienDoHocBuModal from "../TienDoHocBuModal";
-import { dongBoTienDoDaoTaoSql } from "../../../apis/apiSynch";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -29,18 +29,18 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
-const DanhSachChoDuyetHocBuThucHanh = () => {
+const DanhSachHocVienBuThucHanh = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThai, setTrangThai] = useState([2, 3]);
-    const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
+    const [trangThaiHocBu, setTrangThaiHocBu] = useState([1, 2]);
+    const [loai, setLoai] = useState(["theory", "practice"]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
         trang_thai: [2, 3],
-        trang_thai_hoc_bu: [],
-        loai: [2, 3],
+        trang_thai_hoc_bu: [1, 2],
+        loai: [1, 2, 3],
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -48,43 +48,61 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
 
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-    const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+    const handleUpdateStatus = (record) => {
+        Modal.confirm({
+            title: "Xác nhận đăng ký học bù",
+            content: `Bạn có chắc chắn muốn đăng ký học bù cho học viên "${record.ho_ten || record.student?.ho_ten}" không?`,
+            okText: "Xác nhận",
+            cancelText: "Hủy",
+            onOk: async () => {
+                const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+                const payload = {
+                    id: record.id,
+                    trang_thai: 2,
+                    nguoi_update: userName,
+                    updated_at: new Date().toISOString(),
+                    trang_thai_hoc_bu: 1
+                };
+                try {
+                    await updateHocBuStatus(payload);
+                    message.success("Cập nhật trạng thái học bù thành công!");
+                    refetchStudents();
+                } catch (error) {
+                    message.error(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
+                }
+            }
+        });
+    };
 
-    const [isSavingCourse, setIsSavingCourse] = useState(false);
-
-    const handleCourseSubmit = async (values) => {
-        const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
-        const payload = {
-            ...values,
-            loai: 1,
-            luu_luong: selectedRowKeys.length,
-            created_by: userName,
-            updated_by: userName,
-        };
-
-        setIsSavingCourse(true);
-        try {
-            await dongBoTienDoDaoTaoSql(payload);
-
-            const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
-            await Promise.all(selectedStudents.map(async (st) => {
-                await updateHocBuStatus({
-                    ...st,
-                    trang_thai_hoc_bu: 2,
-                    khoa_bu: values.ma_khoa,
-                    thoi_gian_xep: new Date().toISOString(),
-                });
-            }));
-
-            message.success('Thêm mới tiến độ thành công');
-            setIsCourseModalOpen(false);
-            setSelectedRowKeys([]);
-            refetchStudents?.();
-        } catch (err) {
-            message.error(err.response?.data?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
-        } finally {
-            setIsSavingCourse(false);
-        }
+    const handleBulkUpdateStatus = () => {
+        if (!selectedRowKeys.length) return;
+        Modal.confirm({
+            title: "Xác nhận đăng ký học bù hàng loạt",
+            content: `Bạn có chắc chắn muốn đăng ký học bù cho ${selectedRowKeys.length} học viên đã chọn không?`,
+            okText: "Xác nhận",
+            cancelText: "Hủy",
+            onOk: async () => {
+                const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+                try {
+                    const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
+                    await Promise.all(selectedStudents.map(async (st) => {
+                        const payload = {
+                            id: st.id,
+                            trang_thai: 2,
+                            nguoi_update: userName,
+                            updated_at: new Date().toISOString(),
+                            trang_thai_hoc_bu: 1
+                        };
+                        await updateHocBuStatus(payload);
+                    }));
+                    message.success("Đăng ký học bù cho các học viên được chọn thành công!");
+                    setSelectedRowKeys([]);
+                    refetchStudents();
+                } catch (error) {
+                    message.error(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
+                }
+            }
+        });
     };
 
     // 1. Lấy danh sách khóa học
@@ -163,12 +181,23 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
+        let selectedLoai = [];
+        if (loai && loai.includes("theory")) {
+            selectedLoai.push(1);
+        }
+        if (loai && loai.includes("practice")) {
+            selectedLoai.push(2, 3);
+        }
+        if (selectedLoai.length === 0) {
+            selectedLoai = [1, 2, 3];
+        }
+
         setAppliedFilters({
             ma_khoa,
             text: searchText,
-            trang_thai: trangThai,
+            trang_thai: [2, 3],
             trang_thai_hoc_bu: trangThaiHocBu,
-            loai: [2, 3],
+            loai: selectedLoai,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -176,14 +205,14 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThai([2, 3]);
-        setTrangThaiHocBu([]);
+        setTrangThaiHocBu([1, 2]);
+        setLoai(["theory", "practice"]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
             trang_thai: [2, 3],
-            trang_thai_hoc_bu: [],
-            loai: [2, 3],
+            trang_thai_hoc_bu: [1, 2],
+            loai: [1, 2, 3],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -278,84 +307,42 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             render: (_, record) => record.xe_b2 || "-",
         },
         {
-            title: "Lý thuyết",
-            key: "theory_status",
-            width: 100,
-            align: "center",
-            render: (_, record) => {
-                const itemLoai = record?.loai ?? record?.student?.loai;
-                const isDuyet = (String(itemLoai) === "2" || String(itemLoai) === "3")
-                    ? true
-                    : !!record.trang_thai_duyet?.[0];
-                return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-                    </Tag>
-                );
-            }
-        },
-        {
             title: "Cabin",
             key: "cabin_status",
-            width: 100,
+            width: 80,
             align: "center",
             render: (_, record) => {
-                const isDuyet = record.trang_thai_duyet?.[1];
+                const cabin = record.detail?.cabinInfo;
+                const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
                 return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
+                    <Tag color={isPass ? "green" : "red"}>
+                        {isPass ? "Đạt" : "Chưa đạt"}
                     </Tag>
                 );
             }
         },
         {
-            title: "DAT",
-            key: "dat_status",
-            width: 100,
+            title: "Tổng quãng đường",
+            key: "tong_quang_duong",
+            width: 120,
             align: "center",
-            render: (_, record) => {
-                const isDuyet = record.trang_thai_duyet?.[2];
-                return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-                    </Tag>
-                );
-            }
+            render: (_, record) => (
+                <span className="font-medium">
+                    {record.detail?.datInfo?.tong_quang_duong || 0} km
+                </span>
+            ),
         },
-        // {
-        //     title: "Km đã học",
-        //     key: "tong_quang_duong",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span className="font-medium">
-        //             {record.detail?.datInfo?.tong_quang_duong || 0} km
-        //         </span>
-        //     ),
-        // },
-        // {
-        //     title: "Thời gian học",
-        //     key: "tong_thoi_gian",
-        //     width: 115,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span className="font-medium">
-        //             {record.detail?.datInfo?.tong_thoi_gian}
-        //         </span>
-        //     ),
-        // },
-        // {
-        //     title: "Trạng thái",
-        //     key: "trang_thai",
-        //     align: "center",
-        //     width: 120,
-        //     render: (_, record) => {
-        //         const st = record?.trang_thai ?? record?.student?.trang_thai;
-        //         if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
-        //         if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
-        //         return <Tag color="default">-</Tag>;
-        //     },
-        // },
+        {
+            title: "Tổng thời gian",
+            key: "tong_thoi_gian",
+            width: 120,
+            align: "center",
+            render: (_, record) => (
+                <span className="font-medium">
+                    {record.detail?.datInfo?.tong_thoi_gian || "-"}
+                </span>
+            ),
+        },
         {
             title: "Trạng thái học bù",
             key: "trang_thai_hoc_bu",
@@ -394,18 +381,30 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             title: "Thao tác",
             key: "action",
             width: 80,
-            align: "center",
-            render: (_, record) => (
-                <Space>
-                    <Button
-                        type="primary"
-                        className="!bg-[#3366cc]"
-                        icon={<EyeOutlined />}
-                        size="small"
-                        onClick={() => handleOpenDetail(record)}
-                    />
-                </Space>
-            ),
+            align: "left",
+            render: (_, record) => {
+                const hasKhoaBuAndThoiGian = String(record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu) === "1";
+                return (
+                    <Space>
+                        <Button
+                            type="primary"
+                            className="!bg-[#3366cc]"
+                            icon={<EyeOutlined />}
+                            size="small"
+                            onClick={() => handleOpenDetail(record)}
+                        />
+                        {!hasKhoaBuAndThoiGian && (
+                            <Button
+                                type="primary"
+                                className="!bg-[#52c41a]"
+                                icon={<PlusCircleOutlined />}
+                                size="small"
+                                onClick={() => handleUpdateStatus(record)}
+                            />
+                        )}
+                    </Space>
+                );
+            },
         },
     ];
 
@@ -413,7 +412,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Danh sách chờ duyệt học bù thực hành
+                    Danh sách học bù thực hành
                 </h1>
             </div>
 
@@ -446,41 +445,35 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThai}
-                            onChange={setTrangThai}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chờ duyệt", value: 2 },
-                                { label: "Đã duyệt", value: 3 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={12} md={10} lg={6}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Trạng thái học bù
                         </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThaiHocBu}
-                            onChange={setTrangThaiHocBu}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chưa đăng ký", value: 1 },
-                                { label: "Đã đăng ký", value: 2 },
-                            ]}
-                        />
+                        <div className="mt-[6px]">
+                            <Checkbox.Group
+                                value={trangThaiHocBu}
+                                onChange={setTrangThaiHocBu}
+                                options={[
+                                    { label: "Đang đăng ký", value: 1 },
+                                    { label: "Đã đăng ký (Lần 1,2)", value: 2 },
+                                ]}
+                            />
+                        </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={10} lg={5}>
+                        <label className="block text-xs text-gray-500 uppercase">
+                            Loại học bù
+                        </label>
+                        <div className="mt-[6px]">
+                            <Checkbox.Group
+                                value={loai}
+                                onChange={setLoai}
+                                options={[
+                                    { label: "Lý thuyết", value: "theory" },
+                                    { label: "Thực hành", value: "practice" },
+                                ]}
+                            />
+                        </div>
                     </Col>
 
                     <Col xs={24} sm={14} md={12} lg={4}>
@@ -504,11 +497,11 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                             <Button
                                 type="primary"
                                 icon={<PlusCircleOutlined />}
-                                onClick={() => setIsCourseModalOpen(true)}
+                                onClick={handleBulkUpdateStatus}
                                 className="!bg-green-600 hover:!bg-green-700 border-none"
                                 disabled={selectedRowKeys.length === 0}
                             >
-                                Thêm vào khóa ({selectedRowKeys.length})
+                                Đăng ký học bù ({selectedRowKeys.length})
                             </Button>
                         </Space>
                     </Col>
@@ -532,16 +525,17 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                         const isDatApproved = !!record.trang_thai_duyet?.[2];
 
                         const isEligible = isCabinApproved || isDatApproved;
+                        const isRegistered = String(record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu) === "1";
 
                         const currentKey = record.id || record.ma_dk;
-                        const selectedStudents = students.filter(st => 
+                        const selectedStudents = students.filter(st =>
                             selectedRowKeys.includes(st.id || st.ma_dk) && (st.id || st.ma_dk) !== currentKey
                         );
                         const selectedTeachers = selectedStudents.map(st => st.thay_giao).filter(Boolean);
                         const hasSameTeacherSelected = record.thay_giao && selectedTeachers.includes(record.thay_giao);
 
                         return {
-                            disabled: !isEligible || hasSameTeacherSelected,
+                            disabled: !isEligible || hasSameTeacherSelected || isRegistered,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }
@@ -584,16 +578,8 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                 student={selectedStudent}
             />
 
-            <TienDoHocBuModal
-                visible={isCourseModalOpen}
-                onCancel={() => setIsCourseModalOpen(false)}
-                selectedCount={selectedRowKeys.length}
-                onSubmit={handleCourseSubmit}
-                loading={isSavingCourse}
-                type="practice"
-            />
         </div>
     );
 };
 
-export default DanhSachChoDuyetHocBuThucHanh;
+export default DanhSachHocVienBuThucHanh;

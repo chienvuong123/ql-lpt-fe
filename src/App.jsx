@@ -44,6 +44,7 @@ import DanhSachChoDuyetHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/Dan
 import DanhSachDaDuyetThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachDaDuyetThucHanh";
 import TienDoHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/TienDoHocBuThucHanh";
 import HocBu from "./pages/make-up-lessons/HocBu";
+import DanhSachHocVienBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachHocVienBuThucHanh";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -312,6 +313,15 @@ function App() {
                   <GuardedRoute
                     path="/tien-do-hoc-bu-thuc-hanh"
                     element={<TienDoHocBuThucHanh />}
+                  />
+                }
+              />
+              <Route
+                path="danh-sach-hoc-vien-bu-thuc-hanh"
+                element={
+                  <GuardedRoute
+                    path="/danh-sach-hoc-vien-bu-thuc-hanh"
+                    element={<DanhSachHocVienBuThucHanh />}
                   />
                 }
               />

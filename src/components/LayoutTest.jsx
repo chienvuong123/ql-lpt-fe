@@ -64,6 +64,7 @@ const menuPathMap = {
   "danh-sach-cho-duyet-thuc-hanh": "/danh-sach-cho-duyet-thuc-hanh",
   "danh-sach-da-duyet-thuc-hanh": "/danh-sach-da-duyet-thuc-hanh",
   "tien-do-hoc-bu-thuc-hanh": "/tien-do-hoc-bu-thuc-hanh",
+  "danh-sach-hoc-vien-bu-thuc-hanh": "/danh-sach-hoc-vien-bu-thuc-hanh",
 };
 
 const LayoutTest = () => {
@@ -209,6 +210,7 @@ const LayoutTest = () => {
         },
         {
           key: "danh-sach-thuc-hanh", label: "Danh sách thực hành", children: [
+            { key: "danh-sach-hoc-vien-bu-thuc-hanh", label: "Danh sách bù thực hành" },
             { key: "danh-sach-cho-duyet-thuc-hanh", label: "Danh sách chờ duyệt" },
             { key: "danh-sach-da-duyet-thuc-hanh", label: "Danh sách đã duyệt" },
             { key: "tien-do-hoc-bu-thuc-hanh", label: "Tiến độ học bù" },
