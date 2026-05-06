@@ -532,7 +532,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                 bordered
                 className="table-blue-header"
                 rowClassName={(record) => {
-                    const graduationDate = record.ngay_tot_nghiep || record.student?.ngay_tot_nghiep;
+                    const graduationDate = record.be_giang || record.student?.be_giang;
                     if (!graduationDate) return "";
 
                     const deadline = dayjs(graduationDate).add(1, "year");

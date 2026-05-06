@@ -229,11 +229,26 @@ const DanhSachThucHanh = () => {
             key: "trang_thai_hoc_bu",
             align: "center",
             width: 140,
-            render: (_, record) => (
-                <Tag color={record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "green" : "default"}>
-                    {record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "Đã học bù" : "Chưa học bù"}
-                </Tag>
-            ),
+            render: (_, record) => {
+                const val = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
+                if (val === null || val === undefined) {
+                    return <Tag color="default">Chưa học bù</Tag>;
+                }
+                const numVal = Number(val);
+                if (isNaN(numVal)) {
+                    return <Tag color="default">Chưa học bù</Tag>;
+                }
+                if (numVal === 1) {
+                    return <Tag color="orange">Đang đăng ký</Tag>;
+                }
+                if (numVal === 2) {
+                    return <Tag color="blue">Lần 1</Tag>;
+                }
+                if (numVal > 2) {
+                    return <Tag color="green">Lần {numVal - 1}</Tag>;
+                }
+                return <Tag color="default">Chưa học bù</Tag>;
+            },
         },
         {
             title: "Thời gian đăng ký học bù",
@@ -342,7 +357,7 @@ const DanhSachThucHanh = () => {
                 bordered
                 className="table-blue-header"
                 rowClassName={(record) => {
-                    const graduationDate = record.ngay_tot_nghiep || record.student?.ngay_tot_nghiep;
+                    const graduationDate = record.be_giang || record.student?.be_giang;
                     if (!graduationDate) return "";
 
                     const deadline = dayjs(graduationDate).add(1, "year");

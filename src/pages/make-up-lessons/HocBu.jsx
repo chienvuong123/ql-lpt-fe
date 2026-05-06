@@ -10,15 +10,16 @@ import {
     Image,
     Tag,
     Space,
+    message,
+    Modal,
 } from "antd";
 import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBu } from "../../apis/apiHocbu";
+import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../apis/apiHocbu";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "./StudentMakeUpDetailDrawer";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
-import { formatMinutesToHM } from "../../util/helper";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -37,6 +38,7 @@ const HocBu = () => {
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
     // 1. Lấy danh sách khóa học
     const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
@@ -54,7 +56,7 @@ const HocBu = () => {
     }, [dataKhoaHoc]);
 
     // 2. Lấy danh sách học viên cần bù
-    const { data: studentData, isFetching: isFetchingStudents } = useQuery({
+    const { data: studentData, isFetching: isFetchingStudents, refetch: refetchStudents } = useQuery({
         queryKey: [
             "hocVienHocBu",
             appliedFilters.ma_khoa,
@@ -90,6 +92,63 @@ const HocBu = () => {
     const handleOpenDetail = (record) => {
         setSelectedStudent(record);
         setIsDetailOpen(true);
+    };
+
+    const handleUpdateStatus = (record) => {
+        Modal.confirm({
+            title: "Xác nhận đăng ký học bù",
+            content: `Bạn có chắc chắn muốn đăng ký học bù cho học viên "${record.ho_ten || record.student?.ho_ten}" không?`,
+            okText: "Xác nhận",
+            cancelText: "Hủy",
+            onOk: async () => {
+                const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+                const payload = {
+                    id: record.id,
+                    trang_thai: 2,
+                    nguoi_update: userName,
+                    updated_at: new Date().toISOString(),
+                    trang_thai_hoc_bu: 1
+                };
+                try {
+                    await updateHocBuStatus(payload);
+                    message.success("Cập nhật trạng thái học bù thành công!");
+                    refetchStudents();
+                } catch (error) {
+                    message.error(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
+                }
+            }
+        });
+    };
+
+    const handleBulkUpdateStatus = () => {
+        if (!selectedRowKeys.length) return;
+        Modal.confirm({
+            title: "Xác nhận đăng ký học bù hàng loạt",
+            content: `Bạn có chắc chắn muốn đăng ký học bù cho ${selectedRowKeys.length} học viên đã chọn không?`,
+            okText: "Xác nhận",
+            cancelText: "Hủy",
+            onOk: async () => {
+                const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+                try {
+                    const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
+                    await Promise.all(selectedStudents.map(async (st) => {
+                        const payload = {
+                            id: st.id,
+                            trang_thai: 2,
+                            nguoi_update: userName,
+                            updated_at: new Date().toISOString(),
+                            trang_thai_hoc_bu: 1
+                        };
+                        await updateHocBuStatus(payload);
+                    }));
+                    message.success("Đăng ký học bù cho các học viên được chọn thành công!");
+                    setSelectedRowKeys([]);
+                    refetchStudents();
+                } catch (error) {
+                    message.error(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
+                }
+            }
+        });
     };
 
     const columns = [
@@ -214,27 +273,28 @@ const HocBu = () => {
                 </span>
             ),
         },
-        // {
-        //     title: "Trạng thái ký",
-        //     key: "ky_dat",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <Tag color={record.student?.ky_dat === "da_ky" ? "green" : "default"}>
-        //             {record.student?.ky_dat === "da_ky" ? "Đã ký" : "Chưa ký"}
-        //         </Tag>
-        //     ),
-        // },
         {
             title: "Trạng thái học bù",
             key: "trang_thai_hoc_bu",
             align: "center",
             width: 140,
-            render: (_, record) => (
-                <Tag color={record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "green" : "default"}>
-                    {record.student?.trang_thai_hoc_bu === "da_hoc_bu" ? "Đã học bù" : "Chưa học bù"}
-                </Tag>
-            ),
+            render: (_, record) => {
+                const val = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
+                if (val === null || val === undefined) {
+                    return <Tag color="default">Chưa học bù</Tag>;
+                }
+                const numVal = Number(val);
+                if (isNaN(numVal)) {
+                    return <Tag color="default">Chưa học bù</Tag>;
+                }
+                if (numVal === 1) {
+                    return <Tag color="orange">Đang đăng ký</Tag>;
+                }
+                if (numVal >= 2) {
+                    return <Tag color="green">Lần {numVal - 1}</Tag>;
+                }
+                return <Tag color="default">Chưa học bù</Tag>;
+            },
         },
         {
             title: "Thời gian đăng ký học bù",
@@ -251,24 +311,30 @@ const HocBu = () => {
             title: "Thao tác",
             key: "action",
             width: 80,
-            align: "center",
-            render: (_, record) => (
-                <Space>
-                    <Button
-                        type="primary"
-                        className="!bg-[#3366cc]"
-                        icon={<EyeOutlined />}
-                        size="small"
-                        onClick={() => handleOpenDetail(record)}
-                    />
-                    <Button
-                        type="primary"
-                        className="!bg-[#52c41a]"
-                        icon={<PlusOutlined />}
-                        size="small"
-                    />
-                </Space>
-            ),
+            align: "left",
+            render: (_, record) => {
+                const hasKhoaBuAndThoiGian = String(record.trang_thai_hoc_bu) === "1";
+                return (
+                    <Space>
+                        <Button
+                            type="primary"
+                            className="!bg-[#3366cc]"
+                            icon={<EyeOutlined />}
+                            size="small"
+                            onClick={() => handleOpenDetail(record)}
+                        />
+                        {!hasKhoaBuAndThoiGian && (
+                            <Button
+                                type="primary"
+                                className="!bg-[#52c41a]"
+                                icon={<PlusOutlined />}
+                                size="small"
+                                onClick={() => handleUpdateStatus(record)}
+                            />
+                        )}
+                    </Space>
+                );
+            },
         },
     ];
 
@@ -324,9 +390,35 @@ const HocBu = () => {
                         </Space>
                     </Col>
                 </Row>
+                <Row className="mt-4">
+                    <Col>
+                        <Space>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={handleBulkUpdateStatus}
+                                className="!bg-green-600 hover:!bg-green-700 border-none"
+                                disabled={selectedRowKeys.length === 0}
+                            >
+                                Đăng ký học bù ({selectedRowKeys.length})
+                            </Button>
+                        </Space>
+                    </Col>
+                </Row>
             </Card>
 
             <Table
+                rowSelection={{
+                    selectedRowKeys,
+                    onChange: (keys) => setSelectedRowKeys(keys),
+                    getCheckboxProps: (record) => {
+                        const hasKhoaBuAndThoiGian = (String(record.trang_thai_hoc_bu) === "1");
+                        return {
+                            disabled: hasKhoaBuAndThoiGian,
+                            name: record.ho_ten || record.student?.ho_ten,
+                        };
+                    }
+                }}
                 columns={columns}
                 dataSource={students}
                 rowKey={(record) => record.id || record.ma_dk}
@@ -343,7 +435,7 @@ const HocBu = () => {
                 bordered
                 className="table-blue-header"
                 rowClassName={(record) => {
-                    const graduationDate = record.ngay_tot_nghiep || record.student?.ngay_tot_nghiep;
+                    const graduationDate = record.be_giang || record.student?.be_giang;
                     if (!graduationDate) return "";
 
                     const deadline = dayjs(graduationDate).add(1, "year");
