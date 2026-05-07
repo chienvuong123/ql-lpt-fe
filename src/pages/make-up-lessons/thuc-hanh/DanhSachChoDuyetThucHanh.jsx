@@ -11,6 +11,7 @@ import {
     Tag,
     Space,
     message,
+    Checkbox,
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -32,15 +33,15 @@ const normalizeApiList = (payload) => {
 const DanhSachChoDuyetHocBuThucHanh = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThai, setTrangThai] = useState([2, 3]);
-    const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
+    const [trangThaiHocBu, setTrangThaiHocBu] = useState([1, 2]);
+    const [loai, setLoai] = useState(["theory", "practice"]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
         trang_thai: [2, 3],
-        trang_thai_hoc_bu: [],
-        loai: [2, 3],
+        trang_thai_hoc_bu: [1, 2],
+        loai: [1, 2, 3],
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -121,6 +122,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                 trang_thai: appliedFilters.trang_thai,
                 trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
                 loai: appliedFilters.loai,
+                theory_status: "passed",
                 page: pagination.page,
                 limit: pagination.limit,
             }),
@@ -163,12 +165,23 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
+        let selectedLoai = [];
+        if (loai && loai.includes("theory")) {
+            selectedLoai.push(1);
+        }
+        if (loai && loai.includes("practice")) {
+            selectedLoai.push(2, 3);
+        }
+        if (selectedLoai.length === 0) {
+            selectedLoai = [1, 2, 3];
+        }
+
         setAppliedFilters({
             ma_khoa,
             text: searchText,
-            trang_thai: trangThai,
+            trang_thai: [2, 3],
             trang_thai_hoc_bu: trangThaiHocBu,
-            loai: [2, 3],
+            loai: selectedLoai,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -176,14 +189,14 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThai([2, 3]);
-        setTrangThaiHocBu([]);
+        setTrangThaiHocBu([1, 2]);
+        setLoai(["theory", "practice"]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
             trang_thai: [2, 3],
-            trang_thai_hoc_bu: [],
-            loai: [2, 3],
+            trang_thai_hoc_bu: [1, 2],
+            loai: [1, 2, 3],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -277,23 +290,23 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
         },
-        {
-            title: "Lý thuyết",
-            key: "theory_status",
-            width: 100,
-            align: "center",
-            render: (_, record) => {
-                const itemLoai = record?.loai ?? record?.student?.loai;
-                const isDuyet = (String(itemLoai) === "2" || String(itemLoai) === "3")
-                    ? true
-                    : !!record.trang_thai_duyet?.[0];
-                return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-                    </Tag>
-                );
-            }
-        },
+        // {
+        //     title: "Lý thuyết",
+        //     key: "theory_status",
+        //     width: 100,
+        //     align: "center",
+        //     render: (_, record) => {
+        //         const itemLoai = record?.loai ?? record?.student?.loai;
+        //         const isDuyet = (String(itemLoai) === "2" || String(itemLoai) === "3")
+        //             ? true
+        //             : !!record.trang_thai_duyet?.[0];
+        //         return (
+        //             <Tag color={isDuyet ? "green" : "orange"}>
+        //                 {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
+        //             </Tag>
+        //         );
+        //     }
+        // },
         {
             title: "Cabin",
             key: "cabin_status",
@@ -446,41 +459,35 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThai}
-                            onChange={setTrangThai}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chờ duyệt", value: 2 },
-                                { label: "Đã duyệt", value: 3 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={12} md={10} lg={6}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Trạng thái học bù
                         </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThaiHocBu}
-                            onChange={setTrangThaiHocBu}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chưa đăng ký", value: 1 },
-                                { label: "Đã đăng ký", value: 2 },
-                            ]}
-                        />
+                        <div className="mt-[6px]">
+                            <Checkbox.Group
+                                value={trangThaiHocBu}
+                                onChange={setTrangThaiHocBu}
+                                options={[
+                                    { label: "Đang đăng ký", value: 1 },
+                                    { label: "Đã đăng ký (Lần 1,2)", value: 2 },
+                                ]}
+                            />
+                        </div>
+                    </Col>
+                    <Col xs={24} sm={12} md={10} lg={5}>
+                        <label className="block text-xs text-gray-500 uppercase">
+                            Loại học bù
+                        </label>
+                        <div className="mt-[6px]">
+                            <Checkbox.Group
+                                value={loai}
+                                onChange={setLoai}
+                                options={[
+                                    { label: "Lý thuyết", value: "theory" },
+                                    { label: "Thực hành", value: "practice" },
+                                ]}
+                            />
+                        </div>
                     </Col>
 
                     <Col xs={24} sm={14} md={12} lg={4}>
@@ -505,7 +512,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                                 type="primary"
                                 icon={<PlusCircleOutlined />}
                                 onClick={() => setIsCourseModalOpen(true)}
-                                className="!bg-green-600 hover:!bg-green-700 border-none"
+                                className="!bg-[#3366cc] !text-white"
                                 disabled={selectedRowKeys.length === 0}
                             >
                                 Thêm vào khóa ({selectedRowKeys.length})
@@ -519,29 +526,47 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                 rowSelection={{
                     selectedRowKeys,
                     onChange: (keys, selectedRows) => {
-                        const teachers = selectedRows.map(st => st?.thay_giao).filter(Boolean);
-                        const hasDuplicate = teachers.some((t, index) => teachers.indexOf(t) !== index);
-                        if (hasDuplicate) {
-                            message.warning("Mỗi thầy giáo chỉ được chọn tối đa 1 học viên trong cùng một lớp học bù!");
+                        const types = selectedRows.map(st => String(st?.loai ?? st?.student?.loai)).filter(Boolean);
+                        const hasType1 = types.includes("1");
+                        const hasType23 = types.some(t => ["2", "3"].includes(t));
+                        if (hasType1 && hasType23) {
+                            message.warning("Không được chọn học viên lý thuyết (loại 1) cùng với học viên thực hành (loại 2, 3) vào cùng một khóa!");
                             return;
+                        }
+
+                        if (hasType23) {
+                            const teachers = selectedRows.map(st => st?.thay_giao).filter(Boolean);
+                            const hasDuplicate = teachers.some((t, index) => teachers.indexOf(t) !== index);
+                            if (hasDuplicate) {
+                                message.warning("Mỗi thầy giáo chỉ được chọn tối đa 1 học viên trong cùng một lớp học bù!");
+                                return;
+                            }
                         }
                         setSelectedRowKeys(keys);
                     },
                     getCheckboxProps: (record) => {
+                        const recordLoai = String(record?.loai ?? record?.student?.loai);
+                        const isTheoryApproved = !!record.trang_thai_duyet?.[0];
                         const isCabinApproved = !!record.trang_thai_duyet?.[1];
                         const isDatApproved = !!record.trang_thai_duyet?.[2];
 
-                        const isEligible = isCabinApproved || isDatApproved;
+                        const isEligible = (recordLoai === "1") ? isTheoryApproved : (isCabinApproved || isDatApproved);
 
                         const currentKey = record.id || record.ma_dk;
-                        const selectedStudents = students.filter(st => 
+                        const selectedStudents = students.filter(st =>
                             selectedRowKeys.includes(st.id || st.ma_dk) && (st.id || st.ma_dk) !== currentKey
                         );
+
+                        // Check selected student types
+                        const hasType1Selected = selectedStudents.some(st => String(st?.loai ?? st?.student?.loai) === "1");
+                        const hasType23Selected = selectedStudents.some(st => ["2", "3"].includes(String(st?.loai ?? st?.student?.loai)));
+                        const isTypeMismatch = (hasType1Selected && recordLoai !== "1") || (hasType23Selected && recordLoai === "1");
+
                         const selectedTeachers = selectedStudents.map(st => st.thay_giao).filter(Boolean);
-                        const hasSameTeacherSelected = record.thay_giao && selectedTeachers.includes(record.thay_giao);
+                        const isTeacherRestricted = (recordLoai !== "1") && record.thay_giao && selectedTeachers.includes(record.thay_giao);
 
                         return {
-                            disabled: !isEligible || hasSameTeacherSelected,
+                            disabled: !isEligible || isTeacherRestricted || isTypeMismatch,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }

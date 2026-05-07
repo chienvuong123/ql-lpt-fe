@@ -121,6 +121,7 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
                 trang_thai: appliedFilters.trang_thai,
                 trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
                 loai: appliedFilters.loai,
+                theory_status: "all",
                 page: pagination.page,
                 limit: pagination.limit,
             }),

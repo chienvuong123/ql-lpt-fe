@@ -498,7 +498,7 @@ const DanhSachHocVienBuThucHanh = () => {
                                 type="primary"
                                 icon={<PlusCircleOutlined />}
                                 onClick={handleBulkUpdateStatus}
-                                className="!bg-green-600 hover:!bg-green-700 border-none"
+                                className="!bg-[#3366cc] !text-white"
                                 disabled={selectedRowKeys.length === 0}
                             >
                                 Đăng ký học bù ({selectedRowKeys.length})
