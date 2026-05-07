@@ -51,3 +51,13 @@ export const getDanhSachHocVienHocBuDangHocBu = async (params = {}) => {
     return response.data;
 };
 
+export const getDanhSachHocVienHocBuChoDuyetLyThuyet = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/cho-duyet-ly-thuyet`, { params });
+    return response.data;
+};
+
+export const getDanhSachHocVienHocBuChoDuyetThucHanh = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/cho-duyet-thuc-hanh`, { params });
+    return response.data;
+};
+

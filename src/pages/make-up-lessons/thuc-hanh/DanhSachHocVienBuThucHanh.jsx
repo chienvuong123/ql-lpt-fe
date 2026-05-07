@@ -16,7 +16,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBuChoDuyet, updateHocBuStatus } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuChoDuyetThucHanh, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
@@ -133,7 +133,7 @@ const DanhSachHocVienBuThucHanh = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBuChoDuyet({
+            getDanhSachHocVienHocBuChoDuyetThucHanh({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
@@ -511,31 +511,13 @@ const DanhSachHocVienBuThucHanh = () => {
             <Table
                 rowSelection={{
                     selectedRowKeys,
-                    onChange: (keys, selectedRows) => {
-                        const teachers = selectedRows.map(st => st?.thay_giao).filter(Boolean);
-                        const hasDuplicate = teachers.some((t, index) => teachers.indexOf(t) !== index);
-                        if (hasDuplicate) {
-                            message.warning("Mỗi thầy giáo chỉ được chọn tối đa 1 học viên trong cùng một lớp học bù!");
-                            return;
-                        }
+                    onChange: (keys) => {
                         setSelectedRowKeys(keys);
                     },
                     getCheckboxProps: (record) => {
-                        const isCabinApproved = !!record.trang_thai_duyet?.[1];
-                        const isDatApproved = !!record.trang_thai_duyet?.[2];
-
-                        const isEligible = isCabinApproved || isDatApproved;
                         const isRegistered = String(record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu) === "1";
-
-                        const currentKey = record.id || record.ma_dk;
-                        const selectedStudents = students.filter(st =>
-                            selectedRowKeys.includes(st.id || st.ma_dk) && (st.id || st.ma_dk) !== currentKey
-                        );
-                        const selectedTeachers = selectedStudents.map(st => st.thay_giao).filter(Boolean);
-                        const hasSameTeacherSelected = record.thay_giao && selectedTeachers.includes(record.thay_giao);
-
                         return {
-                            disabled: !isEligible || hasSameTeacherSelected || isRegistered,
+                            disabled: isRegistered,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }

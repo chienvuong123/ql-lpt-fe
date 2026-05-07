@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBuChoDuyet, updateHocBuStatus } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuChoDuyetThucHanh, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
@@ -33,14 +33,14 @@ const normalizeApiList = (payload) => {
 const DanhSachChoDuyetHocBuThucHanh = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThaiHocBu, setTrangThaiHocBu] = useState([1, 2]);
+    const [trangThaiHocBu, setTrangThaiHocBu] = useState([1]);
     const [loai, setLoai] = useState(["theory", "practice"]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
         trang_thai: [2, 3],
-        trang_thai_hoc_bu: [1, 2],
+        trang_thai_hoc_bu: [1],
         loai: [1, 2, 3],
     });
 
@@ -116,7 +116,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBuChoDuyet({
+            getDanhSachHocVienHocBuChoDuyetThucHanh({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
@@ -189,13 +189,13 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThaiHocBu([1, 2]);
+        setTrangThaiHocBu([1]);
         setLoai(["theory", "practice"]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
             trang_thai: [2, 3],
-            trang_thai_hoc_bu: [1, 2],
+            trang_thai_hoc_bu: [1],
             loai: [1, 2, 3],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
@@ -459,7 +459,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={12} md={10} lg={6}>
+                    <Col xs={24} sm={12} md={10} lg={4}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Trạng thái học bù
                         </label>
@@ -469,7 +469,6 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                                 onChange={setTrangThaiHocBu}
                                 options={[
                                     { label: "Đang đăng ký", value: 1 },
-                                    { label: "Đã đăng ký (Lần 1,2)", value: 2 },
                                 ]}
                             />
                         </div>

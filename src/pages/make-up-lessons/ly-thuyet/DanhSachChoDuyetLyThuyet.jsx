@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBuChoDuyet, updateHocBuStatus } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuChoDuyetLyThuyet, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
@@ -113,7 +113,7 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBuChoDuyet({
+            getDanhSachHocVienHocBuChoDuyetLyThuyet({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
