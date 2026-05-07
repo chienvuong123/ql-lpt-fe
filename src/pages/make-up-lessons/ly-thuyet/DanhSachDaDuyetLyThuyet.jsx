@@ -29,14 +29,10 @@ const normalizeApiList = (payload) => {
 const DanhSachDaDuyetLyThuyet = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThai, setTrangThai] = useState([2, 3]);
-    const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
-        trang_thai: [2, 3],
-        trang_thai_hoc_bu: [],
         loai: [1],
     });
 
@@ -67,8 +63,6 @@ const DanhSachDaDuyetLyThuyet = () => {
             "hocVienHocBuDangHocBu",
             appliedFilters.ma_khoa,
             appliedFilters.search,
-            appliedFilters.trang_thai,
-            appliedFilters.trang_thai_hoc_bu,
             appliedFilters.loai,
             pagination.page,
             pagination.limit,
@@ -77,8 +71,6 @@ const DanhSachDaDuyetLyThuyet = () => {
             getDanhSachHocVienHocBuDangHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                trang_thai: appliedFilters.trang_thai,
-                trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
                 loai: appliedFilters.loai,
                 page: pagination.page,
                 limit: pagination.limit,
@@ -89,19 +81,7 @@ const DanhSachDaDuyetLyThuyet = () => {
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
         return list.filter((item) => {
-            const st = item?.trang_thai ?? item?.student?.trang_thai;
-            const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
             const itemLoai = item?.loai ?? item?.student?.loai;
-
-            // Match appliedFilters.trang_thai
-            const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
-                ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
-                : (String(st) === "2" || String(st) === "3");
-
-            // Match appliedFilters.trang_thai_hoc_bu
-            const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
-                ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
-                : true;
 
             // Match appliedFilters.loai
             const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
@@ -115,7 +95,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                 ? (String(s?.ho_ten || "").toLowerCase().includes(kw) || String(s?.ma_dk || "").toLowerCase().includes(kw) || String(s?.cccd || "").toLowerCase().includes(kw))
                 : true;
 
-            return matchTrangThai && matchTrangThaiHocBu && matchLoai && matchSearch;
+            return matchLoai && matchSearch;
         });
     }, [studentData, appliedFilters]);
 
@@ -125,8 +105,6 @@ const DanhSachDaDuyetLyThuyet = () => {
         setAppliedFilters({
             ma_khoa,
             text: searchText,
-            trang_thai: trangThai,
-            trang_thai_hoc_bu: trangThaiHocBu,
             loai: [1],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
@@ -135,13 +113,9 @@ const DanhSachDaDuyetLyThuyet = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThai([2, 3]);
-        setTrangThaiHocBu([]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
-            trang_thai: [2, 3],
-            trang_thai_hoc_bu: [],
             loai: [1],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
@@ -330,7 +304,7 @@ const DanhSachDaDuyetLyThuyet = () => {
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={5}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -346,7 +320,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={5}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -357,43 +331,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={5}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThai}
-                            onChange={setTrangThai}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chờ duyệt", value: 2 },
-                                { label: "Đã duyệt", value: 3 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={10} md={8} lg={5}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái học bù
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThaiHocBu}
-                            onChange={setTrangThaiHocBu}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chưa đăng ký", value: 1 },
-                                { label: "Đã đăng ký", value: 2 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={14} md={12} lg={4}>
+                    <Col xs={24} sm={14} md={12} lg={8}>
                         <Space className="w-full justify-start flex-wrap">
                             <Button
                                 type="primary"

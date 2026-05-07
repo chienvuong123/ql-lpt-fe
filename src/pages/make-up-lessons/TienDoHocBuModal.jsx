@@ -55,6 +55,21 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
         };
     };
 
+    const calculateDatesFromCabin = (ngayBDC) => {
+        if (!ngayBDC) return {};
+        const bdc = dayjs(ngayBDC);
+        const ktc = bdc.add(20, 'day');
+        const bdd = ktc.add(1, 'day');
+        const ktd = bdd.add(25, 'day');
+        const bg = bdc.add(56, 'day');
+        return {
+            ket_thuc_cabin: ktc,
+            bat_dau_dat: bdd,
+            ket_thuc_dat: ktd,
+            be_giang: bg
+        };
+    };
+
     React.useEffect(() => {
         if (visible) {
             form.resetFields();
@@ -65,10 +80,15 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
     }, [visible, selectedCount]);
 
     const handleValuesChange = (changedValues) => {
-        const { ngay_khai_giang, tot_nghiep } = changedValues;
+        const { ngay_khai_giang, bat_dau_cabin, tot_nghiep } = changedValues;
 
-        if (ngay_khai_giang) {
+        if (ngay_khai_giang && type !== "practice") {
             const automatedDates = calculateDates(ngay_khai_giang);
+            form.setFieldsValue(automatedDates);
+        }
+
+        if (bat_dau_cabin && type === "practice") {
+            const automatedDates = calculateDatesFromCabin(bat_dau_cabin);
             form.setFieldsValue(automatedDates);
         }
 
@@ -152,7 +172,7 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
                     </Col>
                     <Col span={6}>
                         <Form.Item name="ngay_khai_giang" label="Ngày khai giảng" className='w-full'>
-                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" />
+                            <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" disabled={type === "practice"} />
                         </Form.Item>
                     </Col>
                 </Row>

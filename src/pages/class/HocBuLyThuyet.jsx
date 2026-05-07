@@ -91,7 +91,7 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Học viên",
       key: "hoc_vien",
-      width: 250,
+      width: 280,
       render: (_, record) => {
         const s = record?.student;
         if (!s) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
@@ -528,7 +528,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Thao tác",
       key: "action",
-      width: 130,
+      width: 100,
       align: "center",
       render: (_, record) => {
         const st = record?.trang_thai ?? record?.student?.trang_thai;

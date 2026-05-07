@@ -565,8 +565,12 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                         const selectedTeachers = selectedStudents.map(st => st.thay_giao).filter(Boolean);
                         const isTeacherRestricted = (recordLoai !== "1") && record.thay_giao && selectedTeachers.includes(record.thay_giao);
 
+                        const hasKhoaBu = record.khoa_bu || record.student?.khoa_bu;
+                        const hasThoiGianXep = record.thoi_gian_xep || record.student?.thoi_gian_xep;
+                        const isAlreadyScheduled = hasKhoaBu && hasThoiGianXep;
+
                         return {
-                            disabled: !isEligible || isTeacherRestricted || isTypeMismatch,
+                            disabled: !isEligible || isTeacherRestricted || isTypeMismatch || isAlreadyScheduled,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }

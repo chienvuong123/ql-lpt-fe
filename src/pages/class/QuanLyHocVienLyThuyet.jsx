@@ -154,31 +154,45 @@ const ProgressCell = React.memo(({ result }) => {
   );
 });
 
-const UserCell = React.memo(({ user, suffixName, onClick }) => (
-  <div className="flex items-center gap-2">
-    <img
-      src={user?.avatar || user?.default_avatar}
-      className="!h-10 !w-10 rounded-lg"
-      alt="av"
-      loading="lazy"
-      onError={(e) => {
-        e.target.onerror = null;
-        e.target.src = user?.default_avatar;
-      }}
-    />
-    <div className="flex flex-col">
-      <span
-        className="font-bold text-gray-600 text-sm cursor-pointer hover:text-blue-500 transition-colors"
-        onClick={onClick}
-      >
-        {user?.name || "-"}
-      </span>
-      <span className="text-xs text-gray-500">
-        {suffixName}
-      </span>
+const UserCell = React.memo(({ user, ma_dk, onClick }) => {
+  return (
+    <div className="flex items-center gap-2">
+      <img
+        src={user?.avatar || user?.default_avatar}
+        className="!h-10 !w-10 rounded-lg"
+        alt="av"
+        loading="lazy"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = user?.default_avatar;
+        }}
+      />
+      <div className="flex flex-col">
+        <span
+          className="font-bold text-gray-600 text-sm cursor-pointer hover:text-blue-500 transition-colors"
+          onClick={onClick}
+        >
+          {user?.name || "-"}
+        </span>
+        {ma_dk ? (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Text
+              className="!text-[13px]"
+              copyable={{
+                text: ma_dk,
+                tooltips: ["Click để sao chép", "Đã sao chép!"],
+              }}
+            >
+              {ma_dk}
+            </Text>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">-</span>
+        )}
+      </div>
     </div>
-  </div>
-));
+  );
+});
 
 
 const QualifiedCell = React.memo(({ isQualified }) => (
@@ -782,7 +796,7 @@ const QuanLyHocVienLyThuyet = () => {
       render: (user, record) => (
         <UserCell
           user={user}
-          suffixName={selectedClass?.suffix_name}
+          ma_dk={record?.ma_dk || user?.ma_dk || record?.student?.ma_dk}
           onClick={() => handleOpenTheoryDetail(record)}
         />
       ),

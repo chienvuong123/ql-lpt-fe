@@ -12,6 +12,7 @@ import {
     Space,
     message,
     Modal,
+    Checkbox,
 } from "antd";
 import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -31,9 +32,11 @@ const normalizeApiList = (payload) => {
 const HocBu = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
+    const [loai, setLoai] = useState(["theory", "practice"]);
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         text: "",
+        loai: [1, 2, 3],
     });
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -61,6 +64,7 @@ const HocBu = () => {
             "hocVienHocBu",
             appliedFilters.ma_khoa,
             appliedFilters.text,
+            appliedFilters.loai,
             pagination.page,
             pagination.limit,
         ],
@@ -68,24 +72,58 @@ const HocBu = () => {
             getDanhSachHocVienHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 text: appliedFilters.text,
+                loai: appliedFilters.loai,
                 page: pagination.page,
                 limit: pagination.limit,
             }),
         keepPreviousData: true,
     });
 
-    const students = useMemo(() => normalizeApiList(studentData), [studentData]);
+    const students = useMemo(() => {
+        const list = normalizeApiList(studentData);
+        return list.filter((item) => {
+            const itemLoai = item?.loai ?? item?.student?.loai;
+
+            // Match appliedFilters.loai
+            const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
+                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
+                : true;
+
+            return matchLoai;
+        });
+    }, [studentData, appliedFilters]);
+
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
-        setAppliedFilters({ ma_khoa, text: searchText });
+        let selectedLoai = [];
+        if (loai && loai.includes("theory")) {
+            selectedLoai.push(1);
+        }
+        if (loai && loai.includes("practice")) {
+            selectedLoai.push(2, 3);
+        }
+        if (selectedLoai.length === 0) {
+            selectedLoai = [1, 2, 3];
+        }
+
+        setAppliedFilters({
+            ma_khoa,
+            text: searchText,
+            loai: selectedLoai,
+        });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setAppliedFilters({ ma_khoa: null, text: "" });
+        setLoai(["theory", "practice"]);
+        setAppliedFilters({
+            ma_khoa: null,
+            text: "",
+            loai: [1, 2, 3],
+        });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
@@ -364,7 +402,7 @@ const HocBu = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={6}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -375,7 +413,22 @@ const HocBu = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={4} md={8} lg={6}>
+                    <Col xs={24} sm={12} md={10} lg={5}>
+                        <label className="block text-xs text-gray-500 uppercase">
+                            Loại học bù
+                        </label>
+                        <div className="mt-[6px]">
+                            <Checkbox.Group
+                                value={loai}
+                                onChange={setLoai}
+                                options={[
+                                    { label: "Lý thuyết", value: "theory" },
+                                    { label: "Thực hành", value: "practice" },
+                                ]}
+                            />
+                        </div>
+                    </Col>
+                    <Col xs={24} sm={4} md={8} lg={4}>
                         <Space>
                             <Button
                                 type="primary"

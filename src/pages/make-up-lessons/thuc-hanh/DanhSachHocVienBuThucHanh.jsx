@@ -282,7 +282,7 @@ const DanhSachHocVienBuThucHanh = () => {
         {
             title: "Khóa",
             key: "ten_khoa",
-            width: 100,
+            width: 90,
             align: "center",
             render: (_, record) => record.ten_khoa || "-",
         },
@@ -295,14 +295,14 @@ const DanhSachHocVienBuThucHanh = () => {
         {
             title: "Xe B1",
             key: "xe_b1",
-            width: 95,
+            width: 100,
             align: "center",
             render: (_, record) => record.xe_b1 || "-",
         },
         {
             title: "Xe B2",
             key: "xe_b2",
-            width: 95,
+            width: 100,
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
         },
@@ -335,7 +335,7 @@ const DanhSachHocVienBuThucHanh = () => {
         {
             title: "Tổng thời gian",
             key: "tong_thoi_gian",
-            width: 120,
+            width: 95,
             align: "center",
             render: (_, record) => (
                 <span className="font-medium">

@@ -419,7 +419,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Ngày sinh",
       key: "ngay_sinh",
-      width: 100,
+      width: 90,
       align: "center",
       render: (_, record) => {
         const date = record.ngay_sinh;
@@ -436,7 +436,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Giáo viên",
       key: "thay_giao",
-      width: 180,
+      width: 200,
       render: (_, record) => record.thay_giao || "-",
     },
     {
@@ -495,7 +495,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       title: "Trạng thái",
       key: "trang_thai",
       align: "center",
-      width: 120,
+      width: 100,
       render: (_, record) => {
         const st = record?.trang_thai ?? record?.student?.trang_thai;
         if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
@@ -507,7 +507,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       title: "Trạng thái học bù",
       key: "trang_thai_hoc_bu",
       align: "center",
-      width: 140,
+      width: 120,
       render: (_, record) => {
         const st = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
         if (String(st) === "1") {
@@ -533,7 +533,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     {
       title: "Thao tác",
       key: "action",
-      width: 130,
+      width: 90,
       align: "center",
       render: (_, record) => {
         const st = record?.trang_thai ?? record?.student?.trang_thai;
