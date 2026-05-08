@@ -5,10 +5,10 @@ import { getDanhSachHocVienHocBuChoDuyet } from "../../../apis/apiHocbu";
 import StudentMakeUpDetailDrawer from "../../make-up-lessons/StudentMakeUpDetailDrawer";
 import HocBuFilterCard from "./HocBuFilterCard";
 import { getChoDuyetColumns } from "./hocBuDatColumns";
-import { useHocBuActions } from "./hooks/useHocBuActions";
 import { filterByTrangThaiHocBu, normalizeApiList } from "./hocBuUtils";
 import { TRANG_THAI_HOC_BU_MAP, TRANG_THAI_THUC_HANH_MAP } from "../../../constants";
 import { useHocBuFilter } from "./hooks/useHocBuFilter";
+import { useHocBuActions } from "../../../components/hooks/useHocBuActions";
 
 const DEFAULT_FILTERS = { ma_khoa: null, text: "", trang_thai: [], trang_thai_hoc_bu: [] };
 

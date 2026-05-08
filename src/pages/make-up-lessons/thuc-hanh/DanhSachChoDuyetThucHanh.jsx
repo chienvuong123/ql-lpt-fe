@@ -15,13 +15,15 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBuChoDuyetThucHanh, updateHocBuStatus } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import TienDoHocBuModal from "../TienDoHocBuModal";
 import { dongBoTienDoDaoTaoSql } from "../../../apis/apiSynch";
+import { renderTrangThaiHocBu } from "../../../constants/hocBuConstants";
+import HocVienInfo from "../../../components/HocVienInfor";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -116,12 +118,10 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBuChoDuyetThucHanh({
+            getDanhSachHocVienHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                trang_thai: appliedFilters.trang_thai,
-                trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
-                loai: appliedFilters.loai,
+                loai: "thuc_hanh",
                 theory_status: "passed",
                 page: pagination.page,
                 limit: pagination.limit,
@@ -131,36 +131,8 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
-        return list.filter((item) => {
-            const st = item?.trang_thai ?? item?.student?.trang_thai;
-            const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
-            const itemLoai = item?.loai ?? item?.student?.loai;
-
-            // Match appliedFilters.trang_thai
-            const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
-                ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
-                : (String(st) === "2" || String(st) === "3");
-
-            // Match appliedFilters.trang_thai_hoc_bu
-            const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
-                ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
-                : true;
-
-            // Match appliedFilters.loai
-            const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
-                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
-                : true;
-
-            // Match appliedFilters search text locally
-            const kw = (appliedFilters.search || appliedFilters.text || "").trim().toLowerCase();
-            const s = item?.student || item;
-            const matchSearch = kw
-                ? (String(s?.ho_ten || "").toLowerCase().includes(kw) || String(s?.ma_dk || "").toLowerCase().includes(kw) || String(s?.cccd || "").toLowerCase().includes(kw))
-                : true;
-
-            return matchTrangThai && matchTrangThaiHocBu && matchLoai && matchSearch;
-        });
-    }, [studentData, appliedFilters]);
+        return list;
+    }, [studentData]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
@@ -219,30 +191,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             title: "Học viên",
             key: "hoc_vien",
             width: 280,
-            render: (value) => {
-                if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
-
-                return (
-                    <Space>
-                        <Image
-                            src={value.anh}
-                            width={40}
-                            height={40}
-                            className="rounded-md"
-                            fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                        />
-                        <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{value.ho_ten}</span>
-                            <Typography.Text
-                                className="!text-[12px]"
-                                copyable={{ text: value.ma_dk }}
-                            >
-                                {value.ma_dk}
-                            </Typography.Text>
-                        </div>
-                    </Space>
-                );
-            },
+            render: (_, record) => <HocVienInfo record={record} />,
         },
         {
             title: "CCCD",
@@ -290,23 +239,6 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
         },
-        // {
-        //     title: "Lý thuyết",
-        //     key: "theory_status",
-        //     width: 100,
-        //     align: "center",
-        //     render: (_, record) => {
-        //         const itemLoai = record?.loai ?? record?.student?.loai;
-        //         const isDuyet = (String(itemLoai) === "2" || String(itemLoai) === "3")
-        //             ? true
-        //             : !!record.trang_thai_duyet?.[0];
-        //         return (
-        //             <Tag color={isDuyet ? "green" : "orange"}>
-        //                 {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-        //             </Tag>
-        //         );
-        //     }
-        // },
         {
             title: "Cabin",
             key: "cabin_status",
@@ -335,74 +267,20 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                 );
             }
         },
-        // {
-        //     title: "Km đã học",
-        //     key: "tong_quang_duong",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span className="font-medium">
-        //             {record.detail?.datInfo?.tong_quang_duong || 0} km
-        //         </span>
-        //     ),
-        // },
-        // {
-        //     title: "Thời gian học",
-        //     key: "tong_thoi_gian",
-        //     width: 115,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span className="font-medium">
-        //             {record.detail?.datInfo?.tong_thoi_gian}
-        //         </span>
-        //     ),
-        // },
-        // {
-        //     title: "Trạng thái",
-        //     key: "trang_thai",
-        //     align: "center",
-        //     width: 120,
-        //     render: (_, record) => {
-        //         const st = record?.trang_thai ?? record?.student?.trang_thai;
-        //         if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
-        //         if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
-        //         return <Tag color="default">-</Tag>;
-        //     },
-        // },
         {
-            title: "Trạng thái học bù",
-            key: "trang_thai_hoc_bu",
+            title: "Trạng thái",
+            key: "trang_thai",
             align: "center",
             width: 100,
-            render: (_, record) => {
-                const val = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
-                if (val === null || val === undefined) {
-                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
-                }
-                const numVal = Number(val);
-                if (isNaN(numVal)) {
-                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
-                }
-                if (numVal === 1) {
-                    return <Tag variant="solid" color="orange">Đang đăng ký</Tag>;
-                }
-                if (numVal >= 2) {
-                    return <Tag variant="solid" color="green">Lần {numVal - 1}</Tag>;
-                }
-                return <Tag variant="solid" color="default">Chưa học bù</Tag>;
-            },
+            render: (_, record) => renderTrangThaiHocBu(record.trang_thai),
         },
-        // {
-        //     title: "Thời gian đăng ký học bù",
-        //     key: "created_at",
-        //     width: 180,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span >
-        //             {dayjs(record.created_at).format("DD/MM/YYYY HH:mm:ss")}
-        //         </span>
-        //     ),
-        // },
+        {
+            title: "Trạng thái học bù",
+            key: "trang_thai_thuc_hanh",
+            align: "center",
+            width: 100,
+            render: (_, record) => renderTrangThaiHocBu(record.trang_thai_thuc_hanh),
+        },
         {
             title: "Thao tác",
             key: "action",
@@ -426,7 +304,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Danh sách chờ duyệt học bù thực hành
+                    Danh sách học chờ xếp lớp bù thực hành
                 </h1>
             </div>
 
