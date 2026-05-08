@@ -276,7 +276,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     ],
     queryFn: () =>
       getDanhSachHocVienHocBuChoDuyet({
-        loai: 2,
+        loai: "cabin",
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
         trang_thai: appliedFilters.trang_thai,

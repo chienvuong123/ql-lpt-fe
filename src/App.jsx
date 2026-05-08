@@ -33,7 +33,7 @@ import KiemTraDuLieuTotNghiep from "./pages/checks/KiemTraDuLieuTotNghiep";
 import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
 import DashboardCabin from "./pages/cabin/DashboardCabin";
 import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
-import HocBuDAT from "./pages/dat/HocBuDat";
+// import HocBuDAT from "./pages/dat/HocBuDat";
 import DanhSachLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachLyThuyet";
 import DanhSachChoDuyetHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachChoDuyetLyThuyet";
 import DanhSachDaDuyetLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachDaDuyetLyThuyet";
@@ -45,6 +45,7 @@ import DanhSachDaDuyetThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachD
 import TienDoHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/TienDoHocBuThucHanh";
 import HocBu from "./pages/make-up-lessons/HocBu";
 import DanhSachHocVienBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachHocVienBuThucHanh";
+import HocBuDAT from "./pages/dat/hoc-bu/HocBuDAT";
 
 const queryClient = new QueryClient({
   defaultOptions: {

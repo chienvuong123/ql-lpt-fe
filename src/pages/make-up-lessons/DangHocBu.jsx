@@ -109,7 +109,20 @@ const DangHocBu = () => {
 
             // Match appliedFilters.loai
             const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
-                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
+                ? appliedFilters.loai.some((val) => {
+                    const itemLoaiStr = String(itemLoai).toLowerCase();
+                    const valStr = String(val);
+                    if (valStr === "1") {
+                        return itemLoaiStr === "1" || itemLoaiStr === "ly_thuyet" || itemLoaiStr === "theory";
+                    }
+                    if (valStr === "2") {
+                        return itemLoaiStr === "2" || itemLoaiStr === "cabin";
+                    }
+                    if (valStr === "3") {
+                        return itemLoaiStr === "3" || itemLoaiStr === "dat" || itemLoaiStr === "practice";
+                    }
+                    return valStr === itemLoaiStr;
+                })
                 : true;
 
             // Match appliedFilters search text locally

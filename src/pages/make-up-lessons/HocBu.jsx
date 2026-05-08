@@ -86,7 +86,20 @@ const HocBu = () => {
 
             // Match appliedFilters.loai
             const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
-                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
+                ? appliedFilters.loai.some((val) => {
+                    const itemLoaiStr = String(itemLoai).toLowerCase();
+                    const valStr = String(val);
+                    if (valStr === "1") {
+                        return itemLoaiStr === "1" || itemLoaiStr === "ly_thuyet" || itemLoaiStr === "theory";
+                    }
+                    if (valStr === "2") {
+                        return itemLoaiStr === "2" || itemLoaiStr === "cabin";
+                    }
+                    if (valStr === "3") {
+                        return itemLoaiStr === "3" || itemLoaiStr === "dat" || itemLoaiStr === "practice";
+                    }
+                    return valStr === itemLoaiStr;
+                })
                 : true;
 
             return matchLoai;
@@ -140,12 +153,14 @@ const HocBu = () => {
             cancelText: "Hủy",
             onOk: async () => {
                 const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
+                const isTheory = record.loai === "ly_thuyet" || record.loai === "theory" || String(record.loai) === "1" || record.student?.loai === "ly_thuyet" || record.student?.loai === "theory" || String(record.student?.loai) === "1";
                 const payload = {
                     id: record.id,
-                    trang_thai: 2,
+                    trang_thai: isTheory ? 1 : 4,
                     nguoi_update: userName,
                     updated_at: new Date().toISOString(),
-                    trang_thai_hoc_bu: 1
+                    trang_thai_hoc_bu: 1,
+                    ...(isTheory ? { trang_thai_ly_thuyet: 1 } : { trang_thai_thuc_hanh: 1 })
                 };
                 try {
                     await updateHocBuStatus(payload);
@@ -170,12 +185,14 @@ const HocBu = () => {
                 try {
                     const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
                     await Promise.all(selectedStudents.map(async (st) => {
+                        const isTheory = st.loai === "ly_thuyet" || st.loai === "theory" || String(st.loai) === "1" || st.student?.loai === "ly_thuyet" || st.student?.loai === "theory" || String(st.student?.loai) === "1";
                         const payload = {
                             id: st.id,
-                            trang_thai: 2,
+                            trang_thai: isTheory ? 1 : 4,
                             nguoi_update: userName,
                             updated_at: new Date().toISOString(),
-                            trang_thai_hoc_bu: 1
+                            trang_thai_hoc_bu: 1,
+                            ...(isTheory ? { trang_thai_ly_thuyet: 1 } : { trang_thai_thuc_hanh: 1 })
                         };
                         await updateHocBuStatus(payload);
                     }));

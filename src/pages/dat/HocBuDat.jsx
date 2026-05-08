@@ -23,6 +23,7 @@ import DATDetailModal from "./DATDetailModal";
 import StudentMakeUpDetailDrawer from "../make-up-lessons/StudentMakeUpDetailDrawer";
 import dayjs from "dayjs";
 import { formatMinutesToHM } from "../../util/helper";
+import { renderTrangThaiHocBu, renderTrangThaiThucHanh } from "../../constants/hocBuConstants";
 
 const normalizeApiList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -49,7 +50,7 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     ],
     queryFn: () =>
       getDanhSachHocVienHocBuDat({
-        loai: 3,
+        loai: "dat",
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
         page: pagination.page,
@@ -91,7 +92,7 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       key: "hoc_vien",
       width: 250,
       render: (_, record) => {
-        const s = record?.student;
+        const s = record;
         if (!s) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
 
         return (
@@ -100,7 +101,7 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
               src={s.anh}
               width={40}
               height={40}
-              className="rounded-lg object-cover"
+              className="rounded-lg"
               fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
             />
             <div className="flex flex-col">
@@ -118,7 +119,7 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       key: "cccd",
       width: 140,
       align: "center",
-      render: (_, record) => record?.student?.cccd || "-",
+      render: (_, record) => record?.cccd || "-",
     },
     {
       title: "Ngày sinh",
@@ -126,7 +127,7 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       width: 100,
       align: "center",
       render: (_, record) => {
-        const date = record?.student?.ngay_sinh;
+        const date = record?.ngay_sinh;
         return date ? dayjs(date).format("DD/MM/YYYY") : "-";
       },
     },
@@ -135,13 +136,13 @@ const HocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       key: "ten_khoa",
       width: 120,
       align: "center",
-      render: (_, record) => record?.student?.ten_khoa || "-",
+      render: (_, record) => record?.ten_khoa || "-",
     },
     {
       title: "Giáo viên",
       key: "thay_giao",
       width: 150,
-      render: (_, record) => record?.student?.thay_giao || "-",
+      render: (_, record) => record?.thay_giao || "-",
     },
     {
       title: "Km đã học",
@@ -290,7 +291,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
     ],
     queryFn: () =>
       getDanhSachHocVienHocBuChoDuyet({
-        loai: 3,
+        loai: "dat",
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
         trang_thai: appliedFilters.trang_thai,
@@ -304,20 +305,13 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
   const students = useMemo(() => {
     const list = normalizeApiList(studentData);
     return list.filter((item) => {
-      const st = item?.trang_thai ?? item?.student?.trang_thai;
-      const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
+      const stHocBu = item?.trang_thai_hoc_bu ?? item?.student?.trang_thai_hoc_bu;
 
-      // Match appliedFilters.trang_thai
-      const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
-        ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
-        : (String(st) === "2" || String(st) === "3");
-
-      // Match appliedFilters.trang_thai_hoc_bu
       const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
         ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
         : true;
 
-      return matchTrangThai && matchTrangThaiHocBu;
+      return matchTrangThaiHocBu;
     });
   }, [studentData, appliedFilters]);
 
@@ -440,21 +434,6 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       render: (_, record) => record.thay_giao || "-",
     },
     {
-      title: "Lý thuyết",
-      key: "theory_status",
-      width: 70,
-      align: "center",
-      render: (_, record) => {
-        const theory = record.detail?.theoryInfo;
-        const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
-        return (
-          <Tag variant="solid" color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-            {isPass ? "Đạt" : "Chưa đạt"}
-          </Tag>
-        );
-      },
-    },
-    {
       title: "Cabin",
       key: "cabin_status",
       width: 100,
@@ -496,28 +475,14 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       key: "trang_thai",
       align: "center",
       width: 100,
-      render: (_, record) => {
-        const st = record?.trang_thai ?? record?.student?.trang_thai;
-        if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
-        if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
-        return <Tag color="default">-</Tag>;
-      },
+      render: (_, record) => renderTrangThaiHocBu(record.trang_thai),
     },
     {
-      title: "Trạng thái học bù",
-      key: "trang_thai_hoc_bu",
+      title: "Trạng thái TH",
+      key: "trang_thai_thuc_hanh",
       align: "center",
       width: 120,
-      render: (_, record) => {
-        const st = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
-        if (String(st) === "1") {
-          return <Tag color="red">Chưa đăng ký</Tag>;
-        }
-        if (String(st) === "2") {
-          return <Tag color="blue">Đã đăng ký</Tag>;
-        }
-        return <Tag color="default">Chưa đăng ký</Tag>;
-      },
+      render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh),
     },
     {
       title: "Thời gian đăng ký học bù",
@@ -536,9 +501,9 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       width: 90,
       align: "center",
       render: (_, record) => {
-        const st = record?.trang_thai ?? record?.student?.trang_thai;
-        const isChoDuyet = String(st) === "2";
-        const isDaDuyet = String(st) === "3";
+        const st = record.trang_thai;
+        const isChoDuyet = String(st) === "1" || String(st) === "4";
+        const isDaDuyet = String(st) === "2" || String(st) === "5";
         return (
           <Space>
             <Button

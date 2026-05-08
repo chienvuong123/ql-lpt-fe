@@ -1,3 +1,5 @@
+import { Tag } from "antd";
+
 export const LICENSE_PLATE_TYPE = {
   AUTO: ["B1", "B11"],
   MANUAL: ["B2", "B01", "B", "C1"],
@@ -25,5 +27,19 @@ export const ROLE_OPTIONS = [
   { label: 'Tổ sát hạch', value: 8 },
 ]
 
-const BATCH_SIZE = 5;
-const DELAY_BETWEEN_BATCHES = 300;
+export const TRANG_THAI_HOC_BU_MAP = {
+  1: { color: "orange", label: "Chờ duyệt" },
+  2: { color: "blue", label: "Đã duyệt - Chờ xếp lớp" },
+  3: { color: "cyan", label: "Đang học LT" },
+  4: { color: "purple", label: "Chờ duyệt TH" },
+  5: { color: "geekblue", label: "Chờ xếp lớp TH" },
+  6: { color: "green", label: "Đang học TH" },
+  7: { color: "success", label: "Hoàn thành" },
+};
+
+export const TRANG_THAI_THUC_HANH_MAP = {
+  1: { color: "orange", label: "Chờ duyệt" },
+  2: { color: "blue", label: "Đã duyệt" },
+  3: { color: "green", label: "Đang học" },
+  4: { color: "success", label: "Hoàn thành" },
+};
