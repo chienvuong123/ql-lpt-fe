@@ -28,8 +28,8 @@ export const ROLE_OPTIONS = [
 ]
 
 export const TRANG_THAI_HOC_BU_MAP = {
-  1: { color: "orange", label: "Chờ duyệt" },
-  2: { color: "blue", label: "Đã duyệt - Chờ xếp lớp" },
+  1: { color: "orange", label: "Chờ duyệt LT" },
+  2: { color: "blue", label: "Đã duyệt - Chờ xếp lớp LT" },
   3: { color: "cyan", label: "Đang học LT" },
   4: { color: "purple", label: "Chờ duyệt TH" },
   5: { color: "geekblue", label: "Chờ xếp lớp TH" },
@@ -40,6 +40,13 @@ export const TRANG_THAI_HOC_BU_MAP = {
 export const TRANG_THAI_THUC_HANH_MAP = {
   1: { color: "orange", label: "Chờ duyệt" },
   2: { color: "blue", label: "Đã duyệt" },
-  3: { color: "green", label: "Đang học" },
-  4: { color: "success", label: "Hoàn thành" },
+  3: { color: "green", label: "Đang học thực hành" },
+  4: { color: "success", label: "Hoàn thành thực hành" },
+};
+
+export const TRANG_THAI_LY_THUYET_MAP = {
+  1: { color: "orange", label: "Chờ duyệt lý thuyết" },
+  2: { color: "blue", label: "Đã duyệt lý thuyết" },
+  3: { color: "green", label: "Đang học lý thuyết" },
+  4: { color: "success", label: "Hoàn thành lý thuyết" },
 };

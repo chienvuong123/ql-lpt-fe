@@ -39,7 +39,7 @@ export const getChoDuyetColumns = ({ pagination, onOpenDetail, handleDuyet, hand
     },
     {
         title: "Trạng thái TH", key: "trang_thai_thuc_hanh", align: "center", width: 120,
-        render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh),
+        render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh, "dat"),
     },
     {
         title: "Thời gian đăng ký", key: "created_at", width: 160, align: "center",

@@ -482,7 +482,7 @@ const ChoDuyetHocBuTab = ({ dataKhoaHoc, isLoadingKhoaHoc, courseOptions }) => {
       key: "trang_thai_thuc_hanh",
       align: "center",
       width: 120,
-      render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh),
+      render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh, "dat"),
     },
     {
       title: "Thời gian đăng ký học bù",
