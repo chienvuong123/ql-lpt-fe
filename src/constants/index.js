@@ -29,7 +29,7 @@ export const ROLE_OPTIONS = [
 
 export const TRANG_THAI_HOC_BU_MAP = {
   1: { color: "orange", label: "Chờ duyệt LT" },
-  2: { color: "blue", label: "Đã duyệt - Chờ xếp lớp LT" },
+  2: { color: "blue", label: "Chờ xếp lớp LT" },
   3: { color: "cyan", label: "Đang học LT" },
   4: { color: "purple", label: "Chờ duyệt TH" },
   5: { color: "geekblue", label: "Chờ xếp lớp TH" },

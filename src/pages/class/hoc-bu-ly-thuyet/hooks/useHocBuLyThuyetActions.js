@@ -14,7 +14,8 @@ export const useHocBuLyThuyetActions = (refetch) => {
             newTrangThaiDuyet[0] = true;
             await updateHocBuStatus({
                 id: recordId,
-                trang_thai: 3,
+                trang_thai: 2,
+                trang_thai_ly_thuyet: 2,
                 trang_thai_duyet: newTrangThaiDuyet,
                 nguoi_update: getUsername(),
                 updated_at: new Date().toISOString(),
@@ -35,7 +36,8 @@ export const useHocBuLyThuyetActions = (refetch) => {
             newTrangThaiDuyet[0] = false;
             await updateHocBuStatus({
                 id: recordId,
-                trang_thai: 2,
+                trang_thai: 1,
+                trang_thai_ly_thuyet: 1,
                 trang_thai_duyet: newTrangThaiDuyet,
                 nguoi_update: getUsername(),
                 updated_at: new Date().toISOString(),

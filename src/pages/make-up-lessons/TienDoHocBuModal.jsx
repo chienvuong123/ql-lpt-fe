@@ -75,9 +75,10 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
             form.resetFields();
             form.setFieldsValue({
                 luu_luong: selectedCount,
+                loai: type === "theory" ? 1 : (type === "practice" ? 2 : 1),
             });
         }
-    }, [visible, selectedCount]);
+    }, [visible, selectedCount, type]);
 
     const handleValuesChange = (changedValues) => {
         const { ngay_khai_giang, bat_dau_cabin, tot_nghiep } = changedValues;
@@ -144,7 +145,7 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
             >
                 <Typography.Text strong className='!text-base'>Thông tin chung</Typography.Text>
                 <Row gutter={16} className='mt-1'>
-                    <Col span={6}>
+                    <Col span={5}>
                         <Form.Item
                             name="ma_khoa"
                             label="Mã khóa học"
@@ -153,7 +154,22 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
                             <Input placeholder="Nhập mã khóa" />
                         </Form.Item>
                     </Col>
-                    <Col span={6}>
+                    <Col span={5}>
+                        <Form.Item
+                            name="loai"
+                            label="Loại khóa bù"
+                            rules={[{ required: true, message: 'Vui lòng chọn loại!' }]}
+                        >
+                            <Select
+                                placeholder="Chọn loại"
+                                options={[
+                                    { label: 'Lý thuyết', value: 1 },
+                                    { label: 'Thực hành', value: 2 },
+                                ]}
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col span={5}>
                         <Form.Item name="hang" label="Hạng">
                             <Select
                                 placeholder="Chọn hạng"
@@ -165,12 +181,12 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={6}>
+                    <Col span={4}>
                         <Form.Item name="luu_luong" label="Số học viên">
                             <InputNumber className="!w-full" disabled />
                         </Form.Item>
                     </Col>
-                    <Col span={6}>
+                    <Col span={5}>
                         <Form.Item name="ngay_khai_giang" label="Ngày khai giảng" className='w-full'>
                             <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="Chọn ngày" disabled={type === "practice"} />
                         </Form.Item>

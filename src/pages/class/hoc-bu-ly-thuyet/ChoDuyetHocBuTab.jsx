@@ -12,7 +12,7 @@ import { getChoDuyetLyThuyetColumns } from "./HocBuLyThuyetColumns";
 const DEFAULT_FILTERS = {
   ma_khoa: null,
   text: "",
-  trang_thai: [2, 3],
+  trang_thai: '',
   trang_thai_hoc_bu: [],
 };
 
@@ -45,7 +45,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         loai: "ly_thuyet",
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
-        trang_thai: 2,
+        trang_thai: 1,
         page: pagination.page,
         limit: pagination.limit,
       }),
@@ -56,21 +56,8 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
 
   const students = useMemo(() => {
     const list = normalizeApiList(studentData);
-    return list.filter((item) => {
-      const st = item?.trang_thai ?? item?.student?.trang_thai;
-      const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
-
-      const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
-        ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
-        : (String(st) === "2" || String(st) === "3");
-
-      const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
-        ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
-        : true;
-
-      return matchTrangThai && matchTrangThaiHocBu;
-    });
-  }, [studentData, appliedFilters]);
+    return list;
+  }, [studentData]);
 
   const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 

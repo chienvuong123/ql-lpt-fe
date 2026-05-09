@@ -224,9 +224,8 @@ export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuy
     width: 100,
     align: "center",
     render: (_, record) => {
-      const st = record?.trang_thai ?? record?.student?.trang_thai;
-      const isChoDuyet = String(st) === "2";
-      const isDaDuyet = String(st) === "3";
+      const isChoDuyet = String(record?.trang_thai_ly_thuyet) === "1";
+      const isDaDuyet = String(record?.trang_thai_ly_thuyet) === "2";
       return (
         <Space>
           <Button

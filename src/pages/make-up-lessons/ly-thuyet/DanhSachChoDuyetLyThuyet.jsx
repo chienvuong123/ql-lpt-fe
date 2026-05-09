@@ -15,13 +15,15 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBuChoDuyetLyThuyet, updateHocBuStatus } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import TienDoHocBuModal from "../TienDoHocBuModal";
 import { dongBoTienDoDaoTaoSql } from "../../../apis/apiSynch";
+import { renderTrangThaiHocBu, renderTrangThaiLyThuyet } from "../../../constants/hocBuConstants";
+import HocVienInfo from "../../../components/HocVienInfor";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -33,13 +35,12 @@ const normalizeApiList = (payload) => {
 const DanhSachChoDuyetHocBuLyThuyet = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThai, setTrangThai] = useState([2, 3]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
-        trang_thai: [2, 3],
-        loai: [1],
+        trang_thai: 2,
+        loai: "ly_thuyet",
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -55,7 +56,7 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
         const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
         const payload = {
             ...values,
-            loai: 1,
+            loai: values.loai || 1,
             luu_luong: selectedRowKeys.length,
             created_by: userName,
             updated_by: userName,
@@ -69,9 +70,10 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
             await Promise.all(selectedStudents.map(async (st) => {
                 await updateHocBuStatus({
                     ...st,
-                    trang_thai_hoc_bu: 2,
-                    khoa_bu: values.ma_khoa,
-                    thoi_gian_xep: new Date().toISOString(),
+                    trang_thai: 3,
+                    khoa_bu_ly_thuyet: values.ma_khoa,
+                    trang_thai_ly_thuyet: 3,
+                    thoi_gian_xep_ly_thuyet: new Date().toISOString(),
                 });
             }));
 
@@ -113,12 +115,11 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBuChoDuyetLyThuyet({
+            getDanhSachHocVienHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
-                search: appliedFilters.search,
+                text: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
                 loai: appliedFilters.loai,
-                theory_status: "all",
                 page: pagination.page,
                 limit: pagination.limit,
             }),
@@ -127,39 +128,17 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
-        return list.filter((item) => {
-            const st = item?.trang_thai ?? item?.student?.trang_thai;
-            const itemLoai = item?.loai ?? item?.student?.loai;
-
-            // Match appliedFilters.trang_thai
-            const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
-                ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
-                : (String(st) === "2" || String(st) === "3");
-
-            // Match appliedFilters.loai
-            const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
-                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
-                : true;
-
-            // Match appliedFilters search text locally
-            const kw = (appliedFilters.search || appliedFilters.text || "").trim().toLowerCase();
-            const s = item?.student || item;
-            const matchSearch = kw
-                ? (String(s?.ho_ten || "").toLowerCase().includes(kw) || String(s?.ma_dk || "").toLowerCase().includes(kw) || String(s?.cccd || "").toLowerCase().includes(kw))
-                : true;
-
-            return matchTrangThai && matchLoai && matchSearch;
-        });
-    }, [studentData, appliedFilters]);
+        return list;
+    }, [studentData]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
         setAppliedFilters({
             ma_khoa,
-            text: searchText,
-            trang_thai: trangThai,
-            loai: [1],
+            search: searchText,
+            trang_thai: 2,
+            loai: "ly_thuyet",
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -167,12 +146,11 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThai([2, 3]);
         setAppliedFilters({
             ma_khoa: null,
-            text: "",
-            trang_thai: [2, 3],
-            loai: [1],
+            search: "",
+            trang_thai: 2,
+            loai: "ly_thuyet",
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -195,30 +173,7 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
             title: "Học viên",
             key: "hoc_vien",
             width: 310,
-            render: (value) => {
-                if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
-
-                return (
-                    <Space>
-                        <Image
-                            src={value.anh}
-                            width={40}
-                            height={40}
-                            className="rounded-md"
-                            fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                        />
-                        <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{value.ho_ten}</span>
-                            <Typography.Text
-                                className="!text-[12px]"
-                                copyable={{ text: value.ma_dk }}
-                            >
-                                {value.ma_dk}
-                            </Typography.Text>
-                        </div>
-                    </Space>
-                );
-            },
+            render: (_, record) => <HocVienInfo record={record} />,
         },
         {
             title: "CCCD",
@@ -241,108 +196,38 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
         },
         {
             title: "Khóa",
-            key: "ten_khoa",
+            key: "khoa",
             width: 100,
             align: "center",
-            render: (_, record) => record.ten_khoa || "-",
+            render: (_, record) => record.khoa || "-",
         },
         {
             title: "Khóa bù",
-            key: "khoa_bu",
+            key: "khoa_bu_ly_thuyet",
             width: 100,
             align: "center",
-            render: (_, record) => record.khoa_bu || "-",
+            render: (_, record) => record.khoa_bu_ly_thuyet || "-",
         },
         {
             title: "Giáo viên",
-            key: "thay_giao",
+            key: "giao_vien",
             width: 180,
-            render: (_, record) => record.thay_giao || "-",
+            render: (_, record) => record.giao_vien || "-",
         },
-        {
-            title: "Lý thuyết",
-            key: "theory_status",
-            width: 100,
-            align: "center",
-            render: (_, record) => {
-                const itemLoai = record?.loai ?? record?.student?.loai;
-                const isDuyet = (String(itemLoai) === "2" || String(itemLoai) === "3")
-                    ? true
-                    : !!record.trang_thai_duyet?.[0];
-                return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-                    </Tag>
-                );
-            }
-        },
-        // {
-        //     title: "Cabin",
-        //     key: "cabin_status",
-        //     width: 100,
-        //     align: "center",
-        //     render: (_, record) => {
-        //         const isDuyet = record.trang_thai_duyet?.[1];
-        //         return (
-        //             <Tag color={isDuyet ? "green" : "orange"}>
-        //                 {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-        //             </Tag>
-        //         );
-        //     }
-        // },
-        // {
-        //     title: "DAT",
-        //     key: "dat_status",
-        //     width: 100,
-        //     align: "center",
-        //     render: (_, record) => {
-        //         const isDuyet = record.trang_thai_duyet?.[2];
-        //         return (
-        //             <Tag color={isDuyet ? "green" : "orange"}>
-        //                 {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-        //             </Tag>
-        //         );
-        //     }
-        // },
         {
             title: "Trạng thái",
             key: "trang_thai",
             align: "center",
             width: 120,
-            render: (_, record) => {
-                const st = record?.trang_thai ?? record?.student?.trang_thai;
-                if (String(st) === "2") return <Tag color="orange">Chờ duyệt</Tag>;
-                if (String(st) === "3") return <Tag color="green">Đã duyệt</Tag>;
-                return <Tag color="default">-</Tag>;
-            },
+            render: (_, record) => renderTrangThaiHocBu(record.trang_thai),
         },
-        // {
-        //     title: "Trạng thái học bù",
-        //     key: "trang_thai_hoc_bu",
-        //     align: "center",
-        //     width: 140,
-        //     render: (_, record) => {
-        //         const st = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
-        //         if (String(st) === "1") {
-        //             return <Tag color="red">Chưa đăng ký</Tag>;
-        //         }
-        //         if (String(st) === "2") {
-        //             return <Tag color="blue">Đã đăng ký</Tag>;
-        //         }
-        //         return <Tag color="default">Chưa đăng ký</Tag>;
-        //     },
-        // },
-        // {
-        //     title: "Thời gian đăng ký học bù",
-        //     key: "created_at",
-        //     width: 180,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span >
-        //             {dayjs(record.created_at).format("DD/MM/YYYY HH:mm:ss")}
-        //         </span>
-        //     ),
-        // },
+        {
+            title: "Trạng thái học bù",
+            key: "trang_thai_ly_thuyet",
+            width: 100,
+            align: "center",
+            render: (_, record) => renderTrangThaiLyThuyet(record.trang_thai_ly_thuyet)
+        },
         {
             title: "Thao tác",
             key: "action",
@@ -366,13 +251,13 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Danh sách chờ duyệt học bù lý thuyết
+                    Danh sách chờ xếp lớp lý thuyết
                 </h1>
             </div>
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={6}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -388,7 +273,7 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={6}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -399,24 +284,9 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={6}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái
-                        </label>
-                        <div className="mt-[6px]">
-                            <Checkbox.Group
-                                value={trangThai}
-                                onChange={setTrangThai}
-                                options={[
-                                    { label: "Chờ duyệt", value: 2 },
-                                    { label: "Đã duyệt", value: 3 },
-                                ]}
-                            />
-                        </div>
-                    </Col>
 
-                    <Col xs={24} sm={14} md={12} lg={6}>
-                        <Space className="w-full justify-start flex-wrap">
+                    <Col xs={24} sm={14} md={12} lg={8}>
+                        <Space className="w-full justify-start flex-wrap mt-[18px]">
                             <Button
                                 type="primary"
                                 className="!bg-[#3366cc]"
@@ -452,17 +322,9 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                     getCheckboxProps: (record) => {
-                        const itemLoai = record?.loai ?? record?.student?.loai;
-                        const isTheoryApproved = (String(itemLoai) === "2" || String(itemLoai) === "3")
-                            ? true
-                            : !!record.trang_thai_duyet?.[0];
-
-                        const hasKhoaBu = record.khoa_bu || record.student?.khoa_bu;
-                        const hasThoiGianXep = record.thoi_gian_xep || record.student?.thoi_gian_xep;
-                        const isAlreadyScheduled = hasKhoaBu && hasThoiGianXep;
-
+                        const canCheck = String(record.trang_thai) === "2" && String(record.trang_thai_ly_thuyet) === "2";
                         return {
-                            disabled: !isTheoryApproved || isAlreadyScheduled,
+                            disabled: !canCheck,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }

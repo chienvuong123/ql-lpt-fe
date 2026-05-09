@@ -472,9 +472,12 @@ const HocBu = () => {
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                     getCheckboxProps: (record) => {
-                        const hasKhoaBuAndThoiGian = (String(record.trang_thai_hoc_bu) === "1");
+                        const isEligible =
+                            record.trang_thai === null ||
+                            record.trang_thai === undefined ||
+                            (String(record.trang_thai) === "4" && (record.trang_thai_thuc_hanh === null || record.trang_thai_thuc_hanh === undefined));
                         return {
-                            disabled: hasKhoaBuAndThoiGian,
+                            disabled: !isEligible,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }
