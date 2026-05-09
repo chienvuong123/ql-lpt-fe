@@ -1,7 +1,13 @@
-import { Tag } from "antd";
+import { Space, Tag } from "antd";
 import { TRANG_THAI_HOC_BU_MAP, TRANG_THAI_LY_THUYET_MAP, TRANG_THAI_THUC_HANH_MAP } from ".";
 
-export const renderTrangThaiHocBu = (value) => {
+export const renderTrangThaiHocBu = (value, trangThaiThucHanh) => {
+    if (Number(value) === 4) {
+        return trangThaiThucHanh == null
+            ? <Tag color="purple">Hoàn thành LT</Tag>
+            : <Tag color="purple">Chờ duyệt TH</Tag>;
+    }
+
     const item = TRANG_THAI_HOC_BU_MAP[value];
     return item ? <Tag color={item.color}>{item.label}</Tag> : <Tag color="default">-</Tag>;
 };
