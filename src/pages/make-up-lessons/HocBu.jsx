@@ -22,6 +22,7 @@ import StudentMakeUpDetailDrawer from "./StudentMakeUpDetailDrawer";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { renderTrangThaiHocBu, renderTrangThaiLyThuyet, renderTrangThaiThucHanh } from "../../constants/hocBuConstants";
+import HocVienInfo from "../../components/HocVienInfor";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -192,30 +193,7 @@ const HocBu = () => {
             title: "Học viên",
             key: "hoc_vien",
             width: 280,
-            render: (value) => {
-                if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
-
-                return (
-                    <Space>
-                        <Image
-                            src={value.anh}
-                            width={40}
-                            height={40}
-                            className="rounded-md"
-                            fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                        />
-                        <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{value.ho_ten}</span>
-                            <Typography.Text
-                                className="!text-[12px]"
-                                copyable={{ text: value.ma_dk }}
-                            >
-                                {value.ma_dk}
-                            </Typography.Text>
-                        </div>
-                    </Space>
-                );
-            },
+            render: (_, record) => <HocVienInfo record={record} />,
         },
         {
             title: "CCCD",
@@ -263,58 +241,6 @@ const HocBu = () => {
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
         },
-        // {
-        //     title: "Lý thuyết",
-        //     key: "theory_status",
-        //     width: 70,
-        //     align: "center",
-        //     render: (_, record) => {
-        //         const theory = record.detail?.theoryInfo;
-        //         const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
-        //         return (
-        //             <Tag color={isPass ? "green" : "red"}>
-        //                 {isPass ? "Đạt" : "Chưa đạt"}
-        //             </Tag>
-        //         );
-        //     }
-        // },
-        // {
-        //     title: "Cabin",
-        //     key: "cabin_status",
-        //     width: 100,
-        //     align: "center",
-        //     render: (_, record) => {
-        //         const cabin = record.detail?.cabinInfo;
-        //         const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
-        //         return (
-        //             <Tag color={isPass ? "green" : "red"}>
-        //                 {isPass ? "Đạt" : "Chưa đạt"}
-        //             </Tag>
-        //         );
-        //     }
-        // },
-        // {
-        //     title: "Km đã học",
-        //     key: "tong_quang_duong",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span className="font-medium">
-        //             {record.detail?.datInfo?.tong_quang_duong || 0} km
-        //         </span>
-        //     ),
-        // },
-        // {
-        //     title: "Thời gian học",
-        //     key: "tong_thoi_gian",
-        //     width: 120,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <span className="font-medium">
-        //             {record.detail?.datInfo?.tong_thoi_gian}
-        //         </span>
-        //     ),
-        // },
         {
             title: "Trạng thái",
             key: "trang_thai",

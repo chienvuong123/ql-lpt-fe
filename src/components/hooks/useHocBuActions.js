@@ -1,5 +1,5 @@
 import { message } from "antd";
-import { updateHocBuStatus } from "../../apis/apiHocbu";
+import { updateHocBuStatus, updateHocBuStatusBulk } from "../../apis/apiHocbu";
 
 const getUsername = () =>
     sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
@@ -137,12 +137,34 @@ export const useHocBuActions = (refetch) => {
         message.warning("Trạng thái không hợp lệ để hủy duyệt!");
     };
 
+    const handleBulkDuyetThucHanh = async (records, loaiThucHanh = "cabin") => {
+        if (!records || records.length === 0) return;
+        try {
+            const ids = records.map(record => record.id || record.ma_dk);
+            await updateHocBuStatusBulk({
+                ids,
+                trang_thai: 5,
+                trang_thai_thuc_hanh: 2,
+                loai_thuc_hanh: loaiThucHanh,
+                nguoi_duyet_thuc_hanh: getUsername(),
+                thoi_gian_duyet_thuc_hanh: new Date().toISOString(),
+                nguoi_update: getUsername(),
+                updated_at: new Date().toISOString(),
+            });
+            message.success(`Đã duyệt học bù thực hành cho ${records.length} học viên thành công!`);
+            refetch();
+        } catch {
+            message.error("Duyệt học bù thực hành hàng loạt thất bại!");
+        }
+    };
+
     return {
         handleDuyet,
         handleHuyDuyet,
         handleDuyetLyThuyet,
         handleHuyDuyetLyThuyet,
         handleDuyetThucHanh,
+        handleBulkDuyetThucHanh,
         handleHuyDuyetThucHanh,
         handleTaoDonLyThuyet,
         handleTaoDonThucHanh,
