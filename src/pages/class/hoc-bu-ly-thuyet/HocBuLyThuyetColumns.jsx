@@ -142,58 +142,6 @@ export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuy
     render: (_, record) => record.giao_vien || "-",
   },
   {
-    title: "Lý thuyết",
-    key: "theory_status",
-    width: 70,
-    align: "center",
-    render: (_, record) => {
-      const theory = record.detail?.theoryInfo;
-      const isPass = theory?.loai_ly_thuyet && theory?.loai_het_mon;
-      return (
-        <Tag color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-          {isPass ? "Đạt" : "Chưa đạt"}
-        </Tag>
-      );
-    },
-  },
-  {
-    title: "Cabin",
-    key: "cabin_status",
-    width: 100,
-    align: "center",
-    render: (_, record) => {
-      const cabin = record.detail?.cabinInfo;
-      const isPass = (cabin?.tong_bai || 0) >= 8 && (cabin?.tong_thoi_gian || 0) >= 150;
-      return (
-        <Tag color={isPass ? "green" : "red"} className="!w-17 !text-center !rounded-full">
-          {isPass ? "Đạt" : "Chưa đạt"}
-        </Tag>
-      );
-    },
-  },
-  {
-    title: "Km đã học",
-    key: "tong_quang_duong",
-    width: 110,
-    align: "center",
-    render: (_, record) => (
-      <span className="font-medium">
-        {record.detail?.datInfo?.tong_quang_duong || 0} km
-      </span>
-    ),
-  },
-  {
-    title: "Thời gian học",
-    key: "tong_thoi_gian",
-    width: 115,
-    align: "center",
-    render: (_, record) => (
-      <span className="font-medium">
-        {record.detail?.datInfo?.tong_thoi_gian}
-      </span>
-    ),
-  },
-  {
     title: "Trạng thái",
     key: "trang_thai",
     align: "center",
