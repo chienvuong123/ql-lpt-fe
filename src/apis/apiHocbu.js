@@ -74,3 +74,8 @@ export const importHocBuExcel = async (file, metadata = {}) => {
     });
     return response.data;
 };
+
+export const dongBoDuLieuHocBuLyThuyet = async () => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/check-hoan-thanh-ly-thuyet`);
+    return response.data;
+};

@@ -10,13 +10,14 @@ import {
     Image,
     Tag,
     Space,
+    message,
 } from "antd";
-import { EyeOutlined } from "@ant-design/icons";
-import { useQuery } from "@tanstack/react-query";
+import { EyeOutlined, SyncOutlined } from "@ant-design/icons";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
-import { getDanhSachHocVienHocBuDangHocBu } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuDangHocBu, dongBoDuLieuHocBuLyThuyet } from "../../../apis/apiHocbu";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import HocVienInfo from "../../../components/HocVienInfor";
 import { renderTrangThaiLyThuyet } from "../../../constants/hocBuConstants";
@@ -79,6 +80,22 @@ const DanhSachDangHocBuLyThuyet = () => {
             }),
         keepPreviousData: true,
     });
+
+    // 3. Mutation đồng bộ dữ liệu
+    const mutationDongBo = useMutation({
+        mutationFn: () => dongBoDuLieuHocBuLyThuyet(),
+        onSuccess: (res) => {
+            message.success(res?.message || "Đồng bộ dữ liệu học bù lý thuyết thành công!");
+            refetchStudents();
+        },
+        onError: (error) => {
+            message.error(error.response?.data?.message || "Đồng bộ dữ liệu thất bại!");
+        }
+    });
+
+    const handleSyncData = () => {
+        mutationDongBo.mutate();
+    };
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
@@ -289,6 +306,15 @@ const DanhSachDangHocBuLyThuyet = () => {
                 <h1 className="text-2xl font-bold text-gray-800">
                     Học viên đang học bù lý thuyết
                 </h1>
+                <Button
+                    type="primary"
+                    className="!bg-[#3366cc]"
+                    icon={<SyncOutlined />}
+                    loading={mutationDongBo.isPending}
+                    onClick={handleSyncData}
+                >
+                    Đồng bộ sang bù thực hành
+                </Button>
             </div>
 
             <Card className="!mb-5">
