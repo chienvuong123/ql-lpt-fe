@@ -61,3 +61,16 @@ export const getDanhSachHocVienHocBuChoDuyetThucHanh = async (params = {}) => {
     return response.data;
 };
 
+export const importHocBuExcel = async (file, metadata = {}) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (metadata.loai) formData.append("loai", metadata.loai);
+    if (metadata.khoa_bu) formData.append("khoa_bu", metadata.khoa_bu);
+    if (metadata.ghi_chu) formData.append("ghi_chu", metadata.ghi_chu);
+    if (metadata.nguoi_tao) formData.append("nguoi_tao", metadata.nguoi_tao);
+
+    const response = await axios.post(`${baseURL}/tien-do-dao-tao/hoc-bu/import`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+    });
+    return response.data;
+};

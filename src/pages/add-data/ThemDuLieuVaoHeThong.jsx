@@ -4,7 +4,9 @@ import { importCheckStudentExcel } from "../../apis/kiemTra";
 import { SyncOutlined, UploadOutlined } from "@ant-design/icons";
 import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoXeGiaoVienSql } from "../../apis/apiSynch";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
+import { importHocBuExcel } from "../../apis/apiHocbu";
 import { useState } from "react";
+import { Input } from "antd";
 
 const normalizeApiList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -71,6 +73,23 @@ const ThemDuLieuVaoHeThong = () => {
     },
   });
 
+  const [importHocBuMeta, setImportHocBuMeta] = useState({ loai: "ly_thuyet", khoa_bu: "" });
+
+  const mutationImportHocBu = useMutation({
+    mutationFn: ({ file }) => importHocBuExcel(file, importHocBuMeta),
+    onSuccess: (res) => {
+      const stats = res?.stats || {};
+      message.success(`Đã import học bù: Thành công ${stats.savedSuccess || 0}/${stats.totalUploaded || 0} dòng.`);
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || "Import học bù thất bại!");
+    }
+  });
+
+  const handleCustomRequestHocBu = async ({ file }) => {
+    mutationImportHocBu.mutate({ file });
+  };
+
   const handleCustomRequest = async ({ file }) => {
     mutation.mutate({ file });
   };
@@ -111,7 +130,7 @@ const ThemDuLieuVaoHeThong = () => {
         </Col>
 
         <Col xs={24} md={6}>
-          <Card className="h-full" title="Thêm đăng kí xe, giáo viên (New)">
+          <Card className="h-full" title="Thêm đăng kí xe, giáo viên">
             <span className="block mb-4 text-gray-500">
               Đồng bộ dữ liệu đăng kí xe và giáo viên từ SQL
             </span>
@@ -179,6 +198,40 @@ const ThemDuLieuVaoHeThong = () => {
                 Đồng bộ dữ liệu
               </Button>
             </div>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card className="h-full" title="Import học viên học bù">
+            <span className="block mb-2 text-gray-500">
+              Loại hình học bù
+            </span>
+            <Select
+              value={importHocBuMeta.loai}
+              onChange={(v) => setImportHocBuMeta(p => ({ ...p, loai: v }))}
+              className="w-full !mb-3"
+              options={[
+                { value: "ly_thuyet", label: "Lý thuyết" },
+                { value: "cabin", label: "Thực hành Cabin" },
+                { value: "dat", label: "Thực hành DAT" }
+              ]}
+            />
+            <Upload
+              customRequest={handleCustomRequestHocBu}
+              showUploadList={false}
+              accept=".xlsx, .xls"
+              className="!w-full"
+            >
+              <Button
+                icon={<UploadOutlined />}
+                loading={mutationImportHocBu.isPending}
+                className="!w-full"
+                type="primary"
+                danger
+              >
+                {mutationImportHocBu.isPending ? "Đang nhập..." : "Tải file Excel"}
+              </Button>
+            </Upload>
           </Card>
         </Col>
       </Row>
