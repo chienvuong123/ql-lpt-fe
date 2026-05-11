@@ -130,10 +130,10 @@ export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuy
   },
   {
     title: "Khóa",
-    key: "ten_khoa",
+    key: "khoa",
     width: 100,
     align: "center",
-    render: (_, record) => record.ten_khoa || "-",
+    render: (_, record) => record.khoa || "-",
   },
   {
     title: "Giáo viên",

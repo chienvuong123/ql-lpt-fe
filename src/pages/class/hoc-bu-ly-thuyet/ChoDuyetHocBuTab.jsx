@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Table, Select, Col } from "antd";
+import { Table, Select, Col, Button, Modal, Space } from "antd";
+import { CheckCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { getDanhSachHocVienHocBuChoDuyet } from "../../../apis/apiHocbu";
 import { normalizeApiList } from "../../dat/hoc-bu/hocBuUtils";
@@ -19,6 +20,7 @@ const DEFAULT_FILTERS = {
 const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   const {
     pagination,
@@ -30,6 +32,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
     resetFilter,
   } = useHocBuFilter(DEFAULT_FILTERS);
 
+  const [modal, contextHolder] = Modal.useModal();
   const { data: studentData, isFetching: isFetchingStudents, refetch: refetchStudents } = useQuery({
     queryKey: [
       "hocVienHocBuChoDuyetLyThuyet",
@@ -52,12 +55,36 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
     keepPreviousData: true,
   });
 
-  const { handleDuyet, handleHuyDuyet } = useHocBuLyThuyetActions(refetchStudents);
-
   const students = useMemo(() => {
     const list = normalizeApiList(studentData);
     return list;
   }, [studentData]);
+
+  const { handleDuyet, handleHuyDuyet, handleBulkDuyet } = useHocBuLyThuyetActions(() => {
+    refetchStudents();
+    setSelectedRowKeys([]);
+  });
+
+  const onBulkDuyet = React.useCallback(() => {
+    if (!selectedRowKeys.length) return;
+    
+    // Sử dụng Set tối ưu hóa việc lookup O(1)
+    const keySet = new Set(selectedRowKeys);
+    const selectedRecords = students.filter(s => keySet.has(s.id) || keySet.has(s.ma_dk));
+    
+    if (!selectedRecords.length) return;
+    
+    modal.confirm({
+      title: "Xác nhận duyệt học bù hàng loạt",
+      content: `Bạn có chắc muốn duyệt học bù cho ${selectedRecords.length} học viên đã chọn?`,
+      okText: "Xác nhận",
+      cancelText: "Hủy",
+      centered: true,
+      onOk: async () => {
+        await handleBulkDuyet(selectedRecords);
+      },
+    });
+  }, [selectedRowKeys, students, handleBulkDuyet, modal]);
 
   const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
@@ -112,6 +139,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
 
   return (
     <div>
+      {contextHolder}
       <HocBuFilterCard
         maKhoa={tempFilters.ma_khoa}
         setMaKhoa={(v) => setTempFilter("ma_khoa", v)}
@@ -124,7 +152,26 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         extraFilters={extraFilters}
       />
 
+      <div className="flex mb-3">
+        <Button
+          type="primary"
+          className="!bg-green-600 hover:!bg-green-700 border-none"
+          icon={<CheckCircleOutlined />}
+          disabled={selectedRowKeys.length === 0}
+          onClick={onBulkDuyet}
+        >
+          Duyệt ({selectedRowKeys.length})
+        </Button>
+      </div>
+
       <Table
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys),
+          getCheckboxProps: (record) => ({
+            disabled: String(record?.trang_thai_ly_thuyet) !== "1",
+          }),
+        }}
         columns={columns}
         dataSource={students}
         rowKey={(record) => record.id || record.ma_dk}
