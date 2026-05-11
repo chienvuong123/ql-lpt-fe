@@ -19,7 +19,7 @@ import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import { getDanhSachHocVienHocBuDangHocBu } from "../../../apis/apiHocbu";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import HocVienInfo from "../../../components/HocVienInfor";
-import { renderTrangThaiLyThuyet } from "../../../constants/hocBuConstants";
+import { renderTrangThaiThucHanh } from "../../../constants/hocBuConstants";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -28,14 +28,12 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
-const DanhSachDaDuyetLyThuyet = () => {
+const DanhSachDangHocBuThucHanh = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
-        loai: [1],
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -65,7 +63,6 @@ const DanhSachDaDuyetLyThuyet = () => {
             "hocVienHocBuDangHocBu",
             appliedFilters.ma_khoa,
             appliedFilters.search,
-            appliedFilters.loai,
             pagination.page,
             pagination.limit,
         ],
@@ -73,7 +70,7 @@ const DanhSachDaDuyetLyThuyet = () => {
             getDanhSachHocVienHocBuDangHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                loai: appliedFilters.loai,
+                trang_thai: 6,
                 page: pagination.page,
                 limit: pagination.limit,
             }),
@@ -82,7 +79,7 @@ const DanhSachDaDuyetLyThuyet = () => {
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
-        return list
+        return list;
     }, [studentData]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
@@ -90,8 +87,7 @@ const DanhSachDaDuyetLyThuyet = () => {
     const handleApplyFilter = () => {
         setAppliedFilters({
             ma_khoa,
-            text: searchText,
-            loai: [1],
+            search: searchText,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -101,8 +97,7 @@ const DanhSachDaDuyetLyThuyet = () => {
         setSearchText("");
         setAppliedFilters({
             ma_khoa: null,
-            text: "",
-            loai: [1],
+            search: "",
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -170,27 +165,27 @@ const DanhSachDaDuyetLyThuyet = () => {
         {
             title: "Giáo viên",
             key: "giao_vien",
-            width: 200,
+            width: 180,
             render: (_, record) => record.giao_vien || "-",
         },
         {
             title: "Xe B1",
             key: "xe_b1",
-            width: 120,
+            width: 110,
             align: "center",
             render: (_, record) => record.xe_b1 || "-",
         },
         {
             title: "Xe B2",
             key: "xe_b2",
-            width: 120,
+            width: 110,
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
         },
         {
-            title: "Bắt đầu lý thuyết",
+            title: "Bắt đầu LT",
             key: "bat_dau_ly_thuyet",
-            width: 130,
+            width: 110,
             align: "center",
             render: (_, record) => {
                 const date = record.khoa_bu_ly_thuyet?.bat_dau_ly_thuyet || record.khoa?.bat_dau_ly_thuyet;
@@ -198,9 +193,9 @@ const DanhSachDaDuyetLyThuyet = () => {
             },
         },
         {
-            title: "Kết thúc lý thuyết",
+            title: "Kết thúc LT",
             key: "ket_thuc_ly_thuyet",
-            width: 130,
+            width: 110,
             align: "center",
             render: (_, record) => {
                 const date = record.khoa_bu_ly_thuyet?.ket_thuc_ly_thuyet || record.khoa?.ket_thuc_ly_thuyet;
@@ -259,10 +254,10 @@ const DanhSachDaDuyetLyThuyet = () => {
         },
         {
             title: "Trạng thái học bù",
-            key: "trang_thai_ly_thuyet",
+            key: "trang_thai_thuc_hanh",
             align: "center",
             width: 140,
-            render: (_, record) => renderTrangThaiLyThuyet(record.trang_thai_ly_thuyet),
+            render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh, "thuc hanh"),
         },
         {
             title: "Thao tác",
@@ -287,13 +282,13 @@ const DanhSachDaDuyetLyThuyet = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Học viên đang học bù lý thuyết
+                    Học viên đang học bù
                 </h1>
             </div>
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={8}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -309,7 +304,7 @@ const DanhSachDaDuyetLyThuyet = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={8}>
+                    <Col xs={24} sm={10} md={8} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -320,7 +315,8 @@ const DanhSachDaDuyetLyThuyet = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={14} md={12} lg={8}>
+
+                    <Col xs={24} sm={14} md={12} lg={4}>
                         <Space className="w-full justify-start flex-wrap">
                             <Button
                                 type="primary"
@@ -379,4 +375,4 @@ const DanhSachDaDuyetLyThuyet = () => {
     );
 };
 
-export default DanhSachDaDuyetLyThuyet;
+export default DanhSachDangHocBuThucHanh;

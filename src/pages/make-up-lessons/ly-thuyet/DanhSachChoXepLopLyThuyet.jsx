@@ -32,7 +32,7 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
-const DanhSachChoDuyetHocBuLyThuyet = () => {
+const DanhSachChoXepLopLyThuyet = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
 
@@ -379,4 +379,4 @@ const DanhSachChoDuyetHocBuLyThuyet = () => {
     );
 };
 
-export default DanhSachChoDuyetHocBuLyThuyet;
+export default DanhSachChoXepLopLyThuyet;

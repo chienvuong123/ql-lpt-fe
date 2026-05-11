@@ -57,12 +57,12 @@ const menuPathMap = {
   "danh-sach-hoc-bu": "/danh-sach-hoc-bu",
   "kiem-tra": "/kiem-tra",
   "danh-sach-ly-thuyet": "/danh-sach-ly-thuyet",
-  "danh-sach-cho-duyet-ly-thuyet": "/danh-sach-cho-duyet-ly-thuyet",
-  "danh-sach-da-duyet-ly-thuyet": "/danh-sach-da-duyet-ly-thuyet",
+  "danh-sach-cho-xep-lop-ly-thuyet": "/danh-sach-cho-xep-lop-ly-thuyet",
+  "danh-sach-dang-hoc-bu-ly-thuyet": "/danh-sach-dang-hoc-bu-ly-thuyet",
   "tien-do-hoc-bu-ly-thuyet": "/tien-do-hoc-bu-ly-thuyet",
   "danh-sach-thuc-hanh": "/danh-sach-thuc-hanh",
   "danh-sach-cho-xep-lop-thuc-hanh": "/danh-sach-cho-xep-lop-thuc-hanh",
-  "danh-sach-da-duyet-thuc-hanh": "/danh-sach-da-duyet-thuc-hanh",
+  "danh-sach-dang-hoc-bu-thuc-hanh": "/danh-sach-dang-hoc-bu-thuc-hanh",
   "tien-do-hoc-bu-thuc-hanh": "/tien-do-hoc-bu-thuc-hanh",
   "danh-sach-hoc-vien-bu-thuc-hanh": "/danh-sach-hoc-vien-bu-thuc-hanh",
 };
@@ -203,8 +203,8 @@ const LayoutTest = () => {
         { key: "danh-sach-hoc-bu", label: "Danh sách học bù" },
         {
           key: "danh-sach-ly-thuyet", label: "Danh sách lý thuyết", children: [
-            { key: "danh-sach-cho-duyet-ly-thuyet", label: "Danh sách chờ duyệt" },
-            { key: "danh-sach-da-duyet-ly-thuyet", label: "Danh sách đã duyệt" },
+            { key: "danh-sach-cho-xep-lop-ly-thuyet", label: "Danh sách chờ xếp lớp" },
+            { key: "danh-sach-dang-hoc-bu-ly-thuyet", label: "Danh sách đang học bù" },
             { key: "tien-do-hoc-bu-ly-thuyet", label: "Tiến độ học bù" },
           ]
         },
@@ -212,7 +212,7 @@ const LayoutTest = () => {
           key: "danh-sach-thuc-hanh", label: "Danh sách thực hành", children: [
             { key: "danh-sach-hoc-vien-bu-thuc-hanh", label: "Danh sách bù thực hành" },
             { key: "danh-sach-cho-xep-lop-thuc-hanh", label: "Danh sách chờ xếp lớp" },
-            { key: "danh-sach-da-duyet-thuc-hanh", label: "Danh sách đang học bù" },
+            { key: "danh-sach-dang-hoc-bu-thuc-hanh", label: "Danh sách đang học bù" },
             { key: "tien-do-hoc-bu-thuc-hanh", label: "Tiến độ học bù" },
           ]
         },

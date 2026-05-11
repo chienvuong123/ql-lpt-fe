@@ -18,6 +18,8 @@ import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import { getDanhSachHocVienHocBuDangHocBu } from "../../../apis/apiHocbu";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
+import HocVienInfo from "../../../components/HocVienInfor";
+import { renderTrangThaiLyThuyet } from "../../../constants/hocBuConstants";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -26,18 +28,14 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
-const DanhSachDaDuyetThucHanh = () => {
+const DanhSachDangHocBuLyThuyet = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThai, setTrangThai] = useState([2, 3]);
-    const [trangThaiHocBu, setTrangThaiHocBu] = useState([]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
-        trang_thai: [2, 3],
-        trang_thai_hoc_bu: [],
-        loai: [2, 3],
+        loai: [1],
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -67,8 +65,6 @@ const DanhSachDaDuyetThucHanh = () => {
             "hocVienHocBuDangHocBu",
             appliedFilters.ma_khoa,
             appliedFilters.search,
-            appliedFilters.trang_thai,
-            appliedFilters.trang_thai_hoc_bu,
             appliedFilters.loai,
             pagination.page,
             pagination.limit,
@@ -77,8 +73,6 @@ const DanhSachDaDuyetThucHanh = () => {
             getDanhSachHocVienHocBuDangHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                trang_thai: appliedFilters.trang_thai,
-                trang_thai_hoc_bu: appliedFilters.trang_thai_hoc_bu,
                 loai: appliedFilters.loai,
                 page: pagination.page,
                 limit: pagination.limit,
@@ -88,36 +82,8 @@ const DanhSachDaDuyetThucHanh = () => {
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
-        return list.filter((item) => {
-            const st = item?.trang_thai ?? item?.student?.trang_thai;
-            const stHocBu = item?.student?.trang_thai_hoc_bu ?? item?.trang_thai_hoc_bu;
-            const itemLoai = item?.loai ?? item?.student?.loai;
-
-            // Match appliedFilters.trang_thai
-            const matchTrangThai = appliedFilters.trang_thai && appliedFilters.trang_thai.length > 0
-                ? appliedFilters.trang_thai.some((val) => String(val) === String(st))
-                : (String(st) === "2" || String(st) === "3");
-
-            // Match appliedFilters.trang_thai_hoc_bu
-            const matchTrangThaiHocBu = appliedFilters.trang_thai_hoc_bu && appliedFilters.trang_thai_hoc_bu.length > 0
-                ? appliedFilters.trang_thai_hoc_bu.some((val) => String(val) === String(stHocBu))
-                : true;
-
-            // Match appliedFilters.loai
-            const matchLoai = appliedFilters.loai && appliedFilters.loai.length > 0
-                ? appliedFilters.loai.some((val) => String(val) === String(itemLoai))
-                : true;
-
-            // Match appliedFilters search text locally
-            const kw = (appliedFilters.search || appliedFilters.text || "").trim().toLowerCase();
-            const s = item?.student || item;
-            const matchSearch = kw
-                ? (String(s?.ho_ten || "").toLowerCase().includes(kw) || String(s?.ma_dk || "").toLowerCase().includes(kw) || String(s?.cccd || "").toLowerCase().includes(kw))
-                : true;
-
-            return matchTrangThai && matchTrangThaiHocBu && matchLoai && matchSearch;
-        });
-    }, [studentData, appliedFilters]);
+        return list
+    }, [studentData]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
@@ -125,9 +91,7 @@ const DanhSachDaDuyetThucHanh = () => {
         setAppliedFilters({
             ma_khoa,
             text: searchText,
-            trang_thai: trangThai,
-            trang_thai_hoc_bu: trangThaiHocBu,
-            loai: [2, 3],
+            loai: [1],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -135,14 +99,10 @@ const DanhSachDaDuyetThucHanh = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThai([2, 3]);
-        setTrangThaiHocBu([]);
         setAppliedFilters({
             ma_khoa: null,
             text: "",
-            trang_thai: [2, 3],
-            trang_thai_hoc_bu: [],
-            loai: [2, 3],
+            loai: [1],
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -165,30 +125,7 @@ const DanhSachDaDuyetThucHanh = () => {
             title: "Học viên",
             key: "hoc_vien",
             width: 310,
-            render: (value) => {
-                if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
-
-                return (
-                    <Space>
-                        <Image
-                            src={value.anh}
-                            width={40}
-                            height={40}
-                            className="rounded-md"
-                            fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                        />
-                        <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{value.ho_ten}</span>
-                            <Typography.Text
-                                className="!text-[12px]"
-                                copyable={{ text: value.ma_dk }}
-                            >
-                                {value.ma_dk}
-                            </Typography.Text>
-                        </div>
-                    </Space>
-                );
-            },
+            render: (_, record) => <HocVienInfo record={record} />,
         },
         {
             title: "CCCD",
@@ -211,95 +148,121 @@ const DanhSachDaDuyetThucHanh = () => {
         },
         {
             title: "Khóa học CK",
-            key: "ten_khoa",
+            key: "khoa",
             width: 100,
             align: "center",
-            render: (_, record) => record.ten_khoa || "-",
+            render: (_, record) => record.khoa?.ten_khoa || "-",
         },
         {
-            title: "Khóa bù",
-            key: "khoa_bu",
+            title: "Khóa bù LT",
+            key: "khoa_bu_ly_thuyet",
             width: 100,
             align: "center",
-            render: (_, record) => record.khoa_bu || "-",
+            render: (_, record) => record.khoa_bu_ly_thuyet?.ten_khoa || "-",
+        },
+        {
+            title: "Khóa bù TH",
+            key: "khoa_bu_thuc_hanh",
+            width: 120,
+            align: "center",
+            render: (_, record) => record.khoa_bu_thuc_hanh?.ten_khoa || "-",
         },
         {
             title: "Giáo viên",
-            key: "thay_giao",
-            width: 180,
-            render: (_, record) => record.thay_giao || "-",
+            key: "giao_vien",
+            width: 200,
+            render: (_, record) => record.giao_vien || "-",
         },
         {
             title: "Xe B1",
             key: "xe_b1",
-            width: 110,
+            width: 120,
             align: "center",
             render: (_, record) => record.xe_b1 || "-",
         },
         {
             title: "Xe B2",
             key: "xe_b2",
-            width: 110,
+            width: 120,
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
         },
         {
-            title: "Bắt đầu Cabin",
-            key: "bat_dau_cabin",
-            width: 110,
+            title: "Bắt đầu lý thuyết",
+            key: "bat_dau_ly_thuyet",
+            width: 130,
             align: "center",
-            render: (_, record) => record.bat_dau_cabin ? dayjs(record.bat_dau_cabin).format("DD/MM/YYYY") : "-",
+            render: (_, record) => {
+                const date = record.khoa_bu_ly_thuyet?.bat_dau_ly_thuyet || record.khoa?.bat_dau_ly_thuyet;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
         },
         {
-            title: "Kết thúc Cabin",
-            key: "ket_thuc_cabin",
-            width: 110,
+            title: "Kết thúc lý thuyết",
+            key: "ket_thuc_ly_thuyet",
+            width: 130,
             align: "center",
-            render: (_, record) => record.ket_thuc_cabin ? dayjs(record.ket_thuc_cabin).format("DD/MM/YYYY") : "-",
-        },
-        {
-            title: "Bắt đầu DAT",
-            key: "bat_dau_dat",
-            width: 110,
-            align: "center",
-            render: (_, record) => record.bat_dau_dat ? dayjs(record.bat_dau_dat).format("DD/MM/YYYY") : "-",
-        },
-        {
-            title: "Kết thúc DAT",
-            key: "ket_thuc_dat",
-            width: 110,
-            align: "center",
-            render: (_, record) => record.ket_thuc_dat ? dayjs(record.ket_thuc_dat).format("DD/MM/YYYY") : "-",
+            render: (_, record) => {
+                const date = record.khoa_bu_ly_thuyet?.ket_thuc_ly_thuyet || record.khoa?.ket_thuc_ly_thuyet;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
         },
         {
             title: "Kết thúc môn",
             key: "kiem_tra_het_mon",
             width: 110,
             align: "center",
-            render: (_, record) => record.kiem_tra_het_mon ? dayjs(record.kiem_tra_het_mon).format("DD/MM/YYYY") : "-",
+            render: (_, record) => {
+                const date = record.khoa_bu_ly_thuyet?.kiem_tra_het_mon || record.khoa?.kiem_tra_het_mon;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
+        },
+        {
+            title: "Bắt đầu Cabin",
+            key: "bat_dau_cabin",
+            width: 110,
+            align: "center",
+            render: (_, record) => {
+                const date = record.khoa_bu_thuc_hanh?.bat_dau_cabin || record.khoa?.bat_dau_cabin;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
+        },
+        {
+            title: "Kết thúc Cabin",
+            key: "ket_thuc_cabin",
+            width: 110,
+            align: "center",
+            render: (_, record) => {
+                const date = record.khoa_bu_thuc_hanh?.ket_thuc_cabin || record.khoa?.ket_thuc_cabin;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
+        },
+        {
+            title: "Bắt đầu DAT",
+            key: "bat_dau_dat",
+            width: 110,
+            align: "center",
+            render: (_, record) => {
+                const date = record.khoa_bu_thuc_hanh?.bat_dau_dat || record.khoa?.bat_dau_dat;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
+        },
+        {
+            title: "Kết thúc DAT",
+            key: "ket_thuc_dat",
+            width: 110,
+            align: "center",
+            render: (_, record) => {
+                const date = record.khoa_bu_thuc_hanh?.ket_thuc_dat || record.khoa?.ket_thuc_dat;
+                return date ? dayjs(date).format("DD/MM/YYYY") : "-";
+            },
         },
         {
             title: "Trạng thái học bù",
-            key: "trang_thai_hoc_bu",
+            key: "trang_thai_ly_thuyet",
             align: "center",
             width: 140,
-            render: (_, record) => {
-                const val = record.student?.trang_thai_hoc_bu ?? record.trang_thai_hoc_bu;
-                if (val === null || val === undefined) {
-                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
-                }
-                const numVal = Number(val);
-                if (isNaN(numVal)) {
-                    return <Tag variant="solid" color="default">Chưa học bù</Tag>;
-                }
-                if (numVal === 1) {
-                    return <Tag variant="solid" color="orange">Đang đăng ký</Tag>;
-                }
-                if (numVal >= 2) {
-                    return <Tag variant="solid" color="green">Lần {numVal - 1}</Tag>;
-                }
-                return <Tag variant="solid" color="default">Chưa học bù</Tag>;
-            },
+            render: (_, record) => renderTrangThaiLyThuyet(record.trang_thai_ly_thuyet),
         },
         {
             title: "Thao tác",
@@ -324,13 +287,13 @@ const DanhSachDaDuyetThucHanh = () => {
         <div className="p-4">
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">
-                    Học viên đang học bù
+                    Học viên đang học bù lý thuyết
                 </h1>
             </div>
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={5}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -346,7 +309,7 @@ const DanhSachDaDuyetThucHanh = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={5}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -357,43 +320,7 @@ const DanhSachDaDuyetThucHanh = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={5}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThai}
-                            onChange={setTrangThai}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chờ duyệt", value: 2 },
-                                { label: "Đã duyệt", value: 3 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={10} md={8} lg={5}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái học bù
-                        </label>
-                        <Select
-                            className="w-full"
-                            mode="multiple"
-                            placeholder="Chọn trạng thái"
-                            value={trangThaiHocBu}
-                            onChange={setTrangThaiHocBu}
-                            allowClear
-                            maxTagCount="responsive"
-                            options={[
-                                { label: "Chưa đăng ký", value: 1 },
-                                { label: "Đã đăng ký", value: 2 },
-                            ]}
-                        />
-                    </Col>
-                    <Col xs={24} sm={14} md={12} lg={4}>
+                    <Col xs={24} sm={14} md={12} lg={8}>
                         <Space className="w-full justify-start flex-wrap">
                             <Button
                                 type="primary"
@@ -423,7 +350,7 @@ const DanhSachDaDuyetThucHanh = () => {
                     onChange: (page, limit) => setPagination({ page, limit }),
                 }}
                 size="small"
-                scroll={{ x: 1800 }}
+                scroll={{ x: 2200 }}
                 bordered
                 className="table-blue-header"
                 rowClassName={(record) => {
@@ -452,4 +379,4 @@ const DanhSachDaDuyetThucHanh = () => {
     );
 };
 
-export default DanhSachDaDuyetThucHanh;
+export default DanhSachDangHocBuLyThuyet;
