@@ -104,7 +104,7 @@ const DanhSachChoXepLopThucHanh = () => {
     // 2. Lấy danh sách học viên cần bù
     const { data: studentData, isFetching: isFetchingStudents, refetch: refetchStudents } = useQuery({
         queryKey: [
-            "hocVienHocBuChoDuyet",
+            "hocVienChoXepLopBuThucHanh",
             appliedFilters.ma_khoa,
             appliedFilters.search,
             appliedFilters.loai,
@@ -395,7 +395,7 @@ const DanhSachChoXepLopThucHanh = () => {
 
                         const hasKhoaBu = record.khoa_bu_thuc_hanh || record.student?.khoa_bu_thuc_hanh || record.khoa_bu || record.student?.khoa_bu;
                         const hasThoiGianXep = record.thoi_gian_xep_thuc_hanh || record.student?.thoi_gian_xep_thuc_hanh || record.thoi_gian_xep || record.student?.thoi_gian_xep;
-                        
+
                         const isScheduledStatus = String(st) === "3" || String(stTH) === "3";
                         const isAlreadyScheduled = isScheduledStatus || (hasKhoaBu && hasThoiGianXep);
 
