@@ -114,7 +114,7 @@ export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuy
   {
     title: "CCCD",
     key: "cccd",
-    width: 100,
+    width: 120,
     align: "center",
     render: (_, record) => record.cccd || "-",
   },

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Table, Select, Col, Button, Modal, Space, Checkbox, message } from "antd";
+import { Table, Button, Modal, Checkbox, message } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { getDanhSachHocVienHocBuChoDuyet } from "../../../apis/apiHocbu";
@@ -47,10 +47,10 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
 
       setSelectedRowKeys(validKeys);
       setTotalValidKeys(validKeys.length);
-      
+
       const newMap = {};
       validRecords.forEach(r => {
-          newMap[r.id || r.ma_dk] = r;
+        newMap[r.id || r.ma_dk] = r;
       });
       setSelectedStudentMap(newMap);
 
@@ -73,13 +73,13 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
     );
 
     setSelectedStudentMap(prev => {
-        const next = { ...prev };
-        if (checked) {
-            next[rowKey] = record;
-        } else {
-            delete next[rowKey];
-        }
-        return next;
+      const next = { ...prev };
+      if (checked) {
+        next[rowKey] = record;
+      } else {
+        delete next[rowKey];
+      }
+      return next;
     });
   };
 
@@ -107,7 +107,6 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         loai: "ly_thuyet",
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
-        trang_thai: 1,
         page: pagination.page,
         limit: pagination.limit,
       }),

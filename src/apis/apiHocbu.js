@@ -79,3 +79,8 @@ export const dongBoDuLieuHocBuLyThuyet = async () => {
     const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/check-hoan-thanh-ly-thuyet`);
     return response.data;
 };
+
+export const updateHocBuStatusBulk = async (data = {}) => {
+    const response = await axios.post(`${baseURL}/tien-do-dao-tao/hoc-bu/update-status-bulk`, data);
+    return response.data;
+};

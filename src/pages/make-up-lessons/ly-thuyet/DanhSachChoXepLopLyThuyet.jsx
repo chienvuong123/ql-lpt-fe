@@ -13,7 +13,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBu, updateHocBuStatusBulk } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
@@ -108,16 +108,14 @@ const DanhSachChoXepLopLyThuyet = () => {
         try {
             await dongBoTienDoDaoTaoSql(payload);
 
-            const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
-            await Promise.all(selectedStudents.map(async (st) => {
-                await updateHocBuStatus({
-                    ...st,
-                    trang_thai: 3,
-                    khoa_bu_ly_thuyet: values.ma_khoa,
-                    trang_thai_ly_thuyet: 3,
-                    thoi_gian_xep_ly_thuyet: new Date().toISOString(),
-                });
-            }));
+            await updateHocBuStatusBulk({
+                ids: selectedRowKeys,
+                trang_thai: 3,
+                khoa_bu_ly_thuyet: values.ma_khoa,
+                thoi_gian_xep_ly_thuyet: new Date().toISOString(),
+                trang_thai_ly_thuyet: 3,
+                nguoi_update: userName,
+            });
 
             message.success('Thêm mới tiến độ thành công');
             setIsCourseModalOpen(false);
