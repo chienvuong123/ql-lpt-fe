@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import { getRankCabinLesson, formatSecondsToTime } from "../../util/helper";
 import { useQuery } from "@tanstack/react-query";
 import { getChiTietHocVienLyThuyet } from "../../apis/apiLyThuyetLocal";
+import { getDanhSachHocVienHocBuDetail } from "../../apis/apiHocbu";
 import {
     computeSummary as computeSummaryHangLoat,
     evaluate as evaluateHangLoat,
@@ -26,16 +27,8 @@ import {
 
 const { Text, Title } = Typography;
 
-const TheoryTab = ({ data, studentId, enrolmentPlanIid }) => {
-    const { data: theoryDetail, isLoading } = useQuery({
-        queryKey: ["chiTietHocVienLyThuyet", enrolmentPlanIid, studentId],
-        queryFn: () => getChiTietHocVienLyThuyet(enrolmentPlanIid, studentId),
-        enabled: !!studentId && !!enrolmentPlanIid,
-    });
-
-    const progressData = theoryDetail?.data?.learning_progress || theoryDetail?.learning_progress;
-
-    if (!data && !progressData && !isLoading) return <Empty description="Chưa có dữ liệu lý thuyết" />;
+const TheoryTab = ({ scoreByRubrik, theoryInfo }) => {
+    if (!scoreByRubrik && !theoryInfo) return <Empty description="Chưa có dữ liệu lý thuyết" />;
 
     const columns = [
         {
@@ -78,47 +71,47 @@ const TheoryTab = ({ data, studentId, enrolmentPlanIid }) => {
     ];
 
     return (
-        <Spin spinning={isLoading}>
-            <div className="space-y-4">
-                {progressData && (
-                    <div className="bg-gray-50 p-4 rounded-lg flex justify-between items-center border border-gray-200">
-                        <div>
-                            <span className="text-gray-600">Lý thuyết online:</span>
-                            <span className="ml-2 font-bold">
-                                {progressData.passed === 1 ? "Đạt" : "Không đạt"}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-gray-600">Làm bài hết môn:</span>
-                            <span className="ml-2 font-bold">
-                                {progressData.learned ? "Đã làm" : "Chưa làm"}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-gray-600">Tiến độ:</span>
-                            <span className="ml-2 font-bold">{progressData.progress}%</span>
-                        </div>
+        <div className="space-y-4">
+            {theoryInfo && (
+                <div className="bg-gray-50 p-4 rounded-lg flex justify-between items-center border border-gray-200">
+                    <div>
+                        <span className="text-gray-600">Học lý thuyết:</span>
+                        <span className={`ml-2 font-bold ${theoryInfo.loai_ly_thuyet ? "text-green-600" : "text-red-500"}`}>
+                            {theoryInfo.loai_ly_thuyet ? "Đạt" : "Chưa đạt"}
+                        </span>
                     </div>
-                )}
+                    <div>
+                        <span className="text-gray-600">Làm bài hết môn:</span>
+                        <span className={`ml-2 font-bold ${theoryInfo.loai_het_mon ? "text-green-600" : "text-red-500"}`}>
+                            {theoryInfo.loai_het_mon ? "Đạt" : "Chưa đạt"}
+                        </span>
+                    </div>
+                    {theoryInfo.ghi_chu && (
+                        <div>
+                            <span className="text-gray-600">Ghi chú:</span>
+                            <span className="ml-2 font-bold">{theoryInfo.ghi_chu}</span>
+                        </div>
+                    )}
+                </div>
+            )}
 
-                {progressData?.score_by_rubrik && (
-                    <Table
-                        dataSource={progressData.score_by_rubrik.filter(item => item.name !== "Pháp luật GTĐB")}
-                        columns={columns}
-                        rowKey="iid"
-                        pagination={false}
-                        size="small"
-                        bordered
-                        className="table-blue-header"
-                    />
-                )}
-            </div>
-        </Spin>
+            {scoreByRubrik && (
+                <Table
+                    dataSource={scoreByRubrik.filter(item => item.name !== "Pháp luật GTĐB")}
+                    columns={columns}
+                    rowKey="iid"
+                    pagination={false}
+                    size="small"
+                    bordered
+                    className="table-blue-header"
+                />
+            )}
+        </div>
     );
 };
 
-const CabinTab = ({ data }) => {
-    if (!data) return <Empty description="Chưa có dữ liệu Cabin" />;
+const CabinTab = ({ cabinDetails, cabinSummary }) => {
+    if (!cabinDetails && !cabinSummary) return <Empty description="Chưa có dữ liệu Cabin" />;
 
     const columns = [
         {
@@ -153,7 +146,6 @@ const CabinTab = ({ data }) => {
                         className="m-0"
                         icon={isPass ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
                     >
-
                         <span className="font-medium">{isPass ? "Đạt" : "Chưa đạt"}</span>
                     </Tag>
                 );
@@ -162,27 +154,30 @@ const CabinTab = ({ data }) => {
     ];
 
     const sortedDetails = React.useMemo(() => {
-        if (!data.cabinDetails) return [];
-        return [...data.cabinDetails].sort((a, b) => {
+        if (!cabinDetails) return [];
+        return [...cabinDetails].sort((a, b) => {
             return getRankCabinLesson(a.ten_bai) - getRankCabinLesson(b.ten_bai);
         });
-    }, [data.cabinDetails]);
+    }, [cabinDetails]);
+
+    const tongBai = cabinSummary?.tong_bai || 0;
+    const tongThoiGian = cabinSummary?.tong_thoi_gian || 0;
 
     return (
         <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg flex justify-between">
                 <div>
                     <span className="text-gray-500">Tổng số bài:</span>
-                    <span className="ml-2 font-bold">{data.tong_bai}/8</span>
+                    <span className="ml-2 font-bold">{tongBai}/8</span>
                 </div>
                 <div>
                     <span className="text-gray-500">Tổng thời gian:</span>
-                    <span className="ml-2 font-bold">{data.tong_thoi_gian} phút</span>
+                    <span className="ml-2 font-bold">{tongThoiGian} phút</span>
                 </div>
                 <div>
                     <span className="text-gray-500">Trạng thái:</span>
                     <span className="ml-2 font-bold text-gray-800">
-                        {data.tong_bai >= 8 && data.tong_thoi_gian >= 150 ? "Đạt" : "Chưa đạt"}
+                        {tongBai >= 8 && tongThoiGian >= 150 ? "Đạt" : "Chưa đạt"}
                     </span>
                 </div>
             </div>
@@ -198,11 +193,11 @@ const CabinTab = ({ data }) => {
     );
 };
 
-const DatTab = ({ data, student }) => {
-    if (!data) return <Empty description="Chưa có dữ liệu DAT" />;
+const DatTab = ({ datDetails, datSummary, student }) => {
+    if (!datDetails && !datSummary) return <Empty description="Chưa có dữ liệu DAT" />;
 
-    const sessions = data.datDetails?.sessions || [];
-    const summary = data.datDetails?.summary || {};
+    const sessions = datDetails?.sessions || [];
+    const summary = datDetails?.summary || {};
 
     const mappedSessions = useMemo(() => {
         return sessions.map(s => ({
@@ -212,16 +207,16 @@ const DatTab = ({ data, student }) => {
             TongQuangDuong: Number(s.tong_km || 0),
             BienSo: s.bien_so_xe,
             HoTenGV: s.ho_ten_gv,
-            HangDaoTao: student?.HangDaoTao || student?.hang_dao_tao || data?.hang_dao_tao || "B1",
+            HangDaoTao: student?.HangDaoTao || student?.hang_dao_tao || student?.hang || "B1",
         }));
-    }, [sessions, student, data]);
+    }, [sessions, student]);
 
     const bienSoTuDong = useMemo(() => {
         return getBienSoTuDong(mappedSessions, null);
     }, [mappedSessions]);
 
     const summaryData = useMemo(() => {
-        return computeSummaryHangLoat(mappedSessions, student?.HangDaoTao || student?.hang_dao_tao || "B1", null);
+        return computeSummaryHangLoat(mappedSessions, student?.HangDaoTao || student?.hang_dao_tao || student?.hang || "B1", null);
     }, [mappedSessions, student]);
 
     const evaluationData = useMemo(() => {
@@ -289,15 +284,15 @@ const DatTab = ({ data, student }) => {
             <div className="bg-gray-50 p-4 rounded-lg flex justify-between">
                 <div>
                     <span className="text-gray-500">Tổng quãng đường:</span>
-                    <span className="ml-2 font-bold">{data.tong_quang_duong} km</span>
+                    <span className="ml-2 font-bold">{datSummary?.tong_quang_duong || 0} km</span>
                 </div>
                 <div>
                     <span className="text-gray-500">Tổng thời gian:</span>
-                    <span className="ml-2 font-bold">{data.tong_thoi_gian}</span>
+                    <span className="ml-2 font-bold">{datSummary?.tong_thoi_gian || "0h 0'"}</span>
                 </div>
                 <div>
                     <span className="text-gray-500">Số phiên:</span>
-                    <span className="ml-2 font-bold">{mappedSessions.length || 0}</span>
+                    <span className="ml-2 font-bold">{sessions.length || 0}</span>
                 </div>
             </div>
 
@@ -393,34 +388,42 @@ const DatTab = ({ data, student }) => {
 };
 
 const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
-    const studentName = student?.ho_ten || "Học viên";
-    const studentId = student?.ma_dk || "";
-    const enrolmentPlanIid = student?.ma_khoa || "";
+    const { data: detailRes, isLoading } = useQuery({
+        queryKey: ["getDanhSachHocVienHocBuDetail", student?.ma_dk],
+        queryFn: () => getDanhSachHocVienHocBuDetail({ ma_dk: student?.ma_dk }),
+        enabled: !!open && !!student?.ma_dk,
+    });
+
+    const apiData = detailRes?.data || {};
+    const finalStudent = Object.keys(apiData).length > 0 ? apiData : (student || {});
+
+    const studentName = finalStudent.ho_ten || "Học viên";
+    const studentId = finalStudent.ma_dk || student?.ma_dk || "";
 
     const infoItems = [
         { label: "Mã", value: studentId || "-" },
         { label: "Tên", value: studentName },
-        { label: "Ngày sinh", value: student?.ngay_sinh ? dayjs(student.ngay_sinh).format("DD/MM/YYYY") : "-" },
-        { label: "CCCD/CMT", value: student?.cccd || "-" },
-        { label: "Khóa học", value: student?.ten_khoa || "-" },
-        { label: "Giáo viên", value: student?.thay_giao || "-" },
+        { label: "Ngày sinh", value: finalStudent.ngay_sinh ? dayjs(finalStudent.ngay_sinh).format("DD/MM/YYYY") : "-" },
+        { label: "CCCD/CMT", value: finalStudent.cccd || "-" },
+        { label: "Khóa học", value: finalStudent.khoa || finalStudent.ten_khoa || "-" },
+        { label: "Giáo viên", value: finalStudent.giao_vien || finalStudent.thay_giao || "-" },
     ];
 
     const tabItems = [
         {
             key: "theory",
             label: "Lý thuyết",
-            children: <TheoryTab data={student?.detail?.theoryInfo} studentId={studentId} enrolmentPlanIid={enrolmentPlanIid} />,
+            children: <TheoryTab scoreByRubrik={apiData.scoreByRubrik} theoryInfo={apiData.theoryInfo} />,
         },
         {
             key: "cabin",
             label: "Cabin",
-            children: <CabinTab data={student?.detail?.cabinInfo} />,
+            children: <CabinTab cabinDetails={apiData.cabinDetails} cabinSummary={apiData.cabinSummary} />,
         },
         {
             key: "dat",
             label: "DAT",
-            children: <DatTab data={student?.detail?.datInfo} student={student} />,
+            children: <DatTab datDetails={apiData.datDetails} datSummary={apiData.datSummary} student={finalStudent} />,
         },
     ];
 
@@ -446,51 +449,53 @@ const StudentMakeUpDetailDrawer = ({ open, onClose, student }) => {
                 </div>
             }
         >
-            {student && (
-                <div className="">
-                    {/* Header Title */}
-                    <Title level={4} className="!mb-6 !text-gray-700 !font-semibold">
-                        {studentName.toUpperCase()} (#{studentId})
-                    </Title>
+            <Spin spinning={isLoading}>
+                {student && (
+                    <div className="">
+                        {/* Header Title */}
+                        <Title level={4} className="!mb-6 !text-gray-700 !font-semibold">
+                            {studentName.toUpperCase()} (#{studentId})
+                        </Title>
 
-                    {/* Profile Info Section */}
-                    <div className="flex flex-row gap-10 mb-8 border-b border-gray-200 pb-8">
-                        <div className="flex-shrink-0">
-                            <div className="relative">
-                                <Image
-                                    src={student.anh}
-                                    alt="avatar"
-                                    className="!w-48 !h-48 rounded-full object-cover border-4 border-white shadow-sm"
-                                    fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                                />
+                        {/* Profile Info Section */}
+                        <div className="flex flex-row gap-10 mb-8 border-b border-gray-200 pb-8">
+                            <div className="flex-shrink-0">
+                                <div className="relative">
+                                    <Image
+                                        src={finalStudent.anh}
+                                        alt="avatar"
+                                        className="!w-48 !h-48 rounded-full object-cover border-4 border-white shadow-sm"
+                                        fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex-grow">
+                                <div className="flex flex-col gap-y-0">
+                                    {infoItems.map((item, index) => (
+                                        <div key={index} className="flex gap-2 items-baseline">
+                                            <Text className="text-gray-400 min-w-[120px] text-[13px]">{item.label}:</Text>
+                                            <Text strong className="text-gray-700 text-[13px]">{item.value}</Text>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex-grow">
-                            <div className="flex flex-col gap-y-0">
-                                {infoItems.map((item, index) => (
-                                    <div key={index} className="flex gap-2 items-baseline">
-                                        <Text className="text-gray-400 min-w-[120px] text-[13px]">{item.label}:</Text>
-                                        <Text strong className="text-gray-700 text-[13px]">{item.value}</Text>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Tabs Section */}
+                        <Tabs
+                            defaultActiveKey="theory"
+                            items={tabItems}
+                            className="theory-tabs"
+                            tabBarExtraContent={
+                                <Button type="primary">
+                                    Đăng ký học bù
+                                </Button>
+                            }
+                        />
                     </div>
-
-                    {/* Tabs Section */}
-                    <Tabs
-                        defaultActiveKey="theory"
-                        items={tabItems}
-                        className="theory-tabs"
-                        tabBarExtraContent={
-                            <Button type="primary">
-                                Đăng ký học bù
-                            </Button>
-                        }
-                    />
-                </div>
-            )}
+                )}
+            </Spin>
         </Drawer>
     );
 };
