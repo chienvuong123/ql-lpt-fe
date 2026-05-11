@@ -7,8 +7,6 @@ import {
     Row,
     Col,
     Card,
-    Image,
-    Tag,
     Space,
     message,
     Checkbox,
@@ -17,7 +15,6 @@ import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
-import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import TienDoHocBuModal from "../TienDoHocBuModal";
@@ -51,6 +48,51 @@ const DanhSachChoXepLopLyThuyet = () => {
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
 
     const [isSavingCourse, setIsSavingCourse] = useState(false);
+    const [isSelectingAllPages, setIsSelectingAllPages] = useState(false);
+    const [totalValidKeys, setTotalValidKeys] = useState(-1);
+
+    const handleToggleSelectAllPages = async (checked) => {
+        if (!checked) {
+            setSelectedRowKeys([]);
+            return;
+        }
+
+        setIsSelectingAllPages(true);
+        try {
+            message.loading({ content: 'Đang tải toàn bộ dữ liệu...', key: 'selectAll' });
+            const res = await getDanhSachHocVienHocBu({
+                ma_khoa: appliedFilters.ma_khoa,
+                text: appliedFilters.search,
+                trang_thai: appliedFilters.trang_thai,
+                loai: appliedFilters.loai,
+                page: 1,
+                limit: 10000,
+            });
+            const list = normalizeApiList(res);
+            const validKeys = list
+                .filter(record => String(record.trang_thai) === "2" && String(record.trang_thai_ly_thuyet) === "2")
+                .map(record => record.id || record.ma_dk);
+            
+            setSelectedRowKeys(validKeys);
+            setTotalValidKeys(validKeys.length);
+            message.success({ content: `Đã chọn ${validKeys.length} bản ghi`, key: 'selectAll' });
+        } catch (error) {
+            message.error({ content: 'Có lỗi xảy ra khi chọn tất cả', key: 'selectAll' });
+        } finally {
+            setIsSelectingAllPages(false);
+        }
+    };
+
+    const handleToggleSelectRecord = (record, checked) => {
+        const rowKey = record.id || record.ma_dk;
+        if (!rowKey) return;
+
+        setSelectedRowKeys((prev) =>
+            checked
+                ? Array.from(new Set([...prev, rowKey]))
+                : prev.filter((key) => key !== rowKey),
+        );
+    };
 
     const handleCourseSubmit = async (values) => {
         const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
@@ -133,6 +175,10 @@ const DanhSachChoXepLopLyThuyet = () => {
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
+    const currentTotal = totalValidKeys !== -1 ? totalValidKeys : totalItems;
+    const isAllSelected = currentTotal > 0 && selectedRowKeys.length >= currentTotal;
+    const isIndeterminate = selectedRowKeys.length > 0 && !isAllSelected;
+
     const handleApplyFilter = () => {
         setAppliedFilters({
             ma_khoa,
@@ -161,6 +207,31 @@ const DanhSachChoXepLopLyThuyet = () => {
     };
 
     const columns = [
+        {
+            title: (
+                <Checkbox
+                    checked={isAllSelected}
+                    indeterminate={isIndeterminate}
+                    disabled={isFetchingStudents || isSelectingAllPages}
+                    onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
+                />
+            ),
+            key: "select_all",
+            width: 40,
+            align: "center",
+            fixed: "left",
+            render: (_, record) => {
+                const canCheck = String(record.trang_thai) === "2" && String(record.trang_thai_ly_thuyet) === "2";
+                return (
+                    <Checkbox
+                        checked={selectedRowKeys.includes(record.id || record.ma_dk)}
+                        disabled={!canCheck || isSelectingAllPages}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
+                    />
+                );
+            },
+        },
         {
             title: "#",
             key: "stt",
@@ -318,17 +389,6 @@ const DanhSachChoXepLopLyThuyet = () => {
             </Card>
 
             <Table
-                rowSelection={{
-                    selectedRowKeys,
-                    onChange: (keys) => setSelectedRowKeys(keys),
-                    getCheckboxProps: (record) => {
-                        const canCheck = String(record.trang_thai) === "2" && String(record.trang_thai_ly_thuyet) === "2";
-                        return {
-                            disabled: !canCheck,
-                            name: record.ho_ten || record.student?.ho_ten,
-                        };
-                    }
-                }}
                 columns={columns}
                 dataSource={students}
                 rowKey={(record) => record.id || record.ma_dk}
