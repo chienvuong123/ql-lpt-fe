@@ -7,7 +7,6 @@ import {
     Row,
     Col,
     Card,
-    Image,
     Tag,
     Space,
     message,
@@ -17,7 +16,6 @@ import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
-import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import TienDoHocBuModal from "../TienDoHocBuModal";
@@ -32,18 +30,15 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
-const DanhSachChoDuyetHocBuThucHanh = () => {
+const DanhSachChoXepLopThucHanh = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [trangThaiHocBu, setTrangThaiHocBu] = useState([1]);
     const [loai, setLoai] = useState(["theory", "practice"]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
-        trang_thai: [2, 3],
-        trang_thai_hoc_bu: [1],
-        loai: [1, 2, 3],
+        loai: undefined,
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -73,9 +68,10 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             await Promise.all(selectedStudents.map(async (st) => {
                 await updateHocBuStatus({
                     ...st,
-                    trang_thai_hoc_bu: 2,
-                    khoa_bu: values.ma_khoa,
-                    thoi_gian_xep: new Date().toISOString(),
+                    trang_thai: 6,
+                    trang_thai_thuc_hanh: 3,
+                    khoa_bu_thuc_hanh: values.ma_khoa,
+                    thoi_gian_xep_thuc_hanh: new Date().toISOString(),
                 });
             }));
 
@@ -111,8 +107,6 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             "hocVienHocBuChoDuyet",
             appliedFilters.ma_khoa,
             appliedFilters.search,
-            appliedFilters.trang_thai,
-            appliedFilters.trang_thai_hoc_bu,
             appliedFilters.loai,
             pagination.page,
             pagination.limit,
@@ -121,8 +115,8 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             getDanhSachHocVienHocBu({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                loai: "thuc_hanh",
-                theory_status: "passed",
+                loai: appliedFilters.loai,
+                trang_thai: 5,
                 page: pagination.page,
                 limit: pagination.limit,
             }),
@@ -137,22 +131,14 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
 
     const handleApplyFilter = () => {
-        let selectedLoai = [];
-        if (loai && loai.includes("theory")) {
-            selectedLoai.push(1);
-        }
-        if (loai && loai.includes("practice")) {
-            selectedLoai.push(2, 3);
-        }
-        if (selectedLoai.length === 0) {
-            selectedLoai = [1, 2, 3];
+        let selectedLoai = undefined;
+        if (loai && loai.length === 1) {
+            selectedLoai = loai[0] === "theory" ? "ly_thuyet" : "thuc_hanh";
         }
 
         setAppliedFilters({
             ma_khoa,
-            text: searchText,
-            trang_thai: [2, 3],
-            trang_thai_hoc_bu: trangThaiHocBu,
+            search: searchText,
             loai: selectedLoai,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
@@ -161,14 +147,11 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setTrangThaiHocBu([1]);
         setLoai(["theory", "practice"]);
         setAppliedFilters({
             ma_khoa: null,
-            text: "",
-            trang_thai: [2, 3],
-            trang_thai_hoc_bu: [1],
-            loai: [1, 2, 3],
+            search: "",
+            loai: undefined,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -214,16 +197,16 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
         },
         {
             title: "Khóa",
-            key: "ten_khoa",
+            key: "khoa",
             width: 100,
             align: "center",
-            render: (_, record) => record.ten_khoa || "-",
+            render: (_, record) => record.khoa || "-",
         },
         {
             title: "Giáo viên",
-            key: "thay_giao",
+            key: "giao_vien",
             width: 180,
-            render: (_, record) => record.thay_giao || "-",
+            render: (_, record) => record.giao_vien || "-",
         },
         {
             title: "Xe B1",
@@ -238,34 +221,6 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
             width: 95,
             align: "center",
             render: (_, record) => record.xe_b2 || "-",
-        },
-        {
-            title: "Cabin",
-            key: "cabin_status",
-            width: 100,
-            align: "center",
-            render: (_, record) => {
-                const isDuyet = record.trang_thai_duyet?.[1];
-                return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: "DAT",
-            key: "dat_status",
-            width: 100,
-            align: "center",
-            render: (_, record) => {
-                const isDuyet = record.trang_thai_duyet?.[2];
-                return (
-                    <Tag color={isDuyet ? "green" : "orange"}>
-                        {isDuyet ? "Đã duyệt" : "Chờ duyệt"}
-                    </Tag>
-                );
-            }
         },
         {
             title: "Trạng thái",
@@ -337,20 +292,7 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
-                    <Col xs={24} sm={12} md={10} lg={4}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Trạng thái học bù
-                        </label>
-                        <div className="mt-[6px]">
-                            <Checkbox.Group
-                                value={trangThaiHocBu}
-                                onChange={setTrangThaiHocBu}
-                                options={[
-                                    { label: "Đang đăng ký", value: 1 },
-                                ]}
-                            />
-                        </div>
-                    </Col>
+
                     <Col xs={24} sm={12} md={10} lg={5}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Loại học bù
@@ -404,47 +346,58 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
                     selectedRowKeys,
                     onChange: (keys, selectedRows) => {
                         const types = selectedRows.map(st => String(st?.loai ?? st?.student?.loai)).filter(Boolean);
-                        const hasType1 = types.includes("1");
-                        const hasType23 = types.some(t => ["2", "3"].includes(t));
-                        if (hasType1 && hasType23) {
-                            message.warning("Không được chọn học viên lý thuyết (loại 1) cùng với học viên thực hành (loại 2, 3) vào cùng một khóa!");
+
+                        const hasLyThuyet = types.some(t => t === "ly_thuyet");
+                        const hasThucHanh = types.some(t => t === "thuc_hanh");
+
+                        if (hasLyThuyet && hasThucHanh) {
+                            message.warning("Không thể xếp học viên lý thuyết cùng với học viên thực hành vào cùng một lớp!");
                             return;
                         }
 
-                        if (hasType23) {
-                            const teachers = selectedRows.map(st => st?.thay_giao).filter(Boolean);
+                        if (hasThucHanh) {
+                            const teachers = selectedRows.map(st => st?.giao_vien).filter(Boolean);
                             const hasDuplicate = teachers.some((t, index) => teachers.indexOf(t) !== index);
                             if (hasDuplicate) {
-                                message.warning("Mỗi thầy giáo chỉ được chọn tối đa 1 học viên trong cùng một lớp học bù!");
+                                message.warning("Mỗi thầy giáo chỉ được chọn tối đa 1 học viên trong cùng một lớp học bù thực hành!");
                                 return;
                             }
                         }
                         setSelectedRowKeys(keys);
                     },
                     getCheckboxProps: (record) => {
-                        const recordLoai = String(record?.loai ?? record?.student?.loai);
-                        const isTheoryApproved = !!record.trang_thai_duyet?.[0];
-                        const isCabinApproved = !!record.trang_thai_duyet?.[1];
-                        const isDatApproved = !!record.trang_thai_duyet?.[2];
+                        const st = record.trang_thai ?? record.student?.trang_thai;
+                        const stTH = record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh;
 
-                        const isEligible = (recordLoai === "1") ? isTheoryApproved : (isCabinApproved || isDatApproved);
+                        const isEligible = String(st) === "5" && String(stTH) === "2";
+
+                        const recordLoai = String(record?.loai ?? record?.student?.loai);
+                        const isTypeLyThuyet = recordLoai === "ly_thuyet";
 
                         const currentKey = record.id || record.ma_dk;
                         const selectedStudents = students.filter(st =>
                             selectedRowKeys.includes(st.id || st.ma_dk) && (st.id || st.ma_dk) !== currentKey
                         );
 
-                        // Check selected student types
-                        const hasType1Selected = selectedStudents.some(st => String(st?.loai ?? st?.student?.loai) === "1");
-                        const hasType23Selected = selectedStudents.some(st => ["2", "3"].includes(String(st?.loai ?? st?.student?.loai)));
-                        const isTypeMismatch = (hasType1Selected && recordLoai !== "1") || (hasType23Selected && recordLoai === "1");
+                        const hasLyThuyetSelected = selectedStudents.some(st => {
+                            const t = String(st?.loai ?? st?.student?.loai);
+                            return t === "ly_thuyet";
+                        });
+                        const hasThucHanhSelected = selectedStudents.some(st => {
+                            const t = String(st?.loai ?? st?.student?.loai);
+                            return t === "thuc_hanh";
+                        });
 
-                        const selectedTeachers = selectedStudents.map(st => st.thay_giao).filter(Boolean);
-                        const isTeacherRestricted = (recordLoai !== "1") && record.thay_giao && selectedTeachers.includes(record.thay_giao);
+                        const isTypeMismatch = (hasLyThuyetSelected && !isTypeLyThuyet) || (hasThucHanhSelected && isTypeLyThuyet);
 
-                        const hasKhoaBu = record.khoa_bu || record.student?.khoa_bu;
-                        const hasThoiGianXep = record.thoi_gian_xep || record.student?.thoi_gian_xep;
-                        const isAlreadyScheduled = hasKhoaBu && hasThoiGianXep;
+                        const selectedTeachers = selectedStudents.map(st => st.giao_vien).filter(Boolean);
+                        const isTeacherRestricted = (!isTypeLyThuyet) && record.giao_vien && selectedTeachers.includes(record.giao_vien);
+
+                        const hasKhoaBu = record.khoa_bu_thuc_hanh || record.student?.khoa_bu_thuc_hanh || record.khoa_bu || record.student?.khoa_bu;
+                        const hasThoiGianXep = record.thoi_gian_xep_thuc_hanh || record.student?.thoi_gian_xep_thuc_hanh || record.thoi_gian_xep || record.student?.thoi_gian_xep;
+                        
+                        const isScheduledStatus = String(st) === "3" || String(stTH) === "3";
+                        const isAlreadyScheduled = isScheduledStatus || (hasKhoaBu && hasThoiGianXep);
 
                         return {
                             disabled: !isEligible || isTeacherRestricted || isTypeMismatch || isAlreadyScheduled,
@@ -502,4 +455,4 @@ const DanhSachChoDuyetHocBuThucHanh = () => {
     );
 };
 
-export default DanhSachChoDuyetHocBuThucHanh;
+export default DanhSachChoXepLopThucHanh;

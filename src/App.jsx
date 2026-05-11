@@ -40,12 +40,12 @@ import DanhSachDaDuyetLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachD
 import TienDoHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/TienDoHocBuLyThuyet";
 
 import DanhSachThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachThucHanh";
-import DanhSachChoDuyetHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachChoDuyetThucHanh";
 import DanhSachDaDuyetThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachDaDuyetThucHanh";
 import TienDoHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/TienDoHocBuThucHanh";
 import HocBu from "./pages/make-up-lessons/HocBu";
 import DanhSachHocVienBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachHocVienBuThucHanh";
 import HocBuDAT from "./pages/dat/hoc-bu/HocBuDAT";
+import DanhSachChoXepLopThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachChoXepLopThucHanh";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -291,11 +291,11 @@ function App() {
                 }
               />
               <Route
-                path="danh-sach-cho-duyet-thuc-hanh"
+                path="danh-sach-cho-xep-lop-thuc-hanh"
                 element={
                   <GuardedRoute
-                    path="/danh-sach-cho-duyet-thuc-hanh"
-                    element={<DanhSachChoDuyetHocBuThucHanh />}
+                    path="/danh-sach-cho-xep-lop-thuc-hanh"
+                    element={<DanhSachChoXepLopThucHanh />}
                   />
                 }
               />
