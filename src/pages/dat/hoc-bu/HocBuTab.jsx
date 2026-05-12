@@ -22,7 +22,7 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
 
     const { data: studentData, isFetching } = useQuery({
         queryKey: ["hocVienHocBuDat", appliedFilters, pagination],
-        queryFn: () => getDanhSachHocVienHocBuDat({ loai: "dat", ...appliedFilters, ...pagination }),
+        queryFn: () => getDanhSachHocVienHocBuDat({ loai_thuc_hanh: "dat", ...appliedFilters, ...pagination }),
         keepPreviousData: true,
     });
 

@@ -18,6 +18,7 @@ import { Typography } from 'antd'
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import { getDanhSachHocVienHocBu } from "../../../apis/apiHocbu";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
+import HocVienInfo from "../../../components/HocVienInfor";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -104,30 +105,7 @@ const DanhSachThucHanh = () => {
             title: "Học viên",
             key: "hoc_vien",
             width: 270,
-            render: (value) => {
-                if (!value) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
-
-                return (
-                    <Space>
-                        <Image
-                            src={value.anh}
-                            width={40}
-                            height={40}
-                            className="rounded-md"
-                            fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
-                        />
-                        <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{value.ho_ten}</span>
-                            <Typography.Text
-                                className="!text-[12px]"
-                                copyable={{ text: value.ma_dk }}
-                            >
-                                {value.ma_dk}
-                            </Typography.Text>
-                        </div>
-                    </Space>
-                );
-            },
+            render: (_, record) => <HocVienInfo record={record} />,
         },
         {
             title: "CCCD",
@@ -213,17 +191,6 @@ const DanhSachThucHanh = () => {
                 </span>
             ),
         },
-        // {
-        //     title: "Trạng thái ký",
-        //     key: "ky_dat",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <Tag color={record.student?.ky_dat === "da_ky" ? "green" : "default"}>
-        //             {record.student?.ky_dat === "da_ky" ? "Đã ký" : "Chưa ký"}
-        //         </Tag>
-        //     ),
-        // },
         {
             title: "Trạng thái học bù",
             key: "trang_thai_hoc_bu",

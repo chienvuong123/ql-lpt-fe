@@ -1,4 +1,4 @@
-import { Button, Tag, Space, Popconfirm } from "antd";
+import { Button, Tag, Space, Popconfirm, Checkbox } from "antd";
 import { EyeOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { renderTrangThaiHocBu, renderTrangThaiThucHanh } from "../../../constants/hocBuConstants";
@@ -31,44 +31,80 @@ export const getHocBuDatColumns = ({ pagination }) => [
     },
 ];
 
-export const getChoDuyetColumns = ({ pagination, onOpenDetail, handleDuyet, handleHuyDuyet }) => [
-    ...getHocBuDatColumns({ pagination }),
-    {
-        title: "Trạng thái", key: "trang_thai", align: "center", width: 160,
-        render: (_, record) => renderTrangThaiHocBu(record.trang_thai),
-    },
-    {
-        title: "Trạng thái TH", key: "trang_thai_thuc_hanh", align: "center", width: 120,
-        render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh, "dat"),
-    },
-    {
-        title: "Thời gian đăng ký", key: "created_at", width: 160, align: "center",
-        render: (_, r) => dayjs(r.created_at).format("DD/MM/YYYY HH:mm:ss"),
-    },
-    {
-        title: "Thao tác", key: "action", width: 90, align: "center",
-        render: (_, record) => {
-            const st = record.trang_thai;
-            const isChoDuyet = ["1", "4"].includes(String(st));
-            const isDaDuyet = ["2", "5"].includes(String(st));
-            return (
-                <Space>
-                    <Button type="primary" className="!bg-[#3366cc]" icon={<EyeOutlined />} size="small"
-                        onClick={() => onOpenDetail(record)} />
-                    {isChoDuyet && (
-                        <Popconfirm title="Duyệt học bù" description="Bạn có chắc chắn muốn duyệt không?"
-                            onConfirm={() => handleDuyet(record.id, record)} okText="Có" cancelText="Không">
-                            <Button type="primary" className="!bg-green-600" icon={<CheckOutlined />} size="small" />
-                        </Popconfirm>
-                    )}
-                    {isDaDuyet && (
-                        <Popconfirm title="Hủy duyệt" description="Bạn có chắc chắn muốn hủy duyệt không?"
-                            onConfirm={() => handleHuyDuyet(record.id, record)} okText="Có" cancelText="Không">
-                            <Button type="primary" className="!bg-red-500" icon={<CloseOutlined />} size="small" />
-                        </Popconfirm>
-                    )}
-                </Space>
-            );
+export const getChoDuyetColumns = ({
+    pagination,
+    onOpenDetail,
+    handleDuyet,
+    handleHuyDuyet,
+    selectionConfig = null
+}) => {
+    const columns = [
+        ...getHocBuDatColumns({ pagination }),
+        {
+            title: "Trạng thái", key: "trang_thai", align: "center", width: 160,
+            render: (_, record) => renderTrangThaiHocBu(record.trang_thai),
         },
-    },
-];
+        {
+            title: "Trạng thái TH", key: "trang_thai_thuc_hanh", align: "center", width: 120,
+            render: (_, record) => renderTrangThaiThucHanh(record.trang_thai_thuc_hanh, "dat"),
+        },
+        {
+            title: "Thời gian đăng ký", key: "created_at", width: 160, align: "center",
+            render: (_, r) => dayjs(r.created_at).format("DD/MM/YYYY HH:mm:ss"),
+        },
+        {
+            title: "Thao tác", key: "action", width: 90, align: "center",
+            render: (_, record) => {
+                const st = record.trang_thai;
+                const isChoDuyet = ["1", "4"].includes(String(st));
+                const isDaDuyet = ["2", "5"].includes(String(st));
+                return (
+                    <Space>
+                        <Button type="primary" className="!bg-[#3366cc]" icon={<EyeOutlined />} size="small"
+                            onClick={() => onOpenDetail(record)} />
+                        {isChoDuyet && (
+                            <Popconfirm title="Duyệt học bù" description="Bạn có chắc chắn muốn duyệt không?"
+                                onConfirm={() => handleDuyet(record.id, record, "dat")} okText="Có" cancelText="Không">
+                                <Button type="primary" className="!bg-green-600" icon={<CheckOutlined />} size="small" />
+                            </Popconfirm>
+                        )}
+                        {isDaDuyet && (
+                            <Popconfirm title="Hủy duyệt" description="Bạn có chắc chắn muốn hủy duyệt không?"
+                                onConfirm={() => handleHuyDuyet(record.id, record)} okText="Có" cancelText="Không">
+                                <Button type="primary" className="!bg-red-500" icon={<CloseOutlined />} size="small" />
+                            </Popconfirm>
+                        )}
+                    </Space>
+                );
+            },
+        },
+    ];
+
+    if (selectionConfig) {
+        columns.unshift({
+            title: (
+                <Checkbox
+                    checked={selectionConfig.isAllSelected}
+                    indeterminate={selectionConfig.isIndeterminate}
+                    disabled={selectionConfig.isFetching || selectionConfig.isSelectingAllPages}
+                    onChange={(e) => selectionConfig.handleToggleSelectAllPages(e.target.checked)}
+                />
+            ),
+            key: "select_all", width: 40, align: "center", fixed: "left",
+            render: (_, record) => {
+                const st = record.trang_thai;
+                const canCheck = ["1", "4"].includes(String(st));
+                return (
+                    <Checkbox
+                        checked={selectionConfig.selectedRowKeys.includes(record.id || record.ma_dk)}
+                        disabled={!canCheck || selectionConfig.isSelectingAllPages}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => selectionConfig.handleToggleSelectRecord(record, e.target.checked)}
+                    />
+                );
+            }
+        });
+    }
+
+    return columns;
+};

@@ -149,7 +149,7 @@ const TienDoHocBuThucHanh = () => {
             title: 'Khóa',
             dataIndex: 'ma_khoa',
             key: 'ma_khoa',
-            width: 100,
+            width: 120,
             fixed: 'left',
             align: 'center',
             render: (text) => <Text strong>{text ? text : '-'}</Text>

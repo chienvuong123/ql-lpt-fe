@@ -42,7 +42,7 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
     ],
     queryFn: () =>
       getDanhSachHocVienHocBu({
-        loai: "cabin",
+        loai_thuc_hanh: "cabin",
         ma_khoa: appliedFilters.ma_khoa,
         text: appliedFilters.text,
         page: pagination.page,
@@ -90,7 +90,7 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
       key: "cccd",
       width: 160,
       align: "center",
-      render: (_, record) => record?.student?.cccd || "-",
+      render: (_, record) => record?.cccd || "-",
     },
     {
       title: "Năm sinh",
@@ -98,7 +98,7 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
       width: 110,
       align: "center",
       render: (_, record) => {
-        const date = record?.student?.ngay_sinh;
+        const date = record?.ngay_sinh;
         return date ? dayjs(date).format("DD/MM/YYYY") : "-";
       },
     },
@@ -107,13 +107,13 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
       key: "ten_khoa",
       width: 150,
       align: "center",
-      render: (_, record) => record?.student?.ten_khoa || "-",
+      render: (_, record) => record?.ten_khoa || "-",
     },
     {
       title: "Giáo viên DAT",
       key: "thay_giao",
       width: 150,
-      render: (_, record) => record?.student?.thay_giao || "-",
+      render: (_, record) => record?.thay_giao || "-",
     },
     {
       title: "Phút cabin",
