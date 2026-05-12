@@ -84,3 +84,13 @@ export const updateHocBuStatusBulk = async (data = {}) => {
     const response = await axios.post(`${baseURL}/tien-do-dao-tao/hoc-bu/update-status-bulk`, data);
     return response.data;
 };
+
+export const getChiTietLopBuLyThuyet = async (ma_khoa_bu) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/chi-tiet-lop-ly-thuyet/${ma_khoa_bu}`);
+    return response.data;
+};
+
+export const getChiTietLopBuThucHanh = async (ma_khoa_bu) => {
+    const response = await axios.get(`${baseURL}/tien-do-dao-tao/hoc-bu/chi-tiet-lop-thuc-hanh/${ma_khoa_bu}`);
+    return response.data;
+};

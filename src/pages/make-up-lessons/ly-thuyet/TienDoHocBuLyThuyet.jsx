@@ -16,17 +16,16 @@ import {
     Select
 } from 'antd';
 import {
-    PlusOutlined,
     EditOutlined,
     EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import { optionLopLyThuyet } from '../../../apis/apiLyThuyetLocal';
 import TienDoHocBuModal from '../TienDoHocBuModal';
+import ChiTietLopBuLyThuyetModal from './ChiTietLopBuLyThuyetModal';
 
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
 
 const TienDoHocBuLyThuyet = () => {
     const [form] = Form.useForm();
@@ -34,6 +33,8 @@ const TienDoHocBuLyThuyet = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalAction, setModalAction] = useState('add');
     const [selectedRecord, setSelectedRecord] = useState(null);
+
+    const [detailModal, setDetailModal] = useState({ open: false, maKhoa: null });
     const keywordInputRef = useRef(null);
     const [params, setParams] = useState({
         page: 1,
@@ -90,7 +91,29 @@ const TienDoHocBuLyThuyet = () => {
 
     const formatDate = (date) => (date ? dayjs(date).format('DD/MM/YYYY') : '-');
 
-    const columns = [
+    const handleView = useCallback((record) => {
+        setDetailModal({ open: true, maKhoa: record?.ma_khoa });
+    }, []);
+
+    const handleEdit = useCallback((record) => {
+        setModalAction('edit');
+        setSelectedRecord(record);
+        setIsModalOpen(true);
+    }, []);
+
+    const handleModalSubmit = useCallback((values) => {
+        const userName = sessionStorage.getItem("name") || "unknown";
+        const payload = { ...values };
+
+        if (modalAction === 'add') {
+            payload.created_by = userName;
+        }
+        payload.updated_by = userName;
+
+        mutateTienDo(payload);
+    }, [modalAction, mutateTienDo]);
+
+    const columns = useMemo(() => [
         {
             title: '#',
             dataIndex: 'index',
@@ -335,37 +358,9 @@ const TienDoHocBuLyThuyet = () => {
                 </div>
             ),
         },
-    ];
+    ], [handleView, handleEdit]);
 
-    const handleAdd = () => {
-        setModalAction('add');
-        setSelectedRecord(null);
-        setIsModalOpen(true);
-    };
-
-    const handleView = (record) => {
-        setModalAction('view');
-        setSelectedRecord(record);
-        setIsModalOpen(true);
-    };
-
-    const handleEdit = (record) => {
-        setModalAction('edit');
-        setSelectedRecord(record);
-        setIsModalOpen(true);
-    };
-
-    const handleModalSubmit = (values) => {
-        const userName = sessionStorage.getItem("name") || "unknown";
-        const payload = { ...values };
-
-        if (modalAction === 'add') {
-            payload.created_by = userName;
-        }
-        payload.updated_by = userName;
-
-        mutateTienDo(payload);
-    };
+    // Handlers moved to top for optimization
 
     const handleFilter = () => {
         const text = keywordInputRef.current?.input?.value?.trim() || "";
@@ -394,18 +389,10 @@ const TienDoHocBuLyThuyet = () => {
         <div className="p-4" style={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
             <div className="mb-6">
                 <Title level={3} className="!mb-1">
-                    Tiến Độ Học Bù
+                    Tiến Độ Học Bù Lý Thuyết
                 </Title>
                 <div className="flex justify-between items-center">
                     <Text type="secondary">Quản lý và theo dõi tiến độ học bù các khóa học của trung tâm</Text>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={handleAdd}
-                        style={{ borderRadius: '6px', height: '40px' }}
-                    >
-                        Thêm tiến độ mới
-                    </Button>
                 </div>
             </div>
 
@@ -489,8 +476,6 @@ const TienDoHocBuLyThuyet = () => {
                                 limit: pageSize,
                             }));
                         },
-                        showSizeChanger: true,
-                        showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
@@ -504,6 +489,12 @@ const TienDoHocBuLyThuyet = () => {
                 onSubmit={handleModalSubmit}
                 loading={isSaving}
                 type="theory"
+            />
+
+            <ChiTietLopBuLyThuyetModal
+                visible={detailModal.open}
+                maKhoaBu={detailModal.maKhoa}
+                onCancel={() => setDetailModal(prev => ({ ...prev, open: false }))}
             />
         </div>
     );

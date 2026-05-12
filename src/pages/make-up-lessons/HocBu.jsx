@@ -7,7 +7,6 @@ import {
     Row,
     Col,
     Card,
-    Image,
     Tag,
     Space,
     message,
@@ -16,11 +15,10 @@ import {
 } from "antd";
 import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBu, updateHocBuStatus } from "../../apis/apiHocbu";
+import { getDanhSachHocVienHocBu, updateHocBuStatus, updateHocBuStatusBulk } from "../../apis/apiHocbu";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "./StudentMakeUpDetailDrawer";
 import dayjs from "dayjs";
-import { Typography } from 'antd'
 import { renderTrangThaiHocBu, renderTrangThaiLyThuyet, renderTrangThaiThucHanh } from "../../constants/hocBuConstants";
 import HocVienInfo from "../../components/HocVienInfor";
 
@@ -44,6 +42,86 @@ const HocBu = () => {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [selectedStudentMap, setSelectedStudentMap] = useState({});
+    const [isSelectingAllPages, setIsSelectingAllPages] = useState(false);
+    const [totalValidKeys, setTotalValidKeys] = useState(-1);
+
+    const handleToggleSelectAllPages = async (checked) => {
+        if (!appliedFilters.loai) {
+            message.warning("Vui lòng lọc theo Lý thuyết hoặc Thực hành để sử dụng tính năng chọn nhiều!");
+            return;
+        }
+
+        if (!checked) {
+            setSelectedRowKeys([]);
+            setSelectedStudentMap({});
+            return;
+        }
+
+        setIsSelectingAllPages(true);
+        try {
+            message.loading({ content: 'Đang tải toàn bộ dữ liệu...', key: 'selectAll' });
+            const res = await getDanhSachHocVienHocBu({
+                ma_khoa: appliedFilters.ma_khoa,
+                text: appliedFilters.text,
+                loai: appliedFilters.loai,
+                page: 1,
+                limit: 10000,
+            });
+            const list = normalizeApiList(res);
+
+            const newMap = {};
+            const keys = [];
+
+            for (const record of list) {
+                const isEligible =
+                    record.trang_thai === null ||
+                    record.trang_thai === undefined ||
+                    (String(record.trang_thai) === "4" && (record.trang_thai_thuc_hanh === null || record.trang_thai_thuc_hanh === undefined));
+                if (!isEligible) continue;
+
+                const key = record.id || record.ma_dk;
+                keys.push(key);
+                newMap[key] = record;
+            }
+
+            setSelectedRowKeys(keys);
+            setSelectedStudentMap(newMap);
+            setTotalValidKeys(keys.length);
+
+            message.success({ content: `Đã chọn ${keys.length} bản ghi`, key: 'selectAll' });
+        } catch (error) {
+            message.error({ content: 'Có lỗi xảy ra khi chọn tất cả', key: 'selectAll' });
+        } finally {
+            setIsSelectingAllPages(false);
+        }
+    };
+
+    const handleToggleSelectRecord = (record, checked) => {
+        if (!appliedFilters.loai) {
+            message.warning("Vui lòng lọc theo Lý thuyết hoặc Thực hành để sử dụng tính năng chọn nhiều!");
+            return;
+        }
+
+        const rowKey = record.id || record.ma_dk;
+        if (!rowKey) return;
+
+        setSelectedRowKeys((prev) =>
+            checked
+                ? Array.from(new Set([...prev, rowKey]))
+                : prev.filter((key) => key !== rowKey),
+        );
+
+        setSelectedStudentMap(prev => {
+            const next = { ...prev };
+            if (checked) {
+                next[rowKey] = record;
+            } else {
+                delete next[rowKey];
+            }
+            return next;
+        });
+    };
 
     // 1. Lấy danh sách khóa học
     const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
@@ -100,6 +178,8 @@ const HocBu = () => {
             loai: apiLoai,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
+        setSelectedRowKeys([]);
+        setSelectedStudentMap({});
     };
 
     const handleResetFilter = () => {
@@ -112,6 +192,8 @@ const HocBu = () => {
             loai: "",
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
+        setSelectedRowKeys([]);
+        setSelectedStudentMap({});
     };
 
     const handleOpenDetail = (record) => {
@@ -157,21 +239,19 @@ const HocBu = () => {
             onOk: async () => {
                 const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
                 try {
-                    const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
-                    await Promise.all(selectedStudents.map(async (st) => {
-                        const isTheory = st.loai === "ly_thuyet" || st.loai === "theory" || String(st.loai) === "1" || st.student?.loai === "ly_thuyet" || st.student?.loai === "theory" || String(st.student?.loai) === "1";
-                        const payload = {
-                            id: st.id,
-                            trang_thai: isTheory ? 1 : 4,
-                            nguoi_update: userName,
-                            updated_at: new Date().toISOString(),
-                            trang_thai_hoc_bu: 1,
-                            ...(isTheory ? { trang_thai_ly_thuyet: 1 } : { trang_thai_thuc_hanh: 1, thoi_gian_duyet_thuc_hanh: 1 })
-                        };
-                        await updateHocBuStatus(payload);
-                    }));
+                    const isTheory = appliedFilters.loai === "ly_thuyet";
+                    const payload = {
+                        ids: selectedRowKeys,
+                        trang_thai: isTheory ? 1 : 4,
+                        nguoi_update: userName,
+                        updated_at: new Date().toISOString(),
+                        trang_thai_hoc_bu: 1,
+                        ...(isTheory ? { trang_thai_ly_thuyet: 1 } : { trang_thai_thuc_hanh: 1, thoi_gian_duyet_thuc_hanh: 1 })
+                    };
+                    await updateHocBuStatusBulk(payload);
                     message.success("Đăng ký học bù cho các học viên được chọn thành công!");
                     setSelectedRowKeys([]);
+                    setSelectedStudentMap({});
                     refetchStudents();
                 } catch (error) {
                     message.error(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
@@ -180,7 +260,40 @@ const HocBu = () => {
         });
     };
 
+    const currentTotal = totalValidKeys !== -1 ? totalValidKeys : totalItems;
+    const isAllSelected = currentTotal > 0 && selectedRowKeys.length >= currentTotal;
+    const isIndeterminate = selectedRowKeys.length > 0 && !isAllSelected;
+
     const columns = [
+        {
+            title: (
+                <Checkbox
+                    checked={isAllSelected}
+                    indeterminate={isIndeterminate}
+                    disabled={!appliedFilters.loai || isFetchingStudents || isSelectingAllPages}
+                    onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
+                />
+            ),
+            key: "select_all",
+            width: 40,
+            align: "center",
+            fixed: "left",
+            render: (_, record) => {
+                const isEligible =
+                    record.trang_thai === null ||
+                    record.trang_thai === undefined ||
+                    (String(record.trang_thai) === "4" && (record.trang_thai_thuc_hanh === null || record.trang_thai_thuc_hanh === undefined));
+                const canCheck = isEligible && !!appliedFilters.loai;
+                return (
+                    <Checkbox
+                        checked={selectedRowKeys.includes(record.id || record.ma_dk)}
+                        disabled={!canCheck || isSelectingAllPages}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
+                    />
+                );
+            },
+        },
         {
             title: "#",
             key: "stt",
@@ -394,20 +507,6 @@ const HocBu = () => {
             </Card>
 
             <Table
-                rowSelection={{
-                    selectedRowKeys,
-                    onChange: (keys) => setSelectedRowKeys(keys),
-                    getCheckboxProps: (record) => {
-                        const isEligible =
-                            record.trang_thai === null ||
-                            record.trang_thai === undefined ||
-                            (String(record.trang_thai) === "4" && (record.trang_thai_thuc_hanh === null || record.trang_thai_thuc_hanh === undefined));
-                        return {
-                            disabled: !isEligible,
-                            name: record.ho_ten || record.student?.ho_ten,
-                        };
-                    }
-                }}
                 columns={columns}
                 dataSource={students}
                 rowKey={(record) => record.id || record.ma_dk}

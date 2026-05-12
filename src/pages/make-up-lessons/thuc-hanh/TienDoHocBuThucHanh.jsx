@@ -394,18 +394,10 @@ const TienDoHocBuThucHanh = () => {
         <div className="p-4" style={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
             <div className="mb-6">
                 <Title level={3} className="!mb-1">
-                    Tiến Độ Học Bù
+                    Tiến Độ Học Bù Thực Hành
                 </Title>
                 <div className="flex justify-between items-center">
                     <Text type="secondary">Quản lý và theo dõi tiến độ học bù các khóa học của trung tâm</Text>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={handleAdd}
-                        style={{ borderRadius: '6px', height: '40px' }}
-                    >
-                        Thêm tiến độ mới
-                    </Button>
                 </div>
             </div>
 
@@ -489,8 +481,6 @@ const TienDoHocBuThucHanh = () => {
                                 limit: pageSize,
                             }));
                         },
-                        showSizeChanger: true,
-                        showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />

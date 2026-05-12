@@ -12,7 +12,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 
-const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading, type }) => {
+const TienDoHocBuModal = ({ visible, action, data, onCancel, selectedCount, onSubmit, loading, type }) => {
     const [form] = Form.useForm();
 
     const calculateDates = (ngayKG) => {
@@ -73,12 +73,35 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
     React.useEffect(() => {
         if (visible) {
             form.resetFields();
-            form.setFieldsValue({
-                luu_luong: selectedCount,
-                loai: type === "theory" ? 1 : (type === "practice" ? 2 : 1),
-            });
+            if (data) {
+                // Map plain field entries
+                const initialValues = {
+                    ...data,
+                    loai: data.loai ? Number(data.loai) : (type === "theory" ? 1 : (type === "practice" ? 2 : 1))
+                };
+
+                // Convert date fields to dayjs objects
+                const dateFields = [
+                    'ngay_khai_giang', 'bat_dau_ly_thuyet', 'ket_thuc_ly_thuyet', 'kiem_tra_het_mon',
+                    'bat_dau_cabin', 'ket_thuc_cabin', 'bat_dau_dat', 'ket_thuc_dat',
+                    'tot_nghiep', 'ghep_tot_nghiep', 'be_giang'
+                ];
+
+                dateFields.forEach(field => {
+                    if (data[field]) {
+                        initialValues[field] = dayjs(data[field]);
+                    }
+                });
+
+                form.setFieldsValue(initialValues);
+            } else {
+                form.setFieldsValue({
+                    luu_luong: selectedCount,
+                    loai: type === "theory" ? 1 : (type === "practice" ? 2 : 1),
+                });
+            }
         }
-    }, [visible, selectedCount, type]);
+    }, [visible, data, selectedCount, type]);
 
     const handleValuesChange = (changedValues) => {
         const { ngay_khai_giang, bat_dau_cabin, tot_nghiep } = changedValues;
@@ -127,14 +150,15 @@ const TienDoHocBuModal = ({ visible, onCancel, selectedCount, onSubmit, loading,
 
     return (
         <Modal
-            title={<span style={{ fontWeight: 600, fontSize: '18px' }}>Thêm Khóa Học Mới & Tiến Độ</span>}
+            title={<span style={{ fontWeight: 600, fontSize: '18px' }}>{action === 'edit' ? 'Cập nhật Tiến Độ' : (action === 'view' ? 'Chi Tiết Tiến Độ' : 'Thêm Khóa Học Mới & Tiến Độ')}</span>}
             open={visible}
             onOk={handleOk}
             onCancel={onCancel}
             width={800}
             confirmLoading={loading}
-            okText="Thêm mới"
+            okText={action === 'edit' ? "Cập nhật" : "Thêm mới"}
             cancelText="Hủy bỏ"
+            okButtonProps={action === 'view' ? { style: { display: 'none' } } : {}}
             style={{ top: 15 }}
             bodyStyle={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', padding: '16px' }}
         >
