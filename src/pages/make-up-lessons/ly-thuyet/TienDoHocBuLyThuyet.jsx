@@ -73,7 +73,13 @@ const TienDoHocBuLyThuyet = () => {
 
     const dataSource = useMemo(() => {
         const list = normalizeApiList(tienDoData);
-        return list.filter(item => Number(item?.loai) === 1);
+        return list.filter(item => {
+            const isLoai1 = Number(item?.loai) === 1;
+
+            const hasLyThuyet = item?.ngay_khai_giang || item?.kiem_tra_het_mon || item?.bat_dau_ly_thuyet || item?.ket_thuc_ly_thuyet;
+
+            return isLoai1 && hasLyThuyet;
+        });
     }, [tienDoData]);
     const totalRecords = dataSource.length;
 
@@ -99,6 +105,15 @@ const TienDoHocBuLyThuyet = () => {
         setModalAction('edit');
         setSelectedRecord(record);
         setIsModalOpen(true);
+    }, []);
+
+    const handleCloseMainModal = useCallback(() => {
+        setIsModalOpen(false);
+        setSelectedRecord(null);
+    }, []);
+
+    const handleCloseDetailModal = useCallback(() => {
+        setDetailModal(prev => ({ ...prev, open: false }));
     }, []);
 
     const handleModalSubmit = useCallback((values) => {
@@ -485,7 +500,7 @@ const TienDoHocBuLyThuyet = () => {
                 visible={isModalOpen}
                 action={modalAction}
                 data={selectedRecord}
-                onCancel={() => setIsModalOpen(false)}
+                onCancel={handleCloseMainModal}
                 onSubmit={handleModalSubmit}
                 loading={isSaving}
                 type="theory"
@@ -494,7 +509,7 @@ const TienDoHocBuLyThuyet = () => {
             <ChiTietLopBuLyThuyetModal
                 visible={detailModal.open}
                 maKhoaBu={detailModal.maKhoa}
-                onCancel={() => setDetailModal(prev => ({ ...prev, open: false }))}
+                onCancel={handleCloseDetailModal}
             />
         </div>
     );

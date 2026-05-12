@@ -197,16 +197,16 @@ const DatTab = ({ datDetails, datSummary, student }) => {
     if (!datDetails && !datSummary) return <Empty description="Chưa có dữ liệu DAT" />;
 
     const sessions = datDetails?.sessions || [];
-    const summary = datDetails?.summary || {};
+    console.log("sessions", sessions);
 
     const mappedSessions = useMemo(() => {
         return sessions.map(s => ({
-            ThoiDiemDangNhap: s.gio_vao,
-            ThoiDiemDangXuat: s.gio_ra,
-            TongThoiGian: Number(s.thoi_gian || 0),
-            TongQuangDuong: Number(s.tong_km || 0),
-            BienSo: s.bien_so_xe,
-            HoTenGV: s.ho_ten_gv,
+            ThoiDiemDangNhap: s.ThoiDiemDangNhap,
+            ThoiDiemDangXuat: s.ThoiDiemDangXuat,
+            TongThoiGian: Number(s.TongThoiGian || 0),
+            TongQuangDuong: Number(s.TongQuangDuong || 0),
+            BienSo: s.BienSo,
+            HoTenGV: s.HoTenGV,
             HangDaoTao: student?.HangDaoTao || student?.hang_dao_tao || student?.hang || "B1",
         }));
     }, [sessions, student]);
@@ -236,7 +236,7 @@ const DatTab = ({ datDetails, datSummary, student }) => {
         },
         {
             title: "Ngày đào tạo",
-            dataIndex: "gio_vao",
+            dataIndex: "ThoiDiemDangNhap",
             width: 100,
             align: "center",
             render: (v) => v ? dayjs(v).format("DD/MM/YYYY") : "-"
@@ -246,33 +246,33 @@ const DatTab = ({ datDetails, datSummary, student }) => {
             width: 110,
             align: "center",
             render: (_, record) => {
-                const start = record.gio_vao ? dayjs(record.gio_vao).format("HH:mm") : "-";
-                const end = record.gio_ra ? dayjs(record.gio_ra).format("HH:mm") : "-";
+                const start = record.ThoiDiemDangNhap ? dayjs(record.ThoiDiemDangNhap).format("HH:mm") : "-";
+                const end = record.ThoiDiemDangXuat ? dayjs(record.ThoiDiemDangXuat).format("HH:mm") : "-";
                 return `${start} - ${end}`;
             }
         },
         {
             title: "Giáo viên",
-            dataIndex: "ho_ten_gv",
+            dataIndex: "HoTenGV",
             width: 150,
             align: "center",
         },
         {
             title: "Biển số",
-            dataIndex: "bien_so_xe",
+            dataIndex: "BienSo",
             width: 70,
             align: "center",
         },
         {
             title: "Quãng đường",
-            dataIndex: "tong_km",
+            dataIndex: "TongQuangDuong",
             width: 100,
             align: "center",
             render: (v) => <span className="font-medium">{v} km</span>
         },
         {
             title: "Thời gian",
-            dataIndex: "thoi_gian",
+            dataIndex: "TongThoiGian",
             width: 100,
             align: "center",
             render: (v) => <span className="font-medium">{formatSecondsToTime(v)}</span>

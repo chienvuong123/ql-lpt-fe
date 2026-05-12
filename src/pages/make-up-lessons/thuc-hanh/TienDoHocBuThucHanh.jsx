@@ -21,9 +21,10 @@ import {
     EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import { optionLopLyThuyet } from '../../../apis/apiLyThuyetLocal';
 import TienDoHocBuModal from '../TienDoHocBuModal';
+import ChiTietLopBuThucHanhModal from './ChiTietLopBuThucHanhModal';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -34,6 +35,7 @@ const TienDoHocBuThucHanh = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalAction, setModalAction] = useState('add');
     const [selectedRecord, setSelectedRecord] = useState(null);
+    const [detailModal, setDetailModal] = useState({ open: false, maKhoa: null });
     const keywordInputRef = useRef(null);
     const [params, setParams] = useState({
         page: 1,
@@ -72,7 +74,13 @@ const TienDoHocBuThucHanh = () => {
 
     const dataSource = useMemo(() => {
         const list = normalizeApiList(tienDoData);
-        return list.filter(item => Number(item?.loai) === 1);
+        return list.filter(item =>
+            item?.bat_dau_cabin ||
+            item?.ket_thuc_cabin ||
+            item?.bat_dau_dat ||
+            item?.ket_thuc_dat ||
+            item?.khoa_bu_thuc_hanh
+        );
     }, [tienDoData]);
     const totalRecords = dataSource.length;
 
@@ -90,7 +98,44 @@ const TienDoHocBuThucHanh = () => {
 
     const formatDate = (date) => (date ? dayjs(date).format('DD/MM/YYYY') : '-');
 
-    const columns = [
+    const handleAdd = useCallback(() => {
+        setModalAction('add');
+        setSelectedRecord(null);
+        setIsModalOpen(true);
+    }, []);
+
+    const handleView = useCallback((record) => {
+        setDetailModal({ open: true, maKhoa: record?.ma_khoa });
+    }, []);
+
+    const handleEdit = useCallback((record) => {
+        setModalAction('edit');
+        setSelectedRecord(record);
+        setIsModalOpen(true);
+    }, []);
+
+    const handleCloseMainModal = useCallback(() => {
+        setIsModalOpen(false);
+        setSelectedRecord(null);
+    }, []);
+
+    const handleCloseDetailModal = useCallback(() => {
+        setDetailModal(prev => ({ ...prev, open: false }));
+    }, []);
+
+    const handleModalSubmit = useCallback((values) => {
+        const userName = sessionStorage.getItem("name") || "unknown";
+        const payload = { ...values };
+
+        if (modalAction === 'add') {
+            payload.created_by = userName;
+        }
+        payload.updated_by = userName;
+
+        mutateTienDo(payload);
+    }, [modalAction, mutateTienDo]);
+
+    const columns = useMemo(() => [
         {
             title: '#',
             dataIndex: 'index',
@@ -335,37 +380,7 @@ const TienDoHocBuThucHanh = () => {
                 </div>
             ),
         },
-    ];
-
-    const handleAdd = () => {
-        setModalAction('add');
-        setSelectedRecord(null);
-        setIsModalOpen(true);
-    };
-
-    const handleView = (record) => {
-        setModalAction('view');
-        setSelectedRecord(record);
-        setIsModalOpen(true);
-    };
-
-    const handleEdit = (record) => {
-        setModalAction('edit');
-        setSelectedRecord(record);
-        setIsModalOpen(true);
-    };
-
-    const handleModalSubmit = (values) => {
-        const userName = sessionStorage.getItem("name") || "unknown";
-        const payload = { ...values };
-
-        if (modalAction === 'add') {
-            payload.created_by = userName;
-        }
-        payload.updated_by = userName;
-
-        mutateTienDo(payload);
-    };
+    ], [handleView, handleEdit]);
 
     const handleFilter = () => {
         const text = keywordInputRef.current?.input?.value?.trim() || "";
@@ -490,10 +505,16 @@ const TienDoHocBuThucHanh = () => {
                 visible={isModalOpen}
                 action={modalAction}
                 data={selectedRecord}
-                onCancel={() => setIsModalOpen(false)}
+                onCancel={handleCloseMainModal}
                 onSubmit={handleModalSubmit}
                 loading={isSaving}
                 type="practice"
+            />
+
+            <ChiTietLopBuThucHanhModal
+                visible={detailModal.open}
+                maKhoaBu={detailModal.maKhoa}
+                onCancel={handleCloseDetailModal}
             />
         </div>
     );

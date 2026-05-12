@@ -183,11 +183,11 @@ const ChiTietLopBuLyThuyetModal = ({ visible, maKhoaBu, onCancel }) => {
     <Modal
       title={`Chi tiết lớp học bù lý thuyết: ${maKhoaBu || ""}`}
       open={visible}
-      visible={visible}
       onCancel={onCancel}
       footer={null}
       width={1400}
       centered
+      destroyOnClose={true}
       // Fix 1: keep DOM, reset explicitly after close
       afterClose={() => setData([])}
     >
@@ -205,4 +205,4 @@ const ChiTietLopBuLyThuyetModal = ({ visible, maKhoaBu, onCancel }) => {
   );
 };
 
-export default ChiTietLopBuLyThuyetModal;
+export default React.memo(ChiTietLopBuLyThuyetModal);
