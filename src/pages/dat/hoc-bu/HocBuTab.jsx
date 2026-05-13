@@ -6,7 +6,7 @@ import { getDanhSachHocVienHocBuDat } from "../../../apis/apiHocbu";
 import HocBuFilterCard from "./HocBuFilterCard";
 import dayjs from "dayjs";
 import DATDetailModal from "../DATDetailModal";
-import { getHocBuDatColumns } from "./hocBuDatColumns";
+import { getHocBuDatColumns } from "./HocBuDatColumns";
 import { useHocBuFilter } from "./hooks/useHocBuFilter";
 import { normalizeApiList } from "./hocBuUtils";
 import { formatMinutesToHM } from "../../../util/helper";
