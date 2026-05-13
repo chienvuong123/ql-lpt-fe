@@ -167,7 +167,7 @@ const DatJourneyModal = ({
                 className="!mb-3 !bg-[#fff1f0] !border-[#ffa39e]"
               >
                 <Text className="!text-[#cf1322] !text-xs !font-semibold">
-                  Bạn có ({invalidSessionCount} phiên lỗi) liên hệ phòng DAT để
+                  Bạn có ({invalidSessionCount} phiên vi phạm) liên hệ phòng DAT để
                   kiểm tra chi tiết.
                 </Text>
               </Card>
@@ -185,35 +185,31 @@ const DatJourneyModal = ({
                   >
                     <div className="!flex">
                       <div
-                        className={`!w-8 !text-center !text-xs !font-semibold !text-white !py-3 ${
-                          item?._isInvalid ? "!bg-[#cf1322]" : "!bg-[#1e88d8]"
-                        }`}
+                        className={`!w-8 !text-center !text-xs !font-semibold !text-white !py-3 ${item?._isInvalid ? "!bg-[#cf1322]" : "!bg-[#1e88d8]"
+                          }`}
                       >
                         {index + 1}
                       </div>
                       <div className="!flex-1 !text-xs">
                         <div
-                          className={`!flex !items-center !justify-between !border-b !px-3 !py-2 ${
-                            item?._isInvalid ? "!bg-[#fff1f0]" : "!bg-[#f5f7fb]"
-                          }`}
+                          className={`!flex !items-center !justify-between !border-b !px-3 !py-2 ${item?._isInvalid ? "!bg-[#fff1f0]" : "!bg-[#f5f7fb]"
+                            }`}
                         >
                           <Text strong>
                             {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
                           </Text>
                           <div
-                            className={`!rounded !px-3 !py-1 !text-white !font-semibold ${
-                              item?._isInvalid
+                            className={`!rounded !px-3 !py-1 !text-white !font-semibold ${item?._isInvalid
                                 ? "!bg-[#cf1322]"
                                 : "!bg-[#1e88d8]"
-                            }`}
+                              }`}
                           >
                             {item?.BienSo || "--"}
                           </div>
                         </div>
                         <div
-                          className={`!grid !grid-cols-2 !px-3 !py-2 ${
-                            item?._isInvalid ? "!bg-[#fff1f0]" : ""
-                          }`}
+                          className={`!grid !grid-cols-2 !px-3 !py-2 ${item?._isInvalid ? "!bg-[#fff1f0]" : ""
+                            }`}
                         >
                           <span>
                             {start ? dayjs(start).format("HH:mm") : "--"} -{" "}

@@ -177,10 +177,10 @@ const HocVienTheoGiaoVien = () => {
 
   const conflictCount = Number(
     duplicateCheckResult?.tong_conflict ??
-      duplicateCheckResult?.data?.tong_conflict ??
-      duplicateCheckResult?.Data?.tong_conflict ??
-      conflictList.length ??
-      0,
+    duplicateCheckResult?.data?.tong_conflict ??
+    duplicateCheckResult?.Data?.tong_conflict ??
+    conflictList.length ??
+    0,
   );
 
   const { mutate: handleDuplicateCheck, isPending: isCheckingDuplicate } =
@@ -197,9 +197,9 @@ const HocVienTheoGiaoVien = () => {
       onSuccess: (response) => {
         const tongConflict = Number(
           response?.tong_conflict ??
-            response?.data?.tong_conflict ??
-            response?.Data?.tong_conflict ??
-            0,
+          response?.data?.tong_conflict ??
+          response?.Data?.tong_conflict ??
+          0,
         );
 
         setDuplicateCheckResult(response);
@@ -211,7 +211,7 @@ const HocVienTheoGiaoVien = () => {
         }
 
         message.success(
-          `Đã kiểm tra ${filteredMaDkList.length} mã đăng ký, không có phiên lỗi.`,
+          `Đã kiểm tra ${filteredMaDkList.length} mã đăng ký, không có phiên vi phạm.`,
         );
       },
       onError: (error) => {
@@ -396,8 +396,8 @@ const HocVienTheoGiaoVien = () => {
           </div>
 
           {submittedFilter.teacher &&
-          submittedFilter.course &&
-          filteredMaDkList.length > 0 ? (
+            submittedFilter.course &&
+            filteredMaDkList.length > 0 ? (
             <div className="!flex !items-center !gap-2">
               <Button
                 type="primary"
@@ -442,7 +442,7 @@ const HocVienTheoGiaoVien = () => {
       </Card>
 
       <Modal
-        title={`Chi tiết phiên lỗi (${conflictCount})`}
+        title={`Chi tiết phiên vi phạm (${conflictCount})`}
         open={isConflictModalOpen}
         onCancel={() => setIsConflictModalOpen(false)}
         footer={null}
@@ -530,7 +530,7 @@ const HocVienTheoGiaoVien = () => {
             })}
           </div>
         ) : (
-          <Empty description="Không có phiên lỗi." />
+          <Empty description="Không có phiên vi phạm." />
         )}
       </Modal>
     </div>

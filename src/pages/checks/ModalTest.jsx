@@ -487,7 +487,7 @@ const ModalTest = ({
                   <div className="!space-y-2">
                     {invalidSessionCount > 0 && (
                       <Text className="!text-[#cf1322] !text-xs !font-semibold">
-                        Có {invalidSessionCount} phiên lỗi. Liên hệ phòng DAT để
+                        Có {invalidSessionCount} phiên vi phạm. Liên hệ phòng DAT để
                         kiểm tra chi tiết.
                       </Text>
                     )}
