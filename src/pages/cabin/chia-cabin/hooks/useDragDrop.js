@@ -11,8 +11,6 @@ export const useDragDrop = ({
   calcCabinTime,
   canDropIntoCabin,
   updateCurrentWeek,
-  priorityCourse,
-  handlePriorityInsert,
   getDayConfig,
   getSessions,
   isMakeupSlot,
@@ -207,38 +205,7 @@ export const useDragDrop = ({
         return;
       }
 
-      const isPriority = priorityCourse !== "all" && droppingStudents.some(s => s.khoa_hoc === priorityCourse);
-
       if (!canDropIntoCabin(currentSlotData, maDks, targetCn, targetSlotKey)) {
-        if (isPriority) {
-          const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
-          const targetType = Number(targetCn) > 5 - b1Count ? "B1" : "B2";
-          if (droppingStudents.some(s => s.hang_xe !== targetType)) {
-             message.error("H\u1ecdc vi\u00ean \u01b0u ti\u00ean c\u0169ng ph\u1ea3i \u0111\u00fang H\u1ea1ng xe v\u1edbi Cabin!");
-             setDragState(null);
-             return;
-          }
-
-          const session = getSessions(targetDi).find((s) => s?.num === targetSn);
-          if (session) {
-            const isMakeupZone = isMakeupSlot(targetDi, session);
-            const hasMakeup = droppingStudents.some(s => s.is_makeup);
-            if (isMakeupZone && !hasMakeup) {
-              message.error("\u00d4 h\u1ecdc b\u00f9 ch\u1ec9 d\u00e0nh cho h\u1ecdc vi\u00ean h\u1ecdc b\u00f9!");
-              setDragState(null);
-              return;
-            }
-            if (!isMakeupZone && hasMakeup) {
-              message.error("H\u1ecdc vi\u00ean h\u1ecdc b\u00f9 kh\u00f4ng th\u1ec3 x\u1ebfp v\u00e0o ca ch\u00ednh kh\u00f3a!");
-              setDragState(null);
-              return;
-            }
-          }
-          
-          handlePriorityInsert(maDks, targetDi, targetSn, targetCn);
-          setDragState(null);
-          return;
-        }
 
         if (lockedCabins[targetSlotKey]) {
           message.error("Cabin n\u00e0y \u0111ang b\u1ecb kh\u00f3a, kh\u00f4ng th\u1ec3 th\u00eam h\u1ecdc vi\u00ean!");
@@ -277,7 +244,7 @@ export const useDragDrop = ({
       const label = maDks.length > 1 ? `${maDks.length} h\u1ecdc vi\u00ean` : getStudentByMaDk(maDks[0])?.giao_vien || "Gi\u00e1o vi\u00ean";
       message.success(`\u0110\u00e3 chuy\u1ec3n ${label} sang Cabin ${targetCn}`);
     },
-    [dragState, fullSchedule, canDropIntoCabin, canSwap, getStudentByMaDk, globalConfig, updateCurrentWeek, lockedCabins, priorityCourse, handlePriorityInsert, getDayConfig, getSessions, isMakeupSlot, onAddNote, cabinConfigs]
+    [dragState, fullSchedule, canDropIntoCabin, canSwap, getStudentByMaDk, globalConfig, updateCurrentWeek, lockedCabins, getDayConfig, getSessions, isMakeupSlot, onAddNote, cabinConfigs]
   );
 
   return {

@@ -31,7 +31,6 @@ export const useCabinSchedule = (allStudents) => {
   const [weekSchedules, setWeekSchedules] = useState({});
   const [week, setWeek] = useState(new Date());
   const [loadingSync, setLoadingSync] = useState(false);
-  const [priorityCourse, setPriorityCourse] = useState("all");
   const [onlineStudents, setOnlineStudents] = useState({});
   const [activeSlotKey, setActiveSlotKey] = useState(null);
   const [serverStudents, setServerStudents] = useState({}); // Cache HV từ server (lịch sử)
@@ -441,59 +440,7 @@ export const useCabinSchedule = (allStudents) => {
     [getStudentByMaDk, initSchedule, getSessions, canDropIntoCabin],
   );
 
-  const handlePriorityInsert = useCallback(
-    (maDks, di, sn, cn) => {
-      const targetKey = `${di}-${sn}`;
-      let actualKickedCount = 0;
-      let actuallyPushed = 0;
 
-      updateCurrentWeek((old) => {
-        const nextSchedule = JSON.parse(JSON.stringify(old.schedule || {}));
-        const nextAssigned = new Set(old.assignedMaDks);
-        maDks.forEach((id) => nextAssigned.add(id));
-
-        const existingInTarget = nextSchedule[targetKey]?.cabins[cn] || [];
-        actuallyPushed = existingInTarget.length;
-
-        // 1. Gỡ học viên cũ ra
-        if (!nextSchedule[targetKey]) {
-           nextSchedule[targetKey] = { time: "", cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
-        }
-        nextSchedule[targetKey].cabins[cn] = [];
-
-        // 2. Chèn học viên mới vào
-        nextSchedule[targetKey].cabins[cn] = maDks;
-
-        // 3. Tìm chỗ mới cho từng học viên bị đẩy đi
-        let finalSchedule = nextSchedule;
-        let kickedCount = 0;
-
-        for (const oldMaDk of existingInTarget) {
-          const shifted = shiftOneStudent(oldMaDk, di, sn, cn, finalSchedule);
-          if (shifted) {
-            finalSchedule = shifted;
-          } else {
-            // Không tìm được chỗ trống trong tuần -> trả về danh sách chờ
-            nextAssigned.delete(oldMaDk);
-            kickedCount++;
-          }
-        }
-        actualKickedCount = kickedCount;
-
-        return {
-          schedule: finalSchedule,
-          assignedMaDks: nextAssigned,
-        };
-      });
-
-      if (actualKickedCount > 0) {
-        message.warning(`Đã đẩy ${actuallyPushed} HV. Trong đó ${actualKickedCount} HV phải về danh sách chờ vì hết chỗ trống.`);
-      } else if (actuallyPushed > 0) {
-        message.success(`Đã đẩy ${actuallyPushed} học viên cũ sang các ca trống tiếp theo.`);
-      }
-    },
-    [shiftOneStudent, updateCurrentWeek],
-  );
 
   // ── Remove student ────────────────────────────────────────────────────────
   const handleRemoveStudent = useCallback(
@@ -585,15 +532,8 @@ export const useCabinSchedule = (allStudents) => {
 
       // 1. Lọc và Sắp xếp học viên chưa được gán
       const unassignedPool = allStudents
-        .filter((s) => !globalAssigned.has(s.ma_dk))
+        .filter((s) => !globalAssigned.has(s.ma_dk) && isNoData(s))
         .sort((a, b) => {
-          // Khóa ưu tiên
-          if (priorityCourse !== "all") {
-            const isAPriority = a.khoa_hoc === priorityCourse;
-            const isBPriority = b.khoa_hoc === priorityCourse;
-            if (isAPriority && !isBPriority) return -1;
-            if (!isAPriority && isBPriority) return 1;
-          }
           // Tên khóa
           const khoaA = a.khoa_hoc || "";
           const khoaB = b.khoa_hoc || "";
@@ -629,13 +569,6 @@ export const useCabinSchedule = (allStudents) => {
       // 3. Sắp xếp giáo viên theo độ ưu tiên (Số học viên nhìu nhất xếp trước)
       const sortTeachers = (teacherGroups) =>
         Object.keys(teacherGroups).sort((a, b) => {
-          // Vẫn giữ ưu tiên Khóa ưu tiên ở cấp độ thầy
-          if (priorityCourse !== "all") {
-            const aHasPri = teacherGroups[a].some(s => s.khoa_hoc === priorityCourse);
-            const bHasPri = teacherGroups[b].some(s => s.khoa_hoc === priorityCourse);
-            if (aHasPri && !bHasPri) return -1;
-            if (!aHasPri && bHasPri) return 1;
-          }
           return teacherGroups[b].length - teacherGroups[a].length;
         });
 
@@ -779,7 +712,7 @@ export const useCabinSchedule = (allStudents) => {
         totalAssignedThisRun.forEach((id) => globalAssigned.add(id));
 
         const pool = allStudents.filter(
-          (s) => !globalAssigned.has(s.ma_dk) && config.courses.includes(s.khoa_hoc)
+          (s) => !globalAssigned.has(s.ma_dk) && config.courses.includes(s.khoa_hoc) && isNoData(s)
         );
 
         if (pool.length === 0) continue;
@@ -1293,7 +1226,6 @@ export const useCabinSchedule = (allStudents) => {
     totalEmptySlots,
     loadingSync,
     isFetchingSchedule,
-    priorityCourse,
     slotNotes,
     slotRecordIds,
     // helpers
@@ -1304,7 +1236,6 @@ export const useCabinSchedule = (allStudents) => {
     getDayConfig,
     isMakeupSlot,
     // actions
-    setPriorityCourse,
     updateCurrentWeek,
     toggleLock,
     setSchedule,
@@ -1312,7 +1243,6 @@ export const useCabinSchedule = (allStudents) => {
     setCabinConfigs,
     handleRemoveStudent,
     handleAutoAssign,
-    handlePriorityInsert,
     doConfigBasedAutoAssign,
     updateSlotNoteLocal,
     handleSaveGlobalConfig,

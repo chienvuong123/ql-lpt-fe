@@ -59,9 +59,6 @@ const LichCabin = () => {
     handleClearCurrentWeek,
     loadingSync,
     isFetchingSchedule,
-    priorityCourse,
-    setPriorityCourse,
-    handlePriorityInsert,
     getDayConfig,
     isMakeupSlot,
     cabinConfigs,
@@ -122,8 +119,6 @@ const LichCabin = () => {
     calcCabinTime,
     canDropIntoCabin,
     updateCurrentWeek,
-    priorityCourse,
-    handlePriorityInsert,
     getDayConfig,
     getSessions,
     isMakeupSlot,
@@ -375,8 +370,6 @@ const LichCabin = () => {
         onSave={handleSaveScheduleToServer}
         onClear={handleClearCurrentWeek}
         loadingSync={loadingSync}
-        priorityCourse={priorityCourse}
-        setPriorityCourse={setPriorityCourse}
         uniqueKhoaHoc={uniqueKhoaHoc}
         onConfigBasedAssign={doConfigBasedAutoAssign}
       />

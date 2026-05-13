@@ -34,8 +34,6 @@ const ScheduleHeader = ({
   onSave,
   onClear,
   loadingSync,
-  priorityCourse,
-  setPriorityCourse,
   uniqueKhoaHoc,
   onConfigBasedAssign,
 }) => {
@@ -64,15 +62,9 @@ const ScheduleHeader = ({
                 items: [
                   {
                     key: "all",
-                    label: "Chia tất cả (Ưu tiên học viên chưa học Cabin)",
+                    label: "Chia tự động (Chỉ học viên chưa học)",
                     icon: <BgColorsOutlined />,
-                    onClick: () => onAutoAssign("all"),
-                  },
-                  {
-                    key: "noDataOnly",
-                    label: "Chỉ chia học viên chưa học Cabin",
-                    icon: <UserOutlined />,
-                    onClick: () => onAutoAssign("noDataOnly"),
+                    onClick: () => onAutoAssign(),
                   },
                   { type: 'divider' },
                   {
@@ -202,23 +194,7 @@ const ScheduleHeader = ({
             )}
           </div>
 
-          {/* Priority course */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 font-medium">Khóa ưu tiên (đẩy lịch):</span>
-            <Select
-              value={priorityCourse}
-              onChange={setPriorityCourse}
-              size="small"
-              style={{ width: 140 }}
-              options={[
-                { value: "all", label: "Không có" },
-                ...uniqueKhoaHoc.map((k) => ({
-                  value: k,
-                  label: k,
-                })),
-              ]}
-            />
-          </div>
+
 
           {/* Stats */}
           <div className="flex gap-3 text-xs text-gray-600 flex-wrap">
