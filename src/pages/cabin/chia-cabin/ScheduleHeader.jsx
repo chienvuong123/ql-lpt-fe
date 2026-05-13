@@ -27,7 +27,6 @@ const ScheduleHeader = ({
   setFilterCabin,
   setWeek,
   week,
-  onAutoAssign,
   onOpenLimitModal,
   onOpenSettings,
   onExport,
@@ -60,13 +59,6 @@ const ScheduleHeader = ({
             <Dropdown
               menu={{
                 items: [
-                  {
-                    key: "all",
-                    label: "Chia tự động (Chỉ học viên chưa học)",
-                    icon: <BgColorsOutlined />,
-                    onClick: () => onAutoAssign(),
-                  },
-                  { type: 'divider' },
                   {
                     key: "allConfigs",
                     label: "Chia tự động theo cấu hình các Cabin (Tất cả máy)",

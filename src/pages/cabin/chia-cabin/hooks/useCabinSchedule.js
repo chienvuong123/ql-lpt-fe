@@ -471,202 +471,7 @@ export const useCabinSchedule = (allStudents) => {
     [updateCurrentWeek],
   );
 
-  // ── Auto-assign ───────────────────────────────────────────────────────────
-  const handleAutoAssign = (mode = "all") => {
-    let hasUnlockedNonEmpty = false;
-    Object.keys(fullSchedule).forEach((key) => {
-      [1, 2, 3, 4, 5].forEach((cn) => {
-        const slotKey = `${key}-${cn}`;
-        if (
-          !lockedCabins[slotKey] &&
-          fullSchedule[key]?.cabins[cn]?.length > 0
-        ) {
-          hasUnlockedNonEmpty = true;
-        }
-      });
-    });
 
-    if (hasUnlockedNonEmpty) {
-      Modal.confirm({
-        title: "Xác nhận Tự động chia",
-        content:
-          "Tuần này đã có sẵn học viên trên Lịch. Bạn muốn XOÁ TRỐNG các suất chưa bị khoá để chia lại từ đầu, hay GIỮ NGUYÊN và chỉ chia tiếp vào các suất còn trống?",
-        okText: "Xoá và Chia lại",
-        okType: "danger",
-        cancelText: "Chỉ điền suất trống",
-        onOk: () => doAutoAssign(mode, true),
-        onCancel: () => doAutoAssign(mode, false),
-      });
-    } else {
-      doAutoAssign(mode, false);
-    }
-  };
-
-  const doAutoAssign = (mode = "all", resetUnlocked = false) => {
-    try {
-      const newSchedule = JSON.parse(JSON.stringify(fullSchedule));
-      const newAssignedThisWeek = new Set(assignedMaDks);
-
-      if (resetUnlocked) {
-        Object.keys(newSchedule).forEach((key) => {
-          [1, 2, 3, 4, 5].forEach((cn) => {
-            const slotKey = `${key}-${cn}`;
-            if (!lockedCabins[slotKey]) {
-              (newSchedule[key].cabins[cn] || []).forEach((id) =>
-                newAssignedThisWeek.delete(id),
-              );
-              newSchedule[key].cabins[cn] = [];
-            }
-          });
-        });
-      }
-
-      const globalAssigned = new Set();
-      Object.keys(weekSchedules).forEach((wk) => {
-        if (wk !== weekKey)
-          weekSchedules[wk].assignedMaDks.forEach((id) =>
-            globalAssigned.add(id),
-          );
-      });
-      newAssignedThisWeek.forEach((id) => globalAssigned.add(id));
-
-      // 1. Lọc và Sắp xếp học viên chưa được gán
-      const unassignedPool = allStudents
-        .filter((s) => !globalAssigned.has(s.ma_dk) && isNoData(s))
-        .sort((a, b) => {
-          // Tên khóa
-          const khoaA = a.khoa_hoc || "";
-          const khoaB = b.khoa_hoc || "";
-          if (khoaA !== khoaB) return khoaA.localeCompare(khoaB);
-          // Ngày kết thúc
-          const dateA = new Date(a.ngay_ket_thuc || 0).getTime();
-          const dateB = new Date(b.ngay_ket_thuc || 0).getTime();
-          return dateA - dateB;
-        });
-
-      if (unassignedPool.length === 0) {
-        message.info("Không còn học viên nào chờ xếp lịch.");
-        return;
-      }
-
-      // 2. Nhóm học viên theo giáo viên
-      const groupByTeacher = (students) => {
-        const groups = {};
-        students.forEach(s => {
-          const gv = s.giao_vien || "Chưa có GV";
-          if (!groups[gv]) groups[gv] = [];
-          groups[gv].push(s);
-        });
-        return groups;
-      };
-
-      const normalPool = unassignedPool.filter(s => !s.is_makeup);
-      const makeupPool = unassignedPool.filter(s => s.is_makeup);
-
-      const teachersNormal = groupByTeacher(normalPool);
-      const teachersMakeup = groupByTeacher(makeupPool);
-
-      // 3. Sắp xếp giáo viên theo độ ưu tiên (Số học viên nhìu nhất xếp trước)
-      const sortTeachers = (teacherGroups) =>
-        Object.keys(teacherGroups).sort((a, b) => {
-          return teacherGroups[b].length - teacherGroups[a].length;
-        });
-
-      const sortedNormalTeachers = sortTeachers(teachersNormal);
-      const sortedMakeupTeachers = sortTeachers(teachersMakeup);
-
-      // 4. Lấy danh sách ô trống
-      const getEmptySlots = (isMakeupZone) => {
-        const slots = [];
-        Object.keys(initSchedule)
-          .sort((a, b) => {
-            const [diA, snA] = a.split("-").map(Number);
-            const [diB, snB] = b.split("-").map(Number);
-            if (diA !== diB) return diA - diB;
-            return snA - snB;
-          })
-          .forEach((key) => {
-            const [di, sn] = key.split("-").map(Number);
-            const session = getSessions(di).find((s) => s?.num === sn);
-            if (!session) return;
-            if (isMakeupSlot(di, session) !== isMakeupZone) return;
-
-            const dCfg = getDayConfig(di);
-            const b1Count = dCfg.b1Cabins ?? globalConfig.b1Cabins;
-
-            [1, 2, 3, 4, 5].forEach((cn) => {
-              const slotKey = `${key}-${cn}`;
-              if (lockedCabins[slotKey]) return;
-              if (newSchedule[key]?.cabins[cn]?.length > 0) return;
-              slots.push({ key, di, sn, cn, isB1: Number(cn) > 5 - b1Count });
-            });
-          });
-        return slots;
-      };
-
-      const normalEmptySlots = getEmptySlots(false);
-      const makeupEmptySlots = getEmptySlots(true);
-
-      // 5. Điền lịch và kiểm tra ràng buộc thầy
-      const busyTeachers = {}; // di-sn -> Set()
-      const fillGroups = (sortedTeachers, teacherGroups, emptySlots) => {
-        const newlyAssigned = new Set();
-        let currentEmptySlots = [...emptySlots];
-
-        for (const teacherName of sortedTeachers) {
-          const students = teacherGroups[teacherName];
-          for (const student of students) {
-            const isB1Needed = student.hang_xe === "B1";
-
-            let foundIdx = -1;
-            for (let i = 0; i < currentEmptySlots.length; i++) {
-              const slot = currentEmptySlots[i];
-              if (slot.isB1 !== isB1Needed) continue;
-
-              const sessionKey = `${slot.di}-${slot.sn}`;
-              if (!busyTeachers[sessionKey]) busyTeachers[sessionKey] = new Set();
-
-              // RÀNG BUỘC: 1 thầy 1 ca
-              if (busyTeachers[sessionKey].has(teacherName)) continue;
-
-              foundIdx = i;
-              break;
-            }
-
-            if (foundIdx !== -1) {
-              const slot = currentEmptySlots[foundIdx];
-              const sessionKey = `${slot.di}-${slot.sn}`;
-
-              if (!newSchedule[slot.key]) {
-                newSchedule[slot.key] = { cabins: { 1: [], 2: [], 3: [], 4: [], 5: [] } };
-              }
-              newSchedule[slot.key].cabins[slot.cn] = [student.ma_dk];
-
-              busyTeachers[sessionKey].add(teacherName);
-              newlyAssigned.add(student.ma_dk);
-              currentEmptySlots.splice(foundIdx, 1);
-            }
-          }
-        }
-        return newlyAssigned;
-      };
-
-      const assignedNormal = fillGroups(sortedNormalTeachers, teachersNormal, normalEmptySlots);
-      const assignedMakeup = fillGroups(sortedMakeupTeachers, teachersMakeup, makeupEmptySlots);
-
-      const totalNewlyAssigned = new Set([...assignedNormal, ...assignedMakeup]);
-
-      updateCurrentWeek(() => ({
-        schedule: newSchedule,
-        assignedMaDks: new Set([...newAssignedThisWeek, ...totalNewlyAssigned]),
-      }));
-
-      message.success(`Đã tự động chia xong ${totalNewlyAssigned.size} học viên.`, 5);
-    } catch (err) {
-      console.error("Auto-assign error:", err);
-      message.error("Xảy ra lỗi khi tự động chia lịch. Vui lòng thử lại.");
-    }
-  };
 
   const doConfigBasedAutoAssign = (cabinNums) => {
     try {
@@ -686,7 +491,7 @@ export const useCabinSchedule = (allStudents) => {
         cabinsProcessed++;
 
         // Tìm các ô trống của cabin này
-        const emptySlots = [];
+        const sortedSlots = [];
         Object.keys(initSchedule)
           .sort((a, b) => {
             const [diA, snA] = a.split("-").map(Number);
@@ -697,9 +502,34 @@ export const useCabinSchedule = (allStudents) => {
           .forEach((key) => {
             const slotKey = `${key}-${cabinNum}`;
             if (!lockedCabins[slotKey] && (newSchedule[key]?.cabins[cabinNum] || []).length === 0) {
-              emptySlots.push({ key });
+              sortedSlots.push({ key });
             }
           });
+
+        if (sortedSlots.length === 0) continue;
+
+        // Phân bổ ô trống theo thứ tự xoay vòng giữa các thứ (Round Robin) để dàn trải đều cả tuần
+        const slotsByDay = {};
+        sortedSlots.forEach(slot => {
+          const [di] = slot.key.split("-").map(Number);
+          if (!slotsByDay[di]) slotsByDay[di] = [];
+          slotsByDay[di].push(slot);
+        });
+
+        const availableDays = Object.keys(slotsByDay).map(Number).sort((a, b) => a - b);
+        const emptySlots = [];
+        let maxSessions = 0;
+        availableDays.forEach(d => {
+          maxSessions = Math.max(maxSessions, slotsByDay[d].length);
+        });
+
+        for (let sessionIdx = 0; sessionIdx < maxSessions; sessionIdx++) {
+          for (const day of availableDays) {
+            if (slotsByDay[day][sessionIdx]) {
+              emptySlots.push(slotsByDay[day][sessionIdx]);
+            }
+          }
+        }
 
         if (emptySlots.length === 0) continue;
 
@@ -1242,7 +1072,6 @@ export const useCabinSchedule = (allStudents) => {
     setDayConfigs,
     setCabinConfigs,
     handleRemoveStudent,
-    handleAutoAssign,
     doConfigBasedAutoAssign,
     updateSlotNoteLocal,
     handleSaveGlobalConfig,

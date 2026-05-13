@@ -51,7 +51,6 @@ const LichCabin = () => {
     setSchedule,
     setDayConfigs,
     handleRemoveStudent,
-    handleAutoAssign,
     handleSaveGlobalConfig,
     handleSaveCabinLimit,
     handleSaveScheduleToServer,
@@ -363,7 +362,6 @@ const LichCabin = () => {
         setFilterCabin={setFilterCabin}
         week={week}
         setWeek={setWeek}
-        onAutoAssign={handleAutoAssign}
         onOpenLimitModal={handleOpenLimitModal}
         onOpenSettings={() => setSettingsModal(true)}
         onExport={handleExport}
