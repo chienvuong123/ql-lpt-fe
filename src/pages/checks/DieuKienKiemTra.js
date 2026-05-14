@@ -1,15 +1,31 @@
 import { getCheckConfigs } from "../../apis/apiSetting";
+import { getCheckConfigsPublic } from "../../apis/apiDeploy";
 
 // Tự động đồng bộ cấu hình kiểm tra mới nhất từ server xuống LocalStorage trong nền
 try {
-  getCheckConfigs()
+  // Kiểm tra nếu đang ở giao diện kiểm tra công khai
+  const isPublicPortal = window.location.pathname.includes("kiem-tra-hoc-vien");
+  const primaryFetch = isPublicPortal ? getCheckConfigsPublic : getCheckConfigs;
+
+  primaryFetch()
     .then((res) => {
       const data = res?.data?.data ?? res?.data;
       if (data && typeof data === "object") {
         localStorage.setItem("SYSTEM_CONFIG_CHECK_DAT", JSON.stringify(data));
       }
     })
-    .catch(() => { });
+    .catch(() => {
+      // Dự phòng thông minh: Nếu gọi API chính thất bại (do môi trường hoặc quyền truy cập), thử gọi API còn lại
+      const backupFetch = isPublicPortal ? getCheckConfigs : getCheckConfigsPublic;
+      backupFetch()
+        .then((res) => {
+          const data = res?.data?.data ?? res?.data;
+          if (data && typeof data === "object") {
+            localStorage.setItem("SYSTEM_CONFIG_CHECK_DAT", JSON.stringify(data));
+          }
+        })
+        .catch(() => { });
+    });
 } catch (err) { }
 
 export const HANG_DAO_TAO_CONFIG = {

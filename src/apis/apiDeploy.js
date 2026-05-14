@@ -90,6 +90,12 @@ export const LoTringOnlinePublic = async (params) => {
   });
 };
 
+export const getCheckConfigsPublic = async () => {
+  const response = await api.get(`/check-configs`);
+  return response;
+};
+
+
 const url = "https://api-v2.lapphuongthanh.io.vn/api/";
 
 export const getChiTietHocVienLyThuyetPublic = async (maDk) => {
