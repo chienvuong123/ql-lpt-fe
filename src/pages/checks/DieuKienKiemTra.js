@@ -96,6 +96,90 @@ const removeBirthYear = (name = "") => name.replace(/\(\d{4}\)/g, "").trim();
 const normalizeForCompare = (name = "") =>
   removeBirthYear(name || "").normalize("NFC").replace(/\s+/g, " ").trim().toUpperCase();
 
+// ─── Helpers Check Dừng Nghỉ Xe ───────────────────────────────────────────────
+
+function getStopViolationMinutes(listCoordinate) {
+  if (!Array.isArray(listCoordinate) || listCoordinate.length < 2) return null;
+
+  const coords = listCoordinate
+    .map(c => {
+      const t = new Date(c.ThoiGian);
+      const vanTocStr = String(c.VanToc || "0");
+      const match = vanTocStr.match(/[\d.]+/);
+      const v = match ? parseFloat(match[0]) : 0;
+      return {
+        ts: t.getTime(),
+        v
+      };
+    })
+    .filter(c => !isNaN(c.ts))
+    .sort((a, b) => a.ts - b.ts);
+
+  let maxDurationMs = 0;
+  let currentStopStartTs = null;
+
+  for (let i = 0; i < coords.length; i++) {
+    const c = coords[i];
+    // Nếu vận tốc bằng 0 thì xe đang dừng
+    if (c.v === 0) {
+      if (currentStopStartTs === null) {
+        currentStopStartTs = c.ts;
+      } else {
+        const duration = c.ts - currentStopStartTs;
+        if (duration > maxDurationMs) {
+          maxDurationMs = duration;
+        }
+      }
+    } else {
+      currentStopStartTs = null;
+    }
+  }
+
+  const maxDurationMin = maxDurationMs / 1000 / 60;
+  if (maxDurationMin >= 10) {
+    return Math.round(maxDurationMin);
+  }
+  return null;
+}
+
+const formatStopMinutes = (mins) => {
+  if (mins >= 60) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h${m} phút` : `${h} giờ`;
+  }
+  return `${mins} phút`;
+};
+
+export function evaluateDungNghiPhien(dataSource, loTrinh) {
+  if (!dataSource || !loTrinh || dataSource.length === 0 || loTrinh.length === 0) return [];
+  const warnings = [];
+
+  dataSource.forEach((phien, idx) => {
+    const matchingLt = loTrinh.find(lt => {
+      const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
+      const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
+      const ltStart = new Date(lt.StartTime || lt.ThoiDiemDangNhap || lt.thoiDiemDangNhap).getTime();
+      const ltEnd = new Date(lt.EndTime || lt.ThoiDiemDangXuat || lt.thoiDiemDangXuat).getTime();
+      if (isNaN(sessStart) || isNaN(sessEnd) || isNaN(ltStart) || isNaN(ltEnd)) return false;
+      return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
+    });
+
+    if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
+      const mins = getStopViolationMinutes(matchingLt.ListCoordinate);
+      if (mins !== null) {
+        warnings.push({
+          type: "warning",
+          label: "Dừng nghỉ sai quy định",
+          message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm, xe không di chuyển trong khoảng ${formatStopMinutes(mins)} (yêu cầu < 10 phút).`,
+        });
+      }
+    }
+  });
+
+  return warnings;
+}
+
 // ─── Xác định biển số xe tự động ─────────────────────────────────────────────
 
 /**
@@ -151,7 +235,7 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
  */
 // ─── Đánh dấu phiên lỗi ──────────────────────────────────────────────────────
 
-export function getInvalidSessionIndexes(dataSource, studentInfo = null) {
+export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh = []) {
   const invalidIndexes = new Set();
   const tuDongLoiIndexes = new Set();
   const invalidReasons = new Map();
@@ -291,6 +375,30 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null) {
           idx,
           `Biển số xe "${phien.BienSo}" không thuộc xe đăng ký (${[studentInfo.xeB1, studentInfo.xeB2].filter(Boolean).join(", ")})`,
         );
+      }
+    });
+  }
+
+  // 6. Vi phạm dừng nghỉ liên tục >= 10 phút
+  if (Array.isArray(loTrinh) && loTrinh.length > 0) {
+    dataSource.forEach((phien, idx) => {
+      const matchingLt = loTrinh.find(lt => {
+        const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
+        const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
+        const ltStart = new Date(lt.StartTime || lt.ThoiDiemDangNhap || lt.thoiDiemDangNhap).getTime();
+        const ltEnd = new Date(lt.EndTime || lt.ThoiDiemDangXuat || lt.thoiDiemDangXuat).getTime();
+        if (isNaN(sessStart) || isNaN(sessEnd) || isNaN(ltStart) || isNaN(ltEnd)) return false;
+        return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
+      });
+
+      if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
+        const mins = getStopViolationMinutes(matchingLt.ListCoordinate);
+        if (mins !== null) {
+          addReason(
+            idx,
+            `Dừng nghỉ sai quy định: xe không di chuyển ${formatStopMinutes(mins)} (yêu cầu < 10 phút)`,
+          );
+        }
       }
     });
   }
@@ -613,6 +721,7 @@ export function computeSummary(
   dataSource,
   hangDaoTao = "",
   studentInfo = null,
+  loTrinh = [],
 ) {
   const empty = {
     tongThoiGianGio: 0,
@@ -635,6 +744,7 @@ export function computeSummary(
   const { invalidIndexes, tuDongLoiIndexes } = getInvalidSessionIndexes(
     dataSource,
     studentInfo,
+    loTrinh,
   );
 
   const t = dataSource.reduce(
@@ -921,6 +1031,7 @@ export function evaluate(
   warnings.push(...evaluateTuDongSau17h(dataSource));
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
   warnings.push(...evaluateSaiGiaoVien(dataSource));
+  warnings.push(...evaluateDungNghiPhien(dataSource, loTrinh));
 
   const courseCode =
     dataSource?.[0]?.MaKhoaHoc ||

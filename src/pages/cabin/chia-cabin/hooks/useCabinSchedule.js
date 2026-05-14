@@ -491,7 +491,7 @@ export const useCabinSchedule = (allStudents) => {
         cabinsProcessed++;
 
         // Tìm các ô trống của cabin này
-        const sortedSlots = [];
+        const emptySlots = [];
         Object.keys(initSchedule)
           .sort((a, b) => {
             const [diA, snA] = a.split("-").map(Number);
@@ -502,34 +502,9 @@ export const useCabinSchedule = (allStudents) => {
           .forEach((key) => {
             const slotKey = `${key}-${cabinNum}`;
             if (!lockedCabins[slotKey] && (newSchedule[key]?.cabins[cabinNum] || []).length === 0) {
-              sortedSlots.push({ key });
+              emptySlots.push({ key });
             }
           });
-
-        if (sortedSlots.length === 0) continue;
-
-        // Phân bổ ô trống theo thứ tự xoay vòng giữa các thứ (Round Robin) để dàn trải đều cả tuần
-        const slotsByDay = {};
-        sortedSlots.forEach(slot => {
-          const [di] = slot.key.split("-").map(Number);
-          if (!slotsByDay[di]) slotsByDay[di] = [];
-          slotsByDay[di].push(slot);
-        });
-
-        const availableDays = Object.keys(slotsByDay).map(Number).sort((a, b) => a - b);
-        const emptySlots = [];
-        let maxSessions = 0;
-        availableDays.forEach(d => {
-          maxSessions = Math.max(maxSessions, slotsByDay[d].length);
-        });
-
-        for (let sessionIdx = 0; sessionIdx < maxSessions; sessionIdx++) {
-          for (const day of availableDays) {
-            if (slotsByDay[day][sessionIdx]) {
-              emptySlots.push(slotsByDay[day][sessionIdx]);
-            }
-          }
-        }
 
         if (emptySlots.length === 0) continue;
 
@@ -547,19 +522,41 @@ export const useCabinSchedule = (allStudents) => {
 
         if (pool.length === 0) continue;
 
-        // Bước 1: Sắp xếp học viên trong pool theo giáo viên cho từng khóa
+        // Bước 1: Sắp xếp học viên trong pool theo mức độ phủ kín của giáo viên cho từng khóa
         const poolsByCourse = {};
         config.courses.forEach(c => {
-          // Lọc học viên của khóa và sắp xếp theo tên giáo viên
-          poolsByCourse[c] = pool
-            .filter(s => s.khoa_hoc === c)
-            .sort((a, b) => (a.giao_vien || "").localeCompare(b.giao_vien || ""));
+          const courseStudents = pool.filter(s => s.khoa_hoc === c);
+          
+          // Đếm số lượng học viên của từng GV trong khóa này để ưu tiên phủ kín
+          const teacherCounts = {};
+          courseStudents.forEach(s => {
+            const gv = s.giao_vien || "Chưa có GV";
+            teacherCounts[gv] = (teacherCounts[gv] || 0) + 1;
+          });
+
+          // Sắp xếp: Thầy nhiều học viên xếp trước, ít lấp đầy sau
+          poolsByCourse[c] = courseStudents.sort((a, b) => {
+            const gvA = a.giao_vien || "Chưa có GV";
+            const gvB = b.giao_vien || "Chưa có GV";
+            const countA = teacherCounts[gvA];
+            const countB = teacherCounts[gvB];
+
+            if (countA !== countB) {
+              return countB - countA; // Giảm dần theo số học viên
+            }
+            return gvA.localeCompare(gvB);
+          });
         });
 
-        // Bước 2: Tính toán hạn mức ô học (Quota) cho từng khóa dựa trên tỷ lệ % và số ô trống
+        // Bước 2: Tính toán hạn mức ô học (Quota) cho từng khóa (Mặc định chia đều 50/50, 33/33/33 nếu không cấu hình)
         const totalEmptyForCabin = emptySlots.length;
         const ratios = config.ratios || {};
-        const totalWeight = Object.values(ratios).reduce((a, b) => a + b, 0) || config.courses.length;
+        
+        // Kiểm tra xem có cấu hình tỷ lệ nào hợp lệ (>0) hay không
+        const hasRatiosDefined = Object.values(ratios).some(v => Number(v) > 0);
+        const totalWeight = hasRatiosDefined 
+          ? Object.values(ratios).reduce((a, b) => a + Number(b), 0) 
+          : config.courses.length;
 
         // Tính số lượng ô cần điền cho mỗi khóa
         const quotas = {};
@@ -567,10 +564,10 @@ export const useCabinSchedule = (allStudents) => {
         config.courses.forEach((c, idx) => {
           if (idx === config.courses.length - 1) {
             // Khóa cuối cùng lấy phần còn lại để đảm bảo khớp tổng số ô trống
-            quotas[c] = totalEmptyForCabin - allocatedCount;
+            quotas[c] = Math.max(0, totalEmptyForCabin - allocatedCount);
           } else {
-            const ratio = ratios[c] || 0;
-            const q = Math.round((ratio / totalWeight) * totalEmptyForCabin);
+            const weight = hasRatiosDefined ? (Number(ratios[c]) || 0) : 1;
+            const q = Math.round((weight / totalWeight) * totalEmptyForCabin);
             quotas[c] = q;
             allocatedCount += q;
           }

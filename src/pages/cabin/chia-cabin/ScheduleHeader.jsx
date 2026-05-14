@@ -5,12 +5,11 @@ import {
   RightOutlined,
   BgColorsOutlined,
   UserOutlined,
-  DownOutlined,
   FileExcelOutlined,
   SaveOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import { Button, Select, Dropdown } from "antd";
+import { Button, Select } from "antd";
 import { dateStr } from "./utils";
 
 const ScheduleHeader = ({
@@ -56,38 +55,14 @@ const ScheduleHeader = ({
           </div>
 
           <div className="flex gap-2">
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: "allConfigs",
-                    label: "Chia tự động theo cấu hình các Cabin (Tất cả máy)",
-                    icon: <BgColorsOutlined />,
-                    className: "text-blue-600 font-semibold",
-                    onClick: () => onConfigBasedAssign([1, 2, 3, 4, 5]),
-                  },
-                  ...(filterCabin !== "all" ? [
-                    {
-                      key: "specificCabin",
-                      label: `Chia riêng cho Cabin ${filterCabin} (Theo cấu hình %)`,
-                      icon: <BgColorsOutlined />,
-                      danger: true,
-                      onClick: () => onConfigBasedAssign([filterCabin]),
-                    }
-                  ] : []),
-                ],
-              }}
-              trigger={["click"]}
+            <Button
+              type="primary"
+              icon={<BgColorsOutlined />}
+              className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+              onClick={() => onConfigBasedAssign([1, 2, 3, 4, 5])}
             >
-              <Button
-                type="primary"
-                icon={<BgColorsOutlined />}
-                className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
-              >
-                Tự động chia
-                <DownOutlined />
-              </Button>
-            </Dropdown>
+              Tự động chia theo cấu hình
+            </Button>
 
             <Button
               icon={<SettingOutlined />}

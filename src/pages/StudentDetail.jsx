@@ -376,9 +376,12 @@ const StudentDetail = ({ data }) => {
         dataSource,
         data?.HangDaoTao || "",
         annualStudentInfo,
+        loTrinhResults?.data || [],
       ),
-    [dataSource, data, annualStudentInfo],
+    [dataSource, data, annualStudentInfo, loTrinhResults],
   );
+
+
 
   const evaluationData = useMemo(() => {
     if (!hasJourneyData) {
