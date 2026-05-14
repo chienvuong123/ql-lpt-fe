@@ -329,7 +329,7 @@ const ModalTest = ({
     );
 
     // Nguồn duy nhất — nhất quán với derivedInvalid/_status
-    const { invalidReasons } = getInvalidSessionIndexes(
+    const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
       sorted,
       studentCheckInfo,
       loTrinhResults,
@@ -372,9 +372,10 @@ const ModalTest = ({
 
       const persistedStatus = getMappedStatus(item, statusMap);
 
-      // Chỉ coi là không hợp lệ để báo đỏ & trừ tổng khi admin HỦY thủ công hoặc xe bị dừng quá 10p
+      // Phiên học được coi là không hợp lệ (báo đỏ & trừ tổng) nếu có bất kỳ lỗi vi phạm nào
+      const derivedInvalid = invalidIndexes.has(index) || _isTooShort;
       const effectiveStatus =
-        persistedStatus || (_hasStopViolation ? "HUY" : "DUYET");
+        persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
 
       return {
         ...item,
@@ -574,8 +575,8 @@ const ModalTest = ({
 
                       <div className="!flex-1 !px-3 !py-2 !text-xs">
                         <div className="!flex !items-center !justify-between !mb-1">
-                          <div className="!flex !items-center !gap-2">
-                            <span className="!font-semibold !text-gray-800 !text-sm">
+                          <div className="!flex !items-center !gap-1 flex-wrap">
+                            <span className="!font-semibold !text-gray-800 !text-sm !mr-1">
                               {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
                             </span>
                           </div>
