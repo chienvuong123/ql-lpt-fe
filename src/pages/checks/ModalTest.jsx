@@ -113,12 +113,17 @@ const normalizeApproveState = (payload = {}) => ({
     payload?.duyet_dem === true ||
     payload?.duyet_dem === 1 ||
     String(payload?.duyet_dem || "").toLowerCase() === "true",
+  duyet_so_san:
+    payload?.duyet_so_san === true ||
+    payload?.duyet_so_san === 1 ||
+    String(payload?.duyet_so_san || "").toLowerCase() === "true",
 });
 
 const INITIAL_APPROVE_STATE = {
   duyet_tong: false,
   duyet_tu_dong: false,
   duyet_dem: false,
+  duyet_so_san: false,
 };
 
 // ─── Summary Check ────────────────────────────────────────────────────────────
@@ -200,7 +205,7 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
 
     if (thieu_soSanGio > 0 || thieu_soSanKm > 0) {
       warnings.push({
-        key: "duyet_tong",
+        key: "duyet_so_san",
         color: "#FF0000",
         label: "Thời gian và quãng đường số sàn chưa đạt.",
         detail: "",
@@ -301,7 +306,8 @@ const ModalTest = ({
         (item) =>
           item?.duyet_tong !== undefined ||
           item?.duyet_tu_dong !== undefined ||
-          item?.duyet_dem !== undefined,
+          item?.duyet_dem !== undefined ||
+          item?.duyet_so_san !== undefined,
       );
 
       if (firstItem) {

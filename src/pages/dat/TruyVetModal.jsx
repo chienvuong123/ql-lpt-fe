@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import {
@@ -138,17 +138,23 @@ const normalizeApproveState = (payload = {}) => ({
     payload?.duyet_dem === true ||
     payload?.duyet_dem === 1 ||
     String(payload?.duyet_dem || "").toLowerCase() === "true",
+  duyet_so_san:
+    payload?.duyet_so_san === true ||
+    payload?.duyet_so_san === 1 ||
+    String(payload?.duyet_so_san || "").toLowerCase() === "true",
 });
 
 const hasApproveField = (payload = {}) =>
   payload?.duyet_tong !== undefined ||
   payload?.duyet_tu_dong !== undefined ||
-  payload?.duyet_dem !== undefined;
+  payload?.duyet_dem !== undefined ||
+  payload?.duyet_so_san !== undefined;
 
 const normalizeApproveReasons = (payload = {}) => ({
   duyet_tong: payload?.ly_do_tong || "",
   duyet_tu_dong: payload?.ly_do_td || "",
   duyet_dem: payload?.ly_do_dem || "",
+  duyet_so_san: payload?.ly_do_so_san || "",
 });
 
 const normalizeApproveMeta = (payload = {}) => ({
@@ -164,24 +170,31 @@ const normalizeApproveMeta = (payload = {}) => ({
     updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
     updatedBy: payload?.nguoi_thay_doi || "",
   },
+  duyet_so_san: {
+    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
+    updatedBy: payload?.nguoi_thay_doi || "",
+  },
 });
 
 const INITIAL_APPROVE_STATE = {
   duyet_tong: false,
   duyet_tu_dong: false,
   duyet_dem: false,
+  duyet_so_san: false,
 };
 
 const INITIAL_APPROVE_REASONS = {
   duyet_tong: "",
   duyet_tu_dong: "",
   duyet_dem: "",
+  duyet_so_san: "",
 };
 
 const INITIAL_APPROVE_META = {
   duyet_tong: { updatedAt: "", updatedBy: "" },
   duyet_tu_dong: { updatedAt: "", updatedBy: "" },
   duyet_dem: { updatedAt: "", updatedBy: "" },
+  duyet_so_san: { updatedAt: "", updatedBy: "" },
 };
 
 const getAutoPlateFromRows = (rows = []) => {
@@ -422,18 +435,26 @@ const TruyVetModal = ({
   }, [rowsWithStatus, bienSoTuDong]);
 
   // ─── Lấy yêu cầu hạng đào tạo ────────────────────────────────────────────
-  const yeuCauHang = useMemo(() => {
-    const hangDaoTao =
+  const hangDaoTao = useMemo(() => {
+    return (
       rows?.[0]?.HangDaoTao ||
       studentCheckInfo?.hangDaoTao ||
       studentCheckInfo?.HangDaoTao ||
-      "B1";
-    return HANG_DAO_TAO_CONFIG[hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
+      "B1"
+    );
   }, [rows, studentCheckInfo]);
+
+  // ─── Lấy yêu cầu hạng đào tạo ────────────────────────────────────────────
+  const yeuCauHang = useMemo(() => {
+    return HANG_DAO_TAO_CONFIG[hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
+  }, [hangDaoTao]);
 
   // ─── Kiểm tra từng điều kiện đã đủ chưa ──────────────────────────────────
   const summaryMissingCases = useMemo(() => {
     const { tongGio, tongKm, dem, tuDong } = actualTotals;
+    const isSoSanClass = ["B2", "B", "C", "C1"].includes(hangDaoTao);
+    const soSanGio = tongGio - tuDong.gio;
+    const soSanKm = tongKm - tuDong.km;
 
     const buildCase = (
       key,
@@ -489,8 +510,19 @@ const TruyVetModal = ({
         approveState.duyet_tu_dong,
         approveReasons.duyet_tu_dong,
       ),
+      isSoSanClass &&
+        buildCase(
+          "duyet_so_san",
+          "Thiếu quãng đường/thời gian số sàn",
+          soSanGio,
+          soSanKm,
+          18,
+          730,
+          approveState.duyet_so_san,
+          approveReasons.duyet_so_san,
+        ),
     ].filter(Boolean);
-  }, [actualTotals, yeuCauHang, approveReasons, approveState]);
+  }, [actualTotals, yeuCauHang, approveReasons, approveState, hangDaoTao]);
 
   // ─── Build payload cho updatePhienHocDAT ─────────────────────────────────
   const buildSessionPayload = (item, actionStatus) => {
@@ -685,6 +717,7 @@ const TruyVetModal = ({
       duyet_tong: "ly_do_tong",
       duyet_dem: "ly_do_dem",
       duyet_tu_dong: "ly_do_td",
+      duyet_so_san: "ly_do_so_san",
     };
 
     const payload = {
@@ -701,8 +734,25 @@ const TruyVetModal = ({
     const isDuyetTong = payloadConfig?.duyet_tong !== undefined;
     const isDuyetDem = payloadConfig?.duyet_dem !== undefined;
     const isDuyetTuDong = payloadConfig?.duyet_tu_dong !== undefined;
+    const isDuyetSoSan = payloadConfig?.duyet_so_san !== undefined;
 
     try {
+      if (isDuyetSoSan) {
+        const nextApproved = Boolean(payloadConfig.duyet_so_san);
+
+        setOpenConfigModal(false);
+        setPayloadConfig({});
+
+        const res = await updateDuyetTheoMaDK(payload);
+        if (res?.success) {
+          applyApproveSuccess("duyet_so_san", nextApproved, value);
+          message.success("Đã duyệt số sàn thành công.");
+        }
+
+        setApproveLoadingKey("");
+        return;
+      }
+
       if (isDuyetTong) {
         const nextApproved = Boolean(payloadConfig.duyet_tong);
 
