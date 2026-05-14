@@ -1,3 +1,17 @@
+import { getCheckConfigs } from "../../apis/apiSetting";
+
+// Tự động đồng bộ cấu hình kiểm tra mới nhất từ server xuống LocalStorage trong nền
+try {
+  getCheckConfigs()
+    .then((res) => {
+      const data = res?.data?.data ?? res?.data;
+      if (data && typeof data === "object") {
+        localStorage.setItem("SYSTEM_CONFIG_CHECK_DAT", JSON.stringify(data));
+      }
+    })
+    .catch(() => {});
+} catch (err) {}
+
 export const HANG_DAO_TAO_CONFIG = {
   B1: {
     thoiGian: { banNgay: 9, banDem: 3, tuDong: 0, tong: 12 },
@@ -51,6 +65,49 @@ function getCourseYearFromCode(courseCode = "") {
   if (!match) return null;
   const year = Number(match[1]);
   return Number.isFinite(year) ? year : null;
+}
+
+// ─── Cấu hình hệ thống kiểm tra ──────────────────────────────────────────────
+
+export function getSystemConfig() {
+  const defaultConfig = {
+    checkTocDo: { enabled: true, startDate: "" },
+    checkKhungGioTuDong: { enabled: true, startDate: "" },
+    checkNghiGiuaPhien: { enabled: true, startDate: "" },
+    checkSaiGiaoVien: { enabled: true, startDate: "" },
+    checkSaiXe: { enabled: true, startDate: "" },
+    checkDungNghi: { enabled: true, startDate: "" },
+    checkPhienNgan: { enabled: true, startDate: "" },
+  };
+
+  try {
+    const stored = localStorage.getItem("SYSTEM_CONFIG_CHECK_DAT");
+    if (stored) {
+      return { ...defaultConfig, ...JSON.parse(stored) };
+    }
+  } catch (err) {
+    // silent
+  }
+  return defaultConfig;
+}
+
+export function isRuleApplicable(ruleKey, sessionDateStr) {
+  if (!sessionDateStr) return true;
+  const config = getSystemConfig();
+  const rule = config[ruleKey];
+  if (!rule) return true; 
+  if (!rule.enabled) return false;
+  if (!rule.startDate) return true;
+
+  const sessionDate = new Date(sessionDateStr);
+  if (isNaN(sessionDate)) return true;
+
+  const year = sessionDate.getFullYear();
+  const month = String(sessionDate.getMonth() + 1).padStart(2, "0");
+  const day = String(sessionDate.getDate()).padStart(2, "0");
+  const localSessionDayStr = `${year}-${month}-${day}`;
+
+  return localSessionDayStr >= rule.startDate;
 }
 
 export function normalizePlate(plate) {
@@ -156,6 +213,7 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
   const warnings = [];
 
   dataSource.forEach((phien, idx) => {
+    if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
     const matchingLt = loTrinh.find(lt => {
       const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
       const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
@@ -280,6 +338,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
 
   // 1. Tốc độ TB < 18 km/h
   dataSource.forEach((phien, idx) => {
+    if (!isRuleApplicable("checkTocDo", phien.ThoiDiemDangNhap)) return;
     const km = phien.TongQuangDuong || phien.TongQD_raw || 0;
     const giay = phien.TongThoiGian || 0;
     if (giay === 0 || km === 0) return;
@@ -292,6 +351,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
   // 2. Xe tự động bắt đầu ngoài khung giờ hợp lệ
   if (bienSoTuDong) {
     dataSource.forEach((phien, idx) => {
+      if (!isRuleApplicable("checkKhungGioTuDong", phien.ThoiDiemDangNhap)) return;
       if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) return;
       const thoiDiem = new Date(phien.ThoiDiemDangNhap);
       if (isNaN(thoiDiem)) return;
@@ -329,6 +389,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const curr = sorted[i];
+    if (!isRuleApplicable("checkNghiGiuaPhien", curr.item.ThoiDiemDangNhap)) continue;
     const tXuat = new Date(prev.item.ThoiDiemDangXuat);
     const tNhap = new Date(curr.item.ThoiDiemDangNhap);
     if (isNaN(tXuat) || isNaN(tNhap)) continue;
@@ -344,6 +405,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
   // 4. Sai tên giáo viên
   if (tenGVHopLe) {
     dataSource.forEach((phien, idx) => {
+      if (!isRuleApplicable("checkSaiGiaoVien", phien.ThoiDiemDangNhap)) return;
       const ten = normalizeForCompare(phien.HoTenGV || "");
       const hopLe = normalizeForCompare(tenGVHopLe);
       if (!ten) {
@@ -369,6 +431,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
       ].filter(Boolean),
     );
     dataSource.forEach((phien, idx) => {
+      if (!isRuleApplicable("checkSaiXe", phien.ThoiDiemDangNhap)) return;
       const bs = normalizePlate(phien.BienSo);
       if (bs && !allowedPlates.has(bs)) {
         addReason(
@@ -382,6 +445,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
   // 6. Vi phạm dừng nghỉ liên tục >= 10 phút
   if (Array.isArray(loTrinh) && loTrinh.length > 0) {
     dataSource.forEach((phien, idx) => {
+      if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
       const matchingLt = loTrinh.find(lt => {
         const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
         const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
@@ -454,6 +518,7 @@ export function evaluateNghiGiuaPhien(dataSource) {
     const tXuat = new Date(sorted[i - 1].ThoiDiemDangXuat);
     const tNhap = new Date(sorted[i].ThoiDiemDangNhap);
     if (isNaN(tXuat) || isNaN(tNhap)) continue;
+    if (!isRuleApplicable("checkNghiGiuaPhien", sorted[i].ThoiDiemDangNhap)) continue;
     const phut = (tNhap - tXuat) / 1000 / 60;
     if (phut < 15) {
       errors.push({
@@ -470,6 +535,7 @@ export function evaluateTocDoPhien(dataSource) {
   if (!dataSource || dataSource.length === 0) return [];
   const MIN_SPEED = 18;
   return dataSource.reduce((acc, phien, idx) => {
+    if (!isRuleApplicable("checkTocDo", phien.ThoiDiemDangNhap)) return acc;
     const km = phien.TongQuangDuong || phien.TongQD_raw || 0;
     const giay = phien.TongThoiGian || 0;
     if (giay === 0 || km === 0) return acc;
@@ -492,6 +558,7 @@ export function evaluateTuDongSau17h(dataSource) {
   if (!bienSoTuDong) return [];
 
   return dataSource.reduce((acc, phien, idx) => {
+    if (!isRuleApplicable("checkKhungGioTuDong", phien.ThoiDiemDangNhap)) return acc;
     if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) {
       return acc;
     }
@@ -568,6 +635,7 @@ export function evaluateSaiGiaoVien(dataSource) {
     )?.HoTenGV || tenGVHopLeNorm;
 
   return dataSource.reduce((acc, phien, idx) => {
+    if (!isRuleApplicable("checkSaiGiaoVien", phien.ThoiDiemDangNhap)) return acc;
     const tenNorm = normalizeForCompare(phien.HoTenGV || "");
     if (!tenNorm) {
       acc.push({
@@ -590,6 +658,7 @@ export function evaluatePhienDuoi5Phut(dataSource) {
   if (!dataSource || dataSource.length === 0) return [];
   const MIN_MINUTES = 5;
   return dataSource.reduce((acc, phien, idx) => {
+    if (!isRuleApplicable("checkPhienNgan", phien.ThoiDiemDangNhap)) return acc;
     const giay = phien.TongThoiGian || 0;
     if (giay === 0) return acc;
     const phut = giay / 60;
@@ -620,7 +689,9 @@ function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
   }
 
   const wrongSessions = dataSource.filter(
-    (s) => normalizeForCompare(s.HoTenGV || "") !== registeredTeacherNorm,
+    (s) => 
+      isRuleApplicable("checkSaiGiaoVien", s.ThoiDiemDangNhap) &&
+      normalizeForCompare(s.HoTenGV || "") !== registeredTeacherNorm,
   );
 
   if (wrongSessions.length === 0) return [];
@@ -665,7 +736,9 @@ function evaluateSaiXe(dataSource, studentInfo) {
   );
 
   const wrongPlateSessions = dataSource.filter(
-    (s) => !allowedPlates.has(normalizePlate(s.BienSo)),
+    (s) => 
+      isRuleApplicable("checkSaiXe", s.ThoiDiemDangNhap) &&
+      !allowedPlates.has(normalizePlate(s.BienSo)),
   );
 
   if (wrongPlateSessions.length > 0) {
@@ -683,7 +756,7 @@ function evaluateSaiXe(dataSource, studentInfo) {
     });
   }
 
-  if (hasTwoPlates) {
+  if (hasTwoPlates && dataSource.some(s => isRuleApplicable("checkSaiXe", s.ThoiDiemDangNhap))) {
     const platesUsed = new Set(
       dataSource.map((s) => normalizePlate(s.BienSo)).filter(Boolean),
     );

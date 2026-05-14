@@ -65,6 +65,7 @@ const menuPathMap = {
   "danh-sach-dang-hoc-bu-thuc-hanh": "/danh-sach-dang-hoc-bu-thuc-hanh",
   "tien-do-hoc-bu-thuc-hanh": "/tien-do-hoc-bu-thuc-hanh",
   "danh-sach-hoc-vien-bu-thuc-hanh": "/danh-sach-hoc-vien-bu-thuc-hanh",
+  "cai-dat-he-thong": "/cai-dat-he-thong",
 };
 
 const LayoutTest = () => {
@@ -223,6 +224,11 @@ const LayoutTest = () => {
       icon: <UserOutlined />,
       label: "Quản lý tài khoản",
     },
+    {
+      key: "cai-dat-he-thong",
+      icon: <SettingOutlined />,
+      label: "Cài đặt hệ thống",
+    },
   ];
 
   const storedRoleId = sessionStorage.getItem("role_id");
@@ -230,12 +236,12 @@ const LayoutTest = () => {
 
   // Map role_id to allowed keys
   const roleAccessMap = {
-    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan"], // Admin
-    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu"], // Trưởng phòng
-    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu"], // Tổ nghiệp vụ
+    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong"], // Admin
+    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu", "cai-dat-he-thong"], // Trưởng phòng
+    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu", "cai-dat-he-thong"], // Tổ nghiệp vụ
     4: ["dashboard", "class"], // Tổ lý thuyết
     5: ["dashboard", "cabin", "reports"], // Tổ thực hành
-    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu"], // Tổ công nghệ
+    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "hoc-vien-hoc-bu", "cai-dat-he-thong"], // Tổ công nghệ
   };
 
   // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard

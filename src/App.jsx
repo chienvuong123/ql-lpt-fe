@@ -46,6 +46,7 @@ import DanhSachChoXepLopThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSac
 import DanhSachDangHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachDangHocBuThucHanh";
 import DanhSachChoXepLopLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachChoXepLopLyThuyet";
 import DanhSachDangHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachDangHocBuLyThuyet";
+import CaiDatHeThong from "./pages/setting/CaiDatHeThong";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -335,6 +336,10 @@ function App() {
               <Route
                 path="dashboard-cabin"
                 element={<DashboardCabin />}
+              />
+              <Route
+                path="cai-dat-he-thong"
+                element={<CaiDatHeThong />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
