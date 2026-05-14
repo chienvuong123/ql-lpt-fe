@@ -108,7 +108,7 @@ const StudentDetail = ({ data }) => {
     enabled: !!data?.MaDK, // Chỉ chạy khác học viên
   });
 
-  const { data: loTrinhResults } = useQuery({
+  const { data: loTrinhResults, isLoading: isLoTrinhLoading } = useQuery({
     queryKey: ["loTrinh", data?.MaDK],
     queryFn: () => {
       const today = new Date().toISOString().split("T")[0];
@@ -121,6 +121,8 @@ const StudentDetail = ({ data }) => {
     enabled: !!data?.MaDK,
     staleTime: Infinity,
   });
+
+  const isOverallLoading = isLoading || isLoTrinhLoading;
 
   const { data: dataCheckStudent } = useQuery({
     queryKey: ["checkStudent"],
@@ -712,126 +714,128 @@ const StudentDetail = ({ data }) => {
                   </Text>
                 </Col>
               </Row>
-              <Row gutter={[12, 12]}>
-                <Col span={24}>
-                  <Card
-                    style={{
-                      marginTop: 16,
-                      borderColor: isPass ? "#52c41a" : "#ff4d4f",
-                      backgroundColor: isPass ? "#f6ffed" : "#fff2f0",
-                    }}
-                  >
-                    <Space
-                      direction="vertical"
-                      size="middle"
-                      style={{ width: "100%" }}
+              <Spin spinning={isLoTrinhLoading}>
+                <Row gutter={[12, 12]}>
+                  <Col span={24}>
+                    <Card
+                      style={{
+                        marginTop: 16,
+                        borderColor: isPass ? "#52c41a" : "#ff4d4f",
+                        backgroundColor: isPass ? "#f6ffed" : "#fff2f0",
+                      }}
                     >
-                      {/* Header */}
-                      <Space>
-                        <Text strong style={{ fontSize: 16 }}>
-                          Kết quả đánh giá:
-                        </Text>
-                        <Tag
-                          color={isPass ? "success" : "error"}
-                          icon={
-                            isPass ? (
-                              <CheckCircleOutlined />
-                            ) : (
-                              <CloseCircleOutlined />
-                            )
-                          }
-                          style={{ fontSize: 14 }}
-                        >
-                          {isPass ? "Đạt" : "Chưa đạt"}
-                        </Tag>
-                      </Space>
+                      <Space
+                        direction="vertical"
+                        size="middle"
+                        style={{ width: "100%" }}
+                      >
+                        {/* Header */}
+                        <Space>
+                          <Text strong style={{ fontSize: 16 }}>
+                            Kết quả đánh giá:
+                          </Text>
+                          <Tag
+                            color={isPass ? "success" : "error"}
+                            icon={
+                              isPass ? (
+                                <CheckCircleOutlined />
+                              ) : (
+                                <CloseCircleOutlined />
+                              )
+                            }
+                            style={{ fontSize: 14 }}
+                          >
+                            {isPass ? "Đạt" : "Chưa đạt"}
+                          </Tag>
+                        </Space>
 
-                      {/* Issues List */}
-                      {allIssues.length > 0 && (
-                        <div>
-                          <Text strong>Lý do:</Text>
-                          <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
-                            {allIssues.map((issue, index) => (
-                              <li
-                                key={index}
-                                style={{
-                                  color:
-                                    issue.type === "error"
-                                      ? "#990000"
-                                      : "#CC9966",
-                                  marginBottom: 8,
-                                }}
-                              >
-                                {issue.type === "warning" ? (
-                                  <WarningOutlined
-                                    style={{ color: "#CC9966", marginRight: 4 }}
-                                  />
-                                ) : (
-                                  <CloseCircleOutlined
-                                    style={{ marginRight: 4 }}
-                                  />
-                                )}
-                                <span className="font-medium text-[#CC9966]">
-                                  {issue.type === "warning" && "Cảnh báo: "}
-                                </span>
-                                <span className="font-medium ">
-                                  {issue.message}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                        {/* Issues List */}
+                        {allIssues.length > 0 && (
+                          <div>
+                            <Text strong>Lý do:</Text>
+                            <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+                              {allIssues.map((issue, index) => (
+                                <li
+                                  key={index}
+                                  style={{
+                                    color:
+                                      issue.type === "error"
+                                        ? "#990000"
+                                        : "#CC9966",
+                                    marginBottom: 8,
+                                  }}
+                                >
+                                  {issue.type === "warning" ? (
+                                    <WarningOutlined
+                                      style={{ color: "#CC9966", marginRight: 4 }}
+                                    />
+                                  ) : (
+                                    <CloseCircleOutlined
+                                      style={{ marginRight: 4 }}
+                                    />
+                                  )}
+                                  <span className="font-medium text-[#CC9966]">
+                                    {issue.type === "warning" && "Cảnh báo: "}
+                                  </span>
+                                  <span className="font-medium ">
+                                    {issue.message}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
 
-                      <Divider style={{ margin: "12px 0" }} />
+                        <Divider style={{ margin: "12px 0" }} />
 
-                      {/* Summary */}
-                      <Space direction="vertical" size={4}>
-                        <Text className="text-[#888888] font-medium">
-                          Ban ngày: {fmtGio(summaryData.thoiGianBanNgayGio)}
-                          {" - "}
-                          {summaryData.quangDuongBanNgay.toFixed(2)} km
-                        </Text>
-
-                        <Text className="text-[#888888] font-medium">
-                          Ban đêm: {fmtGio(summaryData.thoiGianBanDemGio)}
-                          {" - "}
-                          {summaryData.quangDuongBanDem.toFixed(2)} km
-                        </Text>
-
-                        {dataSource[0]?.HangDaoTao !== "B1" &&
-                          dataSource[0]?.HangDaoTao !== "B11" ? (
+                        {/* Summary */}
+                        <Space direction="vertical" size={4}>
                           <Text className="text-[#888888] font-medium">
-                            Trải nghiệm hộp số tự động (17h-7h):{" "}
-                            {fmtGio(summaryData.thoiGianTuDongGio)}
+                            Ban ngày: {fmtGio(summaryData.thoiGianBanNgayGio)}
                             {" - "}
-                            {summaryData.quangDuongTuDong.toFixed(2)} km
-                            {summaryData.tuDongLoiGio > 0 && (
-                              <Text className="!text-orange-500 ml-2">
-                                (đã loại {fmtGio(summaryData.tuDongLoiGio)} /{" "}
-                                {summaryData.tuDongLoiKm.toFixed(2)} km phiên
-                                không hợp lệ - phiên hợp lệ từ sau 4h45 - 6h59
-                                và sau 17h )
+                            {summaryData.quangDuongBanNgay.toFixed(2)} km
+                          </Text>
+
+                          <Text className="text-[#888888] font-medium">
+                            Ban đêm: {fmtGio(summaryData.thoiGianBanDemGio)}
+                            {" - "}
+                            {summaryData.quangDuongBanDem.toFixed(2)} km
+                          </Text>
+
+                          {dataSource[0]?.HangDaoTao !== "B1" &&
+                            dataSource[0]?.HangDaoTao !== "B11" ? (
+                            <Text className="text-[#888888] font-medium">
+                              Trải nghiệm hộp số tự động (17h-7h):{" "}
+                              {fmtGio(summaryData.thoiGianTuDongGio)}
+                              {" - "}
+                              {summaryData.quangDuongTuDong.toFixed(2)} km
+                              {summaryData.tuDongLoiGio > 0 && (
+                                <Text className="!text-orange-500 ml-2">
+                                  (đã loại {fmtGio(summaryData.tuDongLoiGio)} /{" "}
+                                  {summaryData.tuDongLoiKm.toFixed(2)} km phiên
+                                  không hợp lệ - phiên hợp lệ từ sau 4h45 - 6h59
+                                  và sau 17h )
+                                </Text>
+                              )}
+                            </Text>
+                          ) : null}
+
+                          {/* Tổng phiên không hợp lệ bị loại */}
+                          {(summaryData.tongThoiGianLoiGio > 0 ||
+                            summaryData.tongQuangDuongLoi > 0) && (
+                              <Text className="!text-red-500 font-medium">
+                                ⚠ Phiên không hợp lệ bị loại:{" "}
+                                {fmtGio(summaryData.tongThoiGianLoiGio)}
+                                {" - "}
+                                {summaryData.tongQuangDuongLoi.toFixed(2)} km
                               </Text>
                             )}
-                          </Text>
-                        ) : null}
-
-                        {/* Tổng phiên không hợp lệ bị loại */}
-                        {(summaryData.tongThoiGianLoiGio > 0 ||
-                          summaryData.tongQuangDuongLoi > 0) && (
-                            <Text className="!text-red-500 font-medium">
-                              ⚠ Phiên không hợp lệ bị loại:{" "}
-                              {fmtGio(summaryData.tongThoiGianLoiGio)}
-                              {" - "}
-                              {summaryData.tongQuangDuongLoi.toFixed(2)} km
-                            </Text>
-                          )}
+                        </Space>
                       </Space>
-                    </Space>
-                  </Card>
-                </Col>
-              </Row>
+                    </Card>
+                  </Col>
+                </Row>
+              </Spin>
             </div>
           )}
         </Card>

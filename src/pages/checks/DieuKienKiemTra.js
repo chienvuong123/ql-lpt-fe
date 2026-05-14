@@ -96,9 +96,26 @@ export function isRuleApplicable(ruleKey, sessionDateStr) {
   const config = getSystemConfig();
   const rule = config[ruleKey];
   if (!rule) return true; 
-  if (!rule.enabled) return false;
-  if (!rule.startDate) return true;
 
+  // 1. Chuẩn hóa trạng thái kích hoạt (Hỗ trợ boolean, integer 1/0, string 'true'/'1')
+  const isEnabled =
+    rule.enabled === true ||
+    rule.enabled === 1 ||
+    String(rule.enabled).toLowerCase() === "true" ||
+    rule.enabled === "1";
+
+  if (!isEnabled) return false;
+
+  // 2. Chuẩn hóa và xử lý ngày bắt đầu áp dụng
+  if (!rule.startDate || String(rule.startDate).trim() === "" || String(rule.startDate) === "null") {
+    return true;
+  }
+
+  // Chỉ lấy chuỗi 'YYYY-MM-DD' để tránh lỗi so sánh khi chuỗi chứa giờ
+  const ruleStartDateStr = String(rule.startDate).split("T")[0].split(" ")[0].trim();
+  if (!ruleStartDateStr) return true;
+
+  // 3. Lấy ngày cục bộ của phiên đào tạo
   const sessionDate = new Date(sessionDateStr);
   if (isNaN(sessionDate)) return true;
 
@@ -107,7 +124,8 @@ export function isRuleApplicable(ruleKey, sessionDateStr) {
   const day = String(sessionDate.getDate()).padStart(2, "0");
   const localSessionDayStr = `${year}-${month}-${day}`;
 
-  return localSessionDayStr >= rule.startDate;
+  // So sánh chuỗi có độ dài đồng nhất
+  return localSessionDayStr >= ruleStartDateStr;
 }
 
 export function normalizePlate(plate) {
