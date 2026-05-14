@@ -9,8 +9,8 @@ try {
         localStorage.setItem("SYSTEM_CONFIG_CHECK_DAT", JSON.stringify(data));
       }
     })
-    .catch(() => {});
-} catch (err) {}
+    .catch(() => { });
+} catch (err) { }
 
 export const HANG_DAO_TAO_CONFIG = {
   B1: {
@@ -95,7 +95,7 @@ export function isRuleApplicable(ruleKey, sessionDateStr) {
   if (!sessionDateStr) return true;
   const config = getSystemConfig();
   const rule = config[ruleKey];
-  if (!rule) return true; 
+  if (!rule) return true;
 
   // 1. Chuẩn hóa trạng thái kích hoạt (Hỗ trợ boolean, integer 1/0, string 'true'/'1')
   const isEnabled =
@@ -173,7 +173,7 @@ const normalizeForCompare = (name = "") =>
 
 // ─── Helpers Check Dừng Nghỉ Xe ───────────────────────────────────────────────
 
-function getStopViolationMinutes(listCoordinate) {
+function getStopViolationDetails(listCoordinate) {
   if (!Array.isArray(listCoordinate) || listCoordinate.length < 2) return null;
 
   const coords = listCoordinate
@@ -190,31 +190,67 @@ function getStopViolationMinutes(listCoordinate) {
     .filter(c => !isNaN(c.ts))
     .sort((a, b) => a.ts - b.ts);
 
-  let maxDurationMs = 0;
+  if (coords.length < 2) return null;
+
+  const stopPeriods = [];
   let currentStopStartTs = null;
 
   for (let i = 0; i < coords.length; i++) {
     const c = coords[i];
-    // Nếu vận tốc bằng 0 thì xe đang dừng
     if (c.v === 0) {
       if (currentStopStartTs === null) {
         currentStopStartTs = c.ts;
-      } else {
-        const duration = c.ts - currentStopStartTs;
-        if (duration > maxDurationMs) {
-          maxDurationMs = duration;
-        }
       }
     } else {
-      currentStopStartTs = null;
+      if (currentStopStartTs !== null) {
+        const lastStopEndTs = coords[i - 1].ts;
+        const durationMs = lastStopEndTs - currentStopStartTs;
+        if (durationMs > 0) {
+          stopPeriods.push({ start: currentStopStartTs, end: lastStopEndTs, durationMs });
+        }
+        currentStopStartTs = null;
+      }
     }
   }
 
-  const maxDurationMin = maxDurationMs / 1000 / 60;
-  if (maxDurationMin >= 10) {
-    return Math.round(maxDurationMin);
+  // Xử lý nốt nếu tọa độ cuối cùng vẫn ở trạng thái đứng yên
+  if (currentStopStartTs !== null) {
+    const lastCoordTs = coords[coords.length - 1].ts;
+    const durationMs = lastCoordTs - currentStopStartTs;
+    if (durationMs > 0) {
+      stopPeriods.push({ start: currentStopStartTs, end: lastCoordTs, durationMs });
+    }
   }
-  return null;
+
+  // Bỏ qua dừng đèn đỏ, tắc đường ngắn: Chỉ xem xét nếu xe đứng im liên tục từ 1 phút trở lên
+  const MIN_REST_STOP_MS = 60 * 1000;
+  const realRestStops = stopPeriods.filter(p => p.durationMs >= MIN_REST_STOP_MS);
+
+  // Lấy thời gian dừng dài nhất
+  let maxDurationMs = 0;
+  stopPeriods.forEach(p => {
+    if (p.durationMs > maxDurationMs) maxDurationMs = p.durationMs;
+  });
+  const maxDurationMin = maxDurationMs / 1000 / 60;
+
+  const hasLongStopViolation = maxDurationMin >= 10;
+  const hasStopCountViolation = realRestStops.length > 2;
+
+  if (!hasLongStopViolation && !hasStopCountViolation) {
+    return null;
+  }
+
+  let reason = "";
+  if (hasLongStopViolation) {
+    reason = `xe không di chuyển liên tục trong khoảng ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá quy định 10 phút).`;
+  } else {
+    reason = `số lần dừng nghỉ trong phiên vượt mức (đã dừng nghỉ ${realRestStops.length} lần, cho phép tối đa 2 lần).`;
+  }
+
+  return {
+    isViolated: true,
+    reason
+  };
 }
 
 const formatStopMinutes = (mins) => {
@@ -242,12 +278,12 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
     });
 
     if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
-      const mins = getStopViolationMinutes(matchingLt.ListCoordinate);
-      if (mins !== null) {
+      const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
+      if (stopCheck !== null) {
         warnings.push({
           type: "warning",
           label: "Dừng nghỉ sai quy định",
-          message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm, xe không di chuyển trong khoảng ${formatStopMinutes(mins)} (yêu cầu < 10 phút).`,
+          message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm dừng nghỉ, ${stopCheck.reason}`,
         });
       }
     }
@@ -474,11 +510,11 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
       });
 
       if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
-        const mins = getStopViolationMinutes(matchingLt.ListCoordinate);
-        if (mins !== null) {
+        const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
+        if (stopCheck !== null) {
           addReason(
             idx,
-            `Dừng nghỉ sai quy định: xe không di chuyển ${formatStopMinutes(mins)} (yêu cầu < 10 phút)`,
+            `Dừng nghỉ sai quy định: ${stopCheck.reason}`,
           );
         }
       }
@@ -707,7 +743,7 @@ function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
   }
 
   const wrongSessions = dataSource.filter(
-    (s) => 
+    (s) =>
       isRuleApplicable("checkSaiGiaoVien", s.ThoiDiemDangNhap) &&
       normalizeForCompare(s.HoTenGV || "") !== registeredTeacherNorm,
   );
@@ -754,7 +790,7 @@ function evaluateSaiXe(dataSource, studentInfo) {
   );
 
   const wrongPlateSessions = dataSource.filter(
-    (s) => 
+    (s) =>
       isRuleApplicable("checkSaiXe", s.ThoiDiemDangNhap) &&
       !allowedPlates.has(normalizePlate(s.BienSo)),
   );

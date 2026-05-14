@@ -137,7 +137,7 @@ export default function CaiDatHeThong() {
         {
             title: "Tên quy tắc & Mô tả",
             key: "ruleName",
-            width: "40%",
+            width: "50%",
             render: (_, record) => {
                 const displayName = RULE_NAMES[record.key] || record.key;
                 const isCustom = !RULE_NAMES[record.key];
@@ -182,7 +182,7 @@ export default function CaiDatHeThong() {
         {
             title: "Thời gian áp dụng",
             key: "startDate",
-            width: "40%",
+            width: "30%",
             render: (_, record) => {
                 const isEnabled = record.enabled;
                 const dateVal = record.startDate ? dayjs(record.startDate) : null;
