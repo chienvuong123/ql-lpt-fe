@@ -383,8 +383,6 @@ const StudentDetail = ({ data }) => {
     [dataSource, data, annualStudentInfo, loTrinhResults],
   );
 
-
-
   const evaluationData = useMemo(() => {
     if (!hasJourneyData) {
       return { status: "fail", errors: [], warnings: [] };
@@ -675,6 +673,7 @@ const StudentDetail = ({ data }) => {
                       type="primary"
                       icon={<EyeOutlined />}
                       onClick={() => showModal()}
+                      loading={isLoTrinhLoading}
                     >
                       Giám sát hành trình
                     </Button>
@@ -849,7 +848,16 @@ const StudentDetail = ({ data }) => {
           footer={null}
           destroyOnClose
         >
-          <TrackingPage duLieuPhienHoc={dataSource} summaryData={data} />
+          <TrackingPage
+            duLieuPhienHoc={dataSource}
+            summaryData={{
+              ...data,
+              TongTGFont: fmtGio(summaryData.tongThoiGianGio),
+              TongQD: summaryData.tongQuangDuong.toFixed(2),
+            }}
+            loTrinhData={loTrinhResults?.data}
+            loadingLoTrinh={isLoTrinhLoading}
+          />
         </Modal>
       </div>
     </Spin>

@@ -49,7 +49,12 @@ const findRouteForRecord = (allRoutes, record, fallbackIndex) => {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
+const TrackingPage = ({
+  duLieuPhienHoc = [],
+  summaryData,
+  loTrinhData,
+  loadingLoTrinh,
+}) => {
   const [trackingData, setTrackingData] = useState([]);
   const [allRoutes, setAllRoutes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -59,17 +64,47 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
 
   const timerRef = useRef(null);
   const hasFetched = useRef(false);
+  console.log(summaryData);
 
-  // ── 1. Gọi API MỘT LẦN duy nhất khi mount ───────────────────────────────
+  // ── 1. Khởi tạo / Tải lộ trình ───────────────────────────────
   useEffect(() => {
-    if (hasFetched.current || !duLieuPhienHoc.length) return;
+    if (!duLieuPhienHoc?.length) return;
+
+    const firstRecord = duLieuPhienHoc[0];
+
+    const initializeRoutes = (data) => {
+      const routes = Array.isArray(data) ? data : [data];
+      setAllRoutes(routes);
+
+      // Hiển thị phiên đầu tiên mặc định
+      const firstRoute = findRouteForRecord(routes, firstRecord, 0);
+      if (firstRoute?.ListCoordinate?.length > 0) {
+        setTrackingData(formatCoordinates(firstRoute.ListCoordinate));
+      }
+      setSelectedRowKey(firstRecord.ID ?? firstRecord.MaDK);
+    };
+
+    // Kiểm tra xem parent component có đang tự quản lý việc load data không
+    const isParentManaged = loadingLoTrinh !== undefined;
+
+    if (isParentManaged) {
+      if (hasFetched.current) return;
+
+      if (loTrinhData !== undefined) {
+        hasFetched.current = true;
+        initializeRoutes(loTrinhData);
+      }
+      return;
+    }
+
+    // ── Fallback cho TH độc lập: Gọi API MỘT LẦN duy nhất khi mount ────────
+    if (hasFetched.current) return;
     hasFetched.current = true;
 
     const fetchAllRoutes = async () => {
       try {
         setLoading(true);
 
-        const firstRecord = duLieuPhienHoc[0];
         const lastRecord = duLieuPhienHoc[duLieuPhienHoc.length - 1];
 
         const startDateStr = firstRecord.ThoiDiemDangNhap.split("T")[0];
@@ -83,16 +118,7 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
           madk: firstRecord.MaDK,
         });
 
-        const data = response.data;
-        const routes = Array.isArray(data) ? data : [data];
-        setAllRoutes(routes);
-
-        // Hiển thị phiên đầu tiên mặc định
-        const firstRoute = findRouteForRecord(routes, firstRecord, 0);
-        if (firstRoute?.ListCoordinate?.length > 0) {
-          setTrackingData(formatCoordinates(firstRoute.ListCoordinate));
-        }
-        setSelectedRowKey(firstRecord.ID ?? firstRecord.MaDK);
+        initializeRoutes(response.data);
       } catch (err) {
         console.error("Lỗi tải lộ trình:", err);
         hasFetched.current = false;
@@ -102,7 +128,7 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
     };
 
     fetchAllRoutes();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [duLieuPhienHoc, loTrinhData, loadingLoTrinh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -192,10 +218,11 @@ const TrackingPage = ({ duLieuPhienHoc, summaryData }) => {
     ],
     [],
   );
+  const isCombinedLoading = loading || loadingLoTrinh;
 
   // ── 6. Render ─────────────────────────────────────────────────────────────
   return (
-    <Spin spinning={loading} tip="Đang tải dữ liệu hành trình...">
+    <Spin spinning={isCombinedLoading} tip="Đang tải dữ liệu hành trình...">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="max-w-6xl mx-auto mb-6">
