@@ -90,11 +90,6 @@ export const LoTringOnlinePublic = async (params) => {
   });
 };
 
-export const getCheckConfigsPublic = async () => {
-  const response = await api.get(`/check-configs`);
-  return response;
-};
-
 
 const url = "https://api-v2.lapphuongthanh.io.vn/api/";
 
@@ -138,4 +133,9 @@ export const optionLopLyThuyetPublic = async () => {
 export const getTienDoDaoTaoByMaHocVienSqlDeploy = async (params = {}) => {
   const response = await axios.get(`${url}tien-do-dao-tao`, { params });
   return response.data
+};
+
+export const getCheckConfigsPublic = async () => {
+  const response = await axios.get(`${url}check-configs`);
+  return response;
 };
