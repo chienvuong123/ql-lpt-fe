@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Card, Drawer, Empty, Grid, Image, Spin, Typography } from "antd";
+import { Card, Drawer, Empty, Grid, Image, Spin, Typography, Tag } from "antd";
 import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
 } from "./DieuKienKiemTra";
-import { getPhienHocDATPublic } from "../../apis/apiDeploy";
+import { getPhienHocDATPublic, LoTringOnlinePublic } from "../../apis/apiDeploy";
 
 const { Text } = Typography;
 
@@ -252,11 +252,32 @@ const ModalTest = ({
   const [statusMap, setStatusMap] = useState({});
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [approveState, setApproveState] = useState(INITIAL_APPROVE_STATE);
+  const [loTrinhResults, setLoTrinhResults] = useState([]);
+  const [loadingLoTrinh, setLoadingLoTrinh] = useState(false);
 
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
 
   const maDk = String(student?.user?.admission_code || "").trim();
+
+  const fetchLoTrinh = useCallback(async () => {
+    if (!maDk) return;
+    setLoadingLoTrinh(true);
+    try {
+      const todayStr = dayjs().format("YYYY-MM-DD");
+      const res = await LoTringOnlinePublic({
+        ngaybatdau: "2022-01-01T00:00:00",
+        ngayketthuc: `${todayStr}T23:59:00`,
+        madk: maDk,
+      });
+      const list = res?.data ?? res?.Data ?? res ?? [];
+      setLoTrinhResults(Array.isArray(list) ? list : []);
+    } catch {
+      // silent
+    } finally {
+      setLoadingLoTrinh(false);
+    }
+  }, [maDk]);
 
   const fetchSessionStatuses = useCallback(async () => {
     if (!maDk) return;
@@ -297,8 +318,10 @@ const ModalTest = ({
     if (!open) return;
     setStatusMap({});
     setApproveState(INITIAL_APPROVE_STATE);
+    setLoTrinhResults([]);
     fetchSessionStatuses();
-  }, [open, fetchSessionStatuses]);
+    fetchLoTrinh();
+  }, [open, fetchSessionStatuses, fetchLoTrinh]);
 
   const rowsWithStatus = useMemo(() => {
     const sorted = [...rows].sort(
@@ -306,9 +329,10 @@ const ModalTest = ({
     );
 
     // Nguồn duy nhất — nhất quán với derivedInvalid/_status
-    const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
+    const { invalidReasons } = getInvalidSessionIndexes(
       sorted,
       studentCheckInfo,
+      loTrinhResults,
     );
 
     return sorted.map((item, index) => {
@@ -338,14 +362,19 @@ const ModalTest = ({
         r.includes("Xe tự động bắt đầu"),
       );
 
+      // Lỗi xe không di chuyển (dừng nghỉ) >= 10 phút
+      const stopReason = reasons.find((r) => r.includes("Dừng nghỉ"));
+      const _hasStopViolation = !!stopReason;
+
       // Phiên dưới 5 phút (check riêng, không có trong getInvalidSessionIndexes)
       const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
       const _isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
 
-      const derivedInvalid = invalidIndexes.has(index);
       const persistedStatus = getMappedStatus(item, statusMap);
+
+      // Chỉ coi là không hợp lệ để báo đỏ & trừ tổng khi admin HỦY thủ công hoặc xe bị dừng quá 10p
       const effectiveStatus =
-        persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
+        persistedStatus || (_hasStopViolation ? "HUY" : "DUYET");
 
       return {
         ...item,
@@ -355,11 +384,13 @@ const ModalTest = ({
         _isRestTooShort,
         _isTuDongInvalid,
         _isTooShort,
+        _hasStopViolation,
+        _stopReason: stopReason,
         _status: effectiveStatus,
         _isInvalid: effectiveStatus === "HUY",
       };
     });
-  }, [rows, studentCheckInfo, statusMap]);
+  }, [rows, studentCheckInfo, statusMap, loTrinhResults]);
 
   const totalDistance = useMemo(
     () =>
@@ -409,7 +440,7 @@ const ModalTest = ({
     [summaryWarnings, approveState],
   );
 
-  const isModalLoading = loading || loadingStatus;
+  const isModalLoading = loading || loadingStatus || loadingLoTrinh;
 
   return (
     <Drawer
@@ -543,9 +574,11 @@ const ModalTest = ({
 
                       <div className="!flex-1 !px-3 !py-2 !text-xs">
                         <div className="!flex !items-center !justify-between !mb-1">
-                          <span className="!font-semibold !text-gray-800 !text-sm">
-                            {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
-                          </span>
+                          <div className="!flex !items-center !gap-2">
+                            <span className="!font-semibold !text-gray-800 !text-sm">
+                              {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
+                            </span>
+                          </div>
                           <span
                             className="!text-xs !font-semibold !px-2 !py-0.5 !rounded-full"
                             style={{

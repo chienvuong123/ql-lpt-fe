@@ -82,6 +82,14 @@ export const DanhSachHocVienDeploy = async (params) => {
   });
 };
 
+export const LoTringOnlinePublic = async (params) => {
+  return api({
+    method: "get",
+    url: "/xeOnline",
+    params,
+  });
+};
+
 const url = "https://api-v2.lapphuongthanh.io.vn/api/";
 
 export const getChiTietHocVienLyThuyetPublic = async (maDk) => {
