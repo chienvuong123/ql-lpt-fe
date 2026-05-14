@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Button, Card, Progress, Spin, Row, Col, Table, Flex } from "antd";
+import { Button, Card, Progress, Spin, Row, Col, Table, Flex, Slider, Select } from "antd";
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -61,10 +61,11 @@ const TrackingPage = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedRowKey, setSelectedRowKey] = useState(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   const timerRef = useRef(null);
   const hasFetched = useRef(false);
-  console.log(summaryData);
+
 
   // ── 1. Khởi tạo / Tải lộ trình ───────────────────────────────
   useEffect(() => {
@@ -164,11 +165,11 @@ const TrackingPage = ({
           setIsPlaying(false);
           return prev;
         });
-      }, 500);
+      }, 500 / playbackSpeed);
     }
 
     return () => clearInterval(timerRef.current);
-  }, [isPlaying, trackingData.length, currentIndex]);
+  }, [isPlaying, trackingData.length, currentIndex, playbackSpeed]);
 
   const handleReset = () => {
     setIsPlaying(false);
@@ -316,6 +317,20 @@ const TrackingPage = ({
                     {isPlaying ? "Dừng" : "Phát"}
                   </Button>
 
+                  <Select
+                    size="small"
+                    value={playbackSpeed}
+                    onChange={(val) => setPlaybackSpeed(val)}
+                    options={[
+                      { value: 1, label: "x1" },
+                      { value: 2, label: "x2" },
+                      { value: 3, label: "x3" },
+                      { value: 4, label: "x4" },
+                    ]}
+                    style={{ width: 60 }}
+                    disabled={trackingData.length === 0}
+                  />
+
                   <Button
                     size="small"
                     icon={<ReloadOutlined />}
@@ -331,15 +346,32 @@ const TrackingPage = ({
                 currentIndex={currentIndex}
               />
 
-              <Row gutter={[12, 0]} className="!mt-2">
-                <Col span={22}>
-                  <Progress
-                    percent={progressPercent}
-                    showInfo={false}
-                    strokeColor={{ "0%": "#1890ff", "100%": "#52c41a" }}
+              <Row gutter={[12, 0]} className="!mt-2" align="middle">
+                <Col span={21}>
+                  <Slider
+                    min={0}
+                    max={trackingData.length > 0 ? trackingData.length - 1 : 0}
+                    value={currentIndex}
+                    onChange={(val) => {
+                      setIsPlaying(false); // Tạm dừng khi tua giống Youtube
+                      setCurrentIndex(val);
+                    }}
+                    tooltip={{
+                      formatter: (val) => {
+                        const pt = trackingData[val];
+                        if (!pt) return "";
+                        const time = pt.timestamp ? dayjs(pt.timestamp).format("HH:mm:ss") : "N/A";
+                        const speed = pt.speed !== undefined ? ` · Vận tốc: ${pt.speed} km/h` : "";
+                        return `${time}${speed}`;
+                      },
+                    }}
+                    disabled={trackingData.length === 0}
+                    trackStyle={{ backgroundColor: "#1890ff" }}
+                    handleStyle={{ borderColor: "#1890ff", backgroundColor: "#1890ff" }}
+                    className="!m-0 !py-2"
                   />
                 </Col>
-                <Col span={2}>
+                <Col span={3}>
                   <span className="text-xs text-gray-500 font-medium">
                     {progressPercent.toFixed(1)}%
                   </span>
