@@ -47,6 +47,7 @@ import DanhSachDangHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSac
 import DanhSachChoXepLopLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachChoXepLopLyThuyet";
 import DanhSachDangHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachDangHocBuLyThuyet";
 import CaiDatHeThong from "./pages/setting/CaiDatHeThong";
+import ForbiddenZonePage from "./pages/map/ForbiddenZonePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -347,6 +348,12 @@ function App() {
               path="lich-cabin"
               element={
                 <GuardedRoute path="/lich-cabin" element={<LichCabin />} />
+              }
+            />
+            <Route
+              path="quan-ly-vung-cam"
+              element={
+                <GuardedRoute path="/quan-ly-vung-cam" element={<ForbiddenZonePage />} />
               }
             />
           </Routes>

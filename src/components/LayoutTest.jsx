@@ -66,6 +66,7 @@ const menuPathMap = {
   "tien-do-hoc-bu-thuc-hanh": "/tien-do-hoc-bu-thuc-hanh",
   "danh-sach-hoc-vien-bu-thuc-hanh": "/danh-sach-hoc-vien-bu-thuc-hanh",
   "cai-dat-he-thong": "/cai-dat-he-thong",
+  "quan-ly-vung-cam": "/quan-ly-vung-cam",
 };
 
 const LayoutTest = () => {
@@ -162,6 +163,7 @@ const LayoutTest = () => {
         { key: "check-full-course", label: "Báo cáo học viên hàng loạt" },
         { key: "hoc-vien-ky-dat", label: "Danh sách học viên kí DAT" },
         { key: "truy-vet-loi", label: "Truy vết lỗi" },
+        { key: "quan-ly-vung-cam", label: "Quản lý vùng cấm" },
       ],
     },
     {
