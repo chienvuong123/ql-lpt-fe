@@ -34,7 +34,9 @@ import {
   fmtGio,
   getBienSoTuDong,
   normalizePlate,
+  getInvalidSessionIndexes,
 } from "./checks/DieuKienKiemTra";
+import { getAnh } from "../apis/apiAnh";
 
 import TrackingPage from "./map/TrackingPage";
 import { fetchCheckStudents } from "../apis/kiemTra";
@@ -48,6 +50,10 @@ const today = new Date().toISOString().split("T")[0];
 
 const StudentDetail = ({ data }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImagesModalOpen, setIsImagesModalOpen] = useState(false);
+  const [selectedSessionImages, setSelectedSessionImages] = useState([]);
+  const [selectedSessionInfo, setSelectedSessionInfo] = useState(null);
+
   const [isCheckboxLoading, setIsCheckboxLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -140,6 +146,39 @@ const StudentDetail = ({ data }) => {
     keepPreviousData: true,
     retry: false,
   });
+
+  const { data: apiAnhData } = useQuery({
+    queryKey: ["anhHocVien", data?.MaDK],
+    queryFn: () => getAnh(data?.MaDK),
+    enabled: !!data?.MaDK,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const getImagesForSession = useMemo(() => {
+    return (record) => {
+      if (!record || !apiAnhData?.data) return [];
+      const sessionDate = dayjs(record.ThoiDiemDangNhap).format("DD/MM/YYYY");
+      const dayImages = apiAnhData.data[sessionDate] || [];
+
+      const startTime = dayjs(record.ThoiDiemDangNhap);
+      const endTime = dayjs(record.ThoiDiemDangXuat);
+
+      if (!startTime.isValid() || !endTime.isValid()) return [];
+
+      return dayImages.filter((img) => {
+        if (!img.time) return false;
+        const imgTime = dayjs(`${sessionDate} ${img.time}`, "DD/MM/YYYY HH:mm:ss");
+        if (!imgTime.isValid()) return false;
+        return !imgTime.isBefore(startTime) && !imgTime.isAfter(endTime);
+      });
+    };
+  }, [apiAnhData]);
+
+  const handleShowSessionImages = (record, images) => {
+    setSelectedSessionImages(images);
+    setSelectedSessionInfo(record);
+    setIsImagesModalOpen(true);
+  };
 
   const dataSource = useMemo(() => {
     const list = Array.isArray(results?.data?.Data) ? results.data.Data : [];
@@ -311,6 +350,43 @@ const StudentDetail = ({ data }) => {
       render: (url) => <Image src={url} width={110} height={76} preview />,
     },
     {
+      title: "Số ảnh",
+      key: "soAnh",
+      width: 80,
+      align: "center",
+      render: (_, record) => {
+        const imgs = getImagesForSession(record);
+        const count = imgs.length;
+
+        // Tính số ảnh cần: (TongThoiGian / 3600) * 12
+        const gioThuc = (record.TongThoiGian || 0) / 3600;
+        const soAnhCanCo = Math.round(gioThuc * 12);
+        const soAnhThieu = Math.max(0, soAnhCanCo - count);
+
+        if (count === 0) return renderValue(0);
+
+        return (
+          <Button
+            type="link"
+            size="small"
+            className="font-semibold"
+            onClick={() => handleShowSessionImages(record, imgs)}
+          >
+            {soAnhThieu > 0 ? (
+              <span>
+                {count}
+                <span style={{ color: "red", marginLeft: 1 }}>
+                  ({soAnhThieu})
+                </span>
+              </span>
+            ) : (
+              <span>{count}</span>
+            )}
+          </Button>
+        );
+      },
+    },
+    {
       title: "Thời lượng",
       dataIndex: "TongThoiGian",
       key: "TongThoiGian",
@@ -382,6 +458,20 @@ const StudentDetail = ({ data }) => {
       ),
     [dataSource, data, annualStudentInfo, loTrinhResults],
   );
+
+  const { invalidIndexes } = useMemo(() => {
+    return getInvalidSessionIndexes(dataSource, annualStudentInfo, loTrinhResults?.data || []);
+  }, [dataSource, annualStudentInfo, loTrinhResults]);
+
+  const totalAchievedImagesCount = useMemo(() => {
+    let count = 0;
+    dataSource.forEach((record, index) => {
+      if (!invalidIndexes.has(index)) {
+        count += getImagesForSession(record).length;
+      }
+    });
+    return count;
+  }, [dataSource, invalidIndexes, getImagesForSession]);
 
   const evaluationData = useMemo(() => {
     if (!hasJourneyData) {
@@ -709,7 +799,9 @@ const StudentDetail = ({ data }) => {
                     Tổng quãng đường:{" "}
                     <Text strong>
                       {summaryData?.tongQuangDuong.toFixed(2) || 0.0} km
-                    </Text>
+                    </Text> ·
+                    Tổng ảnh:{" "}
+                    <Text strong>{totalAchievedImagesCount}</Text>
                   </Text>
                 </Col>
               </Row>
@@ -838,6 +930,65 @@ const StudentDetail = ({ data }) => {
             </div>
           )}
         </Card>
+        <Modal
+          title={
+            <div style={{ fontSize: "16px", fontWeight: "bold" }}>
+              Ảnh Chi Tiết Phiên Đào Tạo
+              {selectedSessionInfo && (
+                <span style={{ fontSize: "13px", fontWeight: "normal", color: "#666", marginLeft: "8px" }}>
+                  ({dayjs(selectedSessionInfo.ThoiDiemDangNhap).format("DD/MM/YYYY")}{" "}
+                  {dayjs(selectedSessionInfo.ThoiDiemDangNhap).format("HH:mm")} -{" "}
+                  {dayjs(selectedSessionInfo.ThoiDiemDangXuat).format("HH:mm")})
+                </span>
+              )}
+            </div>
+          }
+          open={isImagesModalOpen}
+          onCancel={() => setIsImagesModalOpen(false)}
+          footer={null}
+          width={800}
+          centered
+          destroyOnClose
+        >
+          <Row gutter={[12, 12]} style={{ maxHeight: "60vh", overflowY: "auto", padding: "4px" }}>
+            {selectedSessionImages.length === 0 ? (
+              <Col span={24}>
+                <Text style={{ display: "block", textAlign: "center", color: "#999", padding: "20px" }}>
+                  Không tìm thấy ảnh trong phiên này.
+                </Text>
+              </Col>
+            ) : (
+              selectedSessionImages.map((img, idx) => (
+                <Col key={idx} xs={12} sm={8} md={6}>
+                  <div
+                    style={{
+                      border: "1px solid #f0f0f0",
+                      borderRadius: "8px",
+                      padding: "8px",
+                      textAlign: "center",
+                      backgroundColor: "#fafafa",
+                    }}
+                  >
+                    <Image
+                      src={img.url}
+                      alt={img.filename}
+                      width="100%"
+                      height={100}
+                      style={{ objectFit: "cover", borderRadius: "4px" }}
+                      fallback="https://placehold.co/300x200?text=No+Image"
+                    />
+                    <div style={{ marginTop: "8px" }}>
+                      <Text strong style={{ fontSize: "12px", color: "#333" }}>
+                        {img.time}
+                      </Text>
+                    </div>
+                  </div>
+                </Col>
+              ))
+            )}
+          </Row>
+        </Modal>
+
         <Modal
           title=""
           open={isModalOpen}
