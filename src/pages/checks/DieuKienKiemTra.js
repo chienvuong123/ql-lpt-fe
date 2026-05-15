@@ -227,20 +227,34 @@ function getStopViolationDetails(listCoordinate) {
   const MIN_REST_STOP_MS = 60 * 1000;
   const realRestStops = stopPeriods.filter(p => p.durationMs >= MIN_REST_STOP_MS);
 
-  // Lấy thời gian dừng dài nhất
+  // Lấy thời gian dừng dài nhất & tổng thời gian dừng từ danh sách dừng thật sự
   let maxDurationMs = 0;
-  stopPeriods.forEach(p => {
+  let totalDurationMs = 0;
+  realRestStops.forEach(p => {
     if (p.durationMs > maxDurationMs) maxDurationMs = p.durationMs;
+    totalDurationMs += p.durationMs;
   });
+
   const maxDurationMin = maxDurationMs / 1000 / 60;
+  const totalDurationMin = totalDurationMs / 1000 / 60;
 
-  const hasLongStopViolation = maxDurationMin >= 20;
+  const hasLongStopViolation = maxDurationMin >= 10;
+  const hasTotalStopViolation = totalDurationMin >= 20;
 
-  if (!hasLongStopViolation) {
+  if (!hasLongStopViolation && !hasTotalStopViolation) {
     return null;
   }
 
-  const reason = `xe không di chuyển liên tục trong khoảng ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá quy định 20 phút - tổng số lần dừng nghỉ trong phiên: ${realRestStops.length} lần).`;
+  let reason = "";
+  if (hasLongStopViolation && hasTotalStopViolation) {
+    reason = `lần nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá 10 phút) và tổng thời gian nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá 20 phút)`;
+  } else if (hasLongStopViolation) {
+    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá giới hạn cho phép 10 phút cho một lần nghỉ)`;
+  } else {
+    reason = `tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá giới hạn cho phép tổng 20 phút)`;
+  }
+
+  reason += ` - Tổng số lần nghỉ: ${realRestStops.length} lần.`;
 
   return {
     isViolated: true,
@@ -491,7 +505,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
     });
   }
 
-  // 6. Vi phạm dừng nghỉ liên tục >= 20 phút
+  // 6. Vi phạm dừng nghỉ: đơn lẻ >= 10 phút hoặc tổng >= 20 phút
   if (Array.isArray(loTrinh) && loTrinh.length > 0) {
     dataSource.forEach((phien, idx) => {
       if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
