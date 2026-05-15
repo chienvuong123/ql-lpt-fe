@@ -358,7 +358,6 @@ const StudentDetail = ({ data }) => {
         const imgs = getImagesForSession(record);
         const count = imgs.length;
 
-        // Tính số ảnh cần: (TongThoiGian / 3600) * 12
         const gioThuc = (record.TongThoiGian || 0) / 3600;
         const soAnhCanCo = Math.round(gioThuc * 12);
         const soAnhThieu = Math.max(0, soAnhCanCo - count);

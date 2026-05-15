@@ -234,19 +234,13 @@ function getStopViolationDetails(listCoordinate) {
   });
   const maxDurationMin = maxDurationMs / 1000 / 60;
 
-  const hasLongStopViolation = maxDurationMin >= 10;
-  const hasStopCountViolation = realRestStops.length > 2;
+  const hasLongStopViolation = maxDurationMin >= 20;
 
-  if (!hasLongStopViolation && !hasStopCountViolation) {
+  if (!hasLongStopViolation) {
     return null;
   }
 
-  let reason = "";
-  if (hasLongStopViolation) {
-    reason = `xe không di chuyển liên tục trong khoảng ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá quy định 10 phút).`;
-  } else {
-    reason = `số lần dừng nghỉ trong phiên vượt mức (đã dừng nghỉ ${realRestStops.length} lần, cho phép tối đa 2 lần).`;
-  }
+  const reason = `xe không di chuyển liên tục trong khoảng ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá quy định 20 phút - tổng số lần dừng nghỉ trong phiên: ${realRestStops.length} lần).`;
 
   return {
     isViolated: true,
@@ -497,7 +491,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
     });
   }
 
-  // 6. Vi phạm dừng nghỉ liên tục >= 10 phút
+  // 6. Vi phạm dừng nghỉ liên tục >= 20 phút
   if (Array.isArray(loTrinh) && loTrinh.length > 0) {
     dataSource.forEach((phien, idx) => {
       if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
