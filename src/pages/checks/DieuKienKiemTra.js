@@ -3,7 +3,7 @@ import { getCheckConfigs } from "../../apis/apiSetting";
 
 // Tự động đồng bộ cấu hình kiểm tra mới nhất từ server xuống LocalStorage trong nền
 try {
-  getCheckConfigs()
+  getCheckConfigsPublic()
     .then((res) => {
       const data = res?.data?.data ?? res?.data;
       if (data && typeof data === "object") {
@@ -566,6 +566,28 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
           );
         }
 
+      }
+    });
+  }
+
+  // 7. Vi phạm vùng cấm
+  if (Array.isArray(loTrinh) && loTrinh.length > 0 && forbiddenZones.length > 0) {
+    dataSource.forEach((phien, idx) => {
+      if (!isRuleApplicable("checkKhuVucCam", phien.ThoiDiemDangNhap)) return;
+      const matchingLt = loTrinh.find(lt => {
+        const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
+        const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
+        const ltStart = new Date(lt.StartTime || lt.ThoiDiemDangNhap || lt.thoiDiemDangNhap).getTime();
+        const ltEnd = new Date(lt.EndTime || lt.ThoiDiemDangXuat || lt.thoiDiemDangXuat).getTime();
+        if (isNaN(sessStart) || isNaN(sessEnd) || isNaN(ltStart) || isNaN(ltEnd)) return false;
+        return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
+      });
+
+      if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
+        const violation = checkForbiddenZones(matchingLt.ListCoordinate, forbiddenZones);
+        if (violation) {
+          addReason(idx, `Đi qua vùng cấm: ${violation.zoneName}`);
+        }
       }
     });
   }

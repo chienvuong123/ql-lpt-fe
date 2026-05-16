@@ -12,6 +12,7 @@ import {
 import { LoTringOnline } from "../../apis/xeOnline";
 import TrackingMap from ".";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ const TrackingPage = ({
   loTrinhData,
   loadingLoTrinh,
   invalidIndexes = new Set(),
+  invalidReasons = new Map(),
   forbiddenZones = [],
 }) => {
   const [trackingData, setTrackingData] = useState([]);
@@ -67,6 +69,8 @@ const TrackingPage = ({
 
   const timerRef = useRef(null);
   const hasFetched = useRef(false);
+
+  const navigate = useNavigate();
 
 
   // ── 1. Khởi tạo / Tải lộ trình ───────────────────────────────
@@ -194,12 +198,24 @@ const TrackingPage = ({
         width: 40,
         align: "center",
         onCell: (_, index) => {
-          const isInvalid = invalidIndexes?.has(index);
+          const reasons = invalidReasons?.get(index) || [];
+          const isForbidden = reasons.some(r => r.includes("vùng cấm"));
           return {
-            className: isInvalid ? "!bg-[#BB0000] !text-white" : "",
+            className: isForbidden ? "!bg-[#BB0000] !text-white" : "",
           };
         },
-        render: (_, __, index) => index + 1,
+        render: (_, __, index) => {
+          const reasons = invalidReasons?.get(index) || [];
+          const forbiddenReasons = reasons.filter(r => r.includes("vùng cấm"));
+          if (forbiddenReasons.length > 0) {
+            return (
+              <Tooltip title={forbiddenReasons.join(", ")}>
+                <span className="cursor-help">{index + 1}</span>
+              </Tooltip>
+            );
+          }
+          return index + 1;
+        },
       },
       {
         title: "Biển số xe",
@@ -225,7 +241,7 @@ const TrackingPage = ({
         width: 90,
       },
     ],
-    [invalidIndexes],
+    [invalidIndexes, invalidReasons],
   );
   const isCombinedLoading = loading || loadingLoTrinh;
 
@@ -309,7 +325,7 @@ const TrackingPage = ({
                   </p>
                 </Col>
                 <Col span={14} className="!space-x-2 !flex !justify-end">
-                  <Button>Thêm vùng cấm</Button>
+                  <Button size="small" type="primary" onClick={() => { navigate("/quan-ly-vung-cam") }}>Thêm vùng cấm</Button>
                   <Button
                     type="primary"
                     size="small"

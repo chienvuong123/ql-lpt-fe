@@ -493,7 +493,7 @@ const StudentDetail = ({ data }) => {
       zonesToUse
     );
   }, [dataSource, annualStudentInfo, loTrinhResults, zonesToUse]);
-  console.log(invalidReasons);
+
   const totalAchievedImagesCount = useMemo(() => {
     let count = 0;
     dataSource.forEach((record, index) => {
