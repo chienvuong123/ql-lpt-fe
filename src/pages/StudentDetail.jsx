@@ -39,6 +39,9 @@ import {
 import { getAnh } from "../apis/apiAnh";
 
 import TrackingPage from "./map/TrackingPage";
+import { getForbiddenZones } from "../apis/forbiddenZone";
+import { getCheckConfigs } from "../apis/apiSetting";
+
 import { fetchCheckStudents } from "../apis/kiemTra";
 import { getDuLieuCabin } from "../apis/searchPublic";
 import { formatLocalTime, formatSecondsToTime } from "../util/helper";
@@ -151,6 +154,25 @@ const StudentDetail = ({ data }) => {
     queryKey: ["anhHocVien", data?.MaDK],
     queryFn: () => getAnh(data?.MaDK),
     enabled: !!data?.MaDK,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: checkConfigsData } = useQuery({
+    queryKey: ["checkConfigs"],
+    queryFn: async () => {
+      const res = await getCheckConfigs();
+      return res.data?.data ?? res.data;
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: forbiddenZonesData } = useQuery({
+    queryKey: ["forbiddenZones"],
+    queryFn: async () => {
+      const res = await getForbiddenZones();
+      return res.data?.data ?? res.data;
+    },
+    enabled: !!checkConfigsData?.checkKhuVucCam?.enabled,
     staleTime: 1000 * 60 * 10,
   });
 
@@ -447,6 +469,10 @@ const StudentDetail = ({ data }) => {
 
   const hasJourneyData = dataSource.length > 0;
 
+  const zonesToUse = useMemo(() => {
+    return checkConfigsData?.checkKhuVucCam?.enabled ? (forbiddenZonesData || []) : [];
+  }, [checkConfigsData, forbiddenZonesData]);
+
   const summaryData = useMemo(
     () =>
       computeSummaryHangLoat(
@@ -454,13 +480,19 @@ const StudentDetail = ({ data }) => {
         data?.HangDaoTao || "",
         annualStudentInfo,
         loTrinhResults?.data || [],
+        zonesToUse
       ),
-    [dataSource, data, annualStudentInfo, loTrinhResults],
+    [dataSource, data, annualStudentInfo, loTrinhResults, zonesToUse],
   );
 
-  const { invalidIndexes } = useMemo(() => {
-    return getInvalidSessionIndexes(dataSource, annualStudentInfo, loTrinhResults?.data || []);
-  }, [dataSource, annualStudentInfo, loTrinhResults]);
+  const { invalidIndexes, invalidReasons } = useMemo(() => {
+    return getInvalidSessionIndexes(
+      dataSource, 
+      annualStudentInfo, 
+      loTrinhResults?.data || [],
+      zonesToUse
+    );
+  }, [dataSource, annualStudentInfo, loTrinhResults, zonesToUse]);
 
   const totalAchievedImagesCount = useMemo(() => {
     let count = 0;
@@ -482,6 +514,7 @@ const StudentDetail = ({ data }) => {
       dataSource,
       loTrinhResults?.data || [],
       annualStudentInfo,
+      zonesToUse
     );
 
     return {
@@ -1007,6 +1040,9 @@ const StudentDetail = ({ data }) => {
             }}
             loTrinhData={loTrinhResults?.data}
             loadingLoTrinh={isLoTrinhLoading}
+            invalidIndexes={invalidIndexes}
+            invalidReasons={invalidReasons}
+            forbiddenZones={zonesToUse}
           />
         </Modal>
       </div>

@@ -2,13 +2,14 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const TrackingMap = ({ trackingData = [], currentPoint }) => {
+const TrackingMap = ({ trackingData = [], currentPoint, forbiddenZones = [] }) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
   const routePolylineRef = useRef(null);
   const startMarkerRef = useRef(null);
   const endMarkerRef = useRef(null);
+  const forbiddenZonesLayerRef = useRef([]);
 
   // 1. Khởi tạo Map
   useEffect(() => {
@@ -33,6 +34,35 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
       }
     };
   }, []);
+
+  // 1.1 Vẽ vùng cấm
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    // Xóa layer cũ
+    forbiddenZonesLayerRef.current.forEach((layer) => map.removeLayer(layer));
+    forbiddenZonesLayerRef.current = [];
+
+    if (!forbiddenZones || forbiddenZones.length === 0) return;
+
+    forbiddenZones.forEach((zone) => {
+      if (!zone.enabled) return;
+      
+      const circle = L.circle([zone.lat, zone.lng], {
+        radius: zone.radius_m || 0,
+        color: "#ef4444",
+        fillColor: "#ef4444",
+        fillOpacity: 0.2,
+        dashArray: "5, 10",
+        weight: 2,
+      })
+        .addTo(map)
+        .bindPopup(`<strong>Vùng cấm: ${zone.name}</strong><br/>Bán kính: ${zone.radius_m}m`);
+      
+      forbiddenZonesLayerRef.current.push(circle);
+    });
+  }, [forbiddenZones]);
 
   // 2. Vẽ lộ trình — chạy lại mỗi khi trackingData thay đổi
   useEffect(() => {
@@ -170,6 +200,10 @@ const TrackingMap = ({ trackingData = [], currentPoint }) => {
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm flex-shrink-0" />
           <span>Vị trí xe</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 bg-red-500/20 rounded-full border-2 border-red-500 border-dashed flex-shrink-0" />
+          <span>Vùng cấm</span>
         </div>
       </div>
     </div>

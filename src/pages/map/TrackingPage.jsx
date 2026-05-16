@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Button, Card, Progress, Spin, Row, Col, Table, Flex, Slider, Select } from "antd";
+import { Button, Card, Progress, Spin, Row, Col, Table, Flex, Slider, Select, Tag, Tooltip } from "antd";
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -54,6 +54,9 @@ const TrackingPage = ({
   summaryData,
   loTrinhData,
   loadingLoTrinh,
+  invalidIndexes = new Set(),
+  invalidReasons = new Map(),
+  forbiddenZones = [],
 }) => {
   const [trackingData, setTrackingData] = useState([]);
   const [allRoutes, setAllRoutes] = useState([]);
@@ -191,6 +194,12 @@ const TrackingPage = ({
         title: "#",
         width: 40,
         align: "center",
+        onCell: (_, index) => {
+          const isInvalid = invalidIndexes?.has(index);
+          return {
+            className: isInvalid ? "!bg-[#BB0000] !text-white" : "",
+          };
+        },
         render: (_, __, index) => index + 1,
       },
       {
@@ -217,7 +226,7 @@ const TrackingPage = ({
         width: 90,
       },
     ],
-    [],
+    [invalidIndexes],
   );
   const isCombinedLoading = loading || loadingLoTrinh;
 
@@ -292,7 +301,7 @@ const TrackingPage = ({
           <Col xs={24} md={12}>
             <Card className="shadow-md" bordered={false}>
               <Row className="!items-center !mb-2">
-                <Col span={12}>
+                <Col span={10}>
                   <h2 className="text-lg !font-bold text-gray-900 !mb-0">
                     Lộ trình xe
                   </h2>
@@ -300,7 +309,8 @@ const TrackingPage = ({
                     Hành trình di chuyển của xe.
                   </p>
                 </Col>
-                <Col span={12} className="!space-x-2 !flex !justify-end">
+                <Col span={14} className="!space-x-2 !flex !justify-end">
+                  <Button>Thêm vùng cấm</Button>
                   <Button
                     type="primary"
                     size="small"
@@ -344,6 +354,7 @@ const TrackingPage = ({
                 trackingData={trackingData}
                 currentPoint={currentPoint}
                 currentIndex={currentIndex}
+                forbiddenZones={forbiddenZones}
               />
 
               <Row gutter={[12, 0]} className="!mt-2" align="middle">
@@ -402,11 +413,12 @@ const TrackingPage = ({
                   onClick: () => handleSelect(record, rowIndex),
                   style: { cursor: "pointer" },
                 })}
-                rowClassName={(record) => {
+                rowClassName={(record, rowIndex) => {
                   const key = record.ID ?? record.MaDK;
-                  return key === selectedRowKey
-                    ? "!bg-blue-100 transition-colors"
-                    : "hover:bg-gray-50 transition-colors";
+                  const isSelected = key === selectedRowKey;
+
+                  if (isSelected) return "!bg-blue-100 transition-colors";
+                  return "hover:bg-gray-50 transition-colors";
                 }}
                 locale={{
                   emptyText: (

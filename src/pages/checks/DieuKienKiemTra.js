@@ -3,7 +3,7 @@ import { getCheckConfigs } from "../../apis/apiSetting";
 
 // Tự động đồng bộ cấu hình kiểm tra mới nhất từ server xuống LocalStorage trong nền
 try {
-  getCheckConfigsPublic()
+  getCheckConfigs()
     .then((res) => {
       const data = res?.data?.data ?? res?.data;
       if (data && typeof data === "object") {
@@ -79,6 +79,7 @@ export function getSystemConfig() {
     checkSaiXe: { enabled: true, startDate: "" },
     checkDungNghi: { enabled: true, startDate: "" },
     checkPhienNgan: { enabled: true, startDate: "" },
+    checkKhuVucCam: { enabled: true, startDate: "" },
   };
 
   try {
@@ -140,6 +141,44 @@ export function normalizePlate(plate) {
 function shouldCheckCungDuongByCourse(courseCode = "") {
   const year = getCourseYearFromCode(courseCode);
   return year !== null && year >= 25;
+}
+
+/** Tính khoảng cách giữa 2 tọa độ (mét) dùng công thức Haversine */
+export function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Bán kính Trái đất trung bình (mét)
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/** Kiểm tra xem hành trình có đi qua vùng cấm không */
+export function checkForbiddenZones(listCoordinate, forbiddenZones) {
+  if (!Array.isArray(listCoordinate) || !Array.isArray(forbiddenZones) || forbiddenZones.length === 0) {
+    return null;
+  }
+
+  for (const coord of listCoordinate) {
+    for (const zone of forbiddenZones) {
+      if (!zone.enabled) continue;
+      const distance = getDistance(coord.Latitude, coord.Longitude, zone.lat, zone.lng);
+      if (distance <= (zone.radius_m || 0)) {
+        return {
+          zoneName: zone.name,
+          lat: coord.Latitude,
+          lng: coord.Longitude,
+          time: coord.ThoiGian
+        };
+      }
+    }
+  }
+  return null;
 }
 
 /** Format số thực giờ → "Xh MM'" */
@@ -356,7 +395,7 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
  */
 // ─── Đánh dấu phiên lỗi ──────────────────────────────────────────────────────
 
-export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh = []) {
+export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh = [], forbiddenZones = []) {
   const invalidIndexes = new Set();
   const tuDongLoiIndexes = new Set();
   const invalidReasons = new Map();
@@ -525,6 +564,17 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
             idx,
             `Dừng nghỉ sai quy định: ${stopCheck.reason}`,
           );
+        }
+
+        // 6.1 Check vùng cấm (nếu có cấu hình)
+        if (isRuleApplicable("checkKhuVucCam", phien.ThoiDiemDangNhap) && forbiddenZones.length > 0) {
+          const violation = checkForbiddenZones(matchingLt.ListCoordinate, forbiddenZones);
+          if (violation) {
+            addReason(
+              idx,
+              `Đi qua vùng cấm: "${violation.zoneName}" tại tọa độ ${violation.lat}, ${violation.lng} lúc ${fmtDateStr(violation.time)}`,
+            );
+          }
         }
       }
     });
@@ -858,6 +908,7 @@ export function computeSummary(
   hangDaoTao = "",
   studentInfo = null,
   loTrinh = [],
+  forbiddenZones = [],
 ) {
   const empty = {
     tongThoiGianGio: 0,
@@ -881,6 +932,7 @@ export function computeSummary(
     dataSource,
     studentInfo,
     loTrinh,
+    forbiddenZones,
   );
 
   const t = dataSource.reduce(
@@ -999,6 +1051,7 @@ export function evaluate(
   dataSource = [],
   loTrinh = [],
   studentInfo,
+  forbiddenZones = [],
 ) {
   const errors = [];
   const warnings = [];
@@ -1168,6 +1221,31 @@ export function evaluate(
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
   warnings.push(...evaluateSaiGiaoVien(dataSource));
   warnings.push(...evaluateDungNghiPhien(dataSource, loTrinh));
+
+  // Check vùng cấm cho toàn bộ hành trình
+  if (Array.isArray(loTrinh) && loTrinh.length > 0 && forbiddenZones.length > 0) {
+    loTrinh.forEach((lt, ltIdx) => {
+      // Tìm phiên tương ứng để check ngày áp dụng
+      const phien = dataSource.find(p => {
+        const sessStart = new Date(p.ThoiDiemDangNhap).getTime();
+        const sessEnd = new Date(p.ThoiDiemDangXuat).getTime();
+        const ltStart = new Date(lt.StartTime || lt.ThoiDiemDangNhap || lt.thoiDiemDangNhap).getTime();
+        const ltEnd = new Date(lt.EndTime || lt.ThoiDiemDangXuat || lt.thoiDiemDangXuat).getTime();
+        return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
+      });
+
+      if (phien && isRuleApplicable("checkKhuVucCam", phien.ThoiDiemDangNhap)) {
+        const violation = checkForbiddenZones(lt.ListCoordinate, forbiddenZones);
+        if (violation) {
+          warnings.push({
+            type: "warning",
+            label: "Đi vào vùng cấm",
+            message: `Phiên ${dataSource.indexOf(phien) + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}) đi qua vùng cấm "${violation.zoneName}".`,
+          });
+        }
+      }
+    });
+  }
 
   const courseCode =
     dataSource?.[0]?.MaKhoaHoc ||
