@@ -312,7 +312,7 @@ const formatStopMinutes = (mins) => {
 
 export function evaluateDungNghiPhien(dataSource, loTrinh) {
   if (!dataSource || !loTrinh || dataSource.length === 0 || loTrinh.length === 0) return [];
-  const warnings = [];
+  const errors = [];
 
   dataSource.forEach((phien, idx) => {
     if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
@@ -328,8 +328,8 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
     if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
       const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
       if (stopCheck !== null) {
-        warnings.push({
-          type: "warning",
+        errors.push({
+          type: "error",
           label: "Dừng nghỉ sai quy định",
           message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm dừng nghỉ, ${stopCheck.reason}`,
         });
@@ -337,7 +337,7 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
     }
   });
 
-  return warnings;
+  return errors;
 }
 
 // ─── Xác định biển số xe tự động ─────────────────────────────────────────────
@@ -566,16 +566,6 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
           );
         }
 
-        // 6.1 Check vùng cấm (nếu có cấu hình)
-        if (isRuleApplicable("checkKhuVucCam", phien.ThoiDiemDangNhap) && forbiddenZones.length > 0) {
-          const violation = checkForbiddenZones(matchingLt.ListCoordinate, forbiddenZones);
-          if (violation) {
-            addReason(
-              idx,
-              `Đi qua vùng cấm: "${violation.zoneName}" tại tọa độ ${violation.lat}, ${violation.lng} lúc ${fmtDateStr(violation.time)}`,
-            );
-          }
-        }
       }
     });
   }
@@ -1205,8 +1195,6 @@ export function evaluate(
     }
   });
 
-  console.log("Evaluation check - studentInfo:", studentInfo);
-
   if (studentInfo) {
     warnings.push(
       ...evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo),
@@ -1220,7 +1208,7 @@ export function evaluate(
   warnings.push(...evaluateTuDongSau17h(dataSource));
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
   warnings.push(...evaluateSaiGiaoVien(dataSource));
-  warnings.push(...evaluateDungNghiPhien(dataSource, loTrinh));
+  errors.push(...evaluateDungNghiPhien(dataSource, loTrinh));
 
   // Check vùng cấm cho toàn bộ hành trình
   if (Array.isArray(loTrinh) && loTrinh.length > 0 && forbiddenZones.length > 0) {

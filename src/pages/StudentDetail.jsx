@@ -487,13 +487,13 @@ const StudentDetail = ({ data }) => {
 
   const { invalidIndexes, invalidReasons } = useMemo(() => {
     return getInvalidSessionIndexes(
-      dataSource, 
-      annualStudentInfo, 
+      dataSource,
+      annualStudentInfo,
       loTrinhResults?.data || [],
       zonesToUse
     );
   }, [dataSource, annualStudentInfo, loTrinhResults, zonesToUse]);
-
+  console.log(invalidReasons);
   const totalAchievedImagesCount = useMemo(() => {
     let count = 0;
     dataSource.forEach((record, index) => {

@@ -55,7 +55,6 @@ const TrackingPage = ({
   loTrinhData,
   loadingLoTrinh,
   invalidIndexes = new Set(),
-  invalidReasons = new Map(),
   forbiddenZones = [],
 }) => {
   const [trackingData, setTrackingData] = useState([]);
