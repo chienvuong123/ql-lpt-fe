@@ -453,8 +453,8 @@ const TruyVetModal = ({
   const summaryMissingCases = useMemo(() => {
     const { tongGio, tongKm, dem, tuDong } = actualTotals;
     const isSoSanClass = ["B2", "B", "C", "C1"].includes(hangDaoTao);
-    const soSanGio = tongGio - tuDong.gio;
-    const soSanKm = tongKm - tuDong.km;
+    const soSanGio = tongGio;
+    const soSanKm = tongKm;
 
     const buildCase = (
       key,
