@@ -12,11 +12,11 @@ import {
   Button,
 } from "antd";
 import {
-  getPhienHocDAT,
-  hocVienKyDAT,
-  updateDuyetTheoMaDK,
-  updatePhienHocDAT,
-} from "../../apis/hocVien";
+  getLichSuDuyetPhienHoc,
+  updateDuyetPhienHoc,
+  getHocVienDuyet,
+  updateHocVienDuyet,
+} from "../../apis/apiDuyetPhienHoc";
 import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
@@ -103,6 +103,12 @@ const toStatusMap = (response) => {
           : [];
 
   return list.reduce((map, item) => {
+    if (item?.phien_hoc_dat_id !== undefined) {
+      const status = item.trang_thai === 1 ? "DUYET" : "HUY";
+      map[`id:${String(item.phien_hoc_dat_id)}`] = status;
+      return map;
+    }
+
     const status = normalizeStatus(
       item?.trang_thai ?? item?.TrangThai ?? item?.status,
     );
@@ -112,6 +118,45 @@ const toStatusMap = (response) => {
     });
     return map;
   }, {});
+};
+
+const parseHocVienDuyetResponse = (response) => {
+  const data = response?.data || response?.Data || response || {};
+
+  const approveState = {
+    duyet_tong: data.tong?.trang_thai === 1,
+    duyet_tu_dong: data.tu_dong?.trang_thai === 1,
+    duyet_dem: data.dem?.trang_thai === 1,
+    duyet_so_san: data.so_san?.trang_thai === 1,
+  };
+
+  const approveReasons = {
+    duyet_tong: data.tong?.ly_do || "",
+    duyet_tu_dong: data.tu_dong?.ly_do || "",
+    duyet_dem: data.dem?.ly_do || "",
+    duyet_so_san: data.so_san?.ly_do || "",
+  };
+
+  const approveMeta = {
+    duyet_tong: {
+      updatedAt: data.tong?.thoi_gian_duyet || "",
+      updatedBy: data.tong?.nguoi_duyet || "",
+    },
+    duyet_tu_dong: {
+      updatedAt: data.tu_dong?.thoi_gian_duyet || "",
+      updatedBy: data.tu_dong?.nguoi_duyet || "",
+    },
+    duyet_dem: {
+      updatedAt: data.dem?.thoi_gian_duyet || "",
+      updatedBy: data.dem?.nguoi_duyet || "",
+    },
+    duyet_so_san: {
+      updatedAt: data.so_san?.thoi_gian_duyet || "",
+      updatedBy: data.so_san?.nguoi_duyet || "",
+    },
+  };
+
+  return { approveState, approveReasons, approveMeta };
 };
 
 const getMappedStatus = (item, statusMap = {}) => {
@@ -125,56 +170,7 @@ const getMappedStatus = (item, statusMap = {}) => {
   return null;
 };
 
-const normalizeApproveState = (payload = {}) => ({
-  duyet_tong:
-    payload?.duyet_tong === true ||
-    payload?.duyet_tong === 1 ||
-    String(payload?.duyet_tong || "").toLowerCase() === "true",
-  duyet_tu_dong:
-    payload?.duyet_tu_dong === true ||
-    payload?.duyet_tu_dong === 1 ||
-    String(payload?.duyet_tu_dong || "").toLowerCase() === "true",
-  duyet_dem:
-    payload?.duyet_dem === true ||
-    payload?.duyet_dem === 1 ||
-    String(payload?.duyet_dem || "").toLowerCase() === "true",
-  duyet_so_san:
-    payload?.duyet_so_san === true ||
-    payload?.duyet_so_san === 1 ||
-    String(payload?.duyet_so_san || "").toLowerCase() === "true",
-});
 
-const hasApproveField = (payload = {}) =>
-  payload?.duyet_tong !== undefined ||
-  payload?.duyet_tu_dong !== undefined ||
-  payload?.duyet_dem !== undefined ||
-  payload?.duyet_so_san !== undefined;
-
-const normalizeApproveReasons = (payload = {}) => ({
-  duyet_tong: payload?.ly_do_tong || "",
-  duyet_tu_dong: payload?.ly_do_td || "",
-  duyet_dem: payload?.ly_do_dem || "",
-  duyet_so_san: payload?.ly_do_so_san || "",
-});
-
-const normalizeApproveMeta = (payload = {}) => ({
-  duyet_tong: {
-    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
-    updatedBy: payload?.nguoi_thay_doi || "",
-  },
-  duyet_tu_dong: {
-    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
-    updatedBy: payload?.nguoi_thay_doi || "",
-  },
-  duyet_dem: {
-    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
-    updatedBy: payload?.nguoi_thay_doi || "",
-  },
-  duyet_so_san: {
-    updatedAt: payload?.thoi_gian_thay_doi || payload?.updated_at || "",
-    updatedBy: payload?.nguoi_thay_doi || "",
-  },
-});
 
 const INITIAL_APPROVE_STATE = {
   duyet_tong: false,
@@ -250,26 +246,10 @@ const TruyVetModal = ({
     if (!maDk) return;
     setLoadingStatus(true);
     try {
-      const response = await getPhienHocDAT(maDk);
+      const response = await getLichSuDuyetPhienHoc(maDk);
       setStatusMap(toStatusMap(response));
-
-      const root = response?.data ?? response?.Data ?? response ?? {};
-      const list = Array.isArray(root?.phien_hoc_list)
-        ? root.phien_hoc_list
-        : Array.isArray(root)
-          ? root
-          : Array.isArray(root?.data)
-            ? root.data
-            : Array.isArray(root?.Data)
-              ? root.Data
-              : [];
-
-      const firstItem = list.find((item) => hasApproveField(item));
-      if (firstItem) {
-        setApproveState(normalizeApproveState(firstItem));
-        setApproveReasons(normalizeApproveReasons(firstItem));
-        setApproveMeta(normalizeApproveMeta(firstItem));
-      }
+    } catch (error) {
+      console.log("[TruyVetModal] fetch session status error:", error);
     } finally {
       setLoadingStatus(false);
     }
@@ -278,11 +258,11 @@ const TruyVetModal = ({
   const fetchApproveStatuses = useCallback(async () => {
     if (!maDk) return;
     try {
-      const response = await hocVienKyDAT(maDk);
-      const payload = response?.data || response?.Data || response || {};
-      setApproveState(normalizeApproveState(payload));
-      setApproveReasons(normalizeApproveReasons(payload));
-      setApproveMeta(normalizeApproveMeta(payload));
+      const response = await getHocVienDuyet(maDk);
+      const parsed = parseHocVienDuyetResponse(response);
+      setApproveState(parsed.approveState);
+      setApproveReasons(parsed.approveReasons);
+      setApproveMeta(parsed.approveMeta);
     } catch (error) {
       console.log("[TruyVetModal] fetch approve status error:", error);
     }
@@ -511,43 +491,22 @@ const TruyVetModal = ({
         approveReasons.duyet_tu_dong,
       ),
       isSoSanClass &&
-        buildCase(
-          "duyet_so_san",
-          "Thiếu quãng đường/thời gian số sàn",
-          soSanGio,
-          soSanKm,
-          18,
-          730,
-          approveState.duyet_so_san,
-          approveReasons.duyet_so_san,
-        ),
+      buildCase(
+        "duyet_so_san",
+        "Thiếu quãng đường/thời gian số sàn",
+        soSanGio,
+        soSanKm,
+        18,
+        730,
+        approveState.duyet_so_san,
+        approveReasons.duyet_so_san,
+      ),
     ].filter(Boolean);
   }, [actualTotals, yeuCauHang, approveReasons, approveState, hangDaoTao]);
 
-  // ─── Build payload cho updatePhienHocDAT ─────────────────────────────────
-  const buildSessionPayload = (item, actionStatus) => {
-    const start = item?.ThoiDiemDangNhap ? dayjs(item.ThoiDiemDangNhap) : null;
-    const end = item?.ThoiDiemDangXuat ? dayjs(item.ThoiDiemDangXuat) : null;
-    return {
-      ngay: start?.isValid() ? start.format("YYYY-MM-DD") : null,
-      bien_so: item?.BienSo || null,
-      gio_vao: start?.isValid() ? start.format("HH:mm:ss") : null,
-      gio_ra: end?.isValid() ? end.format("HH:mm:ss") : null,
-      thoi_gian: Number((toNumber(item?.TongThoiGian) / 3600).toFixed(2)),
-      tong_km: Number(toNumber(item?.TongQuangDuong).toFixed(2)),
-      ma_dk: maDk,
-      trang_thai: actionStatus,
-      nguoi_thay_doi: sessionStorage.getItem("name"),
-      phien_hoc_id: item?.ID || null,
-    };
-  };
-
   // ─── Bulk action toàn bộ phiên hợp lệ (dùng cho duyệt tổng) ─────────────
-  // Bỏ qua phiên có hard error: sai GV, sai xe, nghỉ <15p, xe tự động sai giờ
-  // Tốc độ ≤18 km/h và phiên <5p KHÔNG phải hard error → vẫn được duyệt tổng
   const handleBulkSessionAction = async (nextApproved) => {
     if (!maDk) return 0;
-    const actionStatus = nextApproved ? "DUYET" : "HUY";
 
     const targetRows = rowsWithStatus.filter((item) =>
       nextApproved ? item._status === "HUY" : item._status === "DUYET",
@@ -558,8 +517,19 @@ const TruyVetModal = ({
     setBulkActioning(true);
     try {
       for (const item of targetRows) {
-        const payload = buildSessionPayload(item, actionStatus);
-        await updatePhienHocDAT(payload);
+        const sessionId = item?.phien_hoc_id ?? item?.ID ?? item?.id;
+        if (!sessionId) continue;
+
+        const payload = {
+          trang_thai: nextApproved ? 1 : 0,
+          ly_do: nextApproved ? "Duyệt phiên học hàng loạt" : "Hủy duyệt phiên học hàng loạt",
+          nguoi_duyet:
+            sessionStorage.getItem("name") ||
+            sessionStorage.getItem("username") ||
+            "Admin",
+          ma_dk: maDk,
+        };
+        await updateDuyetPhienHoc(sessionId, payload);
       }
 
       await fetchSessionStatuses();
@@ -574,7 +544,7 @@ const TruyVetModal = ({
     } catch (error) {
       message.error(
         error?.response?.data?.message ||
-          "Cập nhập trạng thái hàng loạt thất bại.",
+        "Cập nhập trạng thái hàng loạt thất bại.",
       );
       return 0;
     } finally {
@@ -584,7 +554,6 @@ const TruyVetModal = ({
 
   const handleBulkSessionActionByType = async (type, nextApproved) => {
     if (!maDk) return 0;
-    const actionStatus = nextApproved ? "DUYET" : "HUY";
 
     const targetRows = rowsWithStatus.filter((item) => {
       if (type === "dem") {
@@ -604,13 +573,25 @@ const TruyVetModal = ({
     setBulkActioning(true);
     try {
       for (const item of targetRows) {
-        const payload = buildSessionPayload(item, actionStatus);
-        await updatePhienHocDAT(payload);
+        const sessionId = item?.phien_hoc_id ?? item?.ID ?? item?.id;
+        if (!sessionId) continue;
+
+        const payload = {
+          trang_thai: nextApproved ? 1 : 0,
+          ly_do: nextApproved
+            ? `Duyệt phiên ${type === "dem" ? "ban đêm" : "số tự động"} hàng loạt`
+            : `Hủy duyệt phiên ${type === "dem" ? "ban đêm" : "số tự động"} hàng loạt`,
+          nguoi_duyet:
+            sessionStorage.getItem("name") ||
+            sessionStorage.getItem("username") ||
+            "Admin",
+          ma_dk: maDk,
+        };
+        await updateDuyetPhienHoc(sessionId, payload);
       }
       await fetchSessionStatuses();
       message.success(
-        `Đã ${nextApproved ? "duyệt" : "hủy"} ${targetRows.length} phiên ${
-          type === "dem" ? "ban đêm" : "số tự động"
+        `Đã ${nextApproved ? "duyệt" : "hủy"} ${targetRows.length} phiên ${type === "dem" ? "ban đêm" : "số tự động"
         }.`,
       );
       return targetRows.length;
@@ -654,32 +635,37 @@ const TruyVetModal = ({
   const handleSessionAction = async (item) => {
     if (!item || !maDk) return;
 
-    const sessionId = String(item?.ID || "");
+    const sessionId = item?.phien_hoc_id ?? item?.ID ?? item?.id;
+    if (!sessionId) {
+      message.error("Không tìm thấy ID phiên học.");
+      return;
+    }
+
     const actionStatus = item?._status === "DUYET" ? "HUY" : "DUYET";
-    const payload = buildSessionPayload(item, actionStatus);
+    const nextApproved = actionStatus === "DUYET";
 
-    const sessionKeys = getSessionKeys({
-      ...item,
-      ngay: payload.ngay,
-      bien_so: payload.bien_so,
-      gio_vao: payload.gio_vao,
-      gio_ra: payload.gio_ra,
-      phien_hoc_id: payload.phien_hoc_id,
-    });
+    const payload = {
+      trang_thai: nextApproved ? 1 : 0,
+      ly_do: nextApproved ? "Duyệt phiên học" : "Hủy duyệt phiên học",
+      nguoi_duyet:
+        sessionStorage.getItem("name") ||
+        sessionStorage.getItem("username") ||
+        "Admin",
+      ma_dk: maDk,
+    };
 
-    setActioningId(sessionId);
+    setActioningId(String(sessionId));
     try {
-      await updatePhienHocDAT(payload);
-      setStatusMap((prev) => {
-        const next = { ...prev };
-        sessionKeys.forEach((key) => {
-          next[key] = actionStatus;
-        });
-        return next;
-      });
+      await updateDuyetPhienHoc(sessionId, payload);
+
+      setStatusMap((prev) => ({
+        ...prev,
+        [`id:${String(sessionId)}`]: actionStatus,
+      }));
+
       await fetchSessionStatuses();
       message.success(
-        actionStatus === "DUYET" ? "Đã duyệt phiên học." : "Đã hủy phiên học.",
+        nextApproved ? "Đã duyệt phiên học." : "Đã hủy duyệt phiên học.",
       );
     } catch (error) {
       message.error(
@@ -713,103 +699,66 @@ const TruyVetModal = ({
   };
 
   const handleSubmitConfig = async (value) => {
-    const reasonMap = {
-      duyet_tong: "ly_do_tong",
-      duyet_dem: "ly_do_dem",
-      duyet_tu_dong: "ly_do_td",
-      duyet_so_san: "ly_do_so_san",
+    const selectedApproveKey = Object.keys(payloadConfig).find((key) => key !== "ma_dk") || "";
+    if (!selectedApproveKey || !maDk) return;
+
+    const nextApproved = Boolean(payloadConfig[selectedApproveKey]);
+    const loaiDuyetMap = {
+      duyet_tong: "tong",
+      duyet_dem: "dem",
+      duyet_tu_dong: "tu_dong",
+      duyet_so_san: "so_san",
     };
+    const loaiDuyet = loaiDuyetMap[selectedApproveKey];
 
     const payload = {
-      ...payloadConfig,
-      value,
+      ma_dk: maDk,
+      loai_duyet: loaiDuyet,
+      trang_thai: nextApproved ? 1 : 0,
+      ly_do: value || null,
+      nguoi_duyet:
+        sessionStorage.getItem("name") ||
+        sessionStorage.getItem("username") ||
+        "Admin",
     };
 
-    Object.keys(reasonMap).forEach((key) => {
-      if (payloadConfig[key] !== undefined) {
-        payload[reasonMap[key]] = value;
-      }
-    });
-
-    const isDuyetTong = payloadConfig?.duyet_tong !== undefined;
-    const isDuyetDem = payloadConfig?.duyet_dem !== undefined;
-    const isDuyetTuDong = payloadConfig?.duyet_tu_dong !== undefined;
-    const isDuyetSoSan = payloadConfig?.duyet_so_san !== undefined;
+    setOpenConfigModal(false);
+    setPayloadConfig({});
 
     try {
-      if (isDuyetSoSan) {
-        const nextApproved = Boolean(payloadConfig.duyet_so_san);
-
-        setOpenConfigModal(false);
-        setPayloadConfig({});
-
-        const res = await updateDuyetTheoMaDK(payload);
+      if (loaiDuyet === "so_san") {
+        const res = await updateHocVienDuyet(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_so_san", nextApproved, value);
-          message.success("Đã duyệt số sàn thành công.");
+          message.success("Cập nhật trạng thái số sàn thành công.");
         }
-
-        setApproveLoadingKey("");
-        return;
-      }
-
-      if (isDuyetTong) {
-        const nextApproved = Boolean(payloadConfig.duyet_tong);
-
-        setOpenConfigModal(false);
-        setPayloadConfig({});
-
+      } else if (loaiDuyet === "tong") {
         await handleBulkSessionAction(nextApproved);
-
-        const res = await updateDuyetTheoMaDK(payload);
+        const res = await updateHocVienDuyet(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_tong", nextApproved, value);
-          message.success("Đã duyệt tổng thành công.");
+          message.success("Cập nhật trạng thái tổng thành công.");
         }
-
-        setApproveLoadingKey("");
-        return;
-      }
-
-      if (isDuyetDem) {
-        const nextApproved = Boolean(payloadConfig.duyet_dem);
-
-        setOpenConfigModal(false);
-        setPayloadConfig({});
-
+      } else if (loaiDuyet === "dem") {
         await handleBulkSessionActionByType("dem", nextApproved);
-
-        const res = await updateDuyetTheoMaDK(payload);
+        const res = await updateHocVienDuyet(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_dem", nextApproved, value);
-          message.success("Đã duyệt ban đêm thành công.");
+          message.success("Cập nhật trạng thái ban đêm thành công.");
         }
-
-        setApproveLoadingKey("");
-        return;
-      }
-
-      if (isDuyetTuDong) {
-        const nextApproved = Boolean(payloadConfig.duyet_tu_dong);
-
-        setOpenConfigModal(false);
-        setPayloadConfig({});
-
+      } else if (loaiDuyet === "tu_dong") {
         await handleBulkSessionActionByType("tuDong", nextApproved);
-
-        const res = await updateDuyetTheoMaDK(payload);
+        const res = await updateHocVienDuyet(payload);
         if (res?.success) {
           applyApproveSuccess("duyet_tu_dong", nextApproved, value);
-          message.success("Đã duyệt tự động thành công.");
+          message.success("Cập nhật trạng thái tự động thành công.");
         }
-
-        setApproveLoadingKey("");
-        return;
       }
     } catch (error) {
-      console.log(error);
+      console.log("[TruyVetModal] handleSubmitConfig error:", error);
+      message.error(error?.response?.data?.message || "Cập nhật thất bại.");
+    } finally {
       setApproveLoadingKey("");
-      message.error("Thất bại.");
     }
   };
 
@@ -912,19 +861,17 @@ const TruyVetModal = ({
                   return (
                     <div
                       key={item.key}
-                      className={`!flex !items-center !justify-between !gap-3 !rounded-lg !border ${
-                        item.approved
-                          ? "!border-[#b7eb8f] !bg-[#f6ffed]"
-                          : "!border-[#ffccc7] !bg-white"
-                      }`}
+                      className={`!flex !items-center !justify-between !gap-3 !rounded-lg !border ${item.approved
+                        ? "!border-[#b7eb8f] !bg-[#f6ffed]"
+                        : "!border-[#ffccc7] !bg-white"
+                        }`}
                     >
                       <div className="!text-xs px-2">
                         <div
-                          className={`!font-semibold ${
-                            item.approved
-                              ? "!text-[#389e0d]"
-                              : "!text-[#cf1322]"
-                          }`}
+                          className={`!font-semibold ${item.approved
+                            ? "!text-[#389e0d]"
+                            : "!text-[#cf1322]"
+                            }`}
                         >
                           {item.label} (
                           <span className="!text-[#8c8c8c]">{item.detail}</span>
