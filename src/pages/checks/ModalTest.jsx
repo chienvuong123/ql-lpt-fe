@@ -199,7 +199,7 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
 
   if (hangDaoTao === "B2" || hangDaoTao === "B" || hangDaoTao === "C" || hangDaoTao === "C1") {
     const soSanGio = tongGio;
-    const soSanKm = tongKm;
+    const soSanKm = tongKm - tuDongKm;
     const thieu_soSanGio = 18 - soSanGio;
     const thieu_soSanKm = 730 - soSanKm;
 
