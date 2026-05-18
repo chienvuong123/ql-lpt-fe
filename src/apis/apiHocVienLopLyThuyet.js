@@ -33,3 +33,20 @@ export const getLichSuHocVienLyThuyet = async (maDk) => {
   const response = await axios.get(`${hocVienLyThuyetBaseUrl}/${maDk}/lich-su`);
   return response.data;
 };
+
+export const exportDanhSachHocVienLyThuyet = async (enrolmentPlanIid) => {
+  const response = await axios.get(
+    `${baseURL}/ly-thuyet/hoc-vien/khoa/${enrolmentPlanIid}/export-excel`,
+    { responseType: 'blob' }
+  );
+
+  // Tạo link download tự động
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `danh-sach-hoc-vien-${enrolmentPlanIid}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};

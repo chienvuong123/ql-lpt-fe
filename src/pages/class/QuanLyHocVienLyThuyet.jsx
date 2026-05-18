@@ -23,12 +23,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   capNhatTrangThaiHocVienLyThuyet,
   capNhatTrangThaiTatCaHocVienLyThuyet,
+  exportDanhSachHocVienLyThuyet,
 } from "../../apis/apiHocVienLopLyThuyet";
 import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
 import StudentDetailModal from "./StudentDetailModal";
 import TheoryStudentDetailModal from "./student-detail/TheoryStudentDetailModal";
-import { EyeOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
@@ -94,30 +94,7 @@ const parseGhiChu = (value) => {
   }
 };
 
-const getCompletionStats = (record) => {
-  if (!record) return { soMonDat: 0, tongSoMon: 0, phanTramHoanThanh: 0 };
-  const scoreByRubrik = record?.learning?.learning_progress || [];
 
-  const monHoc = scoreByRubrik.filter((mon) => {
-    const tenMon = String(mon?.name || "");
-    return (
-      !tenMon.includes("Bảng tổng hợp") &&
-      !tenMon.includes("Điểm kiểm tra tổng hợp") &&
-      !tenMon.includes("Tổng thời gian học")
-    );
-  });
-
-  const tongSoMon = monHoc.length;
-  const soMonDat = monHoc.filter((mon) => Number(mon?.passed) === 1).length;
-  const phanTramHoanThanh =
-    tongSoMon > 0 ? Math.round((soMonDat / tongSoMon) * 100) : 0;
-
-  return {
-    soMonDat,
-    tongSoMon,
-    phanTramHoanThanh,
-  };
-};
 
 
 const getRubricResult = (record, targetName) => {
@@ -243,6 +220,25 @@ const QuanLyHocVienLyThuyet = () => {
   const [trangThaiLyThuyetOnline, setTrangThaiLyThuyetOnline] = useState(null);
   const [trangThaiDangNhap, setTrangThaiDangNhap] = useState(null);
   const [locBatThuong, setLocBatThuong] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (!enrolmentPlanIid) {
+      message.warning("Vui lòng chọn khóa học để xuất Excel.");
+      return;
+    }
+    setIsExportingExcel(true);
+    try {
+      await exportDanhSachHocVienLyThuyet(enrolmentPlanIid);
+      message.success("Xuất Excel danh sách học viên lý thuyết thành công.");
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || error?.message || "Có lỗi xảy ra khi xuất Excel."
+      );
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
 
   const keywordInputRef = useRef(null);
   const theoryModalRef = useRef(null);
@@ -360,10 +356,7 @@ const QuanLyHocVienLyThuyet = () => {
     },
   });
 
-  const handleOpenStudentDetail = (record) => {
-    const detailData = buildStudentDetailData(record);
-    studentModalRef.current?.open(detailData);
-  };
+
 
 
   const handleOpenTheoryDetail = (record) => {
@@ -1110,6 +1103,17 @@ const QuanLyHocVienLyThuyet = () => {
               onClick={handleConfirmSubmitChonTatCa}
             >
               Duyệt học viên đã chọn
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type="primary"
+              className="!bg-[#1d8f50] !border-[#1d8f50]"
+              loading={isExportingExcel}
+              disabled={!enrolmentPlanIid || isLoadingHocVien}
+              onClick={handleExportExcel}
+            >
+              Xuất Excel
             </Button>
           </Col>
         </Row>
