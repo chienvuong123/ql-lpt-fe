@@ -5,7 +5,7 @@ import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
 } from "./DieuKienKiemTra";
-import { getPhienHocDATPublic, LoTringOnlinePublic } from "../../apis/apiDeploy";
+import { getHocVienDuyetPublic, getLichSuDuyetPhienHocPublic, LoTringOnlinePublic } from "../../apis/apiDeploy";
 
 const { Text } = Typography;
 
@@ -78,6 +78,12 @@ const toStatusMap = (response) => {
           : [];
 
   return list.reduce((map, item) => {
+    if (item?.phien_hoc_dat_id !== undefined) {
+      const status = item.trang_thai === 1 ? "DUYET" : "HUY";
+      map[`id:${String(item.phien_hoc_dat_id)}`] = status;
+      return map;
+    }
+
     const status = normalizeStatus(
       item?.trang_thai ?? item?.TrangThai ?? item?.status,
     );
@@ -100,24 +106,18 @@ const getMappedStatus = (item, statusMap = {}) => {
   return null;
 };
 
-const normalizeApproveState = (payload = {}) => ({
-  duyet_tong:
-    payload?.duyet_tong === true ||
-    payload?.duyet_tong === 1 ||
-    String(payload?.duyet_tong || "").toLowerCase() === "true",
-  duyet_tu_dong:
-    payload?.duyet_tu_dong === true ||
-    payload?.duyet_tu_dong === 1 ||
-    String(payload?.duyet_tu_dong || "").toLowerCase() === "true",
-  duyet_dem:
-    payload?.duyet_dem === true ||
-    payload?.duyet_dem === 1 ||
-    String(payload?.duyet_dem || "").toLowerCase() === "true",
-  duyet_so_san:
-    payload?.duyet_so_san === true ||
-    payload?.duyet_so_san === 1 ||
-    String(payload?.duyet_so_san || "").toLowerCase() === "true",
-});
+const parseHocVienDuyetResponse = (response) => {
+  const data = response?.data || response?.Data || response || {};
+
+  const approveState = {
+    duyet_tong: data.tong?.trang_thai === 1,
+    duyet_tu_dong: data.tu_dong?.trang_thai === 1,
+    duyet_dem: data.dem?.trang_thai === 1,
+    duyet_so_san: data.so_san?.trang_thai === 1,
+  };
+
+  return { approveState };
+};
 
 const INITIAL_APPROVE_STATE = {
   duyet_tong: false,
@@ -288,35 +288,23 @@ const ModalTest = ({
     if (!maDk) return;
     setLoadingStatus(true);
     try {
-      const response = await getPhienHocDATPublic(maDk);
+      const response = await getLichSuDuyetPhienHocPublic(maDk);
       setStatusMap(toStatusMap(response));
-
-      const root = response?.data ?? response?.Data ?? response ?? {};
-      const list = Array.isArray(root?.phien_hoc_list)
-        ? root.phien_hoc_list
-        : Array.isArray(root)
-          ? root
-          : Array.isArray(root?.data)
-            ? root.data
-            : Array.isArray(root?.Data)
-              ? root.Data
-              : [];
-
-      const firstItem = list.find(
-        (item) =>
-          item?.duyet_tong !== undefined ||
-          item?.duyet_tu_dong !== undefined ||
-          item?.duyet_dem !== undefined ||
-          item?.duyet_so_san !== undefined,
-      );
-
-      if (firstItem) {
-        setApproveState(normalizeApproveState(firstItem));
-      }
     } catch {
       // silent
     } finally {
       setLoadingStatus(false);
+    }
+  }, [maDk]);
+
+  const fetchApproveStatuses = useCallback(async () => {
+    if (!maDk) return;
+    try {
+      const response = await getHocVienDuyetPublic(maDk);
+      const parsed = parseHocVienDuyetResponse(response);
+      setApproveState(parsed.approveState);
+    } catch {
+      // silent
     }
   }, [maDk]);
 
@@ -325,9 +313,10 @@ const ModalTest = ({
     setStatusMap({});
     setApproveState(INITIAL_APPROVE_STATE);
     setLoTrinhResults([]);
+    fetchApproveStatuses();
     fetchSessionStatuses();
     fetchLoTrinh();
-  }, [open, fetchSessionStatuses, fetchLoTrinh]);
+  }, [open, fetchSessionStatuses, fetchApproveStatuses, fetchLoTrinh]);
 
   const rowsWithStatus = useMemo(() => {
     const sorted = [...rows].sort(

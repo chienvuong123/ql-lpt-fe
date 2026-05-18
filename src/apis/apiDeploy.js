@@ -139,3 +139,13 @@ export const getCheckConfigsPublic = async () => {
   const response = await axios.get(`${url}check-configs`);
   return response;
 };
+
+export const getLichSuDuyetPhienHocPublic = async (ma_dk) => {
+  const response = await axios.get(`${url}phien-hoc-duyet/${ma_dk}`);
+  return response.data;
+};
+
+export const getHocVienDuyetPublic = async (ma_dk) => {
+  const response = await axios.get(`${url}hoc-vien-duyet/${ma_dk}`);
+  return response.data;
+};
