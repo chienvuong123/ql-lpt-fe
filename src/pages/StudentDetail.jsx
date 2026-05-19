@@ -295,6 +295,34 @@ const StudentDetail = ({ data }) => {
     return studentMap.get(code) || null;
   }, [studentMap, admissionCode]);
 
+  const teacherName = useMemo(() => {
+    if (hocVienCheckData?.data?.gv_dat) {
+      return hocVienCheckData.data.gv_dat;
+    }
+    if (annualStudentInfo?.giaoVien) {
+      return annualStudentInfo.giaoVien;
+    }
+    if (data?.gv_dat) {
+      return data.gv_dat;
+    }
+    if (data?.giao_vien) {
+      return data.giao_vien;
+    }
+    if (data?.giaoVien) {
+      return data.giaoVien;
+    }
+    if (data?.giao_vien_theo_xe?.giao_vien) {
+      return data.giao_vien_theo_xe.giao_vien;
+    }
+    if (dataSource && dataSource.length > 0) {
+      const firstSession = dataSource[0];
+      if (firstSession?.HoTenGV) {
+        return firstSession.HoTenGV;
+      }
+    }
+    return "-";
+  }, [hocVienCheckData, annualStudentInfo, data, dataSource]);
+
   const bienSoTuDong = useMemo(() => {
     return getBienSoTuDong(dataSource, annualStudentInfo);
   }, [dataSource, annualStudentInfo]);
@@ -637,16 +665,14 @@ const StudentDetail = ({ data }) => {
                     </Text>
                   </Col>
                 </Row>
-                {dataSource.length > 0 && (
-                  <Row gutter={[8, 8]}>
-                    <Col span={5}>
-                      <Text>GV DAT:</Text>
-                    </Col>
-                    <Col span={16}>
-                      <Text strong>{annualStudentInfo?.giaoVien}</Text>
-                    </Col>
-                  </Row>
-                )}
+                <Row gutter={[8, 8]}>
+                  <Col span={5}>
+                    <Text>GV DAT:</Text>
+                  </Col>
+                  <Col span={16}>
+                    <Text strong>{teacherName}</Text>
+                  </Col>
+                </Row>
 
                 <Row gutter={[8, 8]}>
                   <Col span={5}>

@@ -48,3 +48,8 @@ export const getHocVienByMaKhoaSql = async (params = {}) => {
     const response = await axios.get(`${baseURL}/sync/students`, { params });
     return response.data;
 };
+
+export const kiemTraDongBoSql = async (data) => {
+    const response = await axios.post(`${baseURL}/sync/kiem-tra-dong-bo`, data);
+    return response.data;
+};

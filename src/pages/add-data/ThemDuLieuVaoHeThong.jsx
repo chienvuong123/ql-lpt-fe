@@ -106,7 +106,7 @@ const ThemDuLieuVaoHeThong = () => {
         </h1>
       </div>
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={6}>
+        {/* <Col xs={24} md={6}>
           <Card className="h-full" title="Thêm dữ liệu xe, giáo viên">
             <span className="block mb-4 text-gray-500">
               Nhập dữ liệu từ file Excel vào hệ thống
@@ -127,7 +127,7 @@ const ThemDuLieuVaoHeThong = () => {
               </Button>
             </Upload>
           </Card>
-        </Col>
+        </Col> */}
 
         <Col xs={24} md={6}>
           <Card className="h-full" title="Thêm đăng kí xe, giáo viên">
@@ -143,9 +143,8 @@ const ThemDuLieuVaoHeThong = () => {
               <Button
                 icon={<UploadOutlined />}
                 loading={mutationSyncXeGiaoVien.isPending}
-                className="!w-full"
+                className="!w-full !mt-10"
                 type="primary"
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
               >
                 {mutationSyncXeGiaoVien.isPending ? "Đang xử lý..." : "Đồng bộ SQL"}
               </Button>

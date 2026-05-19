@@ -4,8 +4,9 @@ import { ReloadOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { DanhSachGiaoVien } from "../../apis/giaoVien";
 import { DanhSachKhoaHoc } from "../../apis/hocVien";
-import { getHocVienByMaKhoaSql } from "../../apis/apiSynch";
+import { getHocVienByMaKhoaSql, kiemTraDongBoSql } from "../../apis/apiSynch";
 import { DanhSachLoaiXe, DanhSachXe, DanhSachXeOnline } from "../../apis/xe";
+import KiemTraDongBoModal from "./KiemTraDongBoModal";
 
 message.config({
   top: 100,
@@ -23,8 +24,13 @@ export default function DongBoHocVienVaoXe() {
   const hasInitializedCourse = useRef(false);
   const [selectedStudentKeys, setSelectedStudentKeys] = useState([]);
   const [selectedTeacherKeys, setSelectedTeacherKeys] = useState([]);
+  const [selectedTeacher, setSelectedTeacher] = useState(undefined);
   const [selectedCarKeys, setSelectedCarKeys] = useState([]);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
+  const [isVerifyModalVisible, setIsVerifyModalVisible] = useState(false);
+  const [verifyData, setVerifyData] = useState([]);
+  const [isVerifyLoading, setIsVerifyLoading] = useState(false);
+  const [isSyncingFromModal, setIsSyncingFromModal] = useState(false);
 
   const {
     data: dataCart = {},
@@ -75,6 +81,8 @@ export default function DongBoHocVienVaoXe() {
       getHocVienByMaKhoaSql({
         search: searchParams.ho_ten || undefined,
         ma_khoa: searchParams.ma_khoa || undefined,
+        giao_vien: searchParams.giao_vien || undefined,
+        nam_sinh_gv: searchParams.nam_sinh_gv || undefined,
       }),
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -172,32 +180,23 @@ export default function DongBoHocVienVaoXe() {
     }));
   }, [dataStudents]);
 
+  useEffect(() => {
+    const newKeys = studentData.map((s) => s.MaDK).filter(Boolean);
+    const isSame =
+      newKeys.length === selectedStudentKeys.length &&
+      newKeys.every((val, idx) => val === selectedStudentKeys[idx]);
+
+    if (!isSame) {
+      setSelectedStudentKeys(newKeys);
+    }
+  }, [studentData, selectedStudentKeys]);
+
   const carList = useMemo(
     () => (Array.isArray(dataCart?.data?.Data) ? dataCart.data.Data : []),
     [dataCart],
   );
 
-  const isAllStudentsSelected = useMemo(() => {
-    if (studentData.length === 0 || selectedStudentKeys.length === 0) {
-      return false;
-    }
 
-    const allStudentKeys = studentData
-      .map((student) => student.MaDK)
-      .filter(Boolean);
-
-    return (
-      allStudentKeys.length > 0 &&
-      selectedStudentKeys.length === allStudentKeys.length &&
-      allStudentKeys.every((key) => selectedStudentKeys.includes(key))
-    );
-  }, [studentData, selectedStudentKeys]);
-
-  const selectedStudentNames = useMemo(() => {
-    return studentData
-      .filter((student) => selectedStudentKeys.includes(student.MaDK))
-      .map((student) => student.HoTen || student.MaDK);
-  }, [studentData, selectedStudentKeys]);
 
   const selectedTeacherNames = useMemo(() => {
     return teacherData
@@ -300,8 +299,19 @@ export default function DongBoHocVienVaoXe() {
       }
     }
 
+    if (selectedTeacher) {
+      const teacher = teacherData.find((t) => t.MaGV === selectedTeacher);
+      if (teacher) {
+        next.giao_vien = teacher.HoTen || teacher.MaGV;
+        const yearOfBirth = teacher.NgaySinh
+          ? new Date(teacher.NgaySinh).getFullYear()
+          : null;
+        next.nam_sinh_gv = yearOfBirth ? String(yearOfBirth) : undefined;
+      }
+    }
+
     setSearchParams(next);
-  }, [searchText, selectedKhoaHoc, khoaHocOptions]);
+  }, [searchText, selectedKhoaHoc, khoaHocOptions, selectedTeacher, teacherData]);
 
   const handleSearchChange = useCallback((value) => {
     setSearchText(value);
@@ -333,12 +343,50 @@ export default function DongBoHocVienVaoXe() {
       }
     }
 
+    if (selectedTeacher) {
+      const teacher = teacherData.find((t) => t.MaGV === selectedTeacher);
+      if (teacher) {
+        next.giao_vien = teacher.HoTen || teacher.MaGV;
+        const yearOfBirth = teacher.NgaySinh
+          ? new Date(teacher.NgaySinh).getFullYear()
+          : null;
+        next.nam_sinh_gv = yearOfBirth ? String(yearOfBirth) : undefined;
+      }
+    }
+
     setSearchParams(next);
-  }, [searchText, khoaHocOptions]);
+  }, [searchText, khoaHocOptions, selectedTeacher, teacherData]);
 
   const handleTeacherChange = useCallback((value) => {
-    setSelectedTeacherKeys(value || []);
-  }, []);
+    setSelectedTeacher(value || undefined);
+    setSelectedTeacherKeys(value ? [value] : []);
+
+    const next = {};
+    const trimmed = searchText.trim();
+    if (trimmed.length >= 2) {
+      next.ho_ten = trimmed;
+    }
+
+    if (selectedKhoaHoc) {
+      const selectedOption = khoaHocOptions.find(o => o.value === selectedKhoaHoc);
+      if (selectedOption) {
+        next.ma_khoa = selectedOption.value;
+      }
+    }
+
+    if (value) {
+      const teacher = teacherData.find((t) => t.MaGV === value);
+      if (teacher) {
+        next.giao_vien = teacher.HoTen || teacher.MaGV;
+        const yearOfBirth = teacher.NgaySinh
+          ? new Date(teacher.NgaySinh).getFullYear()
+          : null;
+        next.nam_sinh_gv = yearOfBirth ? String(yearOfBirth) : undefined;
+      }
+    }
+
+    setSearchParams(next);
+  }, [searchText, selectedKhoaHoc, khoaHocOptions, teacherData]);
 
   const carData = useMemo(() => {
     if (!debouncedSearchCar) {
@@ -401,23 +449,86 @@ export default function DongBoHocVienVaoXe() {
       return;
     }
 
+    if (hasStudents) {
+      setIsVerifyModalVisible(true);
+      setIsVerifyLoading(true);
+      setVerifyData([]);
+
+      try {
+        const payload = selectedStudentKeys.map((key) => {
+          const student = studentData.find((s) => s.MaDK === key);
+          return {
+            ma_dk: key,
+            khoa: student?.ten_khoa || student?.ma_khoa || "",
+          };
+        });
+
+        const res = await kiemTraDongBoSql(payload);
+        if (res?.success) {
+          setVerifyData(res.data || []);
+        } else {
+          message.error(res?.message || "Kiểm tra điều kiện đồng bộ thất bại!");
+          setIsVerifyModalVisible(false);
+        }
+      } catch (error) {
+        console.error("Lỗi kiểm tra đồng bộ:", error);
+        message.error("Có lỗi xảy ra khi kiểm tra điều kiện đồng bộ!");
+        setIsVerifyModalVisible(false);
+      } finally {
+        setIsVerifyLoading(false);
+      }
+      return;
+    }
+
+    // Direct sync for teacher-only selection
+    const hide = message.loading("Đang tiến hành đồng bộ...", 0);
+    try {
+      const dsBienSo = selectedCarKeys.join(",");
+      await DanhSachXe({
+        dsBienSo,
+        dsMaGV: selectedTeacherKeys.join(","),
+      });
+
+      const teacherLabel =
+        selectedTeacherNames.length > 0
+          ? selectedTeacherNames.join(", ")
+          : selectedTeacherKeys.join(", ");
+
+      const carLabel =
+        selectedCarNames.length > 0
+          ? selectedCarNames.join(", ")
+          : selectedCarKeys.join(", ");
+
+      message.success(`Đồng bộ giáo viên ${teacherLabel} vào xe ${carLabel} thành công!`, 3);
+    } catch (error) {
+      console.error("Lỗi API:", error);
+      message.error("Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại!");
+    } finally {
+      hide();
+    }
+  };
+
+  const handleConfirmSync = async (studentKeysToSync) => {
+    setIsSyncingFromModal(true);
     const hide = message.loading("Đang tiến hành đồng bộ...", 0);
 
     try {
       const dsBienSo = selectedCarKeys.join(",");
       const apiCalls = [];
 
-      if (hasStudents) {
-        const selectedOption = khoaHocOptions.find((k) => k.value === selectedKhoaHoc);
-        apiCalls.push(
-          DanhSachXe({
-            dsBienSo,
-            idkhoahoc: selectedOption ? selectedOption.id : selectedKhoaHoc,
-            dsMaDk: isAllStudentsSelected ? "" : selectedStudentKeys.join(","),
-          })
-        );
-      }
+      const shouldSyncWholeCourse =
+        studentKeysToSync.length === studentData.length && !selectedTeacher;
 
+      const selectedOption = khoaHocOptions.find((k) => k.value === selectedKhoaHoc);
+      apiCalls.push(
+        DanhSachXe({
+          dsBienSo,
+          idkhoahoc: selectedOption ? selectedOption.id : selectedKhoaHoc,
+          dsMaDk: shouldSyncWholeCourse ? "" : studentKeysToSync.join(","),
+        })
+      );
+
+      const hasTeachers = selectedTeacherKeys.length > 0;
       if (hasTeachers) {
         apiCalls.push(
           DanhSachXe({
@@ -432,11 +543,15 @@ export default function DongBoHocVienVaoXe() {
       const khoaHocName =
         khoaHocOptions.find((k) => k.value === selectedKhoaHoc)?.label || "";
 
-      const studentLabel = isAllStudentsSelected
+      const resolvedStudentNames = studentData
+        .filter((student) => studentKeysToSync.includes(student.MaDK))
+        .map((student) => student.HoTen || student.MaDK);
+
+      const studentLabel = shouldSyncWholeCourse
         ? `khóa ${khoaHocName}`
-        : selectedStudentNames.length > 0
-          ? selectedStudentNames.join(", ")
-          : selectedStudentKeys.join(", ");
+        : resolvedStudentNames.length > 0
+          ? resolvedStudentNames.join(", ")
+          : studentKeysToSync.join(", ");
 
       const teacherLabel =
         selectedTeacherNames.length > 0
@@ -449,20 +564,20 @@ export default function DongBoHocVienVaoXe() {
           : selectedCarKeys.join(", ");
 
       let successMsg = "Đồng bộ ";
-      if (hasStudents && hasTeachers) {
+      if (hasTeachers) {
         successMsg += `học viên ${studentLabel}, giáo viên ${teacherLabel} vào xe ${carLabel} thành công!`;
-      } else if (hasStudents) {
+      } else {
         successMsg += `học viên ${studentLabel} vào xe ${carLabel} thành công!`;
-      } else if (hasTeachers) {
-        successMsg += `giáo viên ${teacherLabel} vào xe ${carLabel} thành công!`;
       }
 
       message.success(successMsg, 3);
+      setIsVerifyModalVisible(false);
     } catch (error) {
       console.error("Lỗi API:", error);
       message.error("Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại!");
     } finally {
       hide();
+      setIsSyncingFromModal(false);
     }
   };
 
@@ -498,15 +613,10 @@ export default function DongBoHocVienVaoXe() {
                   placeholder="Chọn giáo viên"
                   size="middle"
                   className="w-full"
-                  value={
-                    selectedTeacherKeys.length > 0
-                      ? selectedTeacherKeys
-                      : undefined
-                  }
+                  value={selectedTeacher}
                   onChange={handleTeacherChange}
                   allowClear
                   showSearch
-                  mode="multiple"
                   loading={isLoadingTeachers}
                   onSearch={handleTeacherSearch}
                   filterOption={false}
@@ -714,6 +824,15 @@ export default function DongBoHocVienVaoXe() {
       <div className="text-center text-gray-500 text-sm mt-12">
         © 2026 Lập Phương Thành. All rights reserved.
       </div>
+
+      <KiemTraDongBoModal
+        visible={isVerifyModalVisible}
+        onClose={() => setIsVerifyModalVisible(false)}
+        data={verifyData}
+        loading={isVerifyLoading}
+        syncLoading={isSyncingFromModal}
+        onConfirmSync={handleConfirmSync}
+      />
     </div>
   );
 }
