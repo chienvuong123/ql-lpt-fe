@@ -61,8 +61,8 @@ const CABIN_RULES = [
     key: "doi_nui",
     label: "Bài lái xe đồi núi",
     keywords: ["bai lai xe doi nui", "doi nui"],
-    requiredMinutes: 10,
-    passMinutes: 10,
+    requiredMinutes: 3,
+    passMinutes: 3,
   },
   {
     key: "pha",

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Table, Button, Typography } from "antd";
-import { ArrowRightOutlined, DownCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, DownCircleFilled, CloseCircleFilled } from "@ant-design/icons";
 
 const { Text, Title } = Typography;
 
@@ -74,8 +74,8 @@ export default function KiemTraDongBoModal({
       render: (status) => {
         const isPassed = status === "dat";
         return isPassed
-          ? <DownCircleOutlined style={{ color: "green", fontSize: 20 }} />
-          : <CloseCircleOutlined style={{ color: "red", fontSize: 20 }} />;
+          ? <DownCircleFilled className="!text-blue-500 text-[20px]" />
+          : <CloseCircleFilled className="!text-red-500 text-[20px]" />;
       },
     },
   ];
