@@ -81,8 +81,6 @@ export default function DongBoHocVienVaoXe() {
       getHocVienByMaKhoaSql({
         search: searchParams.ho_ten || undefined,
         ma_khoa: searchParams.ma_khoa || undefined,
-        giao_vien: searchParams.giao_vien || undefined,
-        nam_sinh_gv: searchParams.nam_sinh_gv || undefined,
       }),
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -299,19 +297,8 @@ export default function DongBoHocVienVaoXe() {
       }
     }
 
-    if (selectedTeacher) {
-      const teacher = teacherData.find((t) => t.MaGV === selectedTeacher);
-      if (teacher) {
-        next.giao_vien = teacher.HoTen || teacher.MaGV;
-        const yearOfBirth = teacher.NgaySinh
-          ? new Date(teacher.NgaySinh).getFullYear()
-          : null;
-        next.nam_sinh_gv = yearOfBirth ? String(yearOfBirth) : undefined;
-      }
-    }
-
     setSearchParams(next);
-  }, [searchText, selectedKhoaHoc, khoaHocOptions, selectedTeacher, teacherData]);
+  }, [searchText, selectedKhoaHoc, khoaHocOptions]);
 
   const handleSearchChange = useCallback((value) => {
     setSearchText(value);
@@ -343,50 +330,13 @@ export default function DongBoHocVienVaoXe() {
       }
     }
 
-    if (selectedTeacher) {
-      const teacher = teacherData.find((t) => t.MaGV === selectedTeacher);
-      if (teacher) {
-        next.giao_vien = teacher.HoTen || teacher.MaGV;
-        const yearOfBirth = teacher.NgaySinh
-          ? new Date(teacher.NgaySinh).getFullYear()
-          : null;
-        next.nam_sinh_gv = yearOfBirth ? String(yearOfBirth) : undefined;
-      }
-    }
-
     setSearchParams(next);
-  }, [searchText, khoaHocOptions, selectedTeacher, teacherData]);
+  }, [searchText, khoaHocOptions]);
 
   const handleTeacherChange = useCallback((value) => {
     setSelectedTeacher(value || undefined);
     setSelectedTeacherKeys(value ? [value] : []);
-
-    const next = {};
-    const trimmed = searchText.trim();
-    if (trimmed.length >= 2) {
-      next.ho_ten = trimmed;
-    }
-
-    if (selectedKhoaHoc) {
-      const selectedOption = khoaHocOptions.find(o => o.value === selectedKhoaHoc);
-      if (selectedOption) {
-        next.ma_khoa = selectedOption.value;
-      }
-    }
-
-    if (value) {
-      const teacher = teacherData.find((t) => t.MaGV === value);
-      if (teacher) {
-        next.giao_vien = teacher.HoTen || teacher.MaGV;
-        const yearOfBirth = teacher.NgaySinh
-          ? new Date(teacher.NgaySinh).getFullYear()
-          : null;
-        next.nam_sinh_gv = yearOfBirth ? String(yearOfBirth) : undefined;
-      }
-    }
-
-    setSearchParams(next);
-  }, [searchText, selectedKhoaHoc, khoaHocOptions, teacherData]);
+  }, []);
 
   const carData = useMemo(() => {
     if (!debouncedSearchCar) {
@@ -455,15 +405,10 @@ export default function DongBoHocVienVaoXe() {
       setVerifyData([]);
 
       try {
-        const payload = selectedStudentKeys.map((key) => {
-          const student = studentData.find((s) => s.MaDK === key);
-          return {
-            ma_dk: key,
-            khoa: student?.ten_khoa || student?.ma_khoa || "",
-          };
-        });
+        const selectedOption = khoaHocOptions.find((k) => k.value === selectedKhoaHoc);
+        const khoaValue = selectedOption ? selectedOption.label : selectedKhoaHoc;
 
-        const res = await kiemTraDongBoSql(payload);
+        const res = await kiemTraDongBoSql({ khoa: khoaValue });
         if (res?.success) {
           setVerifyData(res.data || []);
         } else {
@@ -516,15 +461,12 @@ export default function DongBoHocVienVaoXe() {
       const dsBienSo = selectedCarKeys.join(",");
       const apiCalls = [];
 
-      const shouldSyncWholeCourse =
-        studentKeysToSync.length === studentData.length && !selectedTeacher;
-
       const selectedOption = khoaHocOptions.find((k) => k.value === selectedKhoaHoc);
       apiCalls.push(
         DanhSachXe({
           dsBienSo,
           idkhoahoc: selectedOption ? selectedOption.id : selectedKhoaHoc,
-          dsMaDk: shouldSyncWholeCourse ? "" : studentKeysToSync.join(","),
+          dsMaDk: studentKeysToSync.join(","),
         })
       );
 
@@ -540,37 +482,13 @@ export default function DongBoHocVienVaoXe() {
 
       await Promise.all(apiCalls);
 
-      const khoaHocName =
-        khoaHocOptions.find((k) => k.value === selectedKhoaHoc)?.label || "";
+      const synchronizedCount = studentKeysToSync.length;
+      const excludedCount = verifyData.length - synchronizedCount;
 
-      const resolvedStudentNames = studentData
-        .filter((student) => studentKeysToSync.includes(student.MaDK))
-        .map((student) => student.HoTen || student.MaDK);
-
-      const studentLabel = shouldSyncWholeCourse
-        ? `khóa ${khoaHocName}`
-        : resolvedStudentNames.length > 0
-          ? resolvedStudentNames.join(", ")
-          : studentKeysToSync.join(", ");
-
-      const teacherLabel =
-        selectedTeacherNames.length > 0
-          ? selectedTeacherNames.join(", ")
-          : selectedTeacherKeys.join(", ");
-
-      const carLabel =
-        selectedCarNames.length > 0
-          ? selectedCarNames.join(", ")
-          : selectedCarKeys.join(", ");
-
-      let successMsg = "Đồng bộ ";
-      if (hasTeachers) {
-        successMsg += `học viên ${studentLabel}, giáo viên ${teacherLabel} vào xe ${carLabel} thành công!`;
-      } else {
-        successMsg += `học viên ${studentLabel} vào xe ${carLabel} thành công!`;
-      }
-
-      message.success(successMsg, 3);
+      message.success(
+        `Đồng bộ thành công! Đã đồng bộ ${synchronizedCount} học viên và đã loại ${excludedCount} học viên ra.`,
+        5
+      );
       setIsVerifyModalVisible(false);
     } catch (error) {
       console.error("Lỗi API:", error);

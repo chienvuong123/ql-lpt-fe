@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Table, Button, Typography } from "antd";
-import { ArrowRightOutlined, DownCircleFilled, CloseCircleFilled } from "@ant-design/icons";
+import { ArrowRightOutlined, DownCircleFilled, CloseCircleFilled, CheckCircleFilled } from "@ant-design/icons";
 
 const { Text, Title } = Typography;
 
@@ -14,13 +14,17 @@ export default function KiemTraDongBoModal({
 }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
-  // Initialize selectedRowKeys with all student ma_dk when modal opens or data changes
+  // Separate passed and failed students
+  const datStudents = data.filter((item) => item.trang_thai === "dat");
+  const chuaDatStudents = data.filter((item) => item.trang_thai !== "dat");
+
+  // Initialize selectedRowKeys (only manually checked failed students) to empty when modal opens
   useEffect(() => {
-    if (visible && Array.isArray(data)) {
+    if (visible) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedRowKeys(data.map((item) => item.ma_dk).filter(Boolean));
+      setSelectedRowKeys([]);
     }
-  }, [visible, data]);
+  }, [visible]);
 
   const columns = [
     {
@@ -81,7 +85,13 @@ export default function KiemTraDongBoModal({
   ];
 
   const handleSyncClick = () => {
-    if (selectedRowKeys.length === 0) {
+    // Sync automatically all "dat" students plus manually selected "chua_dat" students
+    const finalSyncKeys = [
+      ...datStudents.map((item) => item.ma_dk).filter(Boolean),
+      ...selectedRowKeys,
+    ];
+
+    if (finalSyncKeys.length === 0) {
       Modal.warning({
         title: "Chưa chọn học viên",
         content: "Vui lòng tích chọn ít nhất 1 học viên để tiến hành đồng bộ!",
@@ -89,13 +99,15 @@ export default function KiemTraDongBoModal({
       });
       return;
     }
-    onConfirmSync(selectedRowKeys);
+    onConfirmSync(finalSyncKeys);
   };
+
+  const totalToSyncCount = datStudents.length + selectedRowKeys.length;
 
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2 ">
+        <div className="flex items-center gap-2">
           <Title level={5} className="!m-0 text-gray-900 font-bold">
             Kiểm Tra Điều Kiện Đồng Bộ DAT
           </Title>
@@ -117,31 +129,45 @@ export default function KiemTraDongBoModal({
           disabled={loading || data.length === 0}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0 shadow-md font-semibold"
         >
-          Xác nhận Đồng bộ ({selectedRowKeys.length})
+          Xác nhận Đồng bộ ({totalToSyncCount})
         </Button>,
       ]}
       width={950}
       centered
       destroyOnClose
     >
-      <Table
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        rowKey="ma_dk"
-        pagination={false}
-        size="small"
-        bordered
-        className="my-6"
-        rowSelection={{
-          type: "checkbox",
-          selectedRowKeys,
-          onChange: (keys) => setSelectedRowKeys(keys),
-        }}
-        locale={{
-          emptyText: loading ? "Đang truy vấn dữ liệu..." : "Không có học viên nào cần kiểm tra",
-        }}
-      />
+      {chuaDatStudents.length > 0 ? (
+        <Table
+          columns={columns}
+          dataSource={chuaDatStudents}
+          loading={loading}
+          rowKey="ma_dk"
+          pagination={false}
+          size="small"
+          bordered
+          className="my-6"
+          rowSelection={{
+            type: "checkbox",
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys),
+          }}
+          locale={{
+            emptyText: loading ? "Đang truy vấn dữ liệu..." : "Không có học viên nào cần kiểm tra",
+          }}
+        />
+      ) : (
+        !loading && data.length > 0 && (
+          <div className="text-center py-10 px-4 bg-green-50/50 rounded-xl border border-green-100 my-6">
+            <CheckCircleFilled className="!text-green-500 text-5xl mb-3 block mx-auto" />
+            <Title level={4} className="!text-green-800 !m-0 font-bold">
+              Tất cả học viên đã đủ điều kiện để đồng bộ xuống thiết bị
+            </Title>
+            <Text className="text-gray-500 block mt-1">
+              Không phát hiện học viên nào chưa đạt điều kiện học Cabin của khóa.
+            </Text>
+          </div>
+        )
+      )}
     </Modal>
   );
 }
