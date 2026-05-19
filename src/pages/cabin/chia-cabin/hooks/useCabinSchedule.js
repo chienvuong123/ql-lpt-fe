@@ -585,19 +585,36 @@ export const useCabinSchedule = (allStudents) => {
         });
 
         // Bước 3: Điền lịch tuần tự theo khối khóa học (tính từ Thứ 2)
-        let slotIdx = 0;
         for (const courseName of config.courses) {
           const quota = quotas[courseName];
           let filledForThisCourse = 0;
 
           // Điền cho đến khi hết quota hoặc hết học viên trong pool của khóa đó
-          while (filledForThisCourse < quota && poolsByCourse[courseName].length > 0 && slotIdx < emptySlots.length) {
-            const student = poolsByCourse[courseName].shift();
-            const { key } = emptySlots[slotIdx++];
+          while (filledForThisCourse < quota && poolsByCourse[courseName].length > 0) {
+            const student = poolsByCourse[courseName][0];
+            const isStudentMakeup = student.is_makeup === 1;
 
-            if (!newSchedule[key]) newSchedule[key] = { cabins: {} };
-            newSchedule[key].cabins[cabinNum] = [student.ma_dk];
-            totalAssignedThisRun.add(student.ma_dk);
+            const foundSlotIndex = emptySlots.findIndex((slot) => {
+              if (slot.filled) return false;
+              const [di, sn] = slot.key.split("-").map(Number);
+              const sessions = getSessions(di);
+              const session = sessions.find((s) => s?.num === sn);
+              const isSlotMakeup = session ? isMakeupSlot(di, session) : false;
+              return isSlotMakeup === isStudentMakeup;
+            });
+
+            if (foundSlotIndex === -1) {
+              // Bỏ qua học viên nếu không tìm được slot trống có cùng trạng thái học bù/chính khóa
+              poolsByCourse[courseName].shift();
+              continue;
+            }
+
+            const slot = emptySlots[foundSlotIndex];
+            slot.filled = true;
+
+            const studentToAssign = poolsByCourse[courseName].shift();
+            newSchedule[slot.key].cabins[cabinNum] = [studentToAssign.ma_dk];
+            totalAssignedThisRun.add(studentToAssign.ma_dk);
             studentsAssignedCount++;
             filledForThisCourse++;
           }
@@ -784,7 +801,7 @@ export const useCabinSchedule = (allStudents) => {
                   ma_khoa: student.khoa_hoc,
                   giao_vien: student.giao_vien,
                   is_locked: isLocked,
-                  is_makeup: false,
+                  is_makeup: student.is_makeup === 1 || student.is_makeup === true,
                   is_thieu_gio: maDks.length > 1,
                   thoi_gian_hoc: globalConfig.duration,
                   thoi_gian_tong: globalConfig.duration,

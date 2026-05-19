@@ -233,6 +233,11 @@ const WaitingStudentList = ({
                       <Tag className="!text-[10px] !px-1 !py-0 !m-0 bg-gray-100 text-gray-500 border-none">
                         Chưa có dữ liệu
                       </Tag>
+                      {student.is_makeup === 1 && (
+                        <Tag color="warning" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
+                          Học bù
+                        </Tag>
+                      )}
                       {student.so_lan_chia >= 1 && (
                         <Tag color="red" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
                           chia lần {student.so_lan_chia + 1}
@@ -268,6 +273,11 @@ const WaitingStudentList = ({
                       >
                         Bài {student.so_bai_hoc || 0}
                       </Tag>
+                      {student.is_makeup === 1 && (
+                        <Tag color="warning" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
+                          Học bù
+                        </Tag>
+                      )}
                       {student.so_lan_chia >= 1 && (
                         <Tag color="red" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
                           chia lần {student.so_lan_chia}
