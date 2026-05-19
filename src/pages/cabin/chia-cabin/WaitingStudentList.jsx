@@ -1,6 +1,9 @@
-import { Card, Select, Input, Tag, Empty, Spin } from "antd";
+/* eslint-disable no-unused-vars */
+import { useState } from "react";
+import { Card, Select, Input, Tag, Empty, Spin, Button } from "antd";
 import { UserOutlined, SearchOutlined } from "@ant-design/icons";
 import { message } from "antd";
+import { kiemTraLichCabinDaChia } from "../../../apis/apiCabinLocal";
 
 const WaitingStudentList = ({
   loading,
@@ -31,6 +34,27 @@ const WaitingStudentList = ({
   setStudentDetail,
   formatMinutesToHM,
 }) => {
+  const [syncLoading, setSyncLoading] = useState(false);
+
+  const handleSyncClick = async () => {
+    setSyncLoading(true);
+    const hide = message.loading("Đang thực hiện đồng bộ...", 0);
+    try {
+      const res = await kiemTraLichCabinDaChia();
+      if (res?.success) {
+        message.success(res.message || "Đồng bộ lịch cabin thành công!");
+      } else {
+        message.error(res?.message || "Đồng bộ lịch cabin thất bại!");
+      }
+    } catch (error) {
+      console.error("Lỗi đồng bộ lịch cabin:", error);
+      message.error("Có lỗi xảy ra khi đồng bộ lịch cabin!");
+    } finally {
+      hide();
+      setSyncLoading(false);
+    }
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     setListDropOver(false);
@@ -75,9 +99,20 @@ const WaitingStudentList = ({
       bodyStyle={{ padding: 8, height: "100%", display: "flex", flexDirection: "column" }}
       className="h-[86vh]"
     >
-      <div className="font-semibold text-sm flex items-center gap-1.5 mb-2">
-        <UserOutlined />
-        Chờ xếp ({availableStudents.length}/{allStudents.length})
+      <div className="font-semibold text-sm flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <UserOutlined />
+          Chờ xếp ({availableStudents.length}/{allStudents.length})
+        </div>
+        <Button
+          type="primary"
+          size="small"
+          onClick={handleSyncClick}
+          loading={syncLoading}
+          className="bg-blue-600 hover:bg-blue-700 !text-[11px] h-6 px-2 rounded"
+        >
+          Đồng bộ
+        </Button>
       </div>
 
       <div className="flex gap-2 mb-2">
@@ -156,7 +191,7 @@ const WaitingStudentList = ({
         {availableStudents.length > 0 ? (
           availableStudents.map((student) => {
             const hasData = isHasData(student);
-            const isChiaLan2 = student.so_lan_chia === 2 && !student.is_makeup;
+            const isChiaLan2 = student.so_lan_chia >= 1 && !student.is_makeup;
             const isDraggingThis = dragState?.maDks?.includes(student.ma_dk);
 
             return (
@@ -198,9 +233,9 @@ const WaitingStudentList = ({
                       <Tag className="!text-[10px] !px-1 !py-0 !m-0 bg-gray-100 text-gray-500 border-none">
                         Chưa có dữ liệu
                       </Tag>
-                      {isChiaLan2 && (
+                      {student.so_lan_chia >= 1 && (
                         <Tag color="red" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
-                          chia lần 2
+                          chia lần {student.so_lan_chia + 1}
                         </Tag>
                       )}
                     </div>
@@ -233,9 +268,9 @@ const WaitingStudentList = ({
                       >
                         Bài {student.so_bai_hoc || 0}
                       </Tag>
-                      {isChiaLan2 && (
+                      {student.so_lan_chia >= 1 && (
                         <Tag color="red" className="!text-[10px] !px-1 !py-0 !m-0 font-bold">
-                          chia lần 2
+                          chia lần {student.so_lan_chia}
                         </Tag>
                       )}
                     </div>

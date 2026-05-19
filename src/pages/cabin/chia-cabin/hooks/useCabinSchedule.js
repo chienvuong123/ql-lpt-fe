@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { message, Modal } from "antd";
@@ -511,13 +512,23 @@ export const useCabinSchedule = (allStudents) => {
         // Lọc học viên chưa có lịch phù hợp với danh sách khóa của cabin
         const globalAssigned = new Set();
         Object.keys(weekSchedules).forEach((wk) => {
-          if (wk !== weekKey) weekSchedules[wk].assignedMaDks.forEach((id) => globalAssigned.add(id));
+          if (wk !== weekKey) {
+            weekSchedules[wk].assignedMaDks.forEach((id) => {
+              const student = getStudentByMaDk(id);
+              if (!student || Number(student.so_lan_chia || 0) < 1) {
+                globalAssigned.add(id);
+              }
+            });
+          }
         });
         currentAssignedMaDks.forEach((id) => globalAssigned.add(id));
         totalAssignedThisRun.forEach((id) => globalAssigned.add(id));
 
         const pool = allStudents.filter(
-          (s) => !globalAssigned.has(s.ma_dk) && config.courses.includes(s.khoa_hoc) && isNoData(s)
+          (s) =>
+            !globalAssigned.has(s.ma_dk) &&
+            config.courses.includes(s.khoa_hoc) &&
+            (isNoData(s) || Number(s.so_lan_chia || 0) >= 1)
         );
 
         if (pool.length === 0) continue;

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-prototype-builtins */
 import React, { useState, useMemo, useCallback, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatMinutesToHM } from "../../util/helper";
@@ -200,7 +201,7 @@ const LichCabin = () => {
         //   - Ẩn nếu so_lan_chia <= 1 (mặc định)
         //   - Hiển thị nếu so_lan_chia > 1 (học viên được phép chia nhiều lượt)
         if (allAssignedMaDks.has(s.ma_dk)) {
-            if (Number(s.so_lan_chia || 0) <= 1) return false;
+            if (Number(s.so_lan_chia || 0) < 1) return false;
         }
 
         // Lọc theo cấu hình cabin nếu đang xem 1 cabin cụ thể
@@ -214,7 +215,7 @@ const LichCabin = () => {
         if (filterKhoa !== "all" && s.khoa_hoc !== filterKhoa) return false;
         if (filterStatus === "noData" && !isNoData(s)) return false;
         if (filterStatus === "hasData" && !isHasData(s)) return false;
-        if (filterStatus === "previouslyAssigned" && Number(s.so_lan_chia || 0) < 2) return false;
+        if (filterStatus === "previouslyAssigned" && Number(s.so_lan_chia || 0) < 1) return false;
         
         if (filterType === "makeup" && !s.is_makeup) return false;
         if (filterType === "normal" && s.is_makeup) return false;

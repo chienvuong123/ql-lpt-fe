@@ -14,3 +14,8 @@ export const cabinNote = async (params = {}) => {
   const response = await axios.post(`${url}`, params);
   return response.data;
 };
+
+export const kiemTraLichCabinDaChia = async () => {
+  const response = await axios.get(`${url}/kiem-tra-chia-lich`);
+  return response.data;
+};
