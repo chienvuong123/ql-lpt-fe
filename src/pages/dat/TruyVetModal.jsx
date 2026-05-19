@@ -21,6 +21,7 @@ import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
 } from "../checks/DieuKienKiemTra";
+import { LoTringOnline } from "../../apis/xeOnline";
 import ConfigModal from "./ConfigModal";
 
 const { Text } = Typography;
@@ -239,8 +240,29 @@ const TruyVetModal = ({
   const [configMode, setConfigMode] = useState("edit");
   const [payloadConfig, setPayloadConfig] = useState({});
   const [bulkActioning, setBulkActioning] = useState(false);
+  const [loTrinhData, setLoTrinhData] = useState([]);
+  const [loadingLoTrinh, setLoadingLoTrinh] = useState(false);
 
   const maDk = String(student?.user?.admission_code || "").trim();
+
+  const fetchLoTrinh = useCallback(async () => {
+    if (!maDk) return;
+    setLoadingLoTrinh(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const response = await LoTringOnline({
+        ngaybatdau: "2022-01-01T00:00:00",
+        ngayketthuc: `${today}T23:59:00`,
+        madk: maDk,
+      });
+      const list = response?.data || response || [];
+      setLoTrinhData(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.log("[TruyVetModal] fetch lo trinh error:", error);
+    } finally {
+      setLoadingLoTrinh(false);
+    }
+  }, [maDk]);
 
   const fetchSessionStatuses = useCallback(async () => {
     if (!maDk) return;
@@ -275,12 +297,14 @@ const TruyVetModal = ({
     setApproveReasons(INITIAL_APPROVE_REASONS);
     setApproveMeta(INITIAL_APPROVE_META);
     setApproveLoadingKey("");
+    setLoTrinhData([]);
     const run = async () => {
       await fetchApproveStatuses();
       await fetchSessionStatuses();
+      await fetchLoTrinh();
     };
     run();
-  }, [open, fetchSessionStatuses, fetchApproveStatuses]);
+  }, [open, fetchSessionStatuses, fetchApproveStatuses, fetchLoTrinh]);
 
   const rowsWithStatus = useMemo(() => {
     const sorted = [...rows].sort(
@@ -290,6 +314,7 @@ const TruyVetModal = ({
     const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
       sorted,
       studentCheckInfo,
+      loTrinhData,
     );
 
     return sorted.map((item, index) => {
@@ -317,6 +342,11 @@ const TruyVetModal = ({
         r.includes("Xe tự động bắt đầu"),
       );
 
+      // Dừng nghỉ sai quy định (nghỉ quá 10 phút)
+      const isStopViolation = reasons.some((r) =>
+        r.includes("Dừng nghỉ sai quy định"),
+      );
+
       // Phiên dưới 5 phút (không có trong getInvalidSessionIndexes, check riêng)
       const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
       const isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
@@ -333,12 +363,13 @@ const TruyVetModal = ({
         _isPlateMismatch: isPlateMismatch,
         _isRestTooShort: isRestTooShort,
         _isTuDongInvalid: isTuDongInvalid,
+        _isStopViolation: isStopViolation,
         _isTooShort: isTooShort,
         _status: effectiveStatus,
         _isInvalid: effectiveStatus === "HUY",
       };
     });
-  }, [rows, studentCheckInfo, statusMap]);
+  }, [rows, studentCheckInfo, statusMap, loTrinhData]);
 
   const totalDistance = useMemo(
     () =>
@@ -677,7 +708,7 @@ const TruyVetModal = ({
   };
 
   const isModalLoading =
-    loading || loadingStatus || actioningId !== null || bulkActioning;
+    loading || loadingStatus || loadingLoTrinh || actioningId !== null || bulkActioning;
 
   // ─── Helper cập nhật state sau khi approve thành công ────────────────────
   const applyApproveSuccess = (key, nextApproved, value) => {
@@ -784,6 +815,8 @@ const TruyVetModal = ({
     if (item._isTuDongInvalid)
       badges.push({ label: "TĐ sai giờ", color: "#722ed1" });
     if (item._isTooShort) badges.push({ label: "<5 phút", color: "#fa541c" });
+    if (item._isStopViolation)
+      badges.push({ label: "Nghỉ >10p", color: "#eb2f96" });
     if (badges.length === 0) return null;
     return (
       <div className="!flex !flex-wrap !gap-1 !mt-1">
