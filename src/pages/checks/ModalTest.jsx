@@ -446,6 +446,15 @@ const ModalTest = ({
       footer={null}
       width={screens.xs ? "100%" : 600}
       destroyOnClose
+      styles={{
+        body: {
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          padding: 12,
+        }
+      }}
     >
       <Spin spinning={isModalLoading}>
         {/* Thông tin học viên */}

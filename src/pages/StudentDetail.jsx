@@ -16,12 +16,14 @@ import {
   message,
   Form,
   Modal,
+  Popover,
 } from "antd";
 import {
   CheckCircleOutlined,
   WarningOutlined,
   CloseCircleOutlined,
   EyeOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +37,9 @@ import {
   getBienSoTuDong,
   normalizePlate,
   getInvalidSessionIndexes,
+  getMappedStatus,
+  getSessionKeys,
+  getMappedEntry,
 } from "./checks/DieuKienKiemTra";
 import { getAnh } from "../apis/apiAnh";
 
@@ -44,12 +49,60 @@ import { getCheckConfigs } from "../apis/apiSetting";
 
 import { fetchCheckStudents } from "../apis/kiemTra";
 import { getDuLieuCabin } from "../apis/searchPublic";
+import { getLichSuDuyetPhienHoc } from "../apis/apiDuyetPhienHoc";
 import { formatLocalTime, formatSecondsToTime } from "../util/helper";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 const today = new Date().toISOString().split("T")[0];
+
+const normalizeStatus = (value) => {
+  const status = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (status === "DUYET") return "DUYET";
+  if (status === "HUY") return "HUY";
+  return null;
+};
+
+const toStatusMap = (response) => {
+  const root = response?.data ?? response?.Data ?? response ?? [];
+  const list = Array.isArray(root)
+    ? root
+    : Array.isArray(root?.data)
+      ? root.data
+      : Array.isArray(root?.Data)
+        ? root.Data
+        : Array.isArray(root?.phien_hoc_list)
+          ? root.phien_hoc_list
+          : [];
+
+  return list.reduce((map, item) => {
+    const status = item?.phien_hoc_dat_id !== undefined
+      ? (item.trang_thai === 1 ? "DUYET" : "HUY")
+      : normalizeStatus(item?.trang_thai ?? item?.TrangThai ?? item?.status);
+
+    if (!status) return map;
+
+    const entry = {
+      status,
+      ly_do: item?.ly_do ?? item?.LyDo ?? item?.ghi_chu ?? item?.GhiChu ?? "",
+      nguoi_duyet: item?.nguoi_duyet ?? item?.NguoiDuyet ?? "Admin",
+      trang_thai: item?.trang_thai ?? item?.TrangThai ?? 0,
+    };
+
+    if (item?.phien_hoc_dat_id !== undefined) {
+      map[`id:${String(item.phien_hoc_dat_id)}`] = entry;
+      return map;
+    }
+
+    getSessionKeys(item).forEach((key) => {
+      map[key] = entry;
+    });
+    return map;
+  }, {});
+};
 
 const StudentDetail = ({ data }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -175,6 +228,17 @@ const StudentDetail = ({ data }) => {
     enabled: !!checkConfigsData?.checkKhuVucCam?.enabled,
     staleTime: 1000 * 60 * 10,
   });
+
+  const { data: duyetHistoryData } = useQuery({
+    queryKey: ["lichSuDuyetPhien", data?.MaDK],
+    queryFn: () => getLichSuDuyetPhienHoc(data?.MaDK),
+    enabled: !!data?.MaDK,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const statusMap = useMemo(() => {
+    return toStatusMap(duyetHistoryData);
+  }, [duyetHistoryData]);
 
   const getImagesForSession = useMemo(() => {
     return (record) => {
@@ -364,7 +428,7 @@ const StudentDetail = ({ data }) => {
     {
       title: "Phiên học",
       key: "PhienHoc",
-      width: 105,
+      width: 130,
       align: "center",
       render: (_, record) => {
         const start = record.ThoiDiemDangNhap
@@ -373,6 +437,41 @@ const StudentDetail = ({ data }) => {
         const end = record.ThoiDiemDangXuat
           ? dayjs(record.ThoiDiemDangXuat).format("HH:mm")
           : "-";
+
+        const entry = getMappedEntry(record, statusMap);
+
+        if (entry) {
+          const isDuyet = entry.status === "DUYET";
+          const color = isDuyet ? "#52c41a" : "#f5222d";
+          const content = (
+            <div style={{ padding: "4px 0" }}>
+              <div style={{ marginBottom: 4 }}>
+                <strong>Người duyệt: </strong>
+                <span>{entry.nguoi_duyet || "Hệ thống"}</span>
+              </div>
+              <div>
+                <strong>Ghi chú: </strong>
+                <span className="text-sm">{entry.ly_do || "Không có ghi chú"}</span>
+              </div>
+            </div>
+          );
+
+          return (
+            <Space size={4} style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <span>{`${start} - ${end}`}</span>
+              <Popover content={content} trigger="click" placement="top">
+                <InfoCircleOutlined
+                  style={{
+                    color,
+                    cursor: "pointer",
+                    fontSize: "14px",
+                  }}
+                />
+              </Popover>
+            </Space>
+          );
+        }
+
         return `${start} - ${end}`;
       },
     },
@@ -508,9 +607,10 @@ const StudentDetail = ({ data }) => {
         data?.HangDaoTao || "",
         annualStudentInfo,
         loTrinhResults?.data || [],
-        zonesToUse
+        zonesToUse,
+        statusMap
       ),
-    [dataSource, data, annualStudentInfo, loTrinhResults, zonesToUse],
+    [dataSource, data, annualStudentInfo, loTrinhResults, zonesToUse, statusMap],
   );
 
   const { invalidIndexes, invalidReasons } = useMemo(() => {
@@ -518,9 +618,10 @@ const StudentDetail = ({ data }) => {
       dataSource,
       annualStudentInfo,
       loTrinhResults?.data || [],
-      zonesToUse
+      zonesToUse,
+      statusMap
     );
-  }, [dataSource, annualStudentInfo, loTrinhResults, zonesToUse]);
+  }, [dataSource, annualStudentInfo, loTrinhResults, zonesToUse, statusMap]);
 
   const totalAchievedImagesCount = useMemo(() => {
     let count = 0;
@@ -542,7 +643,8 @@ const StudentDetail = ({ data }) => {
       dataSource,
       loTrinhResults?.data || [],
       annualStudentInfo,
-      zonesToUse
+      zonesToUse,
+      statusMap
     );
 
     return {
@@ -556,6 +658,8 @@ const StudentDetail = ({ data }) => {
     summaryData,
     loTrinhResults,
     annualStudentInfo,
+    zonesToUse,
+    statusMap,
   ]);
 
   const allIssues = [...evaluationData.warnings, ...evaluationData.errors];

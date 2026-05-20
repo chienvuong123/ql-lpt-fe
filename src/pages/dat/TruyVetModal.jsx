@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { ClockCircleOutlined } from "@ant-design/icons";
+import { ClockCircleOutlined, CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import {
   Card,
   Drawer,
@@ -10,6 +10,8 @@ import {
   Typography,
   message,
   Button,
+  Modal,
+  Input,
 } from "antd";
 import {
   getLichSuDuyetPhienHoc,
@@ -319,7 +321,6 @@ const TruyVetModal = ({
 
     return sorted.map((item, index) => {
       const reasons = invalidReasons.get(index) || [];
-
       // Tốc độ TB < 18 km/h
       const isSpeedInvalid = reasons.some((r) => r.includes("Tốc độ TB"));
 
@@ -351,7 +352,7 @@ const TruyVetModal = ({
       const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
       const isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
 
-      const derivedInvalid = invalidIndexes.has(index);
+      const derivedInvalid = invalidIndexes.has(index) || isStopViolation;
       const persistedStatus = getMappedStatus(item, statusMap);
       const effectiveStatus =
         persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
@@ -675,36 +676,63 @@ const TruyVetModal = ({
     const actionStatus = item?._status === "DUYET" ? "HUY" : "DUYET";
     const nextApproved = actionStatus === "DUYET";
 
-    const payload = {
-      trang_thai: nextApproved ? 1 : 0,
-      ly_do: nextApproved ? "Duyệt phiên học" : "Hủy duyệt phiên học",
-      nguoi_duyet:
-        sessionStorage.getItem("name") ||
-        sessionStorage.getItem("username") ||
-        "Admin",
-      ma_dk: maDk,
-    };
+    Modal.confirm({
+      title: nextApproved ? "Xác nhận duyệt phiên học" : "Xác nhận hủy duyệt phiên học",
+      content: (
+        <div>
+          <div className="!mb-3">
+            Nhập ghi chú cho phiên học này (bắt buộc):
+          </div>
+          <Input.TextArea
+            id="session-note-input"
+            placeholder="Nhập ghi chú"
+            rows={3}
+          />
+        </div>
+      ),
+      okText: "Xác nhận",
+      cancelText: "Hủy",
+      onOk: async () => {
+        const noteInput = document.getElementById("session-note-input");
+        const noteValue = noteInput ? noteInput.value.trim() : "";
 
-    setActioningId(String(sessionId));
-    try {
-      await updateDuyetPhienHoc(sessionId, payload);
+        if (!noteValue) {
+          message.error("Vui lòng nhập ghi chú bắt buộc!");
+          return Promise.reject("Ghi chú trống");
+        }
 
-      setStatusMap((prev) => ({
-        ...prev,
-        [`id:${String(sessionId)}`]: actionStatus,
-      }));
+        const payload = {
+          trang_thai: nextApproved ? 1 : 0,
+          ly_do: noteValue,
+          nguoi_duyet:
+            sessionStorage.getItem("name") ||
+            sessionStorage.getItem("username") ||
+            "Admin",
+          ma_dk: maDk,
+        };
 
-      await fetchSessionStatuses();
-      message.success(
-        nextApproved ? "Đã duyệt phiên học." : "Đã hủy duyệt phiên học.",
-      );
-    } catch (error) {
-      message.error(
-        error?.response?.data?.message || "Cập nhật trạng thái thất bại.",
-      );
-    } finally {
-      setActioningId(null);
-    }
+        setActioningId(String(sessionId));
+        try {
+          await updateDuyetPhienHoc(sessionId, payload);
+
+          setStatusMap((prev) => ({
+            ...prev,
+            [`id:${String(sessionId)}`]: actionStatus,
+          }));
+
+          await fetchSessionStatuses();
+          message.success(
+            nextApproved ? "Đã duyệt phiên học." : "Đã hủy duyệt phiên học.",
+          );
+        } catch (error) {
+          message.error(
+            error?.response?.data?.message || "Cập nhật trạng thái thất bại.",
+          );
+        } finally {
+          setActioningId(null);
+        }
+      }
+    });
   };
 
   const isModalLoading =

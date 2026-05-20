@@ -138,6 +138,70 @@ export function normalizePlate(plate) {
     .trim();
 }
 
+export const getSessionKeys = (item) => {
+  const keys = new Set();
+  const sessionId = item?.phien_hoc_id ?? item?.ID ?? item?.id ?? item?.phien_hoc_dat_id;
+  const plate = normalizePlate(item?.bien_so ?? item?.BienSo);
+
+  // Format dates manually to avoid dayjs dependency in utility
+  const formatDate = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const formatTime = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    const h = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    const sec = String(d.getSeconds()).padStart(2, "0");
+    return `${h}:${min}:${sec}`;
+  };
+
+  const date = formatDate(item?.ngay ?? item?.Ngay ?? item?.ThoiDiemDangNhap);
+  const startTime = formatTime(item?.gio_vao ?? item?.ThoiDiemDangNhap);
+  const endTime = formatTime(item?.gio_ra ?? item?.ThoiDiemDangXuat);
+
+  if (sessionId) keys.add(`id:${String(sessionId)}`);
+  if (date && plate && startTime && endTime) {
+    keys.add(`slot:${date}|${plate}|${startTime}|${endTime}`);
+  }
+  if (date && startTime && endTime) {
+    keys.add(`time:${date}|${startTime}|${endTime}`);
+  }
+
+  return Array.from(keys);
+};
+
+export const getMappedStatus = (item, statusMap = {}) => {
+  const sessionKeys = getSessionKeys(item);
+  for (const key of sessionKeys) {
+    const entry = statusMap[key];
+    if (entry) {
+      const status = typeof entry === "string" ? entry : entry.status;
+      if (status === "DUYET" || status === "HUY") {
+        return status;
+      }
+    }
+  }
+  return null;
+};
+
+export const getMappedEntry = (item, statusMap = {}) => {
+  const sessionKeys = getSessionKeys(item);
+  for (const key of sessionKeys) {
+    const entry = statusMap[key];
+    if (entry) return entry;
+  }
+  return null;
+};
+
 function shouldCheckCungDuongByCourse(courseCode = "") {
   const year = getCourseYearFromCode(courseCode);
   return year !== null && year >= 25;
@@ -222,9 +286,15 @@ function getStopViolationDetails(listCoordinate) {
       const vanTocStr = String(c.VanToc || "0");
       const match = vanTocStr.match(/[\d.]+/);
       const v = match ? parseFloat(match[0]) : 0;
+
+      const totalKmStr = String(c.TotalKm || "0");
+      const matchKm = totalKmStr.match(/[\d.]+/);
+      const km = matchKm ? parseFloat(matchKm[0]) : 0;
+
       return {
         ts: t.getTime(),
-        v
+        v,
+        km
       };
     })
     .filter(c => !isNaN(c.ts))
@@ -237,7 +307,13 @@ function getStopViolationDetails(listCoordinate) {
 
   for (let i = 0; i < coords.length; i++) {
     const c = coords[i];
-    if (c.v === 0) {
+    const isBothZero = c.v === 0 && c.km === 0;
+    const isUnchangedStop = c.v === 0 && (
+      (i > 0 && c.km === coords[i - 1].km) ||
+      (i < coords.length - 1 && c.km === coords[i + 1].km)
+    );
+
+    if (isBothZero || isUnchangedStop) {
       if (currentStopStartTs === null) {
         currentStopStartTs = c.ts;
       }
@@ -310,9 +386,35 @@ const formatStopMinutes = (mins) => {
   return `${mins} phút`;
 };
 
+function isRestSession(phien, matchingLt) {
+  const checkValues = (obj) => {
+    if (!obj) return false;
+    const vStr = String(obj.VanToc || "");
+    const kmStr = String(obj.TotalKm || "");
+    const matchV = vStr.match(/[\d.]+/);
+    const matchKm = kmStr.match(/[\d.]+/);
+    return matchV && parseFloat(matchV[0]) === 0 && matchKm && parseFloat(matchKm[0]) === 0;
+  };
+
+  if (checkValues(phien)) return true;
+  if (checkValues(matchingLt)) return true;
+
+  if (matchingLt && Array.isArray(matchingLt.ListCoordinate) && matchingLt.ListCoordinate.length > 0) {
+    return matchingLt.ListCoordinate.every(c => {
+      const vStr = String(c.VanToc || "");
+      const kmStr = String(c.TotalKm || "");
+      const matchV = vStr.match(/[\d.]+/);
+      const matchKm = kmStr.match(/[\d.]+/);
+      return matchV && parseFloat(matchV[0]) === 0 && matchKm && parseFloat(matchKm[0]) === 0;
+    });
+  }
+
+  return false;
+}
+
 export function evaluateDungNghiPhien(dataSource, loTrinh) {
   if (!dataSource || !loTrinh || dataSource.length === 0 || loTrinh.length === 0) return [];
-  const errors = [];
+  const warnings = [];
 
   dataSource.forEach((phien, idx) => {
     if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
@@ -325,11 +427,15 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
       return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
     });
 
+    if (isRestSession(phien, matchingLt)) {
+      return;
+    }
+
     if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
       const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
       if (stopCheck !== null) {
-        errors.push({
-          type: "error",
+        warnings.push({
+          type: "warning",
           label: "Dừng nghỉ sai quy định",
           message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm dừng nghỉ, ${stopCheck.reason}`,
         });
@@ -337,8 +443,9 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
     }
   });
 
-  return errors;
+  return warnings;
 }
+
 
 // ─── Xác định biển số xe tự động ─────────────────────────────────────────────
 
@@ -395,7 +502,13 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
  */
 // ─── Đánh dấu phiên lỗi ──────────────────────────────────────────────────────
 
-export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh = [], forbiddenZones = []) {
+export function getInvalidSessionIndexes(
+  dataSource,
+  studentInfo = null,
+  loTrinh = [],
+  forbiddenZones = [],
+  statusMap = {},
+) {
   const invalidIndexes = new Set();
   const tuDongLoiIndexes = new Set();
   const invalidReasons = new Map();
@@ -404,6 +517,11 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
     return { invalidIndexes, tuDongLoiIndexes, invalidReasons };
 
   const addReason = (idx, reason) => {
+    const phien = dataSource[idx];
+    const status = getMappedStatus(phien, statusMap);
+    if (status === "DUYET") {
+      return;
+    }
     if (!invalidReasons.has(idx)) invalidReasons.set(idx, []);
     invalidReasons.get(idx).push(reason);
     invalidIndexes.add(idx);
@@ -471,11 +589,15 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
       const inChieuWindow = totalMinutes >= CHIEU_START;
 
       if (!inSangWindow && !inChieuWindow) {
-        addReason(
-          idx,
-          `Xe tự động bắt đầu lúc ${hour}h${String(minute).padStart(2, "0")} — không thuộc khung hợp lệ (04:45–06:59 hoặc từ sau 17:00)`,
-        );
-        tuDongLoiIndexes.add(idx);
+        const phien = dataSource[idx];
+        const status = getMappedStatus(phien, statusMap);
+        if (status !== "DUYET") {
+          addReason(
+            idx,
+            `Xe tự động bắt đầu lúc ${hour}h${String(minute).padStart(2, "0")} — không thuộc khung hợp lệ (04:45–06:59 hoặc từ sau 17:00)`,
+          );
+          tuDongLoiIndexes.add(idx);
+        }
       }
     });
   }
@@ -544,31 +666,7 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
     });
   }
 
-  // 6. Vi phạm dừng nghỉ: đơn lẻ >= 10 phút hoặc tổng >= 20 phút
-  if (Array.isArray(loTrinh) && loTrinh.length > 0) {
-    dataSource.forEach((phien, idx) => {
-      if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
-      const matchingLt = loTrinh.find(lt => {
-        const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
-        const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
-        const ltStart = new Date(lt.StartTime || lt.ThoiDiemDangNhap || lt.thoiDiemDangNhap).getTime();
-        const ltEnd = new Date(lt.EndTime || lt.ThoiDiemDangXuat || lt.thoiDiemDangXuat).getTime();
-        if (isNaN(sessStart) || isNaN(sessEnd) || isNaN(ltStart) || isNaN(ltEnd)) return false;
-        return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
-      });
 
-      if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
-        const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
-        if (stopCheck !== null) {
-          addReason(
-            idx,
-            `Dừng nghỉ sai quy định: ${stopCheck.reason}`,
-          );
-        }
-
-      }
-    });
-  }
 
   // 7. Vi phạm vùng cấm
   if (Array.isArray(loTrinh) && loTrinh.length > 0 && forbiddenZones.length > 0) {
@@ -591,6 +689,48 @@ export function getInvalidSessionIndexes(dataSource, studentInfo = null, loTrinh
       }
     });
   }
+
+  // 8. Dừng nghỉ sai quy định (nghỉ quá 10 phút) — chỉ lưu vào invalidReasons để TruyVetModal hiển thị cảnh báo, không thêm vào invalidIndexes để không bị trừ km/giờ
+  if (Array.isArray(loTrinh) && loTrinh.length > 0) {
+    dataSource.forEach((phien, idx) => {
+      if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
+      const matchingLt = loTrinh.find(lt => {
+        const sessStart = new Date(phien.ThoiDiemDangNhap).getTime();
+        const sessEnd = new Date(phien.ThoiDiemDangXuat).getTime();
+        const ltStart = new Date(lt.StartTime || lt.ThoiDiemDangNhap || lt.thoiDiemDangNhap).getTime();
+        const ltEnd = new Date(lt.EndTime || lt.ThoiDiemDangXuat || lt.thoiDiemDangXuat).getTime();
+        if (isNaN(sessStart) || isNaN(sessEnd) || isNaN(ltStart) || isNaN(ltEnd)) return false;
+        return Math.abs(sessStart - ltStart) < 5 * 60 * 1000 && Math.abs(sessEnd - ltEnd) < 5 * 60 * 1000;
+      });
+
+      if (isRestSession(phien, matchingLt)) return;
+
+      if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
+        const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
+        if (stopCheck !== null) {
+          if (!invalidReasons.has(idx)) invalidReasons.set(idx, []);
+          const reasons = invalidReasons.get(idx);
+          const msg = `Dừng nghỉ sai quy định: ${stopCheck.reason}`;
+          if (!reasons.includes(msg)) {
+            reasons.push(msg);
+          }
+        }
+      }
+    });
+  }
+
+  // ─── Manual status HUY override ───────────────────────────────────────────
+  dataSource.forEach((phien, idx) => {
+    const status = getMappedStatus(phien, statusMap);
+    if (status === "HUY") {
+      invalidIndexes.add(idx);
+      if (!invalidReasons.has(idx)) invalidReasons.set(idx, []);
+      const reasons = invalidReasons.get(idx);
+      if (!reasons.includes("Phiên học bị hủy duyệt thủ công")) {
+        reasons.push("Phiên học bị hủy duyệt thủ công");
+      }
+    }
+  });
 
   return { invalidIndexes, tuDongLoiIndexes, invalidReasons };
 }
@@ -921,6 +1061,7 @@ export function computeSummary(
   studentInfo = null,
   loTrinh = [],
   forbiddenZones = [],
+  statusMap = {},
 ) {
   const empty = {
     tongThoiGianGio: 0,
@@ -945,6 +1086,7 @@ export function computeSummary(
     studentInfo,
     loTrinh,
     forbiddenZones,
+    statusMap,
   );
 
   const t = dataSource.reduce(
@@ -1064,6 +1206,7 @@ export function evaluate(
   loTrinh = [],
   studentInfo,
   forbiddenZones = [],
+  statusMap = {},
 ) {
   const errors = [];
   const warnings = [];
@@ -1230,7 +1373,7 @@ export function evaluate(
   warnings.push(...evaluateTuDongSau17h(dataSource));
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
   warnings.push(...evaluateSaiGiaoVien(dataSource));
-  errors.push(...evaluateDungNghiPhien(dataSource, loTrinh));
+  warnings.push(...evaluateDungNghiPhien(dataSource, loTrinh));
 
   // Check vùng cấm cho toàn bộ hành trình
   if (Array.isArray(loTrinh) && loTrinh.length > 0 && forbiddenZones.length > 0) {
@@ -1266,5 +1409,29 @@ export function evaluate(
     warnings.push(...evaluateCungDuong(loTrinh));
   }
 
-  return { status: errors.length === 0 ? "pass" : "fail", errors, warnings };
+  // ─── Filter errors/warnings based on statusMap (manually approved sessions "DUYET" are hidden) ───
+  const filterByStatusMap = (issues) => {
+    return issues.filter(issue => {
+      // Find all matches for "phiên X" (case-insensitive) in the message
+      const matches = [...issue.message.matchAll(/phiên\s+(\d+)/gi)];
+      if (matches.length > 0) {
+        // If any of the referenced sessions is DUYET, we hide this warning/error
+        const isApproved = matches.some(m => {
+          const idx = parseInt(m[1], 10) - 1;
+          if (idx >= 0 && idx < dataSource.length) {
+            const phien = dataSource[idx];
+            return getMappedStatus(phien, statusMap) === "DUYET";
+          }
+          return false;
+        });
+        if (isApproved) return false;
+      }
+      return true;
+    });
+  };
+
+  const finalErrors = filterByStatusMap(errors);
+  const finalWarnings = filterByStatusMap(warnings);
+
+  return { status: finalErrors.length === 0 ? "pass" : "fail", errors: finalErrors, warnings: finalWarnings };
 }
