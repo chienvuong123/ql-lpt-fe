@@ -165,10 +165,22 @@ const parseHocVienDuyetResponse = (response) => {
 const getMappedStatus = (item, statusMap = {}) => {
   const sessionKeys = getSessionKeys(item);
   for (const key of sessionKeys) {
-    const status = statusMap[key];
-    if (status === "DUYET" || status === "HUY") {
-      return status;
+    const entry = statusMap[key];
+    if (entry) {
+      const status = typeof entry === "string" ? entry : entry.status;
+      if (status === "DUYET" || status === "HUY") {
+        return status;
+      }
     }
+  }
+  return null;
+};
+
+const getMappedEntry = (item, statusMap = {}) => {
+  const sessionKeys = getSessionKeys(item);
+  for (const key of sessionKeys) {
+    const entry = statusMap[key];
+    if (entry) return entry;
   }
   return null;
 };
@@ -675,6 +687,7 @@ const TruyVetModal = ({
 
     const actionStatus = item?._status === "DUYET" ? "HUY" : "DUYET";
     const nextApproved = actionStatus === "DUYET";
+    const existingEntry = getMappedEntry(item, statusMap);
 
     Modal.confirm({
       title: nextApproved ? "Xác nhận duyệt phiên học" : "Xác nhận hủy duyệt phiên học",
@@ -687,6 +700,7 @@ const TruyVetModal = ({
             id="session-note-input"
             placeholder="Nhập ghi chú"
             rows={3}
+            defaultValue={existingEntry?.ly_do || ""}
           />
         </div>
       ),
@@ -717,7 +731,12 @@ const TruyVetModal = ({
 
           setStatusMap((prev) => ({
             ...prev,
-            [`id:${String(sessionId)}`]: actionStatus,
+            [`id:${String(sessionId)}`]: {
+              status: actionStatus,
+              ly_do: payload.ly_do,
+              nguoi_duyet: payload.nguoi_duyet,
+              trang_thai: payload.trang_thai,
+            },
           }));
 
           await fetchSessionStatuses();

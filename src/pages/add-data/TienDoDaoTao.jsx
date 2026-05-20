@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { optionLopLyThuyet } from '../../apis/apiLyThuyetLocal';
-import { dongBoTienDoDaoTaoSql, getTienDoDaoTaoListSql } from '../../apis/apiSynch';
+import { dongBoTienDoDaoTaoSql, getTienDoB1Sql, getTienDoB2Sql, getTienDoC1Sql } from '../../apis/apiSynch';
 import {
     Table,
     Form,
@@ -13,22 +13,13 @@ import {
     Space,
     Typography,
     Tag,
-    Modal,
     message,
-    Popconfirm,
-    Tooltip,
     Select
 } from 'antd';
 import {
-    SearchOutlined,
-    ReloadOutlined,
-    CalendarOutlined,
-    TeamOutlined,
-    CarryOutOutlined,
     PlusOutlined,
     EditOutlined,
     EyeOutlined,
-    DeleteOutlined
 } from '@ant-design/icons';
 import ModalTienDoDaoTao from './ModalTienDoDaoTao';
 import dayjs from 'dayjs';
@@ -66,27 +57,62 @@ const TienDoDaoTao = () => {
     };
 
     const classOptions = useMemo(() => {
-        return normalizeApiList(dataKhoaHoc).map((item) => ({
+        const currentYear = new Date().getFullYear();
+        const options = normalizeApiList(dataKhoaHoc).map((item) => ({
             label: item?.name || item?.suffix_name || item?.code || `#${item?.iid}`,
             value: item?.code || item?.iid,
+            ngay_bat_dau: item?.ngay_bat_dau
         }));
+
+        return options.sort((a, b) => {
+            const dateA = a.ngay_bat_dau ? new Date(a.ngay_bat_dau).getFullYear() : 0;
+            const dateB = b.ngay_bat_dau ? new Date(b.ngay_bat_dau).getFullYear() : 0;
+            
+            if (dateA === currentYear && dateB !== currentYear) return -1;
+            if (dateA !== currentYear && dateB === currentYear) return 1;
+
+            const timeA = a.ngay_bat_dau ? new Date(a.ngay_bat_dau).getTime() : 0;
+            const timeB = b.ngay_bat_dau ? new Date(b.ngay_bat_dau).getTime() : 0;
+            if (timeA !== timeB) return timeB - timeA;
+
+            return String(b.label).localeCompare(String(a.label));
+        });
     }, [dataKhoaHoc]);
 
-    const { data: tienDoData, isLoading: isLoadingTienDo } = useQuery({
-        queryKey: ["getTienDoTaoList", params],
-        queryFn: () => getTienDoDaoTaoListSql(params),
+    const { data: tienDoDataB1, isLoading: isLoadingTienDoB1 } = useQuery({
+        queryKey: ["getTienDoB1", params],
+        queryFn: () => getTienDoB1Sql(params),
         staleTime: 1000 * 60 * 5,
     });
 
-    const dataSource = useMemo(() => normalizeApiList(tienDoData), [tienDoData]);
-    const totalRecords = tienDoData?.total || dataSource.length || 0;
+    const { data: tienDoDataB2, isLoading: isLoadingTienDoB2 } = useQuery({
+        queryKey: ["getTienDoB2", params],
+        queryFn: () => getTienDoB2Sql(params),
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const { data: tienDoDataC1, isLoading: isLoadingTienDoC1 } = useQuery({
+        queryKey: ["getTienDoC1", params],
+        queryFn: () => getTienDoC1Sql(params),
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const dataSourceB1 = useMemo(() => normalizeApiList(tienDoDataB1), [tienDoDataB1]);
+    const dataSourceB2 = useMemo(() => normalizeApiList(tienDoDataB2), [tienDoDataB2]);
+    const dataSourceC1 = useMemo(() => normalizeApiList(tienDoDataC1), [tienDoDataC1]);
+
+    const totalRecordsB1 = tienDoDataB1?.total || dataSourceB1.length || 0;
+    const totalRecordsB2 = tienDoDataB2?.total || dataSourceB2.length || 0;
+    const totalRecordsC1 = tienDoDataC1?.total || dataSourceC1.length || 0;
 
     const { mutate: mutateTienDo, isLoading: isSaving } = useMutation({
         mutationFn: dongBoTienDoDaoTaoSql,
         onSuccess: () => {
             message.success(modalAction === 'add' ? 'Thêm mới thành công' : 'Cập nhật thành công');
             setIsModalOpen(false);
-            queryClient.invalidateQueries(["getTienDoTaoList"]);
+            queryClient.invalidateQueries(["getTienDoB1"]);
+            queryClient.invalidateQueries(["getTienDoB2"]);
+            queryClient.invalidateQueries(["getTienDoC1"]);
         },
         onError: (err) => {
             message.error(err.response?.data?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
@@ -478,19 +504,73 @@ const TienDoDaoTao = () => {
                 </Row>
             </Card>
 
-            <Card bodyStyle={{ padding: 0 }}>
+            <Card bodyStyle={{ padding: 0 }} className="!mb-6" title={<Title level={5} className=" !text-blue-600">Tiến Độ Hạng B1</Title>}>
                 <Table
                     className="table-blue-header"
-                    dataSource={dataSource}
+                    dataSource={dataSourceB1}
                     columns={columns}
                     bordered
                     size="small"
-                    loading={isLoadingTienDo}
+                    loading={isLoadingTienDoB1}
                     scroll={{ x: 1800 }}
                     pagination={{
                         current: params.page,
                         pageSize: params.limit,
-                        total: totalRecords,
+                        total: totalRecordsB1,
+                        onChange: (page, pageSize) => {
+                            setParams((prev) => ({
+                                ...prev,
+                                page,
+                                limit: pageSize,
+                            }));
+                        },
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
+                    }}
+                />
+            </Card>
+
+            <Card bodyStyle={{ padding: 0 }} className="!mb-6" title={<Title level={5} className="!text-blue-600">Tiến Độ Hạng B2</Title>}>
+                <Table
+                    className="table-blue-header"
+                    dataSource={dataSourceB2}
+                    columns={columns}
+                    bordered
+                    size="small"
+                    loading={isLoadingTienDoB2}
+                    scroll={{ x: 1800 }}
+                    pagination={{
+                        current: params.page,
+                        pageSize: params.limit,
+                        total: totalRecordsB2,
+                        onChange: (page, pageSize) => {
+                            setParams((prev) => ({
+                                ...prev,
+                                page,
+                                limit: pageSize,
+                            }));
+                        },
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
+                    }}
+                />
+            </Card>
+
+            <Card bodyStyle={{ padding: 0 }} title={<Title level={5} className="!text-blue-600">Tiến Độ Hạng C1</Title>}>
+                <Table
+                    className="table-blue-header"
+                    dataSource={dataSourceC1}
+                    columns={columns}
+                    bordered
+                    size="small"
+                    loading={isLoadingTienDoC1}
+                    scroll={{ x: 1800 }}
+                    pagination={{
+                        current: params.page,
+                        pageSize: params.limit,
+                        total: totalRecordsC1,
                         onChange: (page, pageSize) => {
                             setParams((prev) => ({
                                 ...prev,

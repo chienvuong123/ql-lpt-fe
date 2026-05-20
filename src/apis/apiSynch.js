@@ -53,3 +53,19 @@ export const kiemTraDongBoSql = async (data) => {
     const response = await axios.post(`${baseURL}/sync/kiem-tra-dong-bo`, data);
     return response.data;
 };
+
+export const getTienDoB1Sql = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/sync/tien-do/b1`, { params });
+    return response.data;
+};
+
+export const getTienDoB2Sql = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/sync/tien-do/b2`, { params });
+    return response.data;
+};
+
+export const getTienDoC1Sql = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/sync/tien-do/c1`, { params });
+    return response.data;
+};
+

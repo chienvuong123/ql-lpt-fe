@@ -43,10 +43,28 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
         return [];
     };
 
-    const courseOptions = normalizeApiList(dataKhoaHoc).map((item) => ({
-        label: item?.ten_khoa || item?.name || item?.code || '#' + item?.iid,
-        value: item?.ma_khoa || item?.code || item?.iid,
-    }));
+    const courseOptions = React.useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const options = normalizeApiList(dataKhoaHoc).map((item) => ({
+            label: item?.ten_khoa || item?.name || item?.code || '#' + item?.iid,
+            value: item?.ma_khoa || item?.code || item?.iid,
+            ngay_bat_dau: item?.ngay_bat_dau
+        }));
+
+        return options.sort((a, b) => {
+            const dateA = a.ngay_bat_dau ? new Date(a.ngay_bat_dau).getFullYear() : 0;
+            const dateB = b.ngay_bat_dau ? new Date(b.ngay_bat_dau).getFullYear() : 0;
+            
+            if (dateA === currentYear && dateB !== currentYear) return -1;
+            if (dateA !== currentYear && dateB === currentYear) return 1;
+
+            const timeA = a.ngay_bat_dau ? new Date(a.ngay_bat_dau).getTime() : 0;
+            const timeB = b.ngay_bat_dau ? new Date(b.ngay_bat_dau).getTime() : 0;
+            if (timeA !== timeB) return timeB - timeA;
+
+            return String(b.label).localeCompare(String(a.label));
+        });
+    }, [dataKhoaHoc]);
 
     const calculateDates = (ngayKG) => {
         if (!ngayKG) return {};
@@ -214,7 +232,11 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
                         </Form.Item>
                     </Col>
                     <Col span={6}>
-                        <Form.Item name="hang" label="Hạng">
+                        <Form.Item 
+                            name="hang" 
+                            label="Hạng"
+                            rules={[{ required: true, message: 'Vui lòng chọn hạng!' }]}
+                        >
                             <Select
                                 placeholder="Chọn hạng"
                                 options={[
