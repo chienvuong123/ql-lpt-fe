@@ -329,7 +329,7 @@ function App() {
                 }
               />
               <Route path="dong-bo-du-lieu-he-thong" element={<ThemDuLieuVaoHeThong />} />
-              <Route path="them-tien-do-dao-tao" element={<TienDoDaoTao />} />
+              <Route path="tien-do-dao-tao" element={<TienDoDaoTao />} />
               <Route
                 path="kiem-tra-hoc-vien-sau-tot-nghiep"
                 element={<KiemTraDuLieuTotNghiep />}
