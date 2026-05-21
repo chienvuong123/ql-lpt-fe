@@ -35,7 +35,21 @@ const TienDoDaoTao = () => {
     const [modalAction, setModalAction] = useState('add');
     const [selectedRecord, setSelectedRecord] = useState(null);
     const keywordInputRef = useRef(null);
-    const [params, setParams] = useState({
+    const [paramsB1, setParamsB1] = useState({
+        page: 1,
+        limit: 10,
+        text: "",
+        search_ngay_tn: null,
+        khoa_iid: undefined,
+    });
+    const [paramsB2, setParamsB2] = useState({
+        page: 1,
+        limit: 10,
+        text: "",
+        search_ngay_tn: null,
+        khoa_iid: undefined,
+    });
+    const [paramsC1, setParamsC1] = useState({
         page: 1,
         limit: 10,
         text: "",
@@ -80,20 +94,20 @@ const TienDoDaoTao = () => {
     }, [dataKhoaHoc]);
 
     const { data: tienDoDataB1, isLoading: isLoadingTienDoB1 } = useQuery({
-        queryKey: ["getTienDoB1", params],
-        queryFn: () => getTienDoB1Sql(params),
+        queryKey: ["getTienDoB1", paramsB1],
+        queryFn: () => getTienDoB1Sql(paramsB1),
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: tienDoDataB2, isLoading: isLoadingTienDoB2 } = useQuery({
-        queryKey: ["getTienDoB2", params],
-        queryFn: () => getTienDoB2Sql(params),
+        queryKey: ["getTienDoB2", paramsB2],
+        queryFn: () => getTienDoB2Sql(paramsB2),
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: tienDoDataC1, isLoading: isLoadingTienDoC1 } = useQuery({
-        queryKey: ["getTienDoC1", params],
-        queryFn: () => getTienDoC1Sql(params),
+        queryKey: ["getTienDoC1", paramsC1],
+        queryFn: () => getTienDoC1Sql(paramsC1),
         staleTime: 1000 * 60 * 5,
     });
 
@@ -442,24 +456,30 @@ const TienDoDaoTao = () => {
 
     const handleFilter = () => {
         const text = keywordInputRef.current?.input?.value?.trim() || "";
-        setParams(prev => ({
+        const updateFn = prev => ({
             ...prev,
             page: 1,
             text,
-        }));
+        });
+        setParamsB1(updateFn);
+        setParamsB2(updateFn);
+        setParamsC1(updateFn);
     };
 
     const handleReset = () => {
         if (keywordInputRef.current?.input) {
             keywordInputRef.current.input.value = "";
         }
-        setParams({
+        const resetVal = {
             page: 1,
             limit: 10,
             text: "",
             search_ngay_tn: null,
             khoa_iid: undefined,
-        });
+        };
+        setParamsB1(resetVal);
+        setParamsB2(resetVal);
+        setParamsC1(resetVal);
     };
 
     return (
@@ -490,8 +510,13 @@ const TienDoDaoTao = () => {
                         <Select
                             className="w-full"
                             placeholder="--Chọn khóa--"
-                            value={params.khoa_iid}
-                            onChange={(value) => setParams(prev => ({ ...prev, khoa_iid: value, page: 1 }))}
+                            value={paramsB1.khoa_iid}
+                            onChange={(value) => {
+                                const updateFn = prev => ({ ...prev, khoa_iid: value, page: 1 });
+                                setParamsB1(updateFn);
+                                setParamsB2(updateFn);
+                                setParamsC1(updateFn);
+                            }}
                             options={classOptions}
                             loading={isLoadingKhoaHoc}
                             showSearch
@@ -518,8 +543,13 @@ const TienDoDaoTao = () => {
                             placeholder="Chọn ngày tốt nghiệp"
                             className="w-full"
                             format="DD/MM/YYYY"
-                            value={params.search_ngay_tn ? dayjs(params.search_ngay_tn, 'DD/MM/YYYY') : null}
-                            onChange={(date, dateString) => setParams(prev => ({ ...prev, search_ngay_tn: dateString || null, page: 1 }))}
+                            value={paramsB1.search_ngay_tn ? dayjs(paramsB1.search_ngay_tn, 'DD/MM/YYYY') : null}
+                            onChange={(date, dateString) => {
+                                const updateFn = prev => ({ ...prev, search_ngay_tn: dateString || null, page: 1 });
+                                setParamsB1(updateFn);
+                                setParamsB2(updateFn);
+                                setParamsC1(updateFn);
+                            }}
                         />
                     </Col>
                     <Col xs={24} md={3}>
@@ -568,11 +598,11 @@ const TienDoDaoTao = () => {
                     loading={isLoadingTienDoB1}
                     scroll={{ x: 1800 }}
                     pagination={{
-                        current: params.page,
-                        pageSize: params.limit,
+                        current: paramsB1.page,
+                        pageSize: paramsB1.limit,
                         total: totalRecordsB1,
                         onChange: (page, pageSize) => {
-                            setParams((prev) => ({
+                            setParamsB1((prev) => ({
                                 ...prev,
                                 page,
                                 limit: pageSize,
@@ -595,11 +625,11 @@ const TienDoDaoTao = () => {
                     loading={isLoadingTienDoB2}
                     scroll={{ x: 1800 }}
                     pagination={{
-                        current: params.page,
-                        pageSize: params.limit,
+                        current: paramsB2.page,
+                        pageSize: paramsB2.limit,
                         total: totalRecordsB2,
                         onChange: (page, pageSize) => {
-                            setParams((prev) => ({
+                            setParamsB2((prev) => ({
                                 ...prev,
                                 page,
                                 limit: pageSize,
@@ -622,11 +652,11 @@ const TienDoDaoTao = () => {
                     loading={isLoadingTienDoC1}
                     scroll={{ x: 1800 }}
                     pagination={{
-                        current: params.page,
-                        pageSize: params.limit,
+                        current: paramsC1.page,
+                        pageSize: paramsC1.limit,
                         total: totalRecordsC1,
                         onChange: (page, pageSize) => {
-                            setParams((prev) => ({
+                            setParamsC1((prev) => ({
                                 ...prev,
                                 page,
                                 limit: pageSize,
