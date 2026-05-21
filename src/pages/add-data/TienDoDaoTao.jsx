@@ -67,7 +67,7 @@ const TienDoDaoTao = () => {
         return options.sort((a, b) => {
             const dateA = a.ngay_bat_dau ? new Date(a.ngay_bat_dau).getFullYear() : 0;
             const dateB = b.ngay_bat_dau ? new Date(b.ngay_bat_dau).getFullYear() : 0;
-            
+
             if (dateA === currentYear && dateB !== currentYear) return -1;
             if (dateA !== currentYear && dateB === currentYear) return 1;
 
@@ -104,6 +104,43 @@ const TienDoDaoTao = () => {
     const totalRecordsB1 = tienDoDataB1?.total || dataSourceB1.length || 0;
     const totalRecordsB2 = tienDoDataB2?.total || dataSourceB2.length || 0;
     const totalRecordsC1 = tienDoDataC1?.total || dataSourceC1.length || 0;
+
+    const luuLuongB1 = useMemo(() => {
+        return dataSourceB1.reduce((sum, item) => {
+            if (!item.be_giang) return sum;
+            const beGiang = dayjs(item.be_giang);
+            if (beGiang.isAfter(dayjs(), 'day')) {
+                return sum + (Number(item.luu_luong) || 0);
+            }
+            return sum;
+        }, 0);
+    }, [dataSourceB1]);
+
+    const luuLuongB2 = useMemo(() => {
+        return dataSourceB2.reduce((sum, item) => {
+            if (!item.be_giang) return sum;
+            const beGiang = dayjs(item.be_giang);
+            if (beGiang.isAfter(dayjs(), 'day')) {
+                return sum + (Number(item.luu_luong) || 0);
+            }
+            return sum;
+        }, 0);
+    }, [dataSourceB2]);
+
+    const luuLuongC1 = useMemo(() => {
+        return dataSourceC1.reduce((sum, item) => {
+            if (!item.be_giang) return sum;
+            const beGiang = dayjs(item.be_giang);
+            if (beGiang.isAfter(dayjs(), 'day')) {
+                return sum + (Number(item.luu_luong) || 0);
+            }
+            return sum;
+        }, 0);
+    }, [dataSourceC1]);
+
+    const tongLuuLuong = useMemo(() => {
+        return luuLuongB1 + luuLuongB2 + luuLuongC1;
+    }, [luuLuongB1, luuLuongB2, luuLuongC1]);
 
     const { mutate: mutateTienDo, isLoading: isSaving } = useMutation({
         mutationFn: dongBoTienDoDaoTaoSql,
@@ -502,7 +539,24 @@ const TienDoDaoTao = () => {
                         </Space>
                     </Col>
                 </Row>
+                <Row gutter={[16, 16]} className="!mt-8 !ml-1">
+                    <div className='flex gap-6'>
+                        <div className="text-sm">
+                            Tổng Lưu Lượng: <Text strong>{tongLuuLuong}</Text>
+                        </div>
+                        <div className="text-sm">
+                            Lưu lượng B1: <Text strong>{luuLuongB1}</Text>
+                        </div>
+                        <div className="text-sm">
+                            Lưu lượng B2: <Text strong>{luuLuongB2}</Text>
+                        </div>
+                        <div className="text-sm">
+                            Lưu lượng C1: <Text strong>{luuLuongC1}</Text>
+                        </div>
+                    </div>
+                </Row>
             </Card>
+
 
             <Card bodyStyle={{ padding: 0 }} className="!mb-6" title={<Title level={5} className=" !text-blue-600">Tiến Độ Hạng B1</Title>}>
                 <Table
