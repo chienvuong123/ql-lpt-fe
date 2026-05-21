@@ -578,8 +578,8 @@ const TienDoDaoTao = () => {
                                 limit: pageSize,
                             }));
                         },
-                        showSizeChanger: true,
-                        showQuickJumper: true,
+                        // showSizeChanger: true,
+                        // showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
@@ -605,8 +605,8 @@ const TienDoDaoTao = () => {
                                 limit: pageSize,
                             }));
                         },
-                        showSizeChanger: true,
-                        showQuickJumper: true,
+                        // showSizeChanger: true,
+                        // showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
@@ -632,8 +632,8 @@ const TienDoDaoTao = () => {
                                 limit: pageSize,
                             }));
                         },
-                        showSizeChanger: true,
-                        showQuickJumper: true,
+                        // showSizeChanger: true,
+                        // showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
