@@ -177,14 +177,14 @@ const TienDoDaoTao = () => {
             align: 'center',
             render: (text) => <Text strong>{text ? text : '-'}</Text>
         },
-        {
-            title: 'Hạng',
-            dataIndex: 'hang',
-            key: 'hang',
-            width: 70,
-            align: 'center',
-            render: (text) => <Tag color="blue">{text || '-'}</Tag>
-        },
+        // {
+        //     title: 'Hạng',
+        //     dataIndex: 'hang',
+        //     key: 'hang',
+        //     width: 70,
+        //     align: 'center',
+        //     render: (text) => <Tag color="blue">{text || '-'}</Tag>
+        // },
         {
             title: 'SL',
             dataIndex: 'luu_luong',
@@ -337,18 +337,18 @@ const TienDoDaoTao = () => {
                 return <Tag color="processing">{diffDays} ngày</Tag>;
             }
         },
-        {
-            title: 'Lưu lượng',
-            dataIndex: 'luu_luong',
-            key: 'luu_luong',
-            width: 100,
-            align: 'center',
-            render: (text, record) => {
-                const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
-                const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
-                return isClosed ? '-' : (text || '-');
-            }
-        },
+        // {
+        //     title: 'Lưu lượng',
+        //     dataIndex: 'luu_luong',
+        //     key: 'luu_luong',
+        //     width: 100,
+        //     align: 'center',
+        //     render: (text, record) => {
+        //         const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
+        //         const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
+        //         return isClosed ? '-' : (text || '-');
+        //     }
+        // },
         {
             title: 'SL đạt TN',
             dataIndex: 'so_luong_dat',
