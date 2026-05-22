@@ -21,6 +21,44 @@ const normalizePlate = (plate) =>
     .toUpperCase()
     .trim();
 
+const isPlateSimilar = (p1, p2) => {
+  const norm1 = normalizePlate(p1);
+  const norm2 = normalizePlate(p2);
+  if (!norm1 || !norm2) return false;
+  if (norm1 === norm2) return true;
+
+  if (Math.abs(norm1.length - norm2.length) > 1) return false;
+
+  if (norm1.length === norm2.length) {
+    let diff = 0;
+    for (let i = 0; i < norm1.length; i++) {
+      if (norm1[i] !== norm2[i]) {
+        diff++;
+        if (diff > 1) return false;
+      }
+    }
+    return diff <= 1;
+  }
+
+  const longer = norm1.length > norm2.length ? norm1 : norm2;
+  const shorter = norm1.length > norm2.length ? norm2 : norm1;
+
+  let i = 0;
+  let j = 0;
+  let diff = 0;
+  while (i < longer.length && j < shorter.length) {
+    if (longer[i] !== shorter[j]) {
+      diff++;
+      if (diff > 1) return false;
+      i++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+  return true;
+};
+
 const formatSessionDate = (value) => {
   const date = dayjs(value);
   return date.isValid() ? date.format("YYYY-MM-DD") : "";
@@ -151,7 +189,7 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao, studentCheckInfo = null
     const km = toNumber(item.TongQuangDuong);
     const isTuDong =
       bienSoTuDong &&
-      normalizePlate(item.BienSo) === normalizePlate(bienSoTuDong);
+      isPlateSimilar(item.BienSo, bienSoTuDong);
 
     tongGiay += giay;
     tongKm += km;

@@ -138,6 +138,44 @@ export function normalizePlate(plate) {
     .trim();
 }
 
+export function isPlateSimilar(p1, p2) {
+  const norm1 = normalizePlate(p1);
+  const norm2 = normalizePlate(p2);
+  if (!norm1 || !norm2) return false;
+  if (norm1 === norm2) return true;
+
+  if (Math.abs(norm1.length - norm2.length) > 1) return false;
+
+  if (norm1.length === norm2.length) {
+    let diff = 0;
+    for (let i = 0; i < norm1.length; i++) {
+      if (norm1[i] !== norm2[i]) {
+        diff++;
+        if (diff > 1) return false;
+      }
+    }
+    return diff <= 1;
+  }
+
+  const longer = norm1.length > norm2.length ? norm1 : norm2;
+  const shorter = norm1.length > norm2.length ? norm2 : norm1;
+
+  let i = 0;
+  let j = 0;
+  let diff = 0;
+  while (i < longer.length && j < shorter.length) {
+    if (longer[i] !== shorter[j]) {
+      diff++;
+      if (diff > 1) return false;
+      i++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+  return true;
+}
+
 export const getSessionKeys = (item) => {
   const keys = new Set();
   const sessionId = item?.phien_hoc_id ?? item?.ID ?? item?.id ?? item?.phien_hoc_dat_id;
@@ -456,6 +494,24 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
 export function getBienSoTuDong(dataSource, studentInfo = null) {
   if (!dataSource || dataSource.length === 0) return null;
 
+  // Ưu tiên: dùng thông tin đăng ký từ studentInfo
+  if (studentInfo) {
+    const bs1 = normalizePlate(studentInfo.xeB1);
+    const bs2 = normalizePlate(studentInfo.xeB2);
+
+    // Nếu chỉ có xe B1 đăng ký (không có xe B2) thì trả về null
+    if (bs1 && !bs2) return null;
+
+    // Nếu chỉ có xe B2 đăng ký (không có xe B1) thì trả về null
+    if (bs2 && !bs1) return null;
+
+    // Nếu có cả hai xe đăng ký thì xe B1 là xe tự động
+    if (bs1 && bs2) return bs1;
+
+    return null;
+  }
+
+  // Nếu không có studentInfo thì mới đếm số lần của biển số để lấy ra xe
   const count = {};
   dataSource.forEach((item) => {
     const bs = normalizePlate(item.BienSo);
@@ -464,24 +520,6 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
 
   const entries = Object.entries(count);
   if (entries.length <= 1) return null;
-
-  // Ưu tiên: dùng thông tin đăng ký từ studentInfo
-  if (studentInfo) {
-    const bs1 = normalizePlate(studentInfo.xeB1);
-    const bs2 = normalizePlate(studentInfo.xeB2);
-
-    if (bs1 && bs2) {
-      const cnt1 = count[bs1] || 0;
-      const cnt2 = count[bs2] || 0;
-      if (cnt1 === 0 && cnt2 === 0) return null;
-      if (cnt1 === 0) return bs2;
-      if (cnt2 === 0) return bs1;
-      return cnt1 <= cnt2 ? bs1 : bs2;
-    }
-
-    // Chỉ có xeB2 → đó là xe tự động
-    if (bs2 && count[bs2]) return bs2;
-  }
 
   // Fallback: biển số xuất hiện ít nhất
   return entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0];
@@ -572,7 +610,7 @@ export function getInvalidSessionIndexes(
   if (bienSoTuDong) {
     dataSource.forEach((phien, idx) => {
       if (!isRuleApplicable("checkKhungGioTuDong", phien.ThoiDiemDangNhap)) return;
-      if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) return;
+      if (!isPlateSimilar(phien.BienSo, bienSoTuDong)) return;
       const thoiDiem = new Date(phien.ThoiDiemDangNhap);
       if (isNaN(thoiDiem)) return;
 
@@ -648,20 +686,19 @@ export function getInvalidSessionIndexes(
 
   // 5. Sai biển số xe (không phải xeB1 cũng không phải xeB2)
   if (studentInfo?.xeB1 || studentInfo?.xeB2) {
-    const allowedPlates = new Set(
-      [
-        normalizePlate(studentInfo.xeB1),
-        normalizePlate(studentInfo.xeB2),
-      ].filter(Boolean),
-    );
     dataSource.forEach((phien, idx) => {
       if (!isRuleApplicable("checkSaiXe", phien.ThoiDiemDangNhap)) return;
       const bs = normalizePlate(phien.BienSo);
-      if (bs && !allowedPlates.has(bs)) {
-        addReason(
-          idx,
-          `Biển số xe "${phien.BienSo}" không thuộc xe đăng ký (${[studentInfo.xeB1, studentInfo.xeB2].filter(Boolean).join(", ")})`,
-        );
+      if (bs) {
+        const isMatched = [studentInfo.xeB1, studentInfo.xeB2]
+          .filter(Boolean)
+          .some((reg) => isPlateSimilar(bs, reg));
+        if (!isMatched) {
+          addReason(
+            idx,
+            `Biển số xe "${phien.BienSo}" không thuộc xe đăng ký (${[studentInfo.xeB1, studentInfo.xeB2].filter(Boolean).join(", ")})`,
+          );
+        }
       }
     });
   }
@@ -824,7 +861,7 @@ export function evaluateTuDongSau17h(dataSource) {
 
   return dataSource.reduce((acc, phien, idx) => {
     if (!isRuleApplicable("checkKhungGioTuDong", phien.ThoiDiemDangNhap)) return acc;
-    if (normalizePlate(phien.BienSo) !== normalizePlate(bienSoTuDong)) {
+    if (!isPlateSimilar(phien.BienSo, bienSoTuDong)) {
       return acc;
     }
 
@@ -996,14 +1033,10 @@ function evaluateSaiXe(dataSource, studentInfo) {
     return warnings;
   }
 
-  const allowedPlates = new Set(
-    [registeredPlateB1, registeredPlateB2].filter(Boolean),
-  );
-
   const wrongPlateSessions = dataSource.filter(
     (s) =>
       isRuleApplicable("checkSaiXe", s.ThoiDiemDangNhap) &&
-      !allowedPlates.has(normalizePlate(s.BienSo)),
+      ![registeredPlateB1, registeredPlateB2].filter(Boolean).some((reg) => isPlateSimilar(s.BienSo, reg)),
   );
 
   if (wrongPlateSessions.length > 0) {
@@ -1025,14 +1058,16 @@ function evaluateSaiXe(dataSource, studentInfo) {
     const platesUsed = new Set(
       dataSource.map((s) => normalizePlate(s.BienSo)).filter(Boolean),
     );
-    if (!platesUsed.has(registeredPlateB1)) {
+    const hasUsedB1 = Array.from(platesUsed).some((plate) => isPlateSimilar(plate, registeredPlateB1));
+    if (!hasUsedB1) {
       warnings.push({
         type: "warning",
         label: "Thiếu phiên xe B1",
         message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B1: "${studentInfo.xeB1}".`,
       });
     }
-    if (!platesUsed.has(registeredPlateB2)) {
+    const hasUsedB2 = Array.from(platesUsed).some((plate) => isPlateSimilar(plate, registeredPlateB2));
+    if (!hasUsedB2) {
       warnings.push({
         type: "warning",
         label: "Thiếu phiên xe B2",
@@ -1093,7 +1128,7 @@ export function computeSummary(
     (acc, item, idx) => {
       const isTuDong =
         !!bienSoTuDong &&
-        normalizePlate(item.BienSo) === normalizePlate(bienSoTuDong);
+        isPlateSimilar(item.BienSo, bienSoTuDong);
 
       // TongThoiGian trong API là GIÂY
       const thoiGianGiay = item.TongThoiGian || 0;
