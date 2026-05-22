@@ -487,7 +487,7 @@ const ModalTest = ({
       destroyOnClose
       styles={{
         body: {
-          overflow: 'hidden',
+          // overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
