@@ -131,3 +131,10 @@ export const getRankCabinLesson = (name = "") => {
   if (n.includes("tổng hợp")) return 8;
   return 99;
 };
+
+export const normalizeApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.result)) return payload.result;
+  return [];
+};

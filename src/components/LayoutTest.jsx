@@ -67,6 +67,7 @@ const menuPathMap = {
   "cai-dat-he-thong": "/cai-dat-he-thong",
   "quan-ly-vung-cam": "/quan-ly-vung-cam",
   "tien-do-dao-tao": "/tien-do-dao-tao",
+  "danh-sach-dang-ky-xe-giao-vien": "/danh-sach-dang-ky-xe-giao-vien",
 };
 
 const LayoutTest = () => {
@@ -180,6 +181,7 @@ const LayoutTest = () => {
       icon: <AppstoreAddOutlined />,
       label: "Thêm dữ liệu", children: [
         { key: "dong-bo-du-lieu-he-thong", label: "Đồng bộ dữ liệu hệ thống" },
+        { key: "danh-sach-dang-ky-xe-giao-vien", label: "Danh sách xe, giáo viên" }
       ]
     },
     {

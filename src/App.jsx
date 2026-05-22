@@ -48,6 +48,7 @@ import DanhSachChoXepLopLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSac
 import DanhSachDangHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachDangHocBuLyThuyet";
 import CaiDatHeThong from "./pages/setting/CaiDatHeThong";
 import ForbiddenZonePage from "./pages/map/ForbiddenZonePage";
+import DanhSachDangKyXeGiaoVien from "./pages/add-data/DangKyXeGiaoVien";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -330,6 +331,7 @@ function App() {
               />
               <Route path="dong-bo-du-lieu-he-thong" element={<ThemDuLieuVaoHeThong />} />
               <Route path="tien-do-dao-tao" element={<TienDoDaoTao />} />
+              <Route path="danh-sach-dang-ky-xe-giao-vien" element={<DanhSachDangKyXeGiaoVien />} />
               <Route
                 path="kiem-tra-hoc-vien-sau-tot-nghiep"
                 element={<KiemTraDuLieuTotNghiep />}
