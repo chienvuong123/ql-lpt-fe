@@ -4,6 +4,7 @@ import { Card, Drawer, Empty, Grid, Image, Spin, Typography, Tag } from "antd";
 import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
+  getBienSoTuDong,
 } from "./DieuKienKiemTra";
 import { getHocVienDuyetPublic, getLichSuDuyetPhienHocPublic, LoTringOnlinePublic } from "../../apis/apiDeploy";
 
@@ -128,7 +129,7 @@ const INITIAL_APPROVE_STATE = {
 
 // ─── Summary Check ────────────────────────────────────────────────────────────
 
-const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
+const computeQuickSummary = (rowsWithStatus, hangDaoTao, studentCheckInfo = null) => {
   const yeuCau = HANG_DAO_TAO_CONFIG[hangDaoTao];
   if (!yeuCau) return null;
 
@@ -140,17 +141,10 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
   let demKm = 0;
   let tuDongGiay = 0;
   let tuDongKm = 0;
+  let demTuDongGiay = 0;
+  let demTuDongKm = 0;
 
-  const bienSoCount = {};
-  validRows.forEach((item) => {
-    if (item.BienSo)
-      bienSoCount[item.BienSo] = (bienSoCount[item.BienSo] || 0) + 1;
-  });
-  const bienSoEntries = Object.entries(bienSoCount);
-  const bienSoTuDong =
-    bienSoEntries.length > 1
-      ? bienSoEntries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0]
-      : null;
+  const bienSoTuDong = getBienSoTuDong(validRows, studentCheckInfo);
 
   validRows.forEach((item) => {
     const giay = toNumber(item.TongThoiGian);
@@ -162,26 +156,43 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     tongGiay += giay;
     tongKm += km;
 
+    let isDem = false;
     const demGiayAPI = toNumber(item.ThoiGianBanDem);
     if (demGiayAPI > 0) {
       demGiay += demGiayAPI;
       demKm += toNumber(item.QuangDuongBanDem);
+      isDem = true;
     } else if (item.ThoiDiemDangNhap) {
       const hour = new Date(item.ThoiDiemDangNhap).getHours();
       if (hour >= 18) {
         demGiay += giay;
         demKm += km;
+        isDem = true;
       }
     }
 
     if (isTuDong) {
       tuDongGiay += giay;
       tuDongKm += km;
+
+      if (isDem) {
+        if (demGiayAPI > 0) {
+          demTuDongGiay += demGiayAPI;
+          demTuDongKm += toNumber(item.QuangDuongBanDem);
+        } else {
+          demTuDongGiay += giay;
+          demTuDongKm += km;
+        }
+      }
     }
   });
 
+  // Trừ phần ban đêm của phiên tự động ra khỏi ban đêm chung
+  const demGiayFinal = Math.max(demGiay - demTuDongGiay, 0);
+  const demKmFinal = Math.max(demKm - demTuDongKm, 0);
+
   const tongGio = tongGiay / 3600;
-  const demGio = demGiay / 3600;
+  const demGio = demGiayFinal / 3600;
   const tuDongGio = tuDongGiay / 3600;
 
   const warnings = [];
@@ -189,11 +200,18 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
   const thieu_tongGio = yeuCau.thoiGian.tong - tongGio;
   const thieu_tongKm = yeuCau.quangDuong.tong - tongKm;
   if (thieu_tongGio > 0 || thieu_tongKm > 0) {
+    let detailParts = [];
+    // if (thieu_tongGio > 0) {
+    //   detailParts.push(`thiếu ${formatDurationFromSeconds(thieu_tongGio * 3600)}`);
+    // }
+    // if (thieu_tongKm > 0) {
+    //   detailParts.push(`thiếu ${thieu_tongKm.toFixed(2)} km`);
+    // }
     warnings.push({
       key: "duyet_tong",
       color: "#FF0000",
       label: "Tổng km và thời gian chưa đạt.",
-      detail: "",
+      detail: detailParts.join(" và "),
     });
   }
 
@@ -204,23 +222,37 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     const thieu_soSanKm = 730 - soSanKm;
 
     if (thieu_soSanGio > 0 || thieu_soSanKm > 0) {
+      let detailParts = [];
+      // if (thieu_soSanGio > 0) {
+      //   detailParts.push(`thiếu ${formatDurationFromSeconds(thieu_soSanGio * 3600)}`);
+      // }
+      // if (thieu_soSanKm > 0) {
+      //   detailParts.push(`thiếu ${thieu_soSanKm.toFixed(2)} km`);
+      // }
       warnings.push({
         key: "duyet_so_san",
         color: "#FF0000",
         label: "Thời gian và quãng đường số sàn chưa đạt.",
-        detail: "",
+        detail: detailParts.join(" và "),
       });
     }
   }
 
   const thieu_demGio = yeuCau.thoiGian.banDem - demGio;
-  const thieu_demKm = yeuCau.quangDuong.banDem - demKm;
+  const thieu_demKm = yeuCau.quangDuong.banDem - demKmFinal;
   if (thieu_demGio > 0 || thieu_demKm > 0) {
+    let detailParts = [];
+    // if (thieu_demGio > 0) {
+    //   detailParts.push(`thiếu ${formatDurationFromSeconds(thieu_demGio * 3600)}`);
+    // }
+    // if (thieu_demKm > 0) {
+    //   detailParts.push(`thiếu ${thieu_demKm.toFixed(2)} km`);
+    // }
     warnings.push({
       key: "duyet_dem",
       color: "#FF0000",
       label: "Thời gian và quãng đường ban đêm chưa đạt.",
-      detail: "",
+      detail: detailParts.join(" và "),
     });
   }
 
@@ -228,11 +260,18 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao) => {
     const thieu_tuDongGio = yeuCau.thoiGian.tuDong - tuDongGio;
     const thieu_tuDongKm = yeuCau.quangDuong.tuDong - tuDongKm;
     if (thieu_tuDongGio > 0 || thieu_tuDongKm > 0) {
+      let detailParts = [];
+      // if (thieu_tuDongGio > 0) {
+      //   detailParts.push(`thiếu ${formatDurationFromSeconds(thieu_tuDongGio * 3600)}`);
+      // }
+      // if (thieu_tuDongKm > 0) {
+      //   detailParts.push(`thiếu ${thieu_tuDongKm.toFixed(2)} km`);
+      // }
       warnings.push({
         key: "duyet_tu_dong",
         color: "#FF0000",
         label: "Thời gian và quãng đường số tự động chưa đạt.",
-        detail: "",
+        detail: detailParts.join(" và "),
       });
     }
   }
@@ -423,8 +462,8 @@ const ModalTest = ({
   }, [rows, studentCheckInfo, student]);
 
   const summaryWarnings = useMemo(
-    () => computeQuickSummary(rowsWithStatus, hangDaoTao),
-    [rowsWithStatus, hangDaoTao],
+    () => computeQuickSummary(rowsWithStatus, hangDaoTao, studentCheckInfo),
+    [rowsWithStatus, hangDaoTao, studentCheckInfo],
   );
 
   const filteredSummaryWarnings = useMemo(
