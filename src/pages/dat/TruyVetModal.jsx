@@ -321,7 +321,15 @@ const TruyVetModal = ({
   }, [open, fetchSessionStatuses, fetchApproveStatuses, fetchLoTrinh]);
 
   const rowsWithStatus = useMemo(() => {
-    const sorted = [...rows].sort(
+    // Lọc trùng theo ID, giữ lại 1 phiên
+    const unique = Object.values(
+      rows.reduce((acc, item) => {
+        acc[item.ID] = item;
+        return acc;
+      }, {})
+    );
+
+    const sorted = unique.sort(
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
@@ -476,9 +484,17 @@ const TruyVetModal = ({
   // ─── Kiểm tra từng điều kiện đã đủ chưa ──────────────────────────────────
   const summaryMissingCases = useMemo(() => {
     const { tongGio, tongKm, dem, tuDong } = actualTotals;
-    const isSoSanClass = ["B2", "B", "C", "C1"].includes(hangDaoTao);
-    const soSanGio = tongGio;
-    const soSanKm = tongKm;
+    
+    const normalizedH = String(hangDaoTao || "").trim().toUpperCase();
+    const isB2 = normalizedH === "B2" || normalizedH === "B";
+    const isC1 = normalizedH === "C1" || normalizedH === "C";
+    const isSoSanClass = isB2 || isC1;
+
+    const limitManualTime = isC1 ? 23.0 : 18.0;
+    const limitManualKm = isC1 ? 795.0 : 730.0;
+
+    const soSanGio = tongGio - tuDong.gio;
+    const soSanKm = tongKm - tuDong.km;
 
     const buildCase = (
       key,
@@ -540,8 +556,8 @@ const TruyVetModal = ({
         "Thiếu quãng đường/thời gian số sàn",
         soSanGio,
         soSanKm,
-        18,
-        730,
+        limitManualTime,
+        limitManualKm,
         approveState.duyet_so_san,
         approveReasons.duyet_so_san,
       ),

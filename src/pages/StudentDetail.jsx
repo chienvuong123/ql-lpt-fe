@@ -269,8 +269,17 @@ const StudentDetail = ({ data }) => {
 
   const dataSource = useMemo(() => {
     const list = Array.isArray(results?.data?.Data) ? results.data.Data : [];
-    return [...list].sort(
-      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
+
+    // Lọc trùng theo ID, giữ lại 1 phiên
+    const unique = Object.values(
+      list.reduce((acc, item) => {
+        acc[item.ID] = item;
+        return acc;
+      }, {})
+    );
+
+    return unique.sort(
+      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap)
     );
   }, [results]);
 

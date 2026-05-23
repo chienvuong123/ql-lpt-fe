@@ -403,7 +403,15 @@ const ModalTest = ({
   }, [open, fetchSessionStatuses, fetchApproveStatuses, fetchLoTrinh]);
 
   const rowsWithStatus = useMemo(() => {
-    const sorted = [...rows].sort(
+    // Lọc trùng theo ID, giữ lại 1 phiên
+    const unique = Object.values(
+      rows.reduce((acc, item) => {
+        acc[item.ID] = item;
+        return acc;
+      }, {})
+    );
+
+    const sorted = unique.sort(
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
@@ -452,7 +460,7 @@ const ModalTest = ({
       const persistedStatus = getMappedStatus(item, statusMap);
 
       // Phiên học được coi là không hợp lệ (báo đỏ & trừ tổng) nếu có bất kỳ lỗi vi phạm nào
-      const derivedInvalid = invalidIndexes.has(index) || _isTooShort;
+      const derivedInvalid = invalidIndexes.has(index) || _isTooShort || _hasStopViolation;
       const effectiveStatus =
         persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
 
