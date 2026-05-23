@@ -491,27 +491,46 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
  * Biển số xuất hiện ít nhất = xe tự động.
  * Chỉ có 1 loại biển → trả null.
  */
+// Chuẩn hóa hạng đào tạo
+function normalizeHang(hang) {
+  const h = String(hang || '').trim().toUpperCase();
+  if (h === 'B' || h === 'B2') return 'B2';
+  if (h === 'B.01' || h === 'B1') return 'B1';
+  if (h === 'C1' || h === 'C') return 'C1';
+  return h;
+}
+
 export function getBienSoTuDong(dataSource, studentInfo = null) {
   if (!dataSource || dataSource.length === 0) return null;
 
-  // Ưu tiên: dùng thông tin đăng ký từ studentInfo
+  // Lấy hạng đào tạo
+  let hangRaw = '';
+  if (dataSource[0]) {
+    hangRaw = dataSource[0].HangDaoTao || dataSource[0].hangDaoTao || '';
+  }
+  if (!hangRaw && studentInfo) {
+    hangRaw = studentInfo.hangDaoTao || studentInfo.HangDaoTao || studentInfo.hang || '';
+  }
+
+  const hang = normalizeHang(hangRaw);
+
+  // Hạng B1 → tất cả phiên đều là số tự động, không cần check
+  if (hang === 'B1') return null;
+
+  // Chỉ áp dụng check xe tự động cho B2 và C1
+  if (hang !== 'B2' && hang !== 'C1') return null;
+
+  // Có thông tin đăng ký xe → xeB1 là xe tự động
   if (studentInfo) {
     const bs1 = normalizePlate(studentInfo.xeB1);
     const bs2 = normalizePlate(studentInfo.xeB2);
 
-    // Nếu chỉ có xe B1 đăng ký (không có xe B2) thì trả về null
-    if (bs1 && !bs2) return null;
-
-    // Nếu chỉ có xe B2 đăng ký (không có xe B1) thì trả về null
-    if (bs2 && !bs1) return null;
-
-    // Nếu có cả hai xe đăng ký thì xe B1 là xe tự động
+    // Có cả 2 xe → xeB1 là xe tự động
     if (bs1 && bs2) return bs1;
-
-    return null;
   }
 
-  // Nếu không có studentInfo thì mới đếm số lần của biển số để lấy ra xe
+  // Không có thông tin xe → đếm biển số
+  // Xe xuất hiện nhiều = B2 (số sàn), ít = B1 (số tự động)
   const count = {};
   dataSource.forEach((item) => {
     const bs = normalizePlate(item.BienSo);
@@ -521,7 +540,7 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
   const entries = Object.entries(count);
   if (entries.length <= 1) return null;
 
-  // Fallback: biển số xuất hiện ít nhất
+  // Xe tự động = xuất hiện ít nhất
   return entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0];
 }
 

@@ -356,8 +356,13 @@ const StudentDetail = ({ data }) => {
   const annualStudentInfo = useMemo(() => {
     const code = String(admissionCode).trim();
     if (!code) return null;
-    return studentMap.get(code) || null;
-  }, [studentMap, admissionCode]);
+    const baseInfo = studentMap.get(code);
+    if (!baseInfo) return null;
+    return {
+      ...baseInfo,
+      hang: data?.HangDaoTao || baseInfo?.hang || baseInfo?.HangDaoTao || "",
+    };
+  }, [studentMap, admissionCode, data]);
 
   const teacherName = useMemo(() => {
     if (hocVienCheckData?.data?.gv_dat) {
