@@ -36,6 +36,7 @@ import {
   fmtGio,
   getBienSoTuDong,
   normalizePlate,
+  isPlateSimilar,
   getInvalidSessionIndexes,
   getMappedStatus,
   getSessionKeys,
@@ -406,7 +407,7 @@ const StudentDetail = ({ data }) => {
       fixed: "left",
       responsive: ["sm"],
       render: (_text, record, index) => {
-        const isTuDong = bienSoTuDong && normalizePlate(record.BienSo) === normalizePlate(bienSoTuDong);
+        const isTuDong = bienSoTuDong && isPlateSimilar(record.BienSo, bienSoTuDong);
         const hour = dayjs(record.ThoiDiemDangNhap).hour();
 
         let className = "";

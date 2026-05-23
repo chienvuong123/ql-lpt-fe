@@ -253,11 +253,18 @@ const computeQuickSummary = (rowsWithStatus, hangDaoTao, studentCheckInfo = null
     });
   }
 
-  if (hangDaoTao === "B2" || hangDaoTao === "B" || hangDaoTao === "C" || hangDaoTao === "C1") {
-    const soSanGio = tongGio;
+  const normalizedHang = String(hangDaoTao || "").trim().toUpperCase();
+  const isB2 = normalizedHang === "B2" || normalizedHang === "B";
+  const isC1 = normalizedHang === "C1" || normalizedHang === "C";
+
+  if (isB2 || isC1) {
+    const limitManualTime = isC1 ? 23.0 : 18.0;
+    const limitManualKm = isC1 ? 795.0 : 730.0;
+
+    const soSanGio = tongGio - tuDongGio;
     const soSanKm = tongKm - tuDongKm;
-    const thieu_soSanGio = 18 - soSanGio;
-    const thieu_soSanKm = 730 - soSanKm;
+    const thieu_soSanGio = limitManualTime - soSanGio;
+    const thieu_soSanKm = limitManualKm - soSanKm;
 
     if (thieu_soSanGio > 0 || thieu_soSanKm > 0) {
       let detailParts = [];

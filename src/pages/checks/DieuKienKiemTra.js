@@ -1314,6 +1314,42 @@ export function evaluate(
     },
     {
       type: "error",
+      label: "Thừa số tự động (Thời gian số sàn)",
+      condition: (() => {
+        const normalizedH = normalizeHang(summaryData.hangDaoTao);
+        if (normalizedH !== "B2" && normalizedH !== "C1") return false;
+        const limitManualTime = normalizedH === "C1" ? 23.0 : 18.0;
+        const remainingManualTime = summaryData.tongThoiGianGio - summaryData.thoiGianTuDongGio;
+        return remainingManualTime < limitManualTime;
+      })(),
+      getMessage: () => {
+        const normalizedH = normalizeHang(summaryData.hangDaoTao);
+        const limitManualTime = normalizedH === "C1" ? 23.0 : 18.0;
+        const remainingManualTime = summaryData.tongThoiGianGio - summaryData.thoiGianTuDongGio;
+        const thieu = limitManualTime - remainingManualTime;
+        return `Thời gian số sàn chỉ đạt ${fmtGio(remainingManualTime)}, thiếu ${fmtGio(thieu)} so với yêu cầu tối thiểu là ${fmtGio(limitManualTime)}.`;
+      },
+    },
+    {
+      type: "error",
+      label: "Thừa số tự động (Quãng đường số sàn)",
+      condition: (() => {
+        const normalizedH = normalizeHang(summaryData.hangDaoTao);
+        if (normalizedH !== "B2" && normalizedH !== "C1") return false;
+        const limitManualKm = normalizedH === "C1" ? 795.0 : 730.0;
+        const remainingManualKm = summaryData.tongQuangDuong - summaryData.quangDuongTuDong;
+        return remainingManualKm < limitManualKm;
+      })(),
+      getMessage: () => {
+        const normalizedH = normalizeHang(summaryData.hangDaoTao);
+        const limitManualKm = normalizedH === "C1" ? 795.0 : 730.0;
+        const remainingManualKm = summaryData.tongQuangDuong - summaryData.quangDuongTuDong;
+        const thieu = limitManualKm - remainingManualKm;
+        return `Quãng đường số sàn (tổng quãng đường trừ đi tự động) chỉ đạt ${remainingManualKm.toFixed(2)} km, thiếu ${thieu.toFixed(2)} km so với yêu cầu tối thiểu là ${limitManualKm} km (Lỗi thừa số tự động).`;
+      },
+    },
+    {
+      type: "error",
       label: "Tổng thời lượng",
       condition: summaryData.tongThoiGianGio < yeuCauHang.thoiGian.tong,
       getMessage: () => {
@@ -1370,19 +1406,19 @@ export function evaluate(
         return `Quãng đường ban ngày thiếu ${pct}% (thiếu ${(yc - tt).toFixed(2)} km, yêu cầu ${yc} km).`;
       },
     },
-    {
-      type: "warning",
-      label: "Thời gian số tự động vượt mức",
-      condition: (() => {
-        const MAX_GIO = 2 + 10 / 60; // 2h10'
-        return summaryData.thoiGianTuDongGio > MAX_GIO;
-      })(),
-      getMessage: () => {
-        const MAX_GIO = 2 + 10 / 60;
-        const vuot = summaryData.thoiGianTuDongGio - MAX_GIO;
-        return `Thời gian số tự động vượt ${fmtGio(vuot)} so với mức tối đa cho phép (thực tế ${fmtGio(summaryData.thoiGianTuDongGio)}, tối đa 2h 10').`;
-      },
-    },
+    // {
+    //   type: "warning",
+    //   label: "Thời gian số tự động vượt mức",
+    //   condition: (() => {
+    //     const MAX_GIO = 2.0; // 2h
+    //     return summaryData.thoiGianTuDongGio > MAX_GIO;
+    //   })(),
+    //   getMessage: () => {
+    //     const MAX_GIO = 2.0;
+    //     const vuot = summaryData.thoiGianTuDongGio - MAX_GIO;
+    //     return `Thời gian số tự động vượt ${fmtGio(vuot)} so với mức tối đa cho phép (thực tế ${fmtGio(summaryData.thoiGianTuDongGio)}, tối đa 2h).`;
+    //   },
+    // },
     // {
     //   type: "warning",
     //   label: "Phiên không hợp lệ bị loại khỏi tổng",
