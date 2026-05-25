@@ -3,7 +3,7 @@ import { getCheckConfigs } from "../../apis/apiSetting";
 
 // Tự động đồng bộ cấu hình kiểm tra mới nhất từ server xuống LocalStorage trong nền
 try {
-  getCheckConfigsPublic()
+  getCheckConfigs()
     .then((res) => {
       const data = res?.data?.data ?? res?.data;
       if (data && typeof data === "object") {
@@ -315,6 +315,22 @@ const normalizeForCompare = (name = "") =>
 
 // ─── Helpers Check Dừng Nghỉ Xe ───────────────────────────────────────────────
 
+function getStopDurationLimit() {
+  try {
+    const config = getSystemConfig();
+    const rule = config.checkDungNghi;
+    if (rule && rule.value !== undefined && rule.value !== null && rule.value !== "") {
+      const parsed = parseInt(String(rule.value).match(/\d+/)?.[0] || "", 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    // silent
+  }
+  return 10; // Default is 10 minutes
+}
+
 function getStopViolationDetails(listCoordinate) {
   if (!Array.isArray(listCoordinate) || listCoordinate.length < 2) return null;
 
@@ -391,8 +407,11 @@ function getStopViolationDetails(listCoordinate) {
   const maxDurationMin = maxDurationMs / 1000 / 60;
   const totalDurationMin = totalDurationMs / 1000 / 60;
 
-  const hasLongStopViolation = maxDurationMin >= 10;
-  const hasTotalStopViolation = totalDurationMin >= 20;
+  const singleLimit = getStopDurationLimit();
+  const totalLimit = singleLimit * 2;
+
+  const hasLongStopViolation = maxDurationMin >= singleLimit;
+  const hasTotalStopViolation = totalDurationMin >= totalLimit;
 
   if (!hasLongStopViolation && !hasTotalStopViolation) {
     return null;
@@ -400,11 +419,11 @@ function getStopViolationDetails(listCoordinate) {
 
   let reason = "";
   if (hasLongStopViolation && hasTotalStopViolation) {
-    reason = `lần nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá 10 phút) và tổng thời gian nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá 20 phút)`;
+    reason = `lần nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá ${singleLimit} phút) và tổng thời gian nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá ${totalLimit} phút)`;
   } else if (hasLongStopViolation) {
-    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá giới hạn cho phép 10 phút cho một lần nghỉ)`;
+    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá giới hạn cho phép ${singleLimit} phút cho một lần nghỉ)`;
   } else {
-    reason = `tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá giới hạn cho phép tổng 20 phút)`;
+    reason = `tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá giới hạn cho phép tổng ${totalLimit} phút)`;
   }
 
   reason += ` - Tổng số lần nghỉ: ${realRestStops.length} lần.`;
@@ -584,7 +603,11 @@ export function getInvalidSessionIndexes(
     invalidIndexes.add(idx);
   };
 
-  const MIN_SPEED = 18;
+  const systemConfig = getSystemConfig();
+  const ruleTocDo = systemConfig.checkTocDo;
+  const configuredSpeedValue = ruleTocDo && ruleTocDo.value !== undefined && ruleTocDo.value !== null && ruleTocDo.value !== "" ? parseFloat(ruleTocDo.value) : 18;
+  const MIN_SPEED = isNaN(configuredSpeedValue) ? 18 : configuredSpeedValue;
+
   const bienSoTuDong = getBienSoTuDong(dataSource, studentInfo);
 
   // 0. Xác định tên GV hợp lệ
@@ -613,7 +636,7 @@ export function getInvalidSessionIndexes(
     }
   }
 
-  // 1. Tốc độ TB < 18 km/h
+  // 1. Tốc độ TB < 18 km/h (hoặc cấu hình)
   dataSource.forEach((phien, idx) => {
     if (!isRuleApplicable("checkTocDo", phien.ThoiDiemDangNhap)) return;
     const km = phien.TongQuangDuong || phien.TongQD_raw || 0;
@@ -659,7 +682,11 @@ export function getInvalidSessionIndexes(
     });
   }
 
-  // 3. Nghỉ giữa phiên < 15 phút → phiên SAU bị loại
+  // 3. Nghỉ giữa phiên < X phút (cấu hình) → phiên SAU bị loại
+  const ruleNghiGiuaPhien = systemConfig.checkNghiGiuaPhien;
+  const configuredNghiValue = ruleNghiGiuaPhien && ruleNghiGiuaPhien.value !== undefined && ruleNghiGiuaPhien.value !== null && ruleNghiGiuaPhien.value !== "" ? parseFloat(ruleNghiGiuaPhien.value) : 15;
+  const MIN_REST_BETWEEN_SESSIONS = isNaN(configuredNghiValue) ? 15 : configuredNghiValue;
+
   const sorted = [...dataSource]
     .map((item, originalIdx) => ({ item, originalIdx }))
     .sort(
@@ -675,10 +702,10 @@ export function getInvalidSessionIndexes(
     const tNhap = new Date(curr.item.ThoiDiemDangNhap);
     if (isNaN(tXuat) || isNaN(tNhap)) continue;
     const nghiPhut = (tNhap - tXuat) / 1000 / 60;
-    if (nghiPhut < 15) {
+    if (nghiPhut < MIN_REST_BETWEEN_SESSIONS) {
       addReason(
         curr.originalIdx,
-        `Nghỉ giữa phiên ${nghiPhut.toFixed(0)} phút (< 15 phút)`,
+        `Nghỉ giữa phiên ${nghiPhut.toFixed(0)} phút (< ${MIN_REST_BETWEEN_SESSIONS} phút)`,
       );
     }
   }
@@ -835,17 +862,23 @@ export function evaluateNghiGiuaPhien(dataSource) {
       hour: "2-digit",
       minute: "2-digit",
     });
+
+  const systemConfig = getSystemConfig();
+  const ruleNghiGiuaPhien = systemConfig.checkNghiGiuaPhien;
+  const configuredNghiValue = ruleNghiGiuaPhien && ruleNghiGiuaPhien.value !== undefined && ruleNghiGiuaPhien.value !== null && ruleNghiGiuaPhien.value !== "" ? parseFloat(ruleNghiGiuaPhien.value) : 15;
+  const MIN_REST_BETWEEN_SESSIONS = isNaN(configuredNghiValue) ? 15 : configuredNghiValue;
+
   for (let i = 1; i < sorted.length; i++) {
     const tXuat = new Date(sorted[i - 1].ThoiDiemDangXuat);
     const tNhap = new Date(sorted[i].ThoiDiemDangNhap);
     if (isNaN(tXuat) || isNaN(tNhap)) continue;
     if (!isRuleApplicable("checkNghiGiuaPhien", sorted[i].ThoiDiemDangNhap)) continue;
     const phut = (tNhap - tXuat) / 1000 / 60;
-    if (phut < 15) {
+    if (phut < MIN_REST_BETWEEN_SESSIONS) {
       errors.push({
         type: "warning",
         label: "Thời gian nghỉ giữa phiên",
-        message: `Phiên ${i + 1} nghỉ chỉ ${phut.toFixed(0)} phút (${fmt(tXuat)} → ${fmt(tNhap)}), yêu cầu ≥ 15 phút.`,
+        message: `Phiên ${i + 1} nghỉ chỉ ${phut.toFixed(0)} phút (${fmt(tXuat)} → ${fmt(tNhap)}), yêu cầu ≥ ${MIN_REST_BETWEEN_SESSIONS} phút.`,
       });
     }
   }
@@ -854,7 +887,11 @@ export function evaluateNghiGiuaPhien(dataSource) {
 
 export function evaluateTocDoPhien(dataSource) {
   if (!dataSource || dataSource.length === 0) return [];
-  const MIN_SPEED = 18;
+  const systemConfig = getSystemConfig();
+  const ruleTocDo = systemConfig.checkTocDo;
+  const configuredSpeedValue = ruleTocDo && ruleTocDo.value !== undefined && ruleTocDo.value !== null && ruleTocDo.value !== "" ? parseFloat(ruleTocDo.value) : 18;
+  const MIN_SPEED = isNaN(configuredSpeedValue) ? 18 : configuredSpeedValue;
+
   return dataSource.reduce((acc, phien, idx) => {
     if (!isRuleApplicable("checkTocDo", phien.ThoiDiemDangNhap)) return acc;
     const km = phien.TongQuangDuong || phien.TongQD_raw || 0;
@@ -1345,7 +1382,7 @@ export function evaluate(
         const limitManualKm = normalizedH === "C1" ? 795.0 : 730.0;
         const remainingManualKm = summaryData.tongQuangDuong - summaryData.quangDuongTuDong;
         const thieu = limitManualKm - remainingManualKm;
-        return `Quãng đường số sàn (tổng quãng đường trừ đi tự động) chỉ đạt ${remainingManualKm.toFixed(2)} km, thiếu ${thieu.toFixed(2)} km so với yêu cầu tối thiểu là ${limitManualKm} km (Lỗi thừa số tự động).`;
+        return `Quãng đường số sàn chỉ đạt ${remainingManualKm.toFixed(2)} km, thiếu ${thieu.toFixed(2)} km so với yêu cầu tối thiểu là ${limitManualKm} km.`;
       },
     },
     {
@@ -1406,36 +1443,6 @@ export function evaluate(
         return `Quãng đường ban ngày thiếu ${pct}% (thiếu ${(yc - tt).toFixed(2)} km, yêu cầu ${yc} km).`;
       },
     },
-    // {
-    //   type: "warning",
-    //   label: "Thời gian số tự động vượt mức",
-    //   condition: (() => {
-    //     const MAX_GIO = 2.0; // 2h
-    //     return summaryData.thoiGianTuDongGio > MAX_GIO;
-    //   })(),
-    //   getMessage: () => {
-    //     const MAX_GIO = 2.0;
-    //     const vuot = summaryData.thoiGianTuDongGio - MAX_GIO;
-    //     return `Thời gian số tự động vượt ${fmtGio(vuot)} so với mức tối đa cho phép (thực tế ${fmtGio(summaryData.thoiGianTuDongGio)}, tối đa 2h).`;
-    //   },
-    // },
-    // {
-    //   type: "warning",
-    //   label: "Phiên không hợp lệ bị loại khỏi tổng",
-    //   condition:
-    //     summaryData.tongThoiGianLoiGio > 0 || summaryData.tongQuangDuongLoi > 0,
-    //   getMessage: () => {
-    //     const parts = [
-    //       `Đã loại ${fmtGio(summaryData.tongThoiGianLoiGio)} (${summaryData.tongQuangDuongLoi.toFixed(2)} km) từ các phiên không hợp lệ.`,
-    //     ];
-    //     if (summaryData.tuDongLoiGio > 0) {
-    //       parts.push(
-    //         `Trong đó xe tự động lỗi: ${fmtGio(summaryData.tuDongLoiGio)} (${summaryData.tuDongLoiKm.toFixed(2)} km).`,
-    //       );
-    //     }
-    //     return parts.join(" ");
-    //   },
-    // },
   ];
 
   rules.forEach((rule) => {

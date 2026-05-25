@@ -85,6 +85,7 @@ export default function CaiDatHeThong() {
                 [ruleKey]: {
                     enabled: updatedRule.enabled,
                     startDate: updatedRule.startDate || null,
+                    value: updatedRule.value !== undefined ? updatedRule.value : null,
                 },
             };
 
@@ -115,6 +116,7 @@ export default function CaiDatHeThong() {
                 enabled: values.enabled ?? true,
                 startDate: values.startDate ? values.startDate.format("YYYY-MM-DD") : null,
                 description: values.description,
+                value: values.value !== undefined ? values.value : null,
             };
 
             await addCheckConfig(payload);
@@ -137,7 +139,7 @@ export default function CaiDatHeThong() {
         {
             title: "Tên quy tắc & Mô tả",
             key: "ruleName",
-            width: "50%",
+            width: "40%",
             render: (_, record) => {
                 const displayName = RULE_NAMES[record.key] || record.key;
                 const isCustom = !RULE_NAMES[record.key];
@@ -165,7 +167,7 @@ export default function CaiDatHeThong() {
             title: "Trạng thái",
             key: "status",
             align: "center",
-            width: "20%",
+            width: "15%",
             render: (_, record) => {
                 return (
                     <Switch
@@ -175,6 +177,40 @@ export default function CaiDatHeThong() {
                         }
                         checkedChildren="BẬT"
                         unCheckedChildren="TẮT"
+                    />
+                );
+            },
+        },
+        {
+            title: "Giá trị áp dụng",
+            key: "value",
+            width: "15%",
+            render: (_, record) => {
+                const allowedKeys = ["checkPhienNgan", "checkDungNghi", "checkTocDo", "checkNghiGiuaPhien"];
+                if (!allowedKeys.includes(record.key)) {
+                    return <Text type="secondary">-</Text>;
+                }
+                const isEnabled = record.enabled;
+                return (
+                    <Input
+                        key={record.key + "_" + (record.value ?? "")}
+                        disabled={!isEnabled}
+                        defaultValue={record.value ?? ""}
+                        placeholder="Ví dụ: 20"
+                        style={{ width: "100%" }}
+                        onBlur={(e) => {
+                            const newVal = e.target.value;
+                            if (newVal !== String(record.value ?? "")) {
+                                updateRuleRemoteConfig(record.key, "value", newVal);
+                            }
+                        }}
+                        onPressEnter={(e) => {
+                            const newVal = e.target.value;
+                            if (newVal !== String(record.value ?? "")) {
+                                updateRuleRemoteConfig(record.key, "value", newVal);
+                                e.target.blur();
+                            }
+                        }}
                     />
                 );
             },
@@ -306,6 +342,14 @@ export default function CaiDatHeThong() {
                             rows={3}
                             placeholder="Ví dụ: Kiểm tra phương tiện vượt đèn đỏ"
                         />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Giá trị cấu hình (value)"
+                        name="value"
+                        tooltip="Giá trị cụ thể của quy tắc (Ví dụ: 20, 15, 20phut)"
+                    >
+                        <Input placeholder="Ví dụ: 20 hoặc 20phut" />
                     </Form.Item>
 
                     <Form.Item
