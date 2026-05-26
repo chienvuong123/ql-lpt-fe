@@ -28,7 +28,7 @@ import { normalizeApiList } from "../../util/helper";
 
 const { Title, Text } = Typography;
 
-const DanhSachDangKyXeGiaoVien = () => {
+const DangKyXeGiaoVien = () => {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState(null);
@@ -91,7 +91,7 @@ const DanhSachDangKyXeGiaoVien = () => {
             message.error(err.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
         }
     });
-    console.log('params:', params);
+
     const handleEditClick = (record) => {
         setSelectedRecord(record);
         form.setFieldsValue({
@@ -228,15 +228,8 @@ const DanhSachDangKyXeGiaoVien = () => {
     ];
 
     return (
-        <div className="p-4" style={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-            <div className="mb-6">
-                <Title level={3} className="!mb-1">
-                    Danh Sách Đăng Ký Xe & Giáo Viên
-                </Title>
-                <Text type="secondary">Quản lý và phân phối xe, giáo viên giảng dạy cho học viên các khóa</Text>
-            </div>
-
-            <Card className="!mt-5 !mb-4">
+        <div>
+            <Card className="!mb-4">
                 <Row gutter={[16, 16]} align="bottom">
                     <Col xs={24} md={9}>
                         <label className="block text-xs text-gray-500 uppercase mb-1">
@@ -285,32 +278,29 @@ const DanhSachDangKyXeGiaoVien = () => {
                     </Col>
                 </Row>
             </Card>
-
-            <Card bodyStyle={{ padding: 0 }}>
-                <Table
-                    className="table-blue-header"
-                    dataSource={dataSource}
-                    columns={columns}
-                    bordered
-                    size="small"
-                    loading={isLoadingList}
-                    scroll={{ x: 1400 }}
-                    pagination={{
-                        current: params.page,
-                        pageSize: params.limit,
-                        total: totalRecords,
-                        onChange: (page, pageSize) => {
-                            setParams((prev) => ({
-                                ...prev,
-                                page,
-                                limit: pageSize,
-                            }));
-                        },
-                        showSizeChanger: true,
-                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
-                    }}
-                />
-            </Card>
+            <Table
+                className="table-blue-header"
+                dataSource={dataSource}
+                columns={columns}
+                bordered
+                size="small"
+                loading={isLoadingList}
+                scroll={{ x: 1400 }}
+                pagination={{
+                    current: params.page,
+                    pageSize: params.limit,
+                    total: totalRecords,
+                    onChange: (page, pageSize) => {
+                        setParams((prev) => ({
+                            ...prev,
+                            page,
+                            limit: pageSize,
+                        }));
+                    },
+                    showSizeChanger: true,
+                    showTotal: (total) => `Tổng cộng ${total} bản ghi`,
+                }}
+            />
 
             <Modal
                 title={
@@ -370,4 +360,4 @@ const DanhSachDangKyXeGiaoVien = () => {
     );
 };
 
-export default DanhSachDangKyXeGiaoVien;
+export default DangKyXeGiaoVien;
