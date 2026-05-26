@@ -67,7 +67,9 @@ const menuPathMap = {
   "cai-dat-he-thong": "/cai-dat-he-thong",
   "quan-ly-vung-cam": "/quan-ly-vung-cam",
   "tien-do-dao-tao": "/tien-do-dao-tao",
-  "danh-sach-dang-ky-xe-giao-vien": "/danh-sach-dang-ky-xe-giao-vien",
+  "danh-sach-xe": "/danh-sach-xe",
+  "dang-ky-xe-giao-vien": "/dang-ky-xe-giao-vien",
+  "quan-ly-uy-quyen": "/quan-ly-uy-quyen",
 };
 
 const LayoutTest = () => {
@@ -125,6 +127,11 @@ const LayoutTest = () => {
       label: "Dashboard",
     },
     {
+      key: "tien-do-dao-tao",
+      icon: <BarChartOutlined />,
+      label: "Tiến độ đào tạo",
+    },
+    {
       key: "class",
       icon: <BookOutlined />,
       label: "Lý thuyết",
@@ -168,6 +175,15 @@ const LayoutTest = () => {
       ],
     },
     {
+      key: "dao-tao",
+      icon: <AppstoreAddOutlined />,
+      label: "Đào tạo", children: [
+        { key: "danh-sach-xe", label: "Danh sách xe" },
+        { key: "quan-ly-uy-quyen", label: "Ủy quyền xe" },
+        { key: "dang-ky-xe-giao-vien", label: "Đăng ký xe, giáo viên" },
+      ]
+    },
+    {
       key: "sync",
       icon: <SyncOutlined />,
       label: "Đồng bộ",
@@ -181,7 +197,6 @@ const LayoutTest = () => {
       icon: <AppstoreAddOutlined />,
       label: "Thêm dữ liệu", children: [
         { key: "dong-bo-du-lieu-he-thong", label: "Đồng bộ dữ liệu hệ thống" },
-        { key: "danh-sach-dang-ky-xe-giao-vien", label: "Danh sách xe, giáo viên" }
       ]
     },
     {
@@ -223,11 +238,6 @@ const LayoutTest = () => {
       ]
     },
     {
-      key: "tien-do-dao-tao",
-      icon: <BarChartOutlined />,
-      label: "Tiến độ đào tạo",
-    },
-    {
       key: "tai-khoan",
       icon: <UserOutlined />,
       label: "Quản lý tài khoản",
@@ -244,12 +254,12 @@ const LayoutTest = () => {
 
   // Map role_id to allowed keys
   const roleAccessMap = {
-    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao"], // Admin
-    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao"], // Trưởng phòng
-    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao"], // Tổ nghiệp vụ
-    4: ["dashboard", "class", "tien-do-dao-tao"], // Tổ lý thuyết
-    5: ["dashboard", "cabin", "reports", "tien-do-dao-tao"], // Tổ thực hành
-    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao"], // Tổ công nghệ
+    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Admin
+    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Trưởng phòng
+    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Tổ nghiệp vụ
+    4: ["dashboard", "class", "tien-do-dao-tao", "dao-tao"], // Tổ lý thuyết
+    5: ["dashboard", "cabin", "reports", "tien-do-dao-tao", "dao-tao"], // Tổ thực hành
+    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Tổ công nghệ
   };
 
   // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard

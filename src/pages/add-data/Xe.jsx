@@ -29,7 +29,7 @@ import dayjs from "dayjs";
 import ModalXe from "./ModalXe";
 import ModalUyQuyen from "./ModalUyQuyen";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const Xe = () => {
     const queryClient = useQueryClient();
@@ -187,7 +187,7 @@ const Xe = () => {
             title: '#',
             dataIndex: 'index',
             key: 'index',
-            width: 60,
+            width: 40,
             align: 'center',
             fixed: 'left',
             render: (_, __, index) => (params.page - 1) * params.limit + index + 1,
@@ -196,7 +196,7 @@ const Xe = () => {
             title: 'Biển số xe',
             dataIndex: 'bien_so_xe',
             key: 'bien_so_xe',
-            width: 130,
+            width: 100,
             align: 'center',
             fixed: 'left',
             render: (text, record) => text || record.bien_so || record.bienSo || record.plate || '-',
@@ -212,7 +212,7 @@ const Xe = () => {
             title: 'Số đăng ký xe',
             dataIndex: 'so_dang_ky_xe',
             key: 'so_dang_ky_xe',
-            width: 140,
+            width: 110,
             align: 'center',
         },
         {
@@ -226,7 +226,7 @@ const Xe = () => {
             title: 'Số GPXTL',
             dataIndex: 'so_gpxtl',
             key: 'so_gpxtl',
-            width: 160,
+            width: 140,
             align: 'center',
         },
         {
@@ -240,7 +240,7 @@ const Xe = () => {
             title: 'Ngày cấp GPXTL',
             dataIndex: 'ngay_cap_gpxtl',
             key: 'ngay_cap_gpxtl',
-            width: 130,
+            width: 110,
             align: 'center',
             render: (text) => text ? dayjs(text).format('DD/MM/YYYY') : '-',
         },
@@ -248,7 +248,7 @@ const Xe = () => {
             title: 'Ngày hết hạn GPXTL',
             dataIndex: 'ngay_het_han_gpxtl',
             key: 'ngay_het_han_gpxtl',
-            width: 150,
+            width: 130,
             align: 'center',
             render: (text) => text ? dayjs(text).format('DD/MM/YYYY') : '-',
         },
@@ -256,7 +256,7 @@ const Xe = () => {
             title: 'Ngày cấp GCN kiểm định',
             dataIndex: 'ngay_cap_gcn_kiem_dinh',
             key: 'ngay_cap_gcn_kiem_dinh',
-            width: 180,
+            width: 150,
             align: 'center',
             render: (text) => text ? dayjs(text).format('DD/MM/YYYY') : '-',
         },
@@ -264,7 +264,7 @@ const Xe = () => {
             title: 'Ngày hết hạn đăng kiểm',
             dataIndex: 'ngay_het_han_gcn_kiem_dinh',
             key: 'ngay_het_han_gcn_kiem_dinh',
-            width: 180,
+            width: 150,
             align: 'center',
             render: (text) => text ? dayjs(text).format('DD/MM/YYYY') : '-',
         },
@@ -272,7 +272,7 @@ const Xe = () => {
             title: 'Ủy quyền',
             dataIndex: 'uy_quyen',
             key: 'uy_quyen',
-            width: 140,
+            width: 80,
             align: 'center',
             render: (text, record) => {
                 const isUyQuyen = !!(text ?? record.uy_quyen);
@@ -286,9 +286,9 @@ const Xe = () => {
                         style={{ padding: 0 }}
                     >
                         {isUyQuyen ? (
-                            <Tag color="success" style={{ cursor: 'pointer', margin: 0 }}>Đã ủy quyền</Tag>
+                            <Tag color="success" style={{ cursor: 'pointer', margin: 0 }}>Đã</Tag>
                         ) : (
-                            <Tag color="error" style={{ cursor: 'pointer', margin: 0 }}>Chưa ủy quyền</Tag>
+                            <Tag color="error" style={{ cursor: 'pointer', margin: 0 }}>Chưa</Tag>
                         )}
                     </Button>
                 );
@@ -298,7 +298,7 @@ const Xe = () => {
             title: 'Cơ quan cấp GPXTL',
             dataIndex: 'co_quan_cap_gpxtl',
             key: 'co_quan_cap_gpxtl',
-            width: 160,
+            width: 130,
         },
         {
             title: 'Sở hữu',
@@ -311,7 +311,7 @@ const Xe = () => {
             title: 'Hạng xe tập lái',
             dataIndex: 'hang_xe_tap_lai',
             key: 'hang_xe_tap_lai',
-            width: 130,
+            width: 100,
             align: 'center',
         },
         {
@@ -324,13 +324,13 @@ const Xe = () => {
             title: 'Số máy',
             dataIndex: 'so_may',
             key: 'so_may',
-            width: 140,
+            width: 120,
         },
         {
             title: 'Loại xe',
             dataIndex: 'loai_xe',
             key: 'loai_xe',
-            width: 120,
+            width: 100,
         },
         {
             title: 'Ảnh xe tập lái',
@@ -352,7 +352,7 @@ const Xe = () => {
                 ),
         },
         {
-            title: 'Ghi chú',
+            title: 'Chủ xe',
             dataIndex: 'ghi_chu',
             key: 'ghi_chu',
             width: 180,
@@ -413,6 +413,41 @@ const Xe = () => {
                     background-color: #fff2a3 !important;
                 }
             `}</style>
+            <Title level={3} className="!mb-1">
+                Danh sách xe
+            </Title>
+            <div className="flex justify-between items-center mb-3">
+                <Text type="secondary">Quản lý và theo dõi thông tin ủy quyền xe của trung tâm</Text>
+                <div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        accept=".xlsx, .xls"
+                        onChange={handleFileChange}
+                    />
+                    <Button
+                        type="default"
+                        icon={<UploadOutlined />}
+                        onClick={triggerFileInput}
+                        loading={uploading}
+                        className="bg-white text-gray-600 !h-8 !mr-3"
+                    >
+                        {uploading ? `Importing (${uploadPercent}%)` : "Import Excel"}
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setSelectedRecord(null);
+                            setIsModalOpen(true);
+                        }}
+                        className="!bg-[#3366cc] !text-white !h-8"
+                    >
+                        Thêm xe
+                    </Button>
+                </div>
+            </div>
 
             <Card className="!mb-4">
                 <Row gutter={[16, 16]} align="bottom">
@@ -464,34 +499,6 @@ const Xe = () => {
                     </Col>
                 </Row>
             </Card>
-            <Space className="!flex !justify-end mb-2">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept=".xlsx, .xls"
-                    onChange={handleFileChange}
-                />
-                <Button
-                    type="default"
-                    icon={<UploadOutlined />}
-                    onClick={triggerFileInput}
-                    loading={uploading}
-                >
-                    {uploading ? `Importing (${uploadPercent}%)` : "Import Excel"}
-                </Button>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                        setSelectedRecord(null);
-                        setIsModalOpen(true);
-                    }}
-                    style={{ backgroundColor: '#3366cc' }}
-                >
-                    Thêm xe
-                </Button>
-            </Space>
             <Table
                 className="table-blue-header"
                 dataSource={dataSource}

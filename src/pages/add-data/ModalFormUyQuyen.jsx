@@ -9,13 +9,14 @@ import {
     Button,
     Typography,
     Space,
+    Select,
 } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Title } = Typography;
 
-const ModalFormUyQuyen = ({ open, onCancel, onSubmit, record, confirmLoading }) => {
+const ModalFormUyQuyen = ({ open, onCancel, onSubmit, record, confirmLoading, showBienSoXe = false, listXe = [] }) => {
     const [form] = Form.useForm();
     const isEdit = !!record;
 
@@ -23,6 +24,7 @@ const ModalFormUyQuyen = ({ open, onCancel, onSubmit, record, confirmLoading }) 
         if (open) {
             if (isEdit) {
                 form.setFieldsValue({
+                    bien_so_xe: record.bien_so_xe,
                     nguoi_ky_hd: record.nguoi_ky_hd,
                     scccd_hd: record.scccd_hd,
                     ngay_cap_cc_hd: record.ngay_cap_cc_hd ? dayjs(record.ngay_cap_cc_hd) : null,
@@ -76,6 +78,28 @@ const ModalFormUyQuyen = ({ open, onCancel, onSubmit, record, confirmLoading }) 
                 onFinish={handleFinish}
             >
                 <Row gutter={16}>
+                    {showBienSoXe && (
+                        <Col span={24}>
+                            <Form.Item
+                                name="bien_so_xe"
+                                label={<span className="font-semibold text-gray-700">Biển số xe</span>}
+                                rules={[{ required: true, message: "Vui lòng chọn biển số xe!" }]}
+                            >
+                                <Select
+                                    showSearch
+                                    placeholder="Chọn biển số xe..."
+                                    options={listXe.map(xe => ({
+                                        label: `${xe.bien_so_xe || xe.bien_so || xe.bienSo || ""} ${xe.nhan_hieu ? `- ${xe.nhan_hieu}` : ""}`,
+                                        value: xe.bien_so_xe || xe.bien_so || xe.bienSo
+                                    }))}
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                                    }
+                                    allowClear
+                                />
+                            </Form.Item>
+                        </Col>
+                    )}
                     <Col span={12}>
                         <Form.Item
                             name="nguoi_ky_hd"

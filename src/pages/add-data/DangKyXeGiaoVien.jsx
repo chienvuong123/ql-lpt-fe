@@ -229,6 +229,9 @@ const DangKyXeGiaoVien = () => {
 
     return (
         <div>
+            <Title level={3} className="!mb-4">
+                Đăng ký xe và giáo viên
+            </Title>
             <Card className="!mb-4">
                 <Row gutter={[16, 16]} align="bottom">
                     <Col xs={24} md={9}>
