@@ -15,6 +15,7 @@ import {
     DatePicker,
     Popconfirm,
     Image,
+    Tag,
 } from "antd";
 import {
     EditOutlined,
@@ -26,6 +27,7 @@ import { importExcelXe, getDanhSachXe, addXe, updateXe, deleteXe } from "../../a
 import { normalizeApiList } from "../../util/helper";
 import dayjs from "dayjs";
 import ModalXe from "./ModalXe";
+import ModalUyQuyen from "./ModalUyQuyen";
 
 const { Title } = Typography;
 
@@ -45,6 +47,8 @@ const Xe = () => {
     const [uploading, setUploading] = useState(false);
     const [uploadPercent, setUploadPercent] = useState(0);
     const fileInputRef = useRef(null);
+    const [isUyQuyenModalOpen, setIsUyQuyenModalOpen] = useState(false);
+    const [selectedBienSoXe, setSelectedBienSoXe] = useState("");
 
     const { data: listData, isLoading } = useQuery({
         queryKey: ["getDanhSachXe", params],
@@ -201,7 +205,7 @@ const Xe = () => {
             title: 'Nhãn hiệu',
             dataIndex: 'nhan_hieu',
             key: 'nhan_hieu',
-            width: 180,
+            width: 140,
             render: (text, record) => text || record.ten_xe || record.tenXe || record.name || '-',
         },
         {
@@ -263,6 +267,32 @@ const Xe = () => {
             width: 180,
             align: 'center',
             render: (text) => text ? dayjs(text).format('DD/MM/YYYY') : '-',
+        },
+        {
+            title: 'Ủy quyền',
+            dataIndex: 'uy_quyen',
+            key: 'uy_quyen',
+            width: 140,
+            align: 'center',
+            render: (text, record) => {
+                const isUyQuyen = !!(text ?? record.uy_quyen);
+                return (
+                    <Button
+                        type="link"
+                        onClick={() => {
+                            setSelectedBienSoXe(record.bien_so_xe || record.bien_so || record.bienSo || record.plate);
+                            setIsUyQuyenModalOpen(true);
+                        }}
+                        style={{ padding: 0 }}
+                    >
+                        {isUyQuyen ? (
+                            <Tag color="success" style={{ cursor: 'pointer', margin: 0 }}>Đã ủy quyền</Tag>
+                        ) : (
+                            <Tag color="error" style={{ cursor: 'pointer', margin: 0 }}>Chưa ủy quyền</Tag>
+                        )}
+                    </Button>
+                );
+            }
         },
         {
             title: 'Cơ quan cấp GPXTL',
@@ -502,6 +532,18 @@ const Xe = () => {
                 onSubmit={handleSubmit}
                 record={selectedRecord}
                 confirmLoading={isAdding || isUpdating}
+            />
+
+            <ModalUyQuyen
+                open={isUyQuyenModalOpen}
+                onCancel={() => {
+                    setIsUyQuyenModalOpen(false);
+                    setSelectedBienSoXe("");
+                }}
+                bien_so_xe={selectedBienSoXe}
+                onSuccess={() => {
+                    queryClient.invalidateQueries(["getDanhSachXe"]);
+                }}
             />
         </div>
     );
