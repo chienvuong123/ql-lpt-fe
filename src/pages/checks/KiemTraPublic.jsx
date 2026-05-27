@@ -27,8 +27,8 @@ import {
   getTienDoDaoTaoByMaHocVienSqlDeploy,
   HanhTrinhPublic,
   hocVienKyDATPublic,
+  hocVienTheoKhoaPublic,
   optionLopLyThuyetPublic,
-  searchHocVienDatPublic,
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
@@ -195,12 +195,8 @@ const KiemTraPublic = () => {
     isLoading: loadingStudents,
     refetch: refetchSearchHocVien,
   } = useQuery({
-    queryKey: ["searchHocVienDatPublic", selectedKhoaHocCode, searchParams],
-    queryFn: () =>
-      searchHocVienDatPublic({
-        ma_khoa: selectedKhoaHocCode,
-        search: searchParams?.text || "",
-      }),
+    queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
+    queryFn: () => hocVienTheoKhoaPublic(selectedKhoaHoc, searchParams || {}),
     staleTime: 0,
     cacheTime: 0,
     retry: false,
