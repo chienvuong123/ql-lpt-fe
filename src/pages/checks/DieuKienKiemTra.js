@@ -1,9 +1,9 @@
 import { getCheckConfigsPublic } from "../../apis/apiDeploy";
-import { getCheckConfigs } from "../../apis/apiSetting";
+// import { getCheckConfigs } from "../../apis/apiSetting";
 
 // Tự động đồng bộ cấu hình kiểm tra mới nhất từ server xuống LocalStorage trong nền
 try {
-  getCheckConfigs()
+  getCheckConfigsPublic()
     .then((res) => {
       const data = res?.data?.data ?? res?.data;
       if (data && typeof data === "object") {

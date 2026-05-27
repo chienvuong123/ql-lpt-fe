@@ -151,6 +151,6 @@ export const getHocVienDuyetPublic = async (ma_dk) => {
 };
 
 export const searchHocVienDatPublic = async (params = {}) => {
-  const response = await axios.get(`${url}search`, { params });
+  const response = await axios.get(`${url}hoc-vien/search`, { params });
   return response.data;
 };
