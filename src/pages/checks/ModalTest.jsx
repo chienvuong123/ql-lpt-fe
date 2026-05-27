@@ -347,7 +347,7 @@ const ModalTest = ({
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
 
-  const maDk = String(student?.user?.admission_code || "").trim();
+  const maDk = String(student?.ma_dk || student?.user?.admission_code || "").trim();
 
   const fetchLoTrinh = useCallback(async () => {
     if (!maDk) return;
@@ -550,20 +550,19 @@ const ModalTest = ({
               <div className="!mb-1 !text-xs">
                 Họ tên:{" "}
                 <span className="!font-bold">
-                  {student?.user?.name || "Không rõ tên"}
+                  {student?.ho_ten || student?.user?.name || "Không rõ tên"}
                 </span>
               </div>
               <div className="!mb-1 !text-xs">
-                Mã học viên: {student?.user?.admission_code || "--"}
+                Mã học viên: {student?.ma_dk || student?.user?.admission_code || "--"}
               </div>
               <div className="!mb-1 !text-xs">Khoa: {courseLabel || "--"}</div>
               <div className="!text-xs">
-                Năm sinh: {student?.user?.birth_year || "--"}
+                Năm sinh: {student?.ngay_sinh ? dayjs(student.ngay_sinh).format("YYYY") : student?.user?.birth_year || "--"}
               </div>
             </div>
             <Image
-
-              src={student?.user?.avatar || student?.user?.default_avatar || ""}
+              src={student?.anh || student?.user?.avatar || student?.user?.default_avatar || ""}
               width={88}
               height={110}
               preview={false}

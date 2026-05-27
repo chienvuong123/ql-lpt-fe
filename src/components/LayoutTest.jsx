@@ -26,6 +26,7 @@ import {
   theme,
 } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { FaCarRear, FaBook } from "react-icons/fa6";
 
 const { Header, Sider, Content } = Layout;
 const menuPathMap = {
@@ -132,8 +133,17 @@ const LayoutTest = () => {
       label: "Tiến độ đào tạo",
     },
     {
+      key: "dao-tao",
+      icon: <AppstoreAddOutlined />,
+      label: "Đào tạo", children: [
+        { key: "danh-sach-xe", label: "Danh sách xe" },
+        { key: "quan-ly-uy-quyen", label: "Ủy quyền xe" },
+        { key: "dang-ky-xe-giao-vien", label: "Đăng ký xe, giáo viên" },
+      ]
+    },
+    {
       key: "class",
-      icon: <BookOutlined />,
+      icon: <FaBook />,
       label: "Lý thuyết",
       children: [
         { key: "dashboard-ly-thuyet", label: "Dashboard lý thuyết" },
@@ -154,7 +164,7 @@ const LayoutTest = () => {
     },
     {
       key: "reports",
-      icon: <BarChartOutlined />,
+      icon: <FaCarRear />,
       label: "DAT",
       children: [
         { key: "dashboard-dat", label: "Dashboard DAT" },
@@ -173,15 +183,6 @@ const LayoutTest = () => {
         { key: "truy-vet-loi", label: "Truy vết lỗi" },
         { key: "quan-ly-vung-cam", label: "Quản lý vùng cấm" },
       ],
-    },
-    {
-      key: "dao-tao",
-      icon: <AppstoreAddOutlined />,
-      label: "Đào tạo", children: [
-        { key: "danh-sach-xe", label: "Danh sách xe" },
-        { key: "quan-ly-uy-quyen", label: "Ủy quyền xe" },
-        { key: "dang-ky-xe-giao-vien", label: "Đăng ký xe, giáo viên" },
-      ]
     },
     {
       key: "sync",

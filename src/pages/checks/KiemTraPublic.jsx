@@ -27,8 +27,8 @@ import {
   getTienDoDaoTaoByMaHocVienSqlDeploy,
   HanhTrinhPublic,
   hocVienKyDATPublic,
-  hocVienTheoKhoaPublic,
   optionLopLyThuyetPublic,
+  searchHocVienDatPublic,
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
@@ -195,8 +195,12 @@ const KiemTraPublic = () => {
     isLoading: loadingStudents,
     refetch: refetchSearchHocVien,
   } = useQuery({
-    queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
-    queryFn: () => hocVienTheoKhoaPublic(selectedKhoaHoc, searchParams || {}),
+    queryKey: ["searchHocVienDatPublic", selectedKhoaHocCode, searchParams],
+    queryFn: () =>
+      searchHocVienDatPublic({
+        ma_khoa: selectedKhoaHocCode,
+        search: searchParams?.text || "",
+      }),
     staleTime: 0,
     cacheTime: 0,
     retry: false,
@@ -204,6 +208,7 @@ const KiemTraPublic = () => {
   });
 
   const cabinKey =
+    selectedStudent?.ma_dk ||
     selectedStudent?.user?.admission_code ||
     selectedStudent?.user?.code ||
     selectedStudent?.MaDK ||
@@ -358,7 +363,11 @@ const KiemTraPublic = () => {
   const hasResult = !!selectedStudent;
   const hasSearched = !!searchParams;
   const scoreRows = useMemo(() => {
-    const rawScores = selectedStudent?.learning_progress?.score_by_rubrik || [];
+    const rawScores =
+      selectedStudent?.learning_progress?.score_by_rubrik ||
+      chiTietLyThuyetData?.data?.learning_progress?.score_by_rubrik ||
+      chiTietLyThuyetData?.learning_progress?.score_by_rubrik ||
+      [];
 
     return rawScores
       .filter(
@@ -374,7 +383,7 @@ const KiemTraPublic = () => {
         score: item?.score ?? 0,
         passed: Number(item?.passed) === 1,
       }));
-  }, [selectedStudent]);
+  }, [selectedStudent, chiTietLyThuyetData]);
 
   const lyThuyetExtraStatus = useMemo(() => {
     const raw = chiTietLyThuyetData?.data;
@@ -595,7 +604,7 @@ const KiemTraPublic = () => {
                         {results.map((item, index) => (
                           <div
                             key={
-                              item?.id || item?._id || item?.user?.iid || index
+                              item?.ma_dk || item?.id || item?._id || item?.user?.iid || index
                             }
                             className="!cursor-pointer !rounded-lg !px-2 !py-1 hover:!bg-[#f2f7ff]"
                             onClick={() => {
@@ -609,6 +618,7 @@ const KiemTraPublic = () => {
                               <Col span={4} className="mr-2">
                                 <Image
                                   src={
+                                    item?.anh ||
                                     item?.user?.avatar ||
                                     item?.user?.default_avatar ||
                                     ""
@@ -623,14 +633,14 @@ const KiemTraPublic = () => {
                               <Col span={19}>
                                 <Col span={24}>
                                   <Text strong className="!uppercase">
-                                    {item?.user?.name || "Không rõ tên"} (
-                                    {item?.user?.birth_year || "--"})
+                                    {item?.ho_ten || item?.user?.name || "Không rõ tên"} (
+                                    {item?.ngay_sinh ? dayjs(item.ngay_sinh).format("YYYY") : item?.user?.birth_year || "--"})
                                   </Text>
                                 </Col>
                                 <Col span={24}>
                                   <Text className="!text-xs !text-gray-500">
                                     <span>
-                                      Mã HV: {item?.user?.admission_code || ""}
+                                      Mã HV: {item?.ma_dk || item?.user?.admission_code || ""}
                                     </span>
                                   </Text>
                                 </Col>
@@ -638,7 +648,8 @@ const KiemTraPublic = () => {
                                   <Text className="!text-xs !text-gray-500">
                                     <span>
                                       CCCD:{" "}
-                                      {item?.user?.identification_card ||
+                                      {item?.cccd ||
+                                        item?.user?.identification_card ||
                                         item?.user?.code ||
                                         ""}
                                     </span>
@@ -682,11 +693,12 @@ const KiemTraPublic = () => {
                   <Col>
                     <Image
                       src={
+                        selectedStudent?.anh ||
                         selectedStudent?.user?.avatar ||
                         selectedStudent?.user?.default_avatar ||
                         ""
                       }
-                      alt={selectedStudent?.user?.name || "Hoc vien"}
+                      alt={selectedStudent?.ho_ten || selectedStudent?.user?.name || "Hoc vien"}
                       preview={false}
                       width={120}
                       height={120}
@@ -699,15 +711,16 @@ const KiemTraPublic = () => {
                       level={2}
                       className="!mb-0 !text-base !font-extrabold !uppercase !text-[#151b2d]"
                     >
-                      {selectedStudent?.user?.name || "Không rõ tên"}
+                      {selectedStudent?.ho_ten || selectedStudent?.user?.name || "Không rõ tên"}
                     </Title>
                     <Text className="!mt-2 !block !text-sm !text-[#151b2d] !font-medium">
                       Lớp ·{" "}
-                      {selectedKhoaHocLabel || selectedStudent?.MaKhoaHoc || ""}
+                      {selectedKhoaHocLabel || selectedStudent?.ma_khoa || selectedStudent?.MaKhoaHoc || ""}
                     </Text>
                     <Text className="!mt-1 !block !text-sm !text-[#151b2d] !font-medium">
                       CCCD:{" "}
-                      {selectedStudent?.user?.identification_card ||
+                      {selectedStudent?.cccd ||
+                        selectedStudent?.user?.identification_card ||
                         selectedStudent?.user?.code ||
                         ""}
                     </Text>

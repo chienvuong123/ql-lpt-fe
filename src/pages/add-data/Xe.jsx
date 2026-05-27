@@ -22,6 +22,8 @@ import {
     PlusOutlined,
     UploadOutlined,
     DeleteOutlined,
+    SearchOutlined,
+    ReloadOutlined,
 } from "@ant-design/icons";
 import { importExcelXe, getDanhSachXe, addXe, updateXe, deleteXe } from "../../apis/xe";
 import { normalizeApiList } from "../../util/helper";
@@ -41,6 +43,39 @@ const Xe = () => {
         het_han_dang_kiem: null,
         het_han_gpxtl: null,
     });
+
+    const [filterParams, setFilterParams] = useState({
+        ten_xe: "",
+        nam_san_xuat: "",
+        het_han_dang_kiem: null,
+        het_han_gpxtl: null,
+    });
+
+    const handleFilter = () => {
+        setParams(prev => ({
+            ...prev,
+            page: 1,
+            ten_xe: filterParams.ten_xe,
+            nam_san_xuat: filterParams.nam_san_xuat,
+            het_han_dang_kiem: filterParams.het_han_dang_kiem,
+            het_han_gpxtl: filterParams.het_han_gpxtl,
+        }));
+    };
+
+    const handleReset = () => {
+        const resetValues = {
+            ten_xe: "",
+            nam_san_xuat: "",
+            het_han_dang_kiem: null,
+            het_han_gpxtl: null,
+        };
+        setFilterParams(resetValues);
+        setParams(prev => ({
+            ...prev,
+            page: 1,
+            ...resetValues,
+        }));
+    };
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState(null);
@@ -202,6 +237,12 @@ const Xe = () => {
             render: (text, record) => text || record.bien_so || record.bienSo || record.plate || '-',
         },
         {
+            title: 'Chủ xe',
+            dataIndex: 'ghi_chu',
+            key: 'ghi_chu',
+            width: 180,
+        },
+        {
             title: 'Nhãn hiệu',
             dataIndex: 'nhan_hieu',
             key: 'nhan_hieu',
@@ -324,7 +365,7 @@ const Xe = () => {
             title: 'Số máy',
             dataIndex: 'so_may',
             key: 'so_may',
-            width: 120,
+            width: 130,
         },
         {
             title: 'Loại xe',
@@ -352,15 +393,9 @@ const Xe = () => {
                 ),
         },
         {
-            title: 'Chủ xe',
-            dataIndex: 'ghi_chu',
-            key: 'ghi_chu',
-            width: 180,
-        },
-        {
             title: 'Thao tác',
             key: 'action',
-            width: 80,
+            width: 70,
             align: 'center',
             fixed: 'right',
             render: (_, record) => (
@@ -457,8 +492,8 @@ const Xe = () => {
                         </label>
                         <Input
                             placeholder="Nhập tên xe..."
-                            value={params.ten_xe}
-                            onChange={(e) => setParams(prev => ({ ...prev, ten_xe: e.target.value, page: 1 }))}
+                            value={filterParams.ten_xe}
+                            onChange={(e) => setFilterParams(prev => ({ ...prev, ten_xe: e.target.value }))}
                             allowClear
                         />
                     </Col>
@@ -468,8 +503,8 @@ const Xe = () => {
                         </label>
                         <Input
                             placeholder="Nhập năm sản xuất..."
-                            value={params.nam_san_xuat}
-                            onChange={(e) => setParams(prev => ({ ...prev, nam_san_xuat: e.target.value, page: 1 }))}
+                            value={filterParams.nam_san_xuat}
+                            onChange={(e) => setFilterParams(prev => ({ ...prev, nam_san_xuat: e.target.value }))}
                             allowClear
                         />
                     </Col>
@@ -480,8 +515,8 @@ const Xe = () => {
                         <DatePicker
                             style={{ width: '100%' }}
                             placeholder="Chọn ngày hết hạn..."
-                            value={params.het_han_dang_kiem ? dayjs(params.het_han_dang_kiem) : null}
-                            onChange={(date, dateString) => setParams(prev => ({ ...prev, het_han_dang_kiem: dateString || null, page: 1 }))}
+                            value={filterParams.het_han_dang_kiem ? dayjs(filterParams.het_han_dang_kiem) : null}
+                            onChange={(date, dateString) => setFilterParams(prev => ({ ...prev, het_han_dang_kiem: dateString || null }))}
                             allowClear
                         />
                     </Col>
@@ -492,10 +527,28 @@ const Xe = () => {
                         <DatePicker
                             style={{ width: '100%' }}
                             placeholder="Chọn ngày hết hạn..."
-                            value={params.het_han_gpxtl ? dayjs(params.het_han_gpxtl) : null}
-                            onChange={(date, dateString) => setParams(prev => ({ ...prev, het_han_gpxtl: dateString || null, page: 1 }))}
+                            value={filterParams.het_han_gpxtl ? dayjs(filterParams.het_han_gpxtl) : null}
+                            onChange={(date, dateString) => setFilterParams(prev => ({ ...prev, het_han_gpxtl: dateString || null }))}
                             allowClear
                         />
+                    </Col>
+                    <Col xs={24} sm={12} md={5}>
+                        <Space>
+                            <Button
+                                type="primary"
+                                icon={<SearchOutlined />}
+                                onClick={handleFilter}
+                                style={{ backgroundColor: '#3366cc' }}
+                            >
+                                Lọc
+                            </Button>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={handleReset}
+                            >
+                                Reset
+                            </Button>
+                        </Space>
                     </Col>
                 </Row>
             </Card>

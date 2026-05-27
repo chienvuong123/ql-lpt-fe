@@ -149,3 +149,8 @@ export const getHocVienDuyetPublic = async (ma_dk) => {
   const response = await axios.get(`${url}hoc-vien-duyet/${ma_dk}`);
   return response.data;
 };
+
+export const searchHocVienDatPublic = async (params = {}) => {
+  const response = await axios.get(`${url}search`, { params });
+  return response.data;
+};
