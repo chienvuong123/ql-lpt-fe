@@ -56,14 +56,9 @@ const LyThuyetScoreModal = ({
           pagination={false}
         />
       ) : (
-        <div className="h-30">
-          {/* <Empty description="Khong co du lieu diem" /> */}
-          <span>Phần kêt quả học lý thuyết đang được nâng cấp!</span>
-          <br></br>
-          <span>Vui lòng quay lại sau!</span>
-        </div>
+        <Empty description="Khong co du lieu diem" />
       )}
-      {/* <Space className="!bg-gray-100 !mt-8 w-full px-3 py-3">
+      <Space className="!bg-gray-100 !mt-8 w-full px-3 py-3">
         <Text className="!text-sm !text-gray-600">
           Kiểm tra kết thúc môn học:{" "}
         </Text>
@@ -74,7 +69,7 @@ const LyThuyetScoreModal = ({
         >
           {loadingStatus ? "Dang tai..." : loaiHetMon}
         </strong>
-      </Space> */}
+      </Space>
     </Modal>
   );
 };

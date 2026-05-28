@@ -756,7 +756,7 @@ const KiemTraPublic = () => {
                         justify="space-between"
                         className="!mt-2"
                       >
-                        <Text
+                        {/* <Text
                           className="!text-xs !font-bold"
                           style={{ color: statusColor }}
                         >
@@ -768,7 +768,8 @@ const KiemTraPublic = () => {
                           onClick={() => setIsLyThuyetModalOpen(true)}
                         >
                           Xem
-                        </Button>
+                        </Button> */}
+                        <Text className="!text-sm !font-bold flex !items-center !justify-center">Bảo trì</Text>
                       </Flex>
                     </Card>
                   </Col>
