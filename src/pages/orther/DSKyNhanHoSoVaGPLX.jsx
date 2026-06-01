@@ -37,6 +37,7 @@ const DSKyNhanHoSoVaGPLX = () => {
     const [filterChuaNhan, setFilterChuaNhan] = useState(true);
     const [ngayThiFilter, setNgayThiFilter] = useState(undefined);
     const [sortByDauMoi, setSortByDauMoi] = useState(false);
+    const [giaoVienText, setGiaoVienText] = useState("");
 
     // Applied Filters State
     const [appliedSearch, setAppliedSearch] = useState("");
@@ -44,6 +45,7 @@ const DSKyNhanHoSoVaGPLX = () => {
     const [appliedFilterChuaNhan, setAppliedFilterChuaNhan] = useState(true);
     const [appliedNgayThiFilter, setAppliedNgayThiFilter] = useState(undefined);
     const [appliedSortByDauMoi, setAppliedSortByDauMoi] = useState(false);
+    const [appliedGiaoVien, setAppliedGiaoVien] = useState("");
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -68,6 +70,7 @@ const DSKyNhanHoSoVaGPLX = () => {
             appliedFilterChuaNhan,
             appliedNgayThiFilter,
             appliedSortByDauMoi,
+            appliedGiaoVien,
         ],
         queryFn: () => {
             let da_nhan = undefined;
@@ -83,6 +86,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 da_nhan,
                 ngay_thi: appliedNgayThiFilter,
                 dau_moi: appliedSortByDauMoi,
+                giao_vien: appliedGiaoVien,
             });
         },
         keepPreviousData: true,
@@ -126,6 +130,7 @@ const DSKyNhanHoSoVaGPLX = () => {
         setAppliedFilterChuaNhan(filterChuaNhan);
         setAppliedNgayThiFilter(ngayThiFilter);
         setAppliedSortByDauMoi(sortByDauMoi);
+        setAppliedGiaoVien(giaoVienText);
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
@@ -135,11 +140,13 @@ const DSKyNhanHoSoVaGPLX = () => {
         setFilterChuaNhan(true);
         setNgayThiFilter(undefined);
         setSortByDauMoi(false);
+        setGiaoVienText("");
         setAppliedSearch("");
         setAppliedFilterDaNhan(true);
         setAppliedFilterChuaNhan(true);
         setAppliedNgayThiFilter(undefined);
         setAppliedSortByDauMoi(false);
+        setAppliedGiaoVien("");
         setPagination({ page: 1, limit: 10 });
         setSelectedRowKeys([]);
         setIsDuyetModalOpen(false);
@@ -248,6 +255,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 da_nhan,
                 ngay_thi: appliedNgayThiFilter,
                 dau_moi: appliedSortByDauMoi,
+                giao_vien: appliedGiaoVien,
             });
 
             const url = window.URL.createObjectURL(new Blob([blob]));
@@ -369,7 +377,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 <Row gutter={[16, 16]} align="bottom">
                     <Col xs={24} sm={20} md={20}>
                         <Row gutter={[16, 16]}>
-                            <Col xs={24} md={9}>
+                            <Col xs={24} md={6}>
                                 <label className="block text-xs text-gray-500 uppercase mb-1">
                                     Tìm kiếm học viên
                                 </label>
@@ -381,7 +389,19 @@ const DSKyNhanHoSoVaGPLX = () => {
                                     allowClear
                                 />
                             </Col>
-                            <Col xs={24} md={7}>
+                            <Col xs={24} md={5}>
+                                <label className="block text-xs text-gray-500 uppercase mb-1">
+                                    Giáo viên / Đầu mối
+                                </label>
+                                <Input
+                                    placeholder="Nhập tên giáo viên..."
+                                    value={giaoVienText}
+                                    onChange={(e) => setGiaoVienText(e.target.value)}
+                                    onPressEnter={handleSearch}
+                                    allowClear
+                                />
+                            </Col>
+                            <Col xs={24} md={5}>
                                 <label className="block text-xs text-gray-500 uppercase mb-1">
                                     Lọc Ngày thi
                                 </label>
@@ -488,7 +508,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 rowKey="id"
                 bordered
                 size="small"
-                scroll={{ x: 1000 }}
+                scroll={{ x: 1000, y: "calc(100vh - 350px)" }}
                 className="table-blue-header"
                 loading={isFetching}
                 pagination={{
