@@ -36,12 +36,14 @@ const DSKyNhanHoSoVaGPLX = () => {
     const [filterDaNhan, setFilterDaNhan] = useState(true);
     const [filterChuaNhan, setFilterChuaNhan] = useState(true);
     const [ngayThiFilter, setNgayThiFilter] = useState(undefined);
+    const [sortByDauMoi, setSortByDauMoi] = useState(false);
 
     // Applied Filters State
     const [appliedSearch, setAppliedSearch] = useState("");
     const [appliedFilterDaNhan, setAppliedFilterDaNhan] = useState(true);
     const [appliedFilterChuaNhan, setAppliedFilterChuaNhan] = useState(true);
     const [appliedNgayThiFilter, setAppliedNgayThiFilter] = useState(undefined);
+    const [appliedSortByDauMoi, setAppliedSortByDauMoi] = useState(false);
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -65,6 +67,7 @@ const DSKyNhanHoSoVaGPLX = () => {
             appliedFilterDaNhan,
             appliedFilterChuaNhan,
             appliedNgayThiFilter,
+            appliedSortByDauMoi,
         ],
         queryFn: () => {
             let da_nhan = undefined;
@@ -79,6 +82,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 ho_ten: appliedSearch,
                 da_nhan,
                 ngay_thi: appliedNgayThiFilter,
+                dau_moi: appliedSortByDauMoi,
             });
         },
         keepPreviousData: true,
@@ -121,6 +125,7 @@ const DSKyNhanHoSoVaGPLX = () => {
         setAppliedFilterDaNhan(filterDaNhan);
         setAppliedFilterChuaNhan(filterChuaNhan);
         setAppliedNgayThiFilter(ngayThiFilter);
+        setAppliedSortByDauMoi(sortByDauMoi);
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
@@ -129,10 +134,12 @@ const DSKyNhanHoSoVaGPLX = () => {
         setFilterDaNhan(true);
         setFilterChuaNhan(true);
         setNgayThiFilter(undefined);
+        setSortByDauMoi(false);
         setAppliedSearch("");
         setAppliedFilterDaNhan(true);
         setAppliedFilterChuaNhan(true);
         setAppliedNgayThiFilter(undefined);
+        setAppliedSortByDauMoi(false);
         setPagination({ page: 1, limit: 10 });
         setSelectedRowKeys([]);
         setIsDuyetModalOpen(false);
@@ -240,6 +247,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 ho_ten: appliedSearch,
                 da_nhan,
                 ngay_thi: appliedNgayThiFilter,
+                dau_moi: appliedSortByDauMoi,
             });
 
             const url = window.URL.createObjectURL(new Blob([blob]));
@@ -361,7 +369,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 <Row gutter={[16, 16]} align="bottom">
                     <Col xs={24} sm={20} md={20}>
                         <Row gutter={[16, 16]}>
-                            <Col xs={24} md={10}>
+                            <Col xs={24} md={9}>
                                 <label className="block text-xs text-gray-500 uppercase mb-1">
                                     Tìm kiếm học viên
                                 </label>
@@ -386,7 +394,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                                     options={examDates.map(d => ({ label: d, value: d }))}
                                 />
                             </Col>
-                            <Col xs={24} md={7}>
+                            <Col xs={24} md={8}>
                                 <label className="block text-xs text-gray-500 uppercase mb-1">
                                     Trạng thái nhận
                                 </label>
@@ -402,6 +410,13 @@ const DSKyNhanHoSoVaGPLX = () => {
                                         onChange={(e) => setFilterChuaNhan(e.target.checked)}
                                     >
                                         Chưa nhận
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={sortByDauMoi}
+                                        onChange={(e) => setSortByDauMoi(e.target.checked)}
+                                        className="font-medium text-blue-600"
+                                    >
+                                        Sắp xếp theo đầu mối
                                     </Checkbox>
                                 </div>
                             </Col>
