@@ -24,6 +24,7 @@ const DSKyNhanHoSoVaGPLX = () => {
     const [ngayThiImport, setNgayThiImport] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadPercent, setUploadPercent] = useState(0);
+    const [exporting, setExporting] = useState(false);
 
     // Duyệt theo ngày thi State
     const [isDuyetModalOpen, setIsDuyetModalOpen] = useState(false);
@@ -228,6 +229,7 @@ const DSKyNhanHoSoVaGPLX = () => {
     };
 
     const handleExport = async () => {
+        setExporting(true);
         try {
             let da_nhan = undefined;
             if (appliedFilterDaNhan && !appliedFilterChuaNhan) da_nhan = true;
@@ -252,6 +254,8 @@ const DSKyNhanHoSoVaGPLX = () => {
         } catch (err) {
             console.error("Export Excel error", err);
             message.error("Lỗi khi xuất file Excel!");
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -275,6 +279,14 @@ const DSKyNhanHoSoVaGPLX = () => {
             key: "ngay_sinh",
             align: "center",
             width: 100,
+        },
+        {
+            title: "Ngày thi",
+            dataIndex: "ngay_thi",
+            key: "ngay_thi",
+            align: "center",
+            width: 110,
+            render: (val) => val || "—",
         },
         {
             title: "Đầu mối",
@@ -336,6 +348,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                             type="primary"
                             icon={<DownloadOutlined />}
                             onClick={handleExport}
+                            loading={exporting}
                             className="!h-8"
                         >
                             Xuất Excel
