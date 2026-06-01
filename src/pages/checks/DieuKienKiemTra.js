@@ -344,11 +344,13 @@ function getStopViolationDetails(listCoordinate) {
       const totalKmStr = String(c.TotalKm || "0");
       const matchKm = totalKmStr.match(/[\d.]+/);
       const km = matchKm ? parseFloat(matchKm[0]) : 0;
+      const kmTruncated = km.toFixed(3).slice(0, -1);
 
       return {
         ts: t.getTime(),
         v,
-        km
+        km,
+        kmTruncated
       };
     })
     .filter(c => !isNaN(c.ts))
@@ -363,8 +365,8 @@ function getStopViolationDetails(listCoordinate) {
     const c = coords[i];
     const isBothZero = c.v === 0 && c.km === 0;
     const isUnchangedStop = c.v === 0 && (
-      (i > 0 && c.km === coords[i - 1].km) ||
-      (i < coords.length - 1 && c.km === coords[i + 1].km)
+      (i > 0 && c.kmTruncated === coords[i - 1].kmTruncated) ||
+      (i < coords.length - 1 && c.kmTruncated === coords[i + 1].kmTruncated)
     );
 
     if (isBothZero || isUnchangedStop) {
@@ -419,14 +421,14 @@ function getStopViolationDetails(listCoordinate) {
 
   let reason = "";
   if (hasLongStopViolation && hasTotalStopViolation) {
-    reason = `lần nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá ${singleLimit} phút) và tổng thời gian nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá ${totalLimit} phút)`;
+    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} và tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))}`;
   } else if (hasLongStopViolation) {
-    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} (vượt quá giới hạn cho phép ${singleLimit} phút cho một lần nghỉ)`;
+    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))}`;
   } else {
-    reason = `tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))} (vượt quá giới hạn cho phép tổng ${totalLimit} phút)`;
+    reason = `tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))}`;
   }
 
-  reason += ` - Tổng số lần nghỉ: ${realRestStops.length} lần.`;
+  // reason += ` - Tổng số lần nghỉ: ${realRestStops.length} lần.`;
 
   return {
     isViolated: true,

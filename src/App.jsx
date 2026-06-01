@@ -51,6 +51,7 @@ import ForbiddenZonePage from "./pages/map/ForbiddenZonePage";
 import Xe from "./pages/add-data/Xe";
 import DangKyXeGiaoVien from "./pages/add-data/DangKyXeGiaoVien";
 import UyQuyen from "./pages/add-data/UyQuyen";
+import DSKyNhanHoSoVaGPLX from "./pages/orther/DSKyNhanHoSoVaGPLX";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -347,6 +348,10 @@ function App() {
               <Route
                 path="cai-dat-he-thong"
                 element={<CaiDatHeThong />}
+              />
+              <Route
+                path="danh-sach-ky-nhan-ho-so-gplx"
+                element={<DSKyNhanHoSoVaGPLX />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />

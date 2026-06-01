@@ -12,6 +12,7 @@ import {
   SafetyOutlined,
   AppstoreAddOutlined,
   RetweetOutlined,
+  FileOutlined,
 } from "@ant-design/icons";
 import { BsCalendar3 } from "react-icons/bs";
 import {
@@ -71,6 +72,7 @@ const menuPathMap = {
   "danh-sach-xe": "/danh-sach-xe",
   "dang-ky-xe-giao-vien": "/dang-ky-xe-giao-vien",
   "quan-ly-uy-quyen": "/quan-ly-uy-quyen",
+  "danh-sach-ky-nhan-ho-so-gplx": "/danh-sach-ky-nhan-ho-so-gplx",
 };
 
 const LayoutTest = () => {
@@ -239,6 +241,11 @@ const LayoutTest = () => {
       ]
     },
     {
+      key: "danh-sach-ky-nhan-ho-so-gplx",
+      icon: <FileOutlined />,
+      label: "DS ký nhận hồ sơ GPLX",
+    },
+    {
       key: "tai-khoan",
       icon: <UserOutlined />,
       label: "Quản lý tài khoản",
@@ -255,12 +262,12 @@ const LayoutTest = () => {
 
   // Map role_id to allowed keys
   const roleAccessMap = {
-    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Admin
-    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Trưởng phòng
+    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Admin
+    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Trưởng phòng
     3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Tổ nghiệp vụ
-    4: ["dashboard", "class", "tien-do-dao-tao", "dao-tao"], // Tổ lý thuyết
-    5: ["dashboard", "cabin", "reports", "tien-do-dao-tao", "dao-tao"], // Tổ thực hành
-    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Tổ công nghệ
+    4: ["dashboard", "class", "tien-do-dao-tao", "dao-tao",], // Tổ lý thuyết
+    5: ["dashboard", "cabin", "reports", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Tổ thực hành
+    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Tổ công nghệ
   };
 
   // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard
