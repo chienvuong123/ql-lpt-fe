@@ -29,6 +29,7 @@ import {
   hocVienKyDATPublic,
   optionLopLyThuyetPublic,
   searchHocVienDatPublic,
+  hocVienTheoKhoaPublic,
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
@@ -195,10 +196,9 @@ const KiemTraPublic = () => {
     isLoading: loadingStudents,
     refetch: refetchSearchHocVien,
   } = useQuery({
-    queryKey: ["searchHocVienDatPublic", selectedKhoaHocCode, searchParams],
+    queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
     queryFn: () =>
-      searchHocVienDatPublic({
-        ma_khoa: selectedKhoaHocCode,
+      hocVienTheoKhoaPublic(selectedKhoaHoc, {
         search: searchParams?.text || "",
       }),
     staleTime: 0,
@@ -351,9 +351,35 @@ const KiemTraPublic = () => {
   }, [sortedCourses]);
 
   const results = useMemo(() => {
-    const list = danhSachHocVien?.data;
-    return Array.isArray(list) ? list : [];
-  }, [danhSachHocVien]);
+    const list = danhSachHocVien?.data || danhSachHocVien?.result || (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
+    if (!Array.isArray(list)) return [];
+
+    const searchText = searchParams?.text?.trim()?.toLowerCase();
+    if (!searchText) return list;
+
+    // Normalization helper to search without Vietnamese accents
+    const norm = (text = "") =>
+      text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .trim();
+
+    const normalizedSearch = norm(searchText);
+
+    return list.filter((item) => {
+      const name = item?.ho_ten || item?.user?.name || item?.name || "";
+      const code = item?.ma_dk || item?.user?.admission_code || item?.user?.code || item?.code || "";
+      const cccd = item?.cccd || item?.user?.identification_card || "";
+
+      return (
+        norm(name).includes(normalizedSearch) ||
+        norm(code).includes(normalizedSearch) ||
+        norm(cccd).includes(normalizedSearch)
+      );
+    });
+  }, [danhSachHocVien, searchParams]);
 
   const trangThaiKyDAT = useMemo(() => {
     const status = dataHocVienKyDat?.data?.trang_thai === "da_ky";
@@ -852,9 +878,9 @@ const KiemTraPublic = () => {
                           className="!rounded-xl !px-3 !text-xs"
                           size="small"
                           onClick={() => {
-                            // if (isLyThuyetPassed) {
-                            setIsCabinModalOpen(true);
-                            // }
+                            if (isLyThuyetPassed) {
+                              setIsCabinModalOpen(true);
+                            }
                           }}
                         >
                           Xem
@@ -895,7 +921,7 @@ const KiemTraPublic = () => {
                       </Card>
                     </Col>
                   ) : null}
-                  <Col span={8}>
+                  {/* <Col span={8}>
                     <Card
                       bordered={false}
                       bodyStyle={{ padding: 10 }}
@@ -925,7 +951,7 @@ const KiemTraPublic = () => {
                         Chi tiết
                       </Button>
                     </Card>
-                  </Col>
+                  </Col> */}
                 </Row>
               </Card>
             ) : null}
