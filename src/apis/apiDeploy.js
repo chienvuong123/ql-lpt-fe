@@ -125,6 +125,13 @@ export const hocVienTheoKhoaPublic = async (enrolmentPlanIid, params) => {
   return response.data;
 };
 
+export const ketQuaKiemTraPublic = async (enrolmentPlanIid, params = {}) => {
+  const response = await axios.get(`${url}ly-thuyet/hoc-vien/khoa/${enrolmentPlanIid}`, {
+    params,
+  });
+  return response.data;
+};
+
 export const optionLopLyThuyetPublic = async () => {
   const response = await axios.get(`${url}ly-thuyet/lop-hoc`);
   return response.data;

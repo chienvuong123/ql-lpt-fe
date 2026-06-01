@@ -199,7 +199,7 @@ const KiemTraPublic = () => {
     queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
     queryFn: () =>
       hocVienTheoKhoaPublic(selectedKhoaHoc, {
-        search: searchParams?.text || "",
+        text: searchParams?.text || "",
       }),
     staleTime: 0,
     cacheTime: 0,
