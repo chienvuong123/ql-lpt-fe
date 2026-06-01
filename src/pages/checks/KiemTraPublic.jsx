@@ -756,7 +756,7 @@ const KiemTraPublic = () => {
                         justify="space-between"
                         className="!mt-2"
                       >
-                        {/* <Text
+                        <Text
                           className="!text-xs !font-bold"
                           style={{ color: statusColor }}
                         >
@@ -768,13 +768,13 @@ const KiemTraPublic = () => {
                           onClick={() => setIsLyThuyetModalOpen(true)}
                         >
                           Xem
-                        </Button> */}
-                        <Text className="!text-sm !font-bold flex !items-center !justify-center">Bảo trì</Text>
+                        </Button>
+                        {/* <Text className="!text-sm !font-bold flex !items-center !justify-center">Bảo trì</Text> */}
                       </Flex>
                     </Card>
                   </Col>
 
-                  {/* {isLyThuyetPassed ? (
+                  {isLyThuyetPassed ? (
                     <Col span={8}>
                       <Card
                         bordered={false}
@@ -818,8 +818,8 @@ const KiemTraPublic = () => {
                         </Flex>
                       </Card>
                     </Col>
-                  ) : null} */}
-                  <Col span={8}>
+                  ) : null}
+                  {/* <Col span={8}>
                     <Card
                       bordered={false}
                       bodyStyle={{ padding: 10 }}
@@ -861,8 +861,8 @@ const KiemTraPublic = () => {
                         </Button>
                       </Flex>
                     </Card>
-                  </Col>
-                  {/* {isLyThuyetPassed && isCabinPassed ? (
+                  </Col> */}
+                  {isLyThuyetPassed && isCabinPassed ? (
                     <Col span={8}>
                       <Card
                         bordered={false}
@@ -894,7 +894,7 @@ const KiemTraPublic = () => {
                         </Button>
                       </Card>
                     </Col>
-                  ) : null} */}
+                  ) : null}
                   <Col span={8}>
                     <Card
                       bordered={false}
@@ -958,8 +958,8 @@ const KiemTraPublic = () => {
       />
 
       <CabinModal
-        // open={isLyThuyetPassed && isCabinModalOpen}
-        open={isCabinModalOpen}
+        open={isLyThuyetPassed && isCabinModalOpen}
+        // open={isCabinModalOpen}
         onCancel={() => setIsCabinModalOpen(false)}
         loading={loadingCabin}
         cabinGroupedByRule={cabinGroupedByRule}
