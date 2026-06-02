@@ -162,8 +162,8 @@ const DSKyNhanHoSoVaGPLX = () => {
         mutateBulkUpdate({ ids: selectedRowKeys, da_nhan: status });
     };
 
-    // Duyệt theo ngày thi (Duyệt tất cả bản ghi của ngày đó)
-    const handleDuyetTheoNgayThi = async () => {
+    // Duyệt/Hủy duyệt theo ngày thi (Duyệt/Hủy duyệt tất cả bản ghi của ngày đó)
+    const handleDuyetTheoNgayThi = async (da_nhan = true) => {
         if (!selectedNgayThiDuyet) return;
         setIsFetchingAllForDuyet(true);
         try {
@@ -175,14 +175,14 @@ const DSKyNhanHoSoVaGPLX = () => {
             });
             const allIds = (res?.data || []).map(item => item.id);
             if (allIds.length === 0) {
-                message.warning(`Không có học viên nào thuộc ngày thi ${selectedNgayThiDuyet} để duyệt!`);
+                message.warning(`Không có học viên nào thuộc ngày thi ${selectedNgayThiDuyet} để ${da_nhan ? "duyệt" : "hủy duyệt"}!`);
                 return;
             }
-            mutateBulkUpdate({ ids: allIds, da_nhan: true });
+            mutateBulkUpdate({ ids: allIds, da_nhan });
             setIsDuyetModalOpen(false);
             setSelectedNgayThiDuyet(null);
         } catch (err) {
-            message.error("Lỗi khi lấy danh sách học viên để duyệt!");
+            message.error(`Lỗi khi lấy danh sách học viên để ${da_nhan ? "duyệt" : "hủy duyệt"}!`);
         } finally {
             setIsFetchingAllForDuyet(false);
         }
@@ -523,21 +523,30 @@ const DSKyNhanHoSoVaGPLX = () => {
 
             {/* Duyệt theo ngày thi Config Modal */}
             <Modal
-                title="Bạn có muốn duyệt tất cả học viên trong ngày thi dưới đây không?"
+                title="Bạn có muốn duyệt hoặc hủy duyệt tất cả học viên trong ngày thi dưới đây không?"
                 open={isDuyetModalOpen}
                 onCancel={handleCancelDuyetModal}
                 footer={[
                     <Button key="cancel" onClick={handleCancelDuyetModal}>
-                        Hủy
+                        Đóng
+                    </Button>,
+                    <Button
+                        key="unapprove"
+                        danger
+                        disabled={!selectedNgayThiDuyet}
+                        loading={isBulkUpdating || isFetchingAllForDuyet}
+                        onClick={() => handleDuyetTheoNgayThi(false)}
+                    >
+                        Hủy duyệt tất cả
                     </Button>,
                     <Button
                         key="submit"
                         type="primary"
                         disabled={!selectedNgayThiDuyet}
                         loading={isBulkUpdating || isFetchingAllForDuyet}
-                        onClick={handleDuyetTheoNgayThi}
+                        onClick={() => handleDuyetTheoNgayThi(true)}
                     >
-                        Duyệt
+                        Duyệt tất cả
                     </Button>
                 ]}
             >
