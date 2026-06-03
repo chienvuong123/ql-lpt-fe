@@ -336,7 +336,7 @@ export default function SearchStudents() {
         title={drawerProps.title}
         onClose={handleCloseForm}
         open={openedDrawer}
-        size={1380}
+        width="100vw"
         maskClosable={false}
         extra={
           <div>

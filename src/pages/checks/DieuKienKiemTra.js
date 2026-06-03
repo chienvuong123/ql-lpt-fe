@@ -285,8 +285,9 @@ export function checkForbiddenZones(listCoordinate, forbiddenZones) {
 
 /** Format số thực giờ → "Xh MM'" */
 export function fmtGio(gio) {
-  const g = Math.floor(gio);
-  const p = Math.round((gio - g) * 60);
+  const totalMins = Math.round(gio * 60);
+  const g = Math.floor(totalMins / 60);
+  const p = totalMins % 60;
   return `${g}h ${p.toString().padStart(2, "0")}'`;
 }
 
@@ -419,14 +420,7 @@ function getStopViolationDetails(listCoordinate) {
     return null;
   }
 
-  let reason = "";
-  if (hasLongStopViolation && hasTotalStopViolation) {
-    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))} và tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))}`;
-  } else if (hasLongStopViolation) {
-    reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))}`;
-  } else {
-    reason = `tổng thời gian dừng nghỉ đạt ${formatStopMinutes(Math.round(totalDurationMin))}`;
-  }
+  const reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(Math.round(maxDurationMin))}, tổng thời gian dừng nghỉ là ${formatStopMinutes(Math.round(totalDurationMin))}`;
 
   // reason += ` - Tổng số lần nghỉ: ${realRestStops.length} lần.`;
 
@@ -493,10 +487,11 @@ export function evaluateDungNghiPhien(dataSource, loTrinh) {
     if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
       const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
       if (stopCheck !== null) {
+        const km = phien.TongQuangDuong || phien.TongQD || phien.TongQD_raw || 0;
         warnings.push({
           type: "warning",
           label: "Dừng nghỉ sai quy định",
-          message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm dừng nghỉ, ${stopCheck.reason}`,
+          message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): có dấu hiệu vi phạm dừng nghỉ, ${stopCheck.reason}.`,
         });
       }
     }
@@ -795,7 +790,8 @@ export function getInvalidSessionIndexes(
         if (stopCheck !== null) {
           if (!invalidReasons.has(idx)) invalidReasons.set(idx, []);
           const reasons = invalidReasons.get(idx);
-          const msg = `Dừng nghỉ sai quy định: ${stopCheck.reason}`;
+          const km = phien.TongQuangDuong || phien.TongQD || phien.TongQD_raw || 0;
+          const msg = `Dừng nghỉ sai quy định: ${stopCheck.reason}, tổng quãng đường ${km.toFixed(1)} km`;
           if (!reasons.includes(msg)) {
             reasons.push(msg);
           }
@@ -1312,7 +1308,7 @@ export function evaluate(
     {
       type: "error",
       label: "Thời gian ban đêm",
-      condition: summaryData.thoiGianBanDemGio < yeuCauHang.thoiGian.banDem,
+      condition: Math.round(summaryData.thoiGianBanDemGio * 60) < Math.round(yeuCauHang.thoiGian.banDem * 60),
       getMessage: () => {
         const thieu =
           yeuCauHang.thoiGian.banDem - summaryData.thoiGianBanDemGio;
@@ -1332,7 +1328,7 @@ export function evaluate(
     {
       type: "error",
       label: "Thời gian số tự động",
-      condition: summaryData.thoiGianTuDongGio < yeuCauHang.thoiGian.tuDong,
+      condition: Math.round(summaryData.thoiGianTuDongGio * 60) < Math.round(yeuCauHang.thoiGian.tuDong * 60),
       getMessage: () => {
         const thieu =
           yeuCauHang.thoiGian.tuDong - summaryData.thoiGianTuDongGio;
@@ -1359,7 +1355,7 @@ export function evaluate(
         if (normalizedH !== "B2" && normalizedH !== "C1") return false;
         const limitManualTime = normalizedH === "C1" ? 23.0 : 18.0;
         const remainingManualTime = summaryData.tongThoiGianGio - summaryData.thoiGianTuDongGio;
-        return remainingManualTime < limitManualTime;
+        return Math.round(remainingManualTime * 60) < Math.round(limitManualTime * 60);
       })(),
       getMessage: () => {
         const normalizedH = normalizeHang(summaryData.hangDaoTao);
@@ -1390,7 +1386,7 @@ export function evaluate(
     {
       type: "error",
       label: "Tổng thời lượng",
-      condition: summaryData.tongThoiGianGio < yeuCauHang.thoiGian.tong,
+      condition: Math.round(summaryData.tongThoiGianGio * 60) < Math.round(yeuCauHang.thoiGian.tong * 60),
       getMessage: () => {
         const thieu = yeuCauHang.thoiGian.tong - summaryData.tongThoiGianGio;
 
@@ -1421,7 +1417,7 @@ export function evaluate(
       condition: (() => {
         const yc = yeuCauHang.thoiGian.banNgay;
         if (yc === 0) return false;
-        return summaryData.thoiGianBanNgayGio / yc < 0.8;
+        return Math.round(summaryData.thoiGianBanNgayGio * 60) < Math.round(yc * 0.8 * 60);
       })(),
       getMessage: () => {
         const yc = yeuCauHang.thoiGian.banNgay;

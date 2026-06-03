@@ -421,8 +421,9 @@ export function evaluate(
     HANG_DAO_TAO_CONFIG[summaryData.hangDaoTao] || HANG_DAO_TAO_CONFIG.B1;
 
   const fmtTime = (gio) => {
-    const g = Math.floor(gio);
-    const p = Math.round((gio - g) * 60);
+    const totalMins = Math.round(gio * 60);
+    const g = Math.floor(totalMins / 60);
+    const p = totalMins % 60;
     return `${g}h ${p.toString().padStart(2, "0")}'`;
   };
 
@@ -431,7 +432,7 @@ export function evaluate(
     {
       type: "error",
       label: "Thời gian ban đêm",
-      condition: summaryData.thoiGianBanDemGio < yeuCauHang.thoiGian.banDem,
+      condition: Math.round(summaryData.thoiGianBanDemGio * 60) < Math.round(yeuCauHang.thoiGian.banDem * 60),
       getMessage: () => {
         const thieu =
           yeuCauHang.thoiGian.banDem - summaryData.thoiGianBanDemGio;
@@ -451,7 +452,7 @@ export function evaluate(
     {
       type: "error",
       label: "Thời gian số tự động",
-      condition: summaryData.thoiGianTuDongGio < yeuCauHang.thoiGian.tuDong,
+      condition: Math.round(summaryData.thoiGianTuDongGio * 60) < Math.round(yeuCauHang.thoiGian.tuDong * 60),
       getMessage: () => {
         const thieu =
           yeuCauHang.thoiGian.tuDong - summaryData.thoiGianTuDongGio;
@@ -471,7 +472,7 @@ export function evaluate(
     {
       type: "error",
       label: "Tổng thời lượng",
-      condition: summaryData.tongThoiGianGio < yeuCauHang.thoiGian.tong,
+      condition: Math.round(summaryData.tongThoiGianGio * 60) < Math.round(yeuCauHang.thoiGian.tong * 60),
       getMessage: () => {
         const thieu = yeuCauHang.thoiGian.tong - summaryData.tongThoiGianGio;
         return `Tổng thời lượng thiếu ${fmtTime(thieu)} (yêu cầu ${fmtTime(yeuCauHang.thoiGian.tong)}, thực tế ${fmtTime(summaryData.tongThoiGianGio)}).`;
@@ -500,7 +501,7 @@ export function evaluate(
       condition: (() => {
         const yc = yeuCauHang.thoiGian.banNgay;
         if (yc === 0) return false;
-        return summaryData.thoiGianBanNgayGio / yc < 0.8;
+        return Math.round(summaryData.thoiGianBanNgayGio * 60) < Math.round(yc * 0.8 * 60);
       })(),
       getMessage: () => {
         const yc = yeuCauHang.thoiGian.banNgay;

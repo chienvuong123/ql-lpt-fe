@@ -81,60 +81,60 @@ const StudentDetailModal = ({ studentDetail, setStudentDetail }) => {
               return getRank(a.ten_bai) - getRank(b.ten_bai);
             })
             .map((item, idx) => {
-            const name = item.ten_bai || `Bài ${idx + 1}`;
-            const time = item.tong_phut || 0;
-            const isCaoToc = (name || "").toLowerCase().includes("cao tốc") || (name || "").toLowerCase().includes("cao toc");
-            const passFlag = item.dat ?? item.isPass ?? item.dat_cabin ?? true;
-            const isPass = isCaoToc ? (time >= 35 && passFlag) : passFlag;
-            return (
-              <Card
-                key={idx}
-                size="small"
-                className="!rounded-xl !border-0 !shadow-sm hover:!shadow-md transition-shadow duration-200"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-                }}
-              >
-                <Row align="middle" justify="space-between" wrap={false}>
-                  <Col flex="auto">
-                    <Text
-                      strong
-                      className="!text-sm !text-slate-800 block leading-tight"
-                    >
-                      {name}
-                    </Text>
-                    <Text className="!text-xs !text-slate-400 !mt-0.5 flex items-center">
-                      <GoClock className="mr-1 text-sm" /> {time} phút học
-                    </Text>
-                  </Col>
-                  <Col flex="none">
-                    <span
-                      className={`
+              const name = item.ten_bai || `Bài ${idx + 1}`;
+              const time = item.tong_phut || 0;
+              const isCaoToc = (name || "").toLowerCase().includes("cao tốc") || (name || "").toLowerCase().includes("cao toc");
+              const passFlag = item.dat ?? item.isPass ?? item.dat_cabin ?? true;
+              const isPass = isCaoToc ? (time >= 35 && passFlag) : passFlag;
+              return (
+                <Card
+                  key={idx}
+                  size="small"
+                  className="!rounded-xl !border-0 !shadow-sm hover:!shadow-md transition-shadow duration-200"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                  }}
+                >
+                  <Row align="middle" justify="space-between" wrap={false}>
+                    <Col flex="auto">
+                      <Text
+                        strong
+                        className="!text-sm !text-slate-800 block leading-tight"
+                      >
+                        {name}
+                      </Text>
+                      <Text className="!text-xs !text-slate-400 !mt-0.5 flex items-center">
+                        <GoClock className="mr-1 text-sm" /> {time} phút học
+                      </Text>
+                    </Col>
+                    <Col flex="none">
+                      <span
+                        className={`
                         inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
                         ${isPass
-                          ? "bg-green-100 text-green-700 ring-1 ring-green-200"
-                          : "bg-red-100 text-red-600 ring-1 ring-red-200"
-                        }
+                            ? "bg-green-100 text-green-700 ring-1 ring-green-200"
+                            : "bg-red-100 text-red-600 ring-1 ring-red-200"
+                          }
                       `}
-                    >
-                      {isPass ? (
-                        <>
-                          <CheckCircleFilled className="!text-green-600 !mr-1" />{" "}
-                          Đạt
-                        </>
-                      ) : (
-                        <>
-                          <CloseCircleFilled className="!text-red-600 !mr-1" />{" "}
-                          Chưa đạt
-                        </>
-                      )}
-                    </span>
-                  </Col>
-                </Row>
-              </Card>
-            );
-          })}
+                      >
+                        {isPass ? (
+                          <>
+                            <CheckCircleFilled className="!text-green-600 !mr-1" />{" "}
+                            Đạt
+                          </>
+                        ) : (
+                          <>
+                            <CloseCircleFilled className="!text-red-600 !mr-1" />{" "}
+                            Chưa đạt
+                          </>
+                        )}
+                      </span>
+                    </Col>
+                  </Row>
+                </Card>
+              );
+            })}
         </Space>
       ) : (
         <Empty description="Không có dữ liệu bài học CABIN" />

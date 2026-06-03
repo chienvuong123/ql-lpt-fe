@@ -506,9 +506,12 @@ const TruyVetModal = ({
       approved,
       reason,
     ) => {
-      const thieuGio = Math.max(requiredHours - currentHours, 0);
+      const currentMins = Math.round(toNumber(currentHours) * 60);
+      const requiredMins = Math.round(toNumber(requiredHours) * 60);
+      const thieuMins = Math.max(requiredMins - currentMins, 0);
+      const thieuGio = thieuMins / 60;
       const thieuKm = Math.max(requiredKm - currentKm, 0);
-      if (thieuGio <= 0 && thieuKm <= 0) return null;
+      if (thieuMins <= 0 && thieuKm <= 0) return null;
 
       return {
         key,

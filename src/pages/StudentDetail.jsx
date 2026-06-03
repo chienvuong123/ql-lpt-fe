@@ -412,7 +412,7 @@ const StudentDetail = ({ data }) => {
       dataIndex: "stt",
       key: "stt",
       align: "center",
-      width: 30,
+      width: 35,
       fixed: "left",
       responsive: ["sm"],
       render: (_text, record, index) => {
@@ -443,7 +443,7 @@ const StudentDetail = ({ data }) => {
     {
       title: "Phiên học",
       key: "PhienHoc",
-      width: 130,
+      width: 110,
       align: "center",
       render: (_, record) => {
         const start = record.ThoiDiemDangNhap
@@ -514,9 +514,9 @@ const StudentDetail = ({ data }) => {
       render: (url) => <Image src={url} width={110} height={76} preview />,
     },
     {
-      title: "Số ảnh",
+      title: "Ảnh",
       key: "soAnh",
-      width: 80,
+      width: 60,
       align: "center",
       render: (_, record) => {
         const imgs = getImagesForSession(record);
@@ -550,18 +550,18 @@ const StudentDetail = ({ data }) => {
       },
     },
     {
-      title: "Thời lượng",
+      title: "Thời gian",
       dataIndex: "TongThoiGian",
       key: "TongThoiGian",
-      width: 90,
+      width: 80,
       align: "center",
       render: (text) => <Text>{formatSecondsToTime(text)}</Text>,
     },
     {
-      title: "Quãng đường",
+      title: "Số km",
       dataIndex: "TongQD",
       key: "TongQD",
-      width: 110,
+      width: 100,
       align: "center",
       responsive: ["md"],
       render: (text) => renderValue(text),
@@ -575,10 +575,10 @@ const StudentDetail = ({ data }) => {
       render: (text) => renderValue(text),
     },
     {
-      title: "Nhận diện",
+      title: "ND",
       dataIndex: "Tile",
       key: "Tile",
-      width: 90,
+      width: 60,
       align: "center",
       responsive: ["lg"],
       render: (text) => <Text>{Math.floor(text * 10) / 10}%</Text>,
@@ -740,233 +740,235 @@ const StudentDetail = ({ data }) => {
   return (
     <Spin spinning={isLoading}>
       <div className="student-detail-container">
-        <Card className="info-card" bordered={false}>
-          <Row gutter={[12, 12]}>
-            <Col span={24}>
-              <Title level={4}>Thông tin học viên</Title>
-            </Col>
-            <Col xs={24} sm={8} md={6} lg={3}>
-              <div style={{ textAlign: "center" }}>
-                <img
-                  src={data.srcAvatar}
-                  alt="Student Avatar"
-                  style={{
-                    width: "120px",
-                    height: "120px",
-                    borderRadius: "8px",
-                  }}
-                />
-              </div>
-            </Col>
-
-            <Col xs={24} sm={16} md={12} lg={12}>
-              <Space
-                direction="vertical"
-                size="small"
-                style={{ width: "100%" }}
-              >
-                <Row gutter={[8, 8]}>
-                  <Col span={5}>
-                    <Text>Tên học viên:</Text>
-                  </Col>
-                  <Col span={16}>
-                    <Text strong>{data.HoTen}</Text>
-                  </Col>
-                </Row>
-
-                <Row gutter={[8, 8]}>
-                  <Col span={5}>
-                    <Text>Mã học viên:</Text>
-                  </Col>
-                  <Col span={16}>
-                    <Text strong copyable>
-                      {data.MaDK}
-                    </Text>
-                  </Col>
-                </Row>
-                <Row gutter={[8, 8]}>
-                  <Col span={5}>
-                    <Text>GV DAT:</Text>
-                  </Col>
-                  <Col span={16}>
-                    <Text strong>{teacherName}</Text>
-                  </Col>
-                </Row>
-
-                <Row gutter={[8, 8]}>
-                  <Col span={5}>
-                    <Text>Ngày sinh:</Text>
-                  </Col>
-                  <Col span={16}>
-                    <Text strong>
-                      {" "}
-                      {data?.NgaySinh
-                        ? dayjs(data.NgaySinh).format("DD/MM/YYYY")
-                        : ""}
-                    </Text>
-                  </Col>
-                </Row>
-
-                <Row gutter={[8, 8]}>
-                  <Col span={5}>
-                    <Text>Mã khóa học:</Text>
-                  </Col>
-                  <Col span={16}>
-                    <Text strong>{data.TenKhoaHoc}</Text>
-                  </Col>
-                </Row>
-
-                <Row gutter={[8, 8]}>
-                  <Col span={5}>
-                    <Text>Hạng đào tạo:</Text>
-                  </Col>
-                  <Col span={16}>
-                    <Tag color="blue">{data.HangDaoTao}</Tag>
-                  </Col>
-                </Row>
-              </Space>
-            </Col>
-
-            <Col xs={24} md={6} lg={8}>
-              <Card
-                size="small"
-                className="confirmation-box"
-                style={{ background: "#fafafa", marginTop: "-14px" }}
-              >
-                <Space
-                  direction="vertical"
-                  size="middle"
-                  style={{ width: "100%" }}
-                >
-                  <Form
-                    key="hocvien-check-form"
-                    form={form}
-                    layout="vertical"
-                    onFinish={onFinish}
+        <Row gutter={12}>
+          <Col span={7}>
+            <Card>
+              <Col span={24}>
+                <Title level={4}>Thông tin học viên</Title>
+              </Col>
+              <Row gutter={12}>
+                <Col xs={24} sm={8} md={6} lg={6}>
+                  <div style={{ textAlign: "center" }}>
+                    <img
+                      src={data.srcAvatar}
+                      alt="Student Avatar"
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  </div>
+                </Col>
+                <Col xs={24} sm={16} md={12} lg={18}>
+                  <Space
+                    direction="vertical"
+                    size="small"
+                    style={{ width: "100%" }}
                   >
-                    <Row gutter={[8, 8]} justify="space-between" align="middle">
-                      <Text strong className="mt-2">
-                        Ký Xác Nhận DAT
-                      </Text>
-                      <Form.Item
-                        name="trang_thai"
-                        valuePropName="checked"
-                        className="!mb-0"
-                      >
-                        <Checkbox
-                          onChange={handleCheckboxChange}
-                          disabled={isCheckboxLoading}
-                        >
-                          <Spin spinning={isCheckboxLoading} size="small">
-                            <Text type="success">Học viên đã ký</Text>
-                          </Spin>
-                        </Checkbox>
-                      </Form.Item>
+                    <Row gutter={[8, 8]}>
+                      <Col span={7}>
+                        <Text>Tên học viên:</Text>
+                      </Col>
+                      <Col span={16}>
+                        <Text strong>{data.HoTen}</Text>
+                      </Col>
                     </Row>
 
-                    {/* Đổi tên field thành ghi_chu_1, ghi_chu_2 */}
-                    <Form.Item label="Ghi chú nội bộ" name="ghi_chu_1">
-                      <TextArea
-                        rows={2}
-                        placeholder="Ghi chú nội bộ (chỉ Admin thấy) ..."
-                      />
-                    </Form.Item>
+                    <Row gutter={[8, 8]}>
+                      <Col span={7}>
+                        <Text>Mã học viên:</Text>
+                      </Col>
+                      <Col span={16}>
+                        <Text strong copyable>
+                          {data.MaDK}
+                        </Text>
+                      </Col>
+                    </Row>
+                    <Row gutter={[8, 8]}>
+                      <Col span={7}>
+                        <Text>GV DAT:</Text>
+                      </Col>
+                      <Col span={16}>
+                        <Text strong>{teacherName}</Text>
+                      </Col>
+                    </Row>
 
-                    <Form.Item label="Ghi chú công khai" name="ghi_chu_2">
-                      <TextArea rows={2} placeholder="Ghi chú công khai ..." />
-                    </Form.Item>
+                    <Row gutter={[8, 8]}>
+                      <Col span={7}>
+                        <Text>Ngày sinh:</Text>
+                      </Col>
+                      <Col span={16}>
+                        <Text strong>
+                          {" "}
+                          {data?.NgaySinh
+                            ? dayjs(data.NgaySinh).format("DD/MM/YYYY")
+                            : ""}
+                        </Text>
+                      </Col>
+                    </Row>
 
-                    <Form.Item>
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        block
-                        loading={isMutating && !isCheckboxLoading}
+                    <Row gutter={[8, 8]}>
+                      <Col span={7}>
+                        <Text>Mã khóa học:</Text>
+                      </Col>
+                      <Col span={16}>
+                        <Text strong>{data.TenKhoaHoc}</Text>
+                      </Col>
+                    </Row>
+
+                    <Row gutter={[8, 8]}>
+                      <Col span={7}>
+                        <Text>Hạng đào tạo:</Text>
+                      </Col>
+                      <Col span={12}>
+                        <Tag color="blue">{data.HangDaoTao}</Tag>
+                      </Col>
+                    </Row>
+                  </Space>
+                </Col>
+              </Row>
+              <Row className="mt-13 pb-16">
+                <Col xs={24} md={6} lg={24}>
+                  <Card
+                    size="small"
+                    className="confirmation-box"
+                    style={{ background: "#fafafa", marginTop: "-14px" }}
+                  >
+                    <Space
+                      direction="vertical"
+                      size="middle"
+                      style={{ width: "100%" }}
+                    >
+                      <Form
+                        key="hocvien-check-form"
+                        form={form}
+                        layout="vertical"
+                        onFinish={onFinish}
                       >
-                        Lưu thông tin
-                      </Button>
-                    </Form.Item>
+                        <Row gutter={[8, 8]} justify="space-between" align="middle">
+                          <Text strong className="mt-2">
+                            Ký Xác Nhận DAT
+                          </Text>
+                          <Form.Item
+                            name="trang_thai"
+                            valuePropName="checked"
+                            className="!mb-0"
+                          >
+                            <Checkbox
+                              onChange={handleCheckboxChange}
+                              disabled={isCheckboxLoading}
+                            >
+                              <Spin spinning={isCheckboxLoading} size="small">
+                                <Text type="success">Học viên đã ký</Text>
+                              </Spin>
+                            </Checkbox>
+                          </Form.Item>
+                        </Row>
 
-                    <Text className="!text-[11px]">
-                      Cập nhật cuối:{" "}
-                      {dataCheck?.updated_at
-                        ? formatLocalTime(dataCheck.updated_at)
-                        : "Chưa có dữ liệu"}{" "}
-                      (GMT+7)
-                    </Text>
-                  </Form>
-                </Space>
-              </Card>
-            </Col>
-          </Row>
-        </Card>
+                        {/* Đổi tên field thành ghi_chu_1, ghi_chu_2 */}
+                        <Form.Item label="Ghi chú nội bộ" name="ghi_chu_1">
+                          <TextArea
+                            rows={2}
+                            placeholder="Ghi chú nội bộ (chỉ Admin thấy) ..."
+                          />
+                        </Form.Item>
+
+                        <Form.Item label="Ghi chú công khai" name="ghi_chu_2">
+                          <TextArea rows={2} placeholder="Ghi chú công khai ..." />
+                        </Form.Item>
+
+                        <Form.Item>
+                          <Button
+                            type="primary"
+                            htmlType="submit"
+                            block
+                            loading={isMutating && !isCheckboxLoading}
+                          >
+                            Lưu thông tin
+                          </Button>
+                        </Form.Item>
+
+                        <Text className="!text-[11px]">
+                          Cập nhật cuối:{" "}
+                          {dataCheck?.updated_at
+                            ? formatLocalTime(dataCheck.updated_at)
+                            : "Chưa có dữ liệu"}{" "}
+                          (GMT+7)
+                        </Text>
+                      </Form>
+                    </Space>
+                  </Card>
+                </Col>
+              </Row>
+
+              {/* </Row> */}
+            </Card>
+          </Col>
+          <Col span={17}>
+            <Card>
+              <Title level={4}>Thông tin quá trình đào tạo</Title>
+              <Row gutter={[12, 12]}>
+                <Col span={24}>
+                  <Flex justify="space-between">
+                    <Space>
+                      <Text strong>DỮ LIỆU HỌC CABIN:</Text>
+
+                      {loadingCabin ? (
+                        <Text>Đang tải dữ liệu Cabin...</Text>
+                      ) : cabinDataList.length > 0 ? (
+                        <Text strong className="!text-blue-600">
+                          {uniqueCabinLessonCount}/8 bài -{" "}
+                          {formatCabinDuration(totalCabinSeconds)}
+                        </Text>
+                      ) : (
+                        <Tag color="error" className="font-medium">
+                          Chưa có dữ liệu Cabin
+                        </Tag>
+                      )}
+                    </Space>
+                    {dataSource.length > 0 && (
+                      <div className="mt-4">
+                        <Button
+                          type="primary"
+                          icon={<EyeOutlined />}
+                          onClick={() => showModal()}
+                          loading={isLoTrinhLoading}
+                        >
+                          Giám sát hành trình
+                        </Button>
+                      </div>
+                    )}
+                  </Flex>
+                </Col>
+                <Col span={24}>
+                  <Table
+                    columns={columns}
+                    dataSource={dataSource || []}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 1200, y: "calc(100vh - 425px)" }}
+                    // className="table-blue-header"
+                    bordered
+                    rowClassName={() => ""}
+                    locale={{
+                      emptyText:
+                        "Không có phiên đào tạo nào trong khoảng thời gian đã chọn.",
+                    }}
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
 
         <Card
           className="training-card"
           bordered={false}
           style={{ marginTop: 16 }}
         >
-          <Title level={4}>Thông tin quá trình đào tạo</Title>
-          <Row gutter={[12, 12]}>
-            <Col span={24} className=" pl-20">
-              <Space wrap style={{ marginBottom: 16 }}>
-                <Checkbox checked>Ban ngày</Checkbox>
-                <Checkbox checked>Ban đêm</Checkbox>
-                <Checkbox checked>Trải nghiệm số tự động</Checkbox>
-                <Checkbox checked>Nhận diện &lt;75%</Checkbox>
-              </Space>
-            </Col>
-            <Col span={24}>
-              <Flex justify="space-between">
-                <Space>
-                  <Text strong>DỮ LIỆU HỌC CABIN:</Text>
-
-                  {loadingCabin ? (
-                    <Text>Đang tải dữ liệu Cabin...</Text>
-                  ) : cabinDataList.length > 0 ? (
-                    <Text strong className="!text-blue-600">
-                      {uniqueCabinLessonCount}/8 bài -{" "}
-                      {formatCabinDuration(totalCabinSeconds)}
-                    </Text>
-                  ) : (
-                    <Tag color="error" className="font-medium">
-                      Chưa có dữ liệu Cabin
-                    </Tag>
-                  )}
-                </Space>
-                {dataSource.length > 0 && (
-                  <div className="mt-4">
-                    <Button
-                      type="primary"
-                      icon={<EyeOutlined />}
-                      onClick={() => showModal()}
-                      loading={isLoTrinhLoading}
-                    >
-                      Giám sát hành trình
-                    </Button>
-                  </div>
-                )}
-              </Flex>
-            </Col>
-            <Col span={24}>
-              <Table
-                columns={columns}
-                dataSource={dataSource || []}
-                pagination={false}
-                size="small"
-                scroll={{ x: 1200 }}
-                // className="table-blue-header"
-                bordered
-                rowClassName={() => ""}
-                locale={{
-                  emptyText:
-                    "Không có phiên đào tạo nào trong khoảng thời gian đã chọn.",
-                }}
-              />
-            </Col>
-          </Row>
           {dataSource.length > 0 && (
-            <div className="mt-10">
+            <div >
               <Row gutter={[12, 12]}>
                 <Title level={4}>Tổng hợp</Title>
                 <Col span={24} className="pl-20">
