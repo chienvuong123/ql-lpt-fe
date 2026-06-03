@@ -740,9 +740,12 @@ const StudentDetail = ({ data }) => {
   return (
     <Spin spinning={isLoading}>
       <div className="student-detail-container">
-        <Row gutter={12}>
-          <Col span={7}>
-            <Card>
+        <Row gutter={12} className="flex items-stretch">
+          <Col span={7} className="flex flex-col">
+            <Card
+              className="h-full"
+              classNames={{ body: "flex-1 flex flex-col" }}
+            >
               <Col span={24}>
                 <Title level={4}>Thông tin học viên</Title>
               </Col>
@@ -905,8 +908,11 @@ const StudentDetail = ({ data }) => {
               {/* </Row> */}
             </Card>
           </Col>
-          <Col span={17}>
-            <Card>
+          <Col span={17} className="flex flex-col">
+            <Card
+              className="h-full flex flex-col"
+              classNames={{ body: "flex-1 flex flex-col" }}
+            >
               <Title level={4}>Thông tin quá trình đào tạo</Title>
               <Row gutter={[12, 12]}>
                 <Col span={24}>
