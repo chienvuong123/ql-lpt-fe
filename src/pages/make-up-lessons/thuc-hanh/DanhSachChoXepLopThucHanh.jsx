@@ -14,7 +14,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBu, updateHocBuStatusBulk } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuChoDuyetThucHanh, updateHocBuStatusBulk } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
@@ -30,15 +30,27 @@ const normalizeApiList = (payload) => {
     return [];
 };
 
+const isClassEligible = (record) => {
+    if (!record) return false;
+    const st = String(record.trang_thai ?? record.student?.trang_thai);
+    const stTH = record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh;
+    return (st === "4" || st === "5") && (stTH == null || String(stTH) === "1" || String(stTH) === "2");
+};
+
+const isSelectionEligible = (record) => {
+    if (!record) return false;
+    const st = String(record.trang_thai ?? record.student?.trang_thai);
+    const stTH = record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh;
+    return st === "5" && String(stTH) === "2";
+};
+
 const DanhSachChoXepLopThucHanh = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
-    const [loai, setLoai] = useState(["theory", "practice"]);
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
-        loai: undefined,
     });
 
     const [pagination, setPagination] = useState({ page: 1, limit: 10 });
@@ -63,11 +75,9 @@ const DanhSachChoXepLopThucHanh = () => {
         setIsSelectingAllPages(true);
         try {
             message.loading({ content: 'Đang tải toàn bộ dữ liệu...', key: 'selectAll' });
-            const res = await getDanhSachHocVienHocBu({
+            const res = await getDanhSachHocVienHocBuChoDuyetThucHanh({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                loai: appliedFilters.loai,
-                trang_thai: 5,
                 page: 1,
                 limit: 10000,
             });
@@ -79,13 +89,11 @@ const DanhSachChoXepLopThucHanh = () => {
             const selectedTeachers = new Set();
 
             for (const record of list) {
-                const st = record.trang_thai ?? record.student?.trang_thai;
-                const stTH = record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh;
-                const isEligible = String(st) === "5" && String(stTH) === "2";
+                const isEligible = isSelectionEligible(record);
 
                 const hasKhoaBu = record.khoa_bu_thuc_hanh || record.student?.khoa_bu_thuc_hanh || record.khoa_bu || record.student?.khoa_bu;
                 const hasThoiGianXep = record.thoi_gian_xep_thuc_hanh || record.student?.thoi_gian_xep_thuc_hanh || record.thoi_gian_xep || record.student?.thoi_gian_xep;
-                const isScheduledStatus = String(st) === "3" || String(stTH) === "3";
+                const isScheduledStatus = String(record.trang_thai ?? record.student?.trang_thai) === "3" || String(record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh) === "3";
                 const isAlreadyScheduled = isScheduledStatus || (hasKhoaBu && hasThoiGianXep);
 
                 if (!isEligible || isAlreadyScheduled) continue;
@@ -213,16 +221,13 @@ const DanhSachChoXepLopThucHanh = () => {
             "hocVienChoXepLopBuThucHanh",
             appliedFilters.ma_khoa,
             appliedFilters.search,
-            appliedFilters.loai,
             pagination.page,
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBu({
+            getDanhSachHocVienHocBuChoDuyetThucHanh({
                 ma_khoa: appliedFilters.ma_khoa,
                 search: appliedFilters.search,
-                loai: appliedFilters.loai,
-                trang_thai: 5,
                 page: pagination.page,
                 limit: pagination.limit,
             }),
@@ -231,7 +236,7 @@ const DanhSachChoXepLopThucHanh = () => {
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
-        return list;
+        return list.filter(isClassEligible);
     }, [studentData]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
@@ -241,15 +246,9 @@ const DanhSachChoXepLopThucHanh = () => {
     const isIndeterminate = selectedRowKeys.length > 0 && !isAllSelected;
 
     const handleApplyFilter = () => {
-        let selectedLoai = undefined;
-        if (loai && loai.length === 1) {
-            selectedLoai = loai[0] === "theory" ? "ly_thuyet" : "thuc_hanh";
-        }
-
         setAppliedFilters({
             ma_khoa,
             search: searchText,
-            loai: selectedLoai,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -257,11 +256,9 @@ const DanhSachChoXepLopThucHanh = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
-        setLoai(["theory", "practice"]);
         setAppliedFilters({
             ma_khoa: null,
             search: "",
-            loai: undefined,
         });
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
@@ -286,9 +283,7 @@ const DanhSachChoXepLopThucHanh = () => {
             align: "center",
             fixed: "left",
             render: (_, record) => {
-                const st = record.trang_thai ?? record.student?.trang_thai;
-                const stTH = record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh;
-                const isEligible = String(st) === "5" && String(stTH) === "2";
+                const isEligible = isSelectionEligible(record);
 
                 const recordLoai = String(record?.loai ?? record?.student?.loai);
                 const isTypeLyThuyet = recordLoai === "ly_thuyet";
@@ -307,7 +302,7 @@ const DanhSachChoXepLopThucHanh = () => {
                 const hasKhoaBu = record.khoa_bu_thuc_hanh || record.student?.khoa_bu_thuc_hanh || record.khoa_bu || record.student?.khoa_bu;
                 const hasThoiGianXep = record.thoi_gian_xep_thuc_hanh || record.student?.thoi_gian_xep_thuc_hanh || record.thoi_gian_xep || record.student?.thoi_gian_xep;
 
-                const isScheduledStatus = String(st) === "3" || String(stTH) === "3";
+                const isScheduledStatus = String(record.trang_thai ?? record.student?.trang_thai) === "3" || String(record.trang_thai_thuc_hanh ?? record.student?.trang_thai_thuc_hanh) === "3";
                 const isAlreadyScheduled = isScheduledStatus || (hasKhoaBu && hasThoiGianXep);
 
                 const canCheck = isEligible && !isAlreadyScheduled && !isTypeMismatch && !isTeacherRestricted;
@@ -425,7 +420,7 @@ const DanhSachChoXepLopThucHanh = () => {
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Khóa Học
                         </label>
@@ -441,7 +436,7 @@ const DanhSachChoXepLopThucHanh = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={4}>
+                    <Col xs={24} sm={10} md={8} lg={8}>
                         <label className="block text-xs text-gray-500 uppercase">
                             Học viên / Mã DK
                         </label>
@@ -453,23 +448,7 @@ const DanhSachChoXepLopThucHanh = () => {
                         />
                     </Col>
 
-                    <Col xs={24} sm={12} md={10} lg={5}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Loại học bù
-                        </label>
-                        <div className="mt-[6px]">
-                            <Checkbox.Group
-                                value={loai}
-                                onChange={setLoai}
-                                options={[
-                                    { label: "Lý thuyết", value: "theory" },
-                                    { label: "Thực hành", value: "practice" },
-                                ]}
-                            />
-                        </div>
-                    </Col>
-
-                    <Col xs={24} sm={14} md={12} lg={4}>
+                    <Col xs={24} sm={14} md={12} lg={8}>
                         <Space className="w-full justify-start flex-wrap">
                             <Button
                                 type="primary"

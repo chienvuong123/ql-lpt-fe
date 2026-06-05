@@ -13,7 +13,7 @@ import {
 } from "antd";
 import { EyeOutlined, PlusCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { getDanhSachHocVienHocBu, updateHocBuStatusBulk } from "../../../apis/apiHocbu";
+import { getDanhSachHocVienHocBuChoDuyet, updateHocBuStatusBulk } from "../../../apis/apiHocbu";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../../apis/apiLyThuyetLocal";
 import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
@@ -28,6 +28,22 @@ const normalizeApiList = (payload) => {
     if (Array.isArray(payload?.result)) return payload.result;
     return [];
 };
+
+const isClassEligible = (record) => {
+    if (!record) return false;
+    const st = String(record.trang_thai);
+    const stLt = String(record.trang_thai_ly_thuyet);
+    return (st === "1" || st === "2") && (stLt === "1" || stLt === "2");
+};
+
+const isSelectionEligible = (record) => {
+    if (!record) return false;
+    const st = String(record.trang_thai);
+    const stLt = String(record.trang_thai_ly_thuyet);
+    return st === "2" && stLt === "2";
+};
+
+
 
 const DanhSachChoXepLopLyThuyet = () => {
     const [ma_khoa, setMaKhoa] = useState(null);
@@ -60,7 +76,7 @@ const DanhSachChoXepLopLyThuyet = () => {
         setIsSelectingAllPages(true);
         try {
             message.loading({ content: 'Đang tải toàn bộ dữ liệu...', key: 'selectAll' });
-            const res = await getDanhSachHocVienHocBu({
+            const res = await getDanhSachHocVienHocBuChoDuyet({
                 ma_khoa: appliedFilters.ma_khoa,
                 text: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
@@ -70,7 +86,7 @@ const DanhSachChoXepLopLyThuyet = () => {
             });
             const list = normalizeApiList(res);
             const validKeys = list
-                .filter(record => String(record.trang_thai) === "2" && String(record.trang_thai_ly_thuyet) === "2")
+                .filter(isSelectionEligible)
                 .map(record => record.id || record.ma_dk);
             
             setSelectedRowKeys(validKeys);
@@ -155,7 +171,7 @@ const DanhSachChoXepLopLyThuyet = () => {
             pagination.limit,
         ],
         queryFn: () =>
-            getDanhSachHocVienHocBu({
+            getDanhSachHocVienHocBuChoDuyet({
                 ma_khoa: appliedFilters.ma_khoa,
                 text: appliedFilters.search,
                 trang_thai: appliedFilters.trang_thai,
@@ -168,7 +184,7 @@ const DanhSachChoXepLopLyThuyet = () => {
 
     const students = useMemo(() => {
         const list = normalizeApiList(studentData);
-        return list;
+        return list.filter(isClassEligible);
     }, [studentData]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
@@ -219,7 +235,7 @@ const DanhSachChoXepLopLyThuyet = () => {
             align: "center",
             fixed: "left",
             render: (_, record) => {
-                const canCheck = String(record.trang_thai) === "2" && String(record.trang_thai_ly_thuyet) === "2";
+                const canCheck = isSelectionEligible(record);
                 return (
                     <Checkbox
                         checked={selectedRowKeys.includes(record.id || record.ma_dk)}

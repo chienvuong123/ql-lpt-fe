@@ -29,6 +29,7 @@ import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
 import StudentDetailModal from "./StudentDetailModal";
 import TheoryStudentDetailModal from "./student-detail/TheoryStudentDetailModal";
+import { useTableHeight } from "../../components/hooks/useTableHeight";
 
 const { Text } = Typography;
 
@@ -209,6 +210,7 @@ const NoteCell = React.memo(({ maDk, ghiChu, disabled, onBlur }) => (
 
 
 const QuanLyHocVienLyThuyet = () => {
+  const [tableRef, tableHeight] = useTableHeight();
   const [selectedClassIid, setSelectedClassIid] = useState("");
   const [savingStudentCode, setSavingStudentCode] = useState("");
   const [isSubmittingAll, setIsSubmittingAll] = useState(false);
@@ -1119,29 +1121,31 @@ const QuanLyHocVienLyThuyet = () => {
         </Row>
       </Card>
 
-      <Table
-        columns={columns}
-        dataSource={students}
-        pagination={{
-          current: params.page,
-          pageSize: params.limit,
-          total: totalStudents,
-          onChange: (page, pageSize) => {
-            setParams((prev) => ({
-              ...prev,
-              page,
-              limit: pageSize,
-            }));
-          },
-          showSizeChanger: false,
-          showTotal: (total) => `Tổng ${total} học viên`,
-        }}
-        rowKey={getRowKey}
-        size="small"
-        bordered
-        scroll={{ x: 1600 }}
-        className="overflow-hidden table-blue-header"
-      />
+      <div ref={tableRef}>
+        <Table
+          columns={columns}
+          dataSource={students}
+          pagination={{
+            current: params.page,
+            pageSize: params.limit,
+            total: totalStudents,
+            onChange: (page, pageSize) => {
+              setParams((prev) => ({
+                ...prev,
+                page,
+                limit: pageSize,
+              }));
+            },
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} học viên`,
+          }}
+          rowKey={getRowKey}
+          size="small"
+          bordered
+          scroll={{ x: 1600, y: tableHeight }}
+          className="overflow-hidden table-blue-header"
+        />
+      </div>
 
       <StudentDetailModal
         ref={studentModalRef}
