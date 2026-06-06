@@ -24,6 +24,7 @@ import dayjs from "dayjs";
 import HocVienInfo from "../../../components/HocVienInfor";
 import { renderTrangThaiHocBu, renderTrangThaiThucHanh } from "../../../constants/hocBuConstants";
 import { useHocBuActions } from "../../../components/hooks/useHocBuActions";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const normalizeApiList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -33,6 +34,7 @@ const normalizeApiList = (payload) => {
 };
 
 const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+  const [tableRef, tableHeight] = useTableHeight();
   const [ma_khoa, setMaKhoa] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [trangThai, setTrangThai] = useState([]);
@@ -430,23 +432,25 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         </Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={students}
-        rowKey={(record) => record.id || record.ma_dk}
-        loading={isFetchingStudents}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: totalItems,
-          showSizeChanger: true,
-          onChange: (page, limit) => setPagination({ page, limit }),
-        }}
-        size="small"
-        scroll={{ x: 1300 }}
-        bordered
-        className="table-blue-header"
-      />
+      <div ref={tableRef}>
+        <Table
+          columns={columns}
+          dataSource={students}
+          rowKey={(record) => record.id || record.ma_dk}
+          loading={isFetchingStudents}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: totalItems,
+            showSizeChanger: true,
+            onChange: (page, limit) => setPagination({ page, limit }),
+          }}
+          size="small"
+          scroll={{ x: 1300, y: tableHeight }}
+          bordered
+          className="table-blue-header"
+        />
+      </div>
 
       <StudentMakeUpDetailDrawer
         open={isDetailOpen}

@@ -16,6 +16,7 @@ import { getDanhSachHocVienHocBu } from "../../../apis/apiHocbu";
 import CabinDetailModal from "../CabinDetailModal";
 import dayjs from "dayjs";
 import HocVienInfo from "../../../components/HocVienInfor";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const normalizeApiList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -25,6 +26,7 @@ const normalizeApiList = (payload) => {
 };
 
 const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+  const [tableRef, tableHeight] = useTableHeight();
   const [ma_khoa, setMaKhoa] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({ ma_khoa: null, text: "" });
@@ -194,23 +196,25 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         </Row>
       </Card>
 
-      <Table
-        columns={columns}
-        dataSource={students}
-        rowKey={(record) => record.student?.id || record.student?.ma_dk}
-        loading={isFetchingStudents}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: totalItems,
-          showSizeChanger: true,
-          onChange: (page, limit) => setPagination({ page, limit }),
-        }}
-        size="small"
-        scroll={{ x: 1200 }}
-        bordered
-        className="table-blue-header"
-      />
+      <div ref={tableRef}>
+        <Table
+          columns={columns}
+          dataSource={students}
+          rowKey={(record) => record.student?.id || record.student?.ma_dk}
+          loading={isFetchingStudents}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: totalItems,
+            showSizeChanger: true,
+            onChange: (page, limit) => setPagination({ page, limit }),
+          }}
+          size="small"
+          scroll={{ x: 1200, y: tableHeight }}
+          bordered
+          className="table-blue-header"
+        />
+      </div>
 
       <CabinDetailModal
         visible={isDetailOpen}

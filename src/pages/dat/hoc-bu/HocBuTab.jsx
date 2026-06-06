@@ -10,10 +10,12 @@ import { getHocBuDatColumns } from "./HocBuDatColumns";
 import { useHocBuFilter } from "./hooks/useHocBuFilter";
 import { normalizeApiList } from "./hocBuUtils";
 import { formatMinutesToHM } from "../../../util/helper";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const DEFAULT_FILTERS = { ma_khoa: null, text: "" };
 
 const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+    const [tableRef, tableHeight] = useTableHeight();
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -66,16 +68,18 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
                 onApply={applyFilter} onReset={resetFilter}
                 isLoadingKhoaHoc={isLoadingKhoaHoc} courseOptions={courseOptions}
             />
-            <Table
-                columns={columns} dataSource={students}
-                rowKey={(r) => r.id || r.ma_dk} loading={isFetching}
-                pagination={{
-                    current: pagination.page, pageSize: pagination.limit,
-                    total: totalItems, showSizeChanger: true,
-                    onChange: (page, limit) => setPagination({ page, limit }),
-                }}
-                size="small" scroll={{ x: 1300 }} bordered className="table-blue-header"
-            />
+            <div ref={tableRef}>
+                <Table
+                    columns={columns} dataSource={students}
+                    rowKey={(r) => r.id || r.ma_dk} loading={isFetching}
+                    pagination={{
+                        current: pagination.page, pageSize: pagination.limit,
+                        total: totalItems, showSizeChanger: true,
+                        onChange: (page, limit) => setPagination({ page, limit }),
+                    }}
+                    size="small" scroll={{ x: 1300, y: tableHeight }} bordered className="table-blue-header"
+                />
+            </div>
             <DATDetailModal
                 visible={isDetailOpen}
                 onClose={() => setIsDetailOpen(false)}

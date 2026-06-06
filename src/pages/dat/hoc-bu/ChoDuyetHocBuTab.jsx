@@ -10,10 +10,12 @@ import { filterByTrangThaiHocBu, normalizeApiList } from "./hocBuUtils";
 import { TRANG_THAI_HOC_BU_MAP, TRANG_THAI_THUC_HANH_MAP } from "../../../constants";
 import { useHocBuFilter } from "./hooks/useHocBuFilter";
 import { useHocBuActions } from "../../../components/hooks/useHocBuActions";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const DEFAULT_FILTERS = { ma_khoa: null, text: "", trang_thai: [], trang_thai_hoc_bu: [] };
 
 const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+    const [tableRef, tableHeight] = useTableHeight();
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -175,12 +177,14 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
                     Duyệt ({selectedRowKeys.length})
                 </Button>
             </div>
-            <Table
-                columns={columns} dataSource={students} rowKey={(r) => r.id || r.ma_dk}
-                loading={isFetching}
-                pagination={{ current: pagination.page, pageSize: pagination.limit, total: totalItems, showSizeChanger: true, onChange: (page, limit) => setPagination({ page, limit }) }}
-                size="small" scroll={{ x: 1300 }} bordered className="table-blue-header"
-            />
+            <div ref={tableRef}>
+                <Table
+                    columns={columns} dataSource={students} rowKey={(r) => r.id || r.ma_dk}
+                    loading={isFetching}
+                    pagination={{ current: pagination.page, pageSize: pagination.limit, total: totalItems, showSizeChanger: true, onChange: (page, limit) => setPagination({ page, limit }) }}
+                    size="small" scroll={{ x: 1300, y: tableHeight }} bordered className="table-blue-header"
+                />
+            </div>
             <StudentMakeUpDetailDrawer open={isDetailOpen} onClose={() => setIsDetailOpen(false)} student={selectedStudent} />
         </div>
     );

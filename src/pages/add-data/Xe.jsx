@@ -30,10 +30,12 @@ import { normalizeApiList } from "../../util/helper";
 import dayjs from "dayjs";
 import ModalXe from "./ModalXe";
 import ModalUyQuyen from "./ModalUyQuyen";
+import { useTableHeight } from "../../components/hooks/useTableHeight";
 
 const { Title, Text } = Typography;
 
 const Xe = () => {
+    const [tableRef, tableHeight] = useTableHeight();
     const queryClient = useQueryClient();
     const [params, setParams] = useState({
         page: 1,
@@ -552,36 +554,38 @@ const Xe = () => {
                     </Col>
                 </Row>
             </Card>
-            <Table
-                className="table-blue-header"
-                dataSource={dataSource}
-                columns={columns}
-                bordered
-                size="small"
-                loading={isLoading}
-                scroll={{ x: 2500 }}
-                rowClassName={(record) => {
-                    const status = checkStatus(record);
-                    if (status === "expired") return "row-expired";
-                    if (status === "warning") return "row-warning";
-                    return "";
-                }}
-                pagination={{
-                    current: params.page,
-                    pageSize: params.limit,
-                    total: totalRecords,
-                    onChange: (page, pageSize) => {
-                        setParams((prev) => ({
-                            ...prev,
-                            page,
-                            limit: pageSize,
-                        }));
-                    },
-                    showSizeChanger: true,
-                    showTotal: (total) => `Tổng cộng ${total} bản ghi`,
-                }}
-                rowKey={(record) => record.id || record._id || record.bien_so_xe || record.bien_so || record.bienSo || record.key}
-            />
+            <div ref={tableRef}>
+                <Table
+                    className="table-blue-header"
+                    dataSource={dataSource}
+                    columns={columns}
+                    bordered
+                    size="small"
+                    loading={isLoading}
+                    scroll={{ x: 2500, y: tableHeight }}
+                    rowClassName={(record) => {
+                        const status = checkStatus(record);
+                        if (status === "expired") return "row-expired";
+                        if (status === "warning") return "row-warning";
+                        return "";
+                    }}
+                    pagination={{
+                        current: params.page,
+                        pageSize: params.limit,
+                        total: totalRecords,
+                        onChange: (page, pageSize) => {
+                            setParams((prev) => ({
+                                ...prev,
+                                page,
+                                limit: pageSize,
+                            }));
+                        },
+                        showSizeChanger: true,
+                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
+                    }}
+                    rowKey={(record) => record.id || record._id || record.bien_so_xe || record.bien_so || record.bienSo || record.key}
+                />
+            </div>
 
             <ModalXe
                 open={isModalOpen}

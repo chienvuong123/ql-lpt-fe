@@ -9,6 +9,7 @@ import HocBuFilterCard from "../../dat/hoc-bu/HocBuFilterCard";
 import StudentMakeUpDetailDrawer from "../../make-up-lessons/StudentMakeUpDetailDrawer";
 import { useHocBuLyThuyetActions } from "./hooks/useHocBuLyThuyetActions";
 import { getChoDuyetLyThuyetColumns } from "./HocBuLyThuyetColumns";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const DEFAULT_FILTERS = {
   ma_khoa: null,
@@ -16,6 +17,7 @@ const DEFAULT_FILTERS = {
 };
 
 const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+  const [tableRef, tableHeight] = useTableHeight();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -217,23 +219,25 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         </Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={students}
-        rowKey={(record) => record.id || record.ma_dk}
-        loading={isFetchingStudents}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: totalItems,
-          showSizeChanger: true,
-          onChange: (page, limit) => setPagination({ page, limit }),
-        }}
-        size="small"
-        scroll={{ x: 1300 }}
-        bordered
-        className="table-blue-header"
-      />
+      <div ref={tableRef}>
+        <Table
+          columns={columns}
+          dataSource={students}
+          rowKey={(record) => record.id || record.ma_dk}
+          loading={isFetchingStudents}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: totalItems,
+            showSizeChanger: true,
+            onChange: (page, limit) => setPagination({ page, limit }),
+          }}
+          size="small"
+          scroll={{ x: 1300, y: tableHeight }}
+          bordered
+          className="table-blue-header"
+        />
+      </div>
 
       <StudentMakeUpDetailDrawer
         open={isDetailOpen}

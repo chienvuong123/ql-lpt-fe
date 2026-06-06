@@ -25,10 +25,12 @@ import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import dayjs from "dayjs";
 import HocVienInfo from "../../components/HocVienInfor";
 import { normalizeApiList } from "../../util/helper";
+import { useTableHeight } from "../../components/hooks/useTableHeight";
 
 const { Title, Text } = Typography;
 
 const DangKyXeGiaoVien = () => {
+    const [tableRef, tableHeight] = useTableHeight();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState(null);
@@ -281,29 +283,31 @@ const DangKyXeGiaoVien = () => {
                     </Col>
                 </Row>
             </Card>
-            <Table
-                className="table-blue-header"
-                dataSource={dataSource}
-                columns={columns}
-                bordered
-                size="small"
-                loading={isLoadingList}
-                scroll={{ x: 1400 }}
-                pagination={{
-                    current: params.page,
-                    pageSize: params.limit,
-                    total: totalRecords,
-                    onChange: (page, pageSize) => {
-                        setParams((prev) => ({
-                            ...prev,
-                            page,
-                            limit: pageSize,
-                        }));
-                    },
-                    showSizeChanger: true,
-                    showTotal: (total) => `Tổng cộng ${total} bản ghi`,
-                }}
-            />
+            <div ref={tableRef}>
+                <Table
+                    className="table-blue-header"
+                    dataSource={dataSource}
+                    columns={columns}
+                    bordered
+                    size="small"
+                    loading={isLoadingList}
+                    scroll={{ x: 1400, y: tableHeight }}
+                    pagination={{
+                        current: params.page,
+                        pageSize: params.limit,
+                        total: totalRecords,
+                        onChange: (page, pageSize) => {
+                            setParams((prev) => ({
+                                ...prev,
+                                page,
+                                limit: pageSize,
+                            }));
+                        },
+                        showSizeChanger: true,
+                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
+                    }}
+                />
+            </div>
 
             <Modal
                 title={

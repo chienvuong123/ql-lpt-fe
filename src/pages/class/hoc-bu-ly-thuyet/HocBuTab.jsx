@@ -7,10 +7,12 @@ import { useHocBuFilter } from "../../dat/hoc-bu/hooks/useHocBuFilter";
 import HocBuFilterCard from "../../dat/hoc-bu/HocBuFilterCard";
 import TheoryDetailModal from "../TheoryDetailModal";
 import { getHocBuLyThuyetColumns } from "./HocBuLyThuyetColumns";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const DEFAULT_FILTERS = { ma_khoa: null, text: "" };
 
 const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+  const [tableRef, tableHeight] = useTableHeight();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedMaDk, setSelectedMaDk] = useState(null);
 
@@ -69,23 +71,25 @@ const HocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         courseOptions={courseOptions}
       />
 
-      <Table
-        columns={columns}
-        dataSource={students}
-        rowKey={(record) => record.student?.id || record.student?.ma_dk}
-        loading={isFetchingStudents}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: totalItems,
-          showSizeChanger: true,
-          onChange: (page, limit) => setPagination({ page, limit }),
-        }}
-        size="small"
-        scroll={{ x: 1300 }}
-        bordered
-        className="table-blue-header"
-      />
+      <div ref={tableRef}>
+        <Table
+          columns={columns}
+          dataSource={students}
+          rowKey={(record) => record.student?.id || record.student?.ma_dk}
+          loading={isFetchingStudents}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: totalItems,
+            showSizeChanger: true,
+            onChange: (page, limit) => setPagination({ page, limit }),
+          }}
+          size="small"
+          scroll={{ x: 1300, y: tableHeight }}
+          bordered
+          className="table-blue-header"
+        />
+      </div>
 
       <TheoryDetailModal
         visible={isDetailOpen}
