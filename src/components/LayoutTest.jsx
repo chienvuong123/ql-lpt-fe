@@ -290,33 +290,44 @@ const LayoutTest = () => {
         trigger={null}
         collapsible
         collapsed={collapsed}
-        style={{ background: "#fff" }}
+        style={{
+          background: "#fff",
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+          left: 0,
+        }}
       >
-        <Flex
-          align="center"
-          justify={"center"}
-          className={`h-24 overflow-hidden transition-all duration-200 ${collapsed ? "px-0" : "px-4"
-            }`}
-        >
-          <Image
-            src="/logo.png"
-            width={140}
-            height={140}
-            preview={false}
-            shape="square"
-            className="object-contain block"
-          />
-        </Flex>
-        <Menu
-          theme="light"
-          mode="inline"
-          selectedKeys={[selectedMenuKey]}
-          onClick={({ key }) => {
-            const nextPath = menuPathMap[key];
-            if (nextPath) navigate(nextPath);
-          }}
-          items={menuItems}
-        />
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <Flex
+            align="center"
+            justify={"center"}
+            className={`h-24 overflow-hidden transition-all duration-200 ${collapsed ? "px-0" : "px-4"
+              }`}
+            style={{ flexShrink: 0 }}
+          >
+            <Image
+              src="/logo.png"
+              width={140}
+              height={140}
+              preview={false}
+              shape="square"
+              className="object-contain block"
+            />
+          </Flex>
+          <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
+            <Menu
+              theme="light"
+              mode="inline"
+              selectedKeys={[selectedMenuKey]}
+              onClick={({ key }) => {
+                const nextPath = menuPathMap[key];
+                if (nextPath) navigate(nextPath);
+              }}
+              items={menuItems}
+            />
+          </div>
+        </div>
       </Sider>
       <Layout>
         <Header
