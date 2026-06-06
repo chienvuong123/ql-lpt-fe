@@ -520,6 +520,7 @@ const HocBu = () => {
                         total: totalItems,
                         showSizeChanger: true,
                         onChange: (page, limit) => setPagination({ page, limit }),
+                        showTotal: (total) => `Tổng số: ${total} bản ghi`,
                     }}
                     size="small"
                     scroll={{ x: 1300, y: tableHeight }}

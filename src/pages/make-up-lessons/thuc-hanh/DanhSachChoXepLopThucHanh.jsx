@@ -22,6 +22,7 @@ import TienDoHocBuModal from "../TienDoHocBuModal";
 import { dongBoTienDoDaoTaoSql } from "../../../apis/apiSynch";
 import { renderTrangThaiHocBu } from "../../../constants/hocBuConstants";
 import HocVienInfo from "../../../components/HocVienInfor";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -45,6 +46,7 @@ const isSelectionEligible = (record) => {
 };
 
 const DanhSachChoXepLopThucHanh = () => {
+    const [tableRef, tableHeight] = useTableHeight();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
 
@@ -480,38 +482,41 @@ const DanhSachChoXepLopThucHanh = () => {
                 </Row>
             </Card>
 
-            <Table
-                columns={columns}
-                dataSource={students}
-                rowKey={(record) => record.id || record.ma_dk}
-                loading={isFetchingStudents}
-                pagination={{
-                    current: pagination.page,
-                    pageSize: pagination.limit,
-                    total: totalItems,
-                    showSizeChanger: true,
-                    onChange: (page, limit) => setPagination({ page, limit }),
-                }}
-                size="small"
-                scroll={{ x: 1300 }}
-                bordered
-                className="table-blue-header"
-                rowClassName={(record) => {
-                    const graduationDate = record.be_giang || record.student?.be_giang;
-                    if (!graduationDate) return "";
+            <div ref={tableRef}>
+                <Table
+                    columns={columns}
+                    dataSource={students}
+                    rowKey={(record) => record.id || record.ma_dk}
+                    loading={isFetchingStudents}
+                    pagination={{
+                        current: pagination.page,
+                        pageSize: pagination.limit,
+                        total: totalItems,
+                        showSizeChanger: true,
+                        onChange: (page, limit) => setPagination({ page, limit }),
+                        showTotal: (total) => `Tổng số: ${total} bản ghi`,
+                    }}
+                    size="small"
+                    scroll={{ x: 1300, y: tableHeight }}
+                    bordered
+                    className="table-blue-header"
+                    rowClassName={(record) => {
+                        const graduationDate = record.be_giang || record.student?.be_giang;
+                        if (!graduationDate) return "";
 
-                    const deadline = dayjs(graduationDate).add(1, "year");
-                    const today = dayjs();
-                    const monthsLeft = deadline.diff(today, "month", true);
+                        const deadline = dayjs(graduationDate).add(1, "year");
+                        const today = dayjs();
+                        const monthsLeft = deadline.diff(today, "month", true);
 
-                    if (monthsLeft < 3) {
-                        return "!bg-red-100 hover:!bg-red-200 transition-colors";
-                    } else if (monthsLeft <= 6) {
-                        return "!bg-blue-50 hover:!bg-blue-200 transition-colors";
-                    }
-                    return "";
-                }}
-            />
+                        if (monthsLeft < 3) {
+                            return "!bg-red-100 hover:!bg-red-200 transition-colors";
+                        } else if (monthsLeft <= 6) {
+                            return "!bg-blue-50 hover:!bg-blue-200 transition-colors";
+                        }
+                        return "";
+                    }}
+                />
+            </div>
 
             <StudentMakeUpDetailDrawer
                 open={isDetailOpen}
