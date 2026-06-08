@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { EyeOutlined } from "@ant-design/icons";
+import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -10,12 +10,17 @@ import {
   Table,
   Tag,
   Typography,
+  Popconfirm,
+  Image,
 } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { danhSachDashboardDAT } from "../../apis/evaluateApi";
 import FailRecordDetailModal from "./FailRecordDetailModal";
+import { useHocBuActions } from "../../components/hooks/useHocBuActions";
+import { useTableHeight } from "../../components/hooks/useTableHeight";
+import HocVienInfo from "../../components/HocVienInfor";
 
 const { Title, Text } = Typography;
 
@@ -95,6 +100,8 @@ const DashboardDAT = () => {
   });
   const [selectedFailRecord, setSelectedFailRecord] = useState(null);
 
+  const [tableRef, tableHeight] = useTableHeight();
+
   const { data: lopLyThuyetData, isLoading: isLoadingLopLyThuyet } = useQuery({
     queryKey: ["optionLopLyThuyetDashboardDAT"],
     queryFn: () => optionLopLyThuyet(),
@@ -163,7 +170,7 @@ const DashboardDAT = () => {
     selectedMonth === null
       ? null
       : selectedMonth &&
-          monthOptions.some((item) => item.value === selectedMonth)
+        monthOptions.some((item) => item.value === selectedMonth)
         ? selectedMonth
         : (monthOptions.find((item) => item.value === defaultMonth)?.value ??
           monthOptions[0]?.value ??
@@ -171,7 +178,7 @@ const DashboardDAT = () => {
 
   const activeAppliedKhoa =
     appliedFilter.khoa &&
-    khoaOptions.some((item) => item.value === appliedFilter.khoa)
+      khoaOptions.some((item) => item.value === appliedFilter.khoa)
       ? appliedFilter.khoa
       : activeSelectedKhoa;
 
@@ -276,6 +283,8 @@ const DashboardDAT = () => {
       selectedPlanIds.length === selectedMaKhoaHocList.length,
   });
 
+  const { handleTaoDonThucHanh } = useHocBuActions(refetchDashboardDAT);
+
   const dashboardList = useMemo(
     () => normalizeApiList(listDashboardDAT),
     [listDashboardDAT],
@@ -296,28 +305,48 @@ const DashboardDAT = () => {
       render: (_value, _record, index) => index + 1,
     },
     {
-      title: "Mã ĐK",
+      title: "Học viên",
       dataIndex: "maDK",
       key: "maDK",
-      width: 190,
+      width: 280,
+      render: (_, record) => {
+        if (!record) return <span className="text-gray-400 italic">Thiếu dữ liệu HV</span>;
+        return (
+          <Space>
+            <Image
+              src={record.avatar}
+              width={40}
+              height={40}
+              className="rounded-md"
+              fallback="https://as1.ftcdn.net/v2/jpg/03/46/83/96/1000_F_346839623_6n7hPgwisPdyitS7ZzSyJskfHByzyNoQ.jpg"
+            />
+            <div className="flex flex-col">
+              <span
+                className="font-semibold text-sm cursor-pointer hover:underline"
+                onClick={() => setSelectedFailRecord(record)}
+              >
+                {record.hoTen}
+              </span>
+              <Typography.Text className="!text-[12px]" copyable={{ text: record.maDK }}>
+                {record.maDK}
+              </Typography.Text>
+            </div>
+          </Space>
+        );
+      },
     },
     {
-      title: "Họ tên",
-      dataIndex: "hoTen",
-      key: "hoTen",
-      width: 220,
-    },
-    {
-      title: "Tên khóa học",
+      title: "Khóa học",
       key: "khoaHoc",
-      width: 120,
+      width: 100,
       render: (_, record) => record?.studentInfo?.khoaHoc || "-",
+      align: "center",
     },
     {
       title: "Hạng",
       dataIndex: "hangDaoTao",
       key: "hangDaoTao",
-      width: 80,
+      width: 70,
       align: "center",
     },
     {
@@ -329,39 +358,25 @@ const DashboardDAT = () => {
     {
       title: "Biển số xe",
       key: "bienSoXe",
-      width: 220,
+      width: 205,
       render: (_, record) => {
         const xeB1 = record?.studentInfo?.xeB1;
         const xeB2 = record?.studentInfo?.xeB2;
         return [xeB1, xeB2].filter(Boolean).join(" / ") || "-";
       },
+      align: "center",
     },
-
-    // {
-    //   title: "Lỗi",
-    //   key: "errorCount",
-    //   width: 90,
-    //   align: "center",
-    //   render: (_, record) => record?.errors?.length || 0,
-    // },
-    // {
-    //   title: "Cảnh báo",
-    //   key: "warningCount",
-    //   width: 120,
-    //   align: "center",
-    //   render: (_, record) => record?.warnings?.length || 0,
-    // },
     {
       title: "Tổng km",
       key: "summary",
-      width: 120,
+      width: 100,
       align: "center",
       render: (value) => `${value?.summary?.tongQuangDuongChuaLoai || 0} km`,
     },
     {
-      title: "Tổng thời gian",
+      title: "Tổng TG",
       key: "summary",
-      width: 140,
+      width: 100,
       align: "center",
       render: (value) => `${value?.summary?.tongThoiGianChuaLoaiGio || 0}h`,
     },
@@ -390,17 +405,32 @@ const DashboardDAT = () => {
       },
     },
     {
-      title: "Chi tiết",
-      key: "detail",
+      title: "Thao tác",
+      key: "action",
       width: 80,
       align: "center",
       render: (_, record) => (
-        <Button
-          type="link"
-          size="large"
-          icon={<EyeOutlined />}
-          onClick={() => setSelectedFailRecord(record)}
-        />
+        <Popconfirm
+          title="Đăng ký học bù"
+          description={`Bạn có chắc chắn muốn đăng ký học bù DAT cho học viên ${record?.hoTen || ""} không?`}
+          onConfirm={() =>
+            handleTaoDonThucHanh({
+              ma_dk: record?.maDK,
+              ma_khoa: record?.studentInfo?.maKhoaHoc || record?.maKhoaHoc,
+              loai: "dat",
+              ghi_chu: "Đăng ký học bù DAT từ Dashboard",
+            })
+          }
+          okText="Có"
+          cancelText="Không"
+        >
+          <Button
+            type="primary"
+            size="small"
+            className="!bg-green-600 hover:!bg-green-700 border-none"
+            icon={<PlusOutlined />}
+          />
+        </Popconfirm>
       ),
     },
   ];
@@ -426,10 +456,12 @@ const DashboardDAT = () => {
       <Title level={3} className="!mb-1">
         Dashboard DAT
       </Title>
-      <Text type="secondary">
-        Danh sách học viên lỗi DAT, tiến trình sẽ hơi lâu vì hệ thống phải kiểm
-        tra thông tin của từng học viên
-      </Text>
+      <div className="flex justify-between items-center">
+        <Text type="secondary">
+          Danh sách học viên lỗi DAT, tiến trình sẽ hơi lâu vì hệ thống phải kiểm
+          tra thông tin của từng học viên
+        </Text>
+      </div>
 
       <Card className="!mt-4" bordered={false}>
         <Row gutter={[16, 16]} align="bottom">
@@ -500,16 +532,20 @@ const DashboardDAT = () => {
         </Space>
       </Card>
 
-      <div className="!mt-4">
+      <div className="!mt-4" ref={tableRef}>
         <Table
           columns={failColumns}
           dataSource={failRecords}
           loading={isLoadingDashboard}
           rowKey={(record) => record?.maDK || record?.planIid}
           size="small"
-          className="overflow-hidden table-blue-header"
-          pagination={{ pageSize: 10 }}
-          scroll={{ x: 1600 }}
+          bordered
+          className="table-blue-header"
+          pagination={{
+            pageSize: 10,
+            showTotal: (total) => `Tổng số: ${total} bản ghi`,
+          }}
+          scroll={{ x: 1600, y: tableHeight }}
         />
       </div>
 

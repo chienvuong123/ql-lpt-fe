@@ -1,5 +1,5 @@
 import { message } from "antd";
-import { updateHocBuStatus, updateHocBuStatusBulk } from "../../apis/apiHocbu";
+import { updateHocBuStatus, updateHocBuStatusBulk, addHocBu } from "../../apis/apiHocbu";
 
 const getUsername = () =>
     sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
@@ -9,15 +9,26 @@ export const useHocBuActions = (refetch) => {
     // Tạo đơn học bù lý thuyết
     const handleTaoDonLyThuyet = async (data) => {
         try {
-            await updateHocBuStatus({
-                ...data,
-                loai: "ly_thuyet",
-                trang_thai: 1,
-                trang_thai_ly_thuyet: 1,
-                trang_thai_thuc_hanh: data?.trang_thai_thuc_hanh || null,
-                nguoi_tao: getUsername(),
-                created_at: new Date().toISOString(),
-            });
+            if (data?.id) {
+                await updateHocBuStatus({
+                    ...data,
+                    loai: "ly_thuyet",
+                    trang_thai: 1,
+                    trang_thai_ly_thuyet: 1,
+                    trang_thai_thuc_hanh: data?.trang_thai_thuc_hanh || null,
+                    nguoi_tao: getUsername(),
+                    created_at: new Date().toISOString(),
+                });
+            } else {
+                await addHocBu({
+                    ma_dk: data?.ma_dk || data?.maDK,
+                    ma_khoa: data?.ma_khoa || data?.maKhoaHoc,
+                    loai: "ly_thuyet",
+                    ghi_chu: data?.ghi_chu || "Đăng ký học bù lý thuyết",
+                    trang_thai: 1,
+                    nguoi_tao: getUsername(),
+                });
+            }
             message.success("Tạo đơn học bù lý thuyết thành công!");
             refetch();
         } catch {
@@ -28,15 +39,26 @@ export const useHocBuActions = (refetch) => {
     // Tạo đơn học bù thực hành (cabin/dat)
     const handleTaoDonThucHanh = async (data) => {
         try {
-            await updateHocBuStatus({
-                ...data,
-                loai: data?.loai || "cabin",
-                trang_thai: 4,
-                trang_thai_thuc_hanh: 1,
-                trang_thai_ly_thuyet: data?.trang_thai_ly_thuyet || null,
-                nguoi_tao: getUsername(),
-                created_at: new Date().toISOString(),
-            });
+            if (data?.id) {
+                await updateHocBuStatus({
+                    ...data,
+                    loai: data?.loai || "cabin",
+                    trang_thai: 4,
+                    trang_thai_thuc_hanh: 1,
+                    trang_thai_ly_thuyet: data?.trang_thai_ly_thuyet || null,
+                    nguoi_tao: getUsername(),
+                    created_at: new Date().toISOString(),
+                });
+            } else {
+                await addHocBu({
+                    ma_dk: data?.ma_dk || data?.maDK,
+                    ma_khoa: data?.ma_khoa || data?.maKhoaHoc,
+                    loai: data?.loai || "dat",
+                    ghi_chu: data?.ghi_chu || "Đăng ký học bù thực hành",
+                    trang_thai: 4,
+                    nguoi_tao: getUsername(),
+                });
+            }
             message.success("Tạo đơn học bù thực hành thành công!");
             refetch();
         } catch {

@@ -74,6 +74,132 @@ const isNightSession = (session) => {
   return hour >= 18 || hour < 5;
 };
 
+const getStopDurationLimit = () => 10;
+
+const formatStopMinutes = (mins) => {
+  if (mins >= 60) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h${m} phút` : `${h} giờ`;
+  }
+  return `${mins} phút`;
+};
+
+const getStopViolationDetails = (listCoordinate) => {
+  if (!Array.isArray(listCoordinate) || listCoordinate.length < 2) return null;
+
+  const coords = listCoordinate
+    .map((c) => {
+      const t = new Date(c.ThoiGian || c.thoiGian);
+      const vanTocStr = String(c.VanToc || c.vanToc || "0");
+      const match = vanTocStr.match(/[\d.]+/);
+      const v = match ? parseFloat(match[0]) : 0;
+
+      const totalKmStr = String(c.TotalKm || c.totalKm || "0");
+      const matchKm = totalKmStr.match(/[\d.]+/);
+      const km = matchKm ? parseFloat(matchKm[0]) : 0;
+      const kmTruncated = km.toFixed(3).slice(0, -1);
+
+      return {
+        ts: t.getTime(),
+        v,
+        km,
+        kmTruncated,
+      };
+    })
+    .filter((c) => !isNaN(c.ts))
+    .sort((a, b) => a.ts - b.ts);
+
+  if (coords.length < 2) return null;
+
+  const stopPeriods = [];
+  let currentStopStartTs = null;
+
+  for (let i = 0; i < coords.length; i++) {
+    const c = coords[i];
+    const isBothZero = c.v === 0 && c.km === 0;
+    const isUnchangedStop =
+      c.v === 0 &&
+      ((i > 0 && c.kmTruncated === coords[i - 1].kmTruncated) ||
+        (i < coords.length - 1 && c.kmTruncated === coords[i + 1].kmTruncated));
+
+    if (isBothZero || isUnchangedStop) {
+      if (currentStopStartTs === null) {
+        currentStopStartTs = c.ts;
+      }
+    } else {
+      if (currentStopStartTs !== null) {
+        const lastStopEndTs = coords[i - 1].ts;
+        const durationMs = lastStopEndTs - currentStopStartTs;
+        if (durationMs > 0) {
+          stopPeriods.push({
+            start: currentStopStartTs,
+            end: lastStopEndTs,
+            durationMs,
+          });
+        }
+        currentStopStartTs = null;
+      }
+    }
+  }
+
+  if (currentStopStartTs !== null) {
+    const lastCoordTs = coords[coords.length - 1].ts;
+    const durationMs = lastCoordTs - currentStopStartTs;
+    if (durationMs > 0) {
+      stopPeriods.push({
+        start: currentStopStartTs,
+        end: lastCoordTs,
+        durationMs,
+      });
+    }
+  }
+
+  const MIN_REST_STOP_MS = 60 * 1000;
+  const realRestStops = stopPeriods.filter(
+    (p) => p.durationMs >= MIN_REST_STOP_MS,
+  );
+
+  let maxDurationMs = 0;
+  let totalDurationMs = 0;
+  realRestStops.forEach((p) => {
+    if (p.durationMs > maxDurationMs) maxDurationMs = p.durationMs;
+    totalDurationMs += p.durationMs;
+  });
+
+  const maxDurationMin = maxDurationMs / 1000 / 60;
+  const totalDurationMin = totalDurationMs / 1000 / 60;
+
+  const singleLimit = getStopDurationLimit();
+  const totalLimit = singleLimit * 2;
+
+  const hasLongStopViolation = maxDurationMin >= singleLimit;
+  const hasTotalStopViolation = totalDurationMin >= totalLimit;
+
+  if (!hasLongStopViolation && !hasTotalStopViolation) {
+    return null;
+  }
+
+  const reason = `có lần dừng nghỉ dài nhất là ${formatStopMinutes(
+    Math.round(maxDurationMin),
+  )}, tổng thời gian dừng nghỉ là ${formatStopMinutes(
+    Math.round(totalDurationMin),
+  )}`;
+
+  return {
+    isViolated: true,
+    reason,
+  };
+};
+
+const getDatJourneyRowKey = (row) => {
+  if (!row?.ThoiDiemDangNhap || !row?.ThoiDiemDangXuat) return null;
+  const vao = dayjs(row.ThoiDiemDangNhap);
+  const ra = dayjs(row.ThoiDiemDangXuat);
+  if (!vao.isValid() || !ra.isValid()) return null;
+  return `${vao.format("YYYY-MM-DD")}|${vao.format("HH:mm:ss")}|${ra.format("HH:mm:ss")}`;
+};
+
 const buildMissingIssue = (label, actualValue, requiredValue, unit) => {
   if (actualValue >= requiredValue) return null;
   const missing = requiredValue - actualValue;
@@ -115,7 +241,7 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
         limit: 20,
         page: 1,
       }),
-    enabled: isTraceModalOpen && !!maDK,
+    enabled: open && !!maDK,
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
@@ -194,6 +320,23 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
     return Array.isArray(list) ? buildPhienHocStatusMap(list) : {};
   }, [phienHocStatusData]);
 
+  const stopViolationMap = useMemo(() => {
+    const map = {};
+    const apiList = dataDat?.data?.Data || dataDat?.data || [];
+    if (Array.isArray(apiList)) {
+      apiList.forEach((row) => {
+        const key = getDatJourneyRowKey(row);
+        if (key && Array.isArray(row.ListCoordinate)) {
+          const violation = getStopViolationDetails(row.ListCoordinate);
+          if (violation) {
+            map[key] = violation.reason;
+          }
+        }
+      });
+    }
+    return map;
+  }, [dataDat]);
+
   const sessionTableRows = useMemo(() => {
     return sortedSessions.map((session, index) => {
       const sessionKey = getSessionKey(session);
@@ -202,6 +345,7 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
       const isApproved = trangThai
         ? trangThai === "DUYET"
         : normalizeApproveFlag(session?.duyet) || !invalid;
+      const stopViolationMessage = sessionKey ? stopViolationMap[sessionKey] : undefined;
 
       return {
         ...session,
@@ -209,9 +353,10 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
         displayIndex: index + 1,
         resolvedApproved: isApproved,
         countedInSummary: isApproved,
+        stopViolationMessage,
       };
     });
-  }, [maDK, phienHocStatusMap, sortedSessions]);
+  }, [maDK, phienHocStatusMap, sortedSessions, stopViolationMap]);
 
   const summaryInfo = useMemo(() => {
     const countedRows = sessionTableRows.filter(
@@ -310,6 +455,39 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
       .filter(Boolean)
       .forEach((item) => errors.push(item));
 
+    const normalizeHang = (h) => {
+      const s = String(h || "").toUpperCase().trim();
+      if (s.includes("B11")) return "B11";
+      if (s.includes("B1")) return "B1";
+      if (s.includes("B2")) return "B2";
+      if (s.includes("C1")) return "C1";
+      if (s.includes("C")) return "C";
+      return s;
+    };
+
+    const normHang = normalizeHang(hangDaoTao);
+    if (normHang === "B2" || normHang === "C1") {
+      const limitManualTime = normHang === "C1" ? 23.0 : 18.0;
+      const remainingManualTime = (summaryInfo.totalSeconds / 3600) - (summaryInfo.autoSeconds / 3600);
+      if (Math.round(remainingManualTime * 60) < Math.round(limitManualTime * 60)) {
+        const thieu = limitManualTime - remainingManualTime;
+        errors.push({
+          label: "Thừa số tự động (Thời gian số sàn)",
+          message: `Thời gian số sàn chỉ đạt ${formatHoursToHM(remainingManualTime)}, thiếu ${formatHoursToHM(thieu)} so với yêu cầu tối thiểu là ${formatHoursToHM(limitManualTime)}.`,
+        });
+      }
+
+      const limitManualKm = normHang === "C1" ? 795.0 : 730.0;
+      const remainingManualKm = summaryInfo.totalDistance - summaryInfo.autoDistance;
+      if (remainingManualKm < limitManualKm) {
+        const thieu = limitManualKm - remainingManualKm;
+        errors.push({
+          label: "Thừa số tự động (Quãng đường số sàn)",
+          message: `Quãng đường số sàn chỉ đạt ${remainingManualKm.toFixed(2)} km, thiếu ${thieu.toFixed(2)} km so với yêu cầu tối thiểu là ${limitManualKm} km.`,
+        });
+      }
+    }
+
     if (summaryInfo.excludedRows.length > 0) {
       warnings.push({
         label: "Phiên bị loại",
@@ -333,8 +511,17 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
       });
     });
 
+    sessionTableRows.forEach((session) => {
+      if (session.stopViolationMessage) {
+        warnings.push({
+          label: `Phiên ${session.displayIndex} (dừng nghỉ)`,
+          message: `Dừng nghỉ sai quy định: ${session.stopViolationMessage}`,
+        });
+      }
+    });
+
     return { errors, warnings };
-  }, [currentRecord?.hangDaoTao, summaryInfo]);
+  }, [currentRecord?.hangDaoTao, summaryInfo, sessionTableRows]);
 
   const handleTraceModalClose = useCallback(async () => {
     setIsTraceModalOpen(false);
@@ -485,10 +672,14 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
     {
       title: "Chi tiết lỗi",
       key: "chiTiet",
-      render: (_, session) =>
-        session?.sessionErrors?.length > 0 ? (
+      render: (_, session) => {
+        const errors = [...(session?.sessionErrors || [])];
+        if (session.stopViolationMessage) {
+          errors.push({ message: `Dừng nghỉ sai quy định: ${session.stopViolationMessage}` });
+        }
+        return errors.length > 0 ? (
           <Space size={4} direction="vertical">
-            {session.sessionErrors.map((e, i) => (
+            {errors.map((e, i) => (
               <Text key={i} className="block text-xs" type="danger">
                 {e?.message}
               </Text>
@@ -496,7 +687,8 @@ const FailRecordDetailModal = ({ open, record, onCancel, onUpdated }) => {
           </Space>
         ) : (
           <span className="flex w-full items-center justify-center">-</span>
-        ),
+        );
+      },
     },
     {
       title: "Thao tác",
