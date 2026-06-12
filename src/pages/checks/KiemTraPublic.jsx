@@ -653,10 +653,17 @@ const KiemTraPublic = () => {
                                     {item?.ngay_sinh ? dayjs(item.ngay_sinh).format("YYYY") : item?.user?.birth_year || "--"})
                                   </Text>
                                 </Col>
-                                <Col span={24}>
+                                {/* <Col span={24}>
                                   <Text className="!text-xs !text-gray-500">
                                     <span>
                                       Mã HV: {item?.ma_dk || item?.user?.admission_code || ""}
+                                    </span>
+                                  </Text>
+                                </Col> */}
+                                <Col span={24}>
+                                  <Text className="!text-xs !text-gray-500">
+                                    <span>
+                                      Khóa học: {item?.ten_khoa || item?.ma_khoa || ""}
                                     </span>
                                   </Text>
                                 </Col>
