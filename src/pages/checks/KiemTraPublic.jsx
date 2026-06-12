@@ -29,6 +29,7 @@ import {
   hocVienKyDATPublic,
   optionLopLyThuyetPublic,
   hocVienTheoKhoaPublic,
+  getHocVienByMaKhoaSqlPublic,
 } from "../../apis/apiDeploy";
 import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
 import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
@@ -183,27 +184,27 @@ const KiemTraPublic = () => {
   }, [sortedCourses, selectedKhoaHoc]);
 
   const selectedKhoaHocLabel = useMemo(() => {
-    return selectedCourse?.suffix_name || selectedCourse?.name || "";
-  }, [selectedCourse]);
+    return selectedCourse?.suffix_name || selectedCourse?.name || selectedStudent?.ten_khoa || selectedStudent?.ma_khoa || "";
+  }, [selectedCourse, selectedStudent]);
 
   const selectedKhoaHocCode = useMemo(() => {
-    return selectedCourse?.code || selectedCourse?.name || "";
-  }, [selectedCourse]);
+    return selectedCourse?.code || selectedCourse?.name || selectedStudent?.ma_khoa || "";
+  }, [selectedCourse, selectedStudent]);
 
   const {
     data: danhSachHocVien = {},
     isLoading: loadingStudents,
     refetch: refetchSearchHocVien,
   } = useQuery({
-    queryKey: ["hocVienTheoKhoaPublic", selectedKhoaHoc, searchParams],
+    queryKey: ["getHocVienByMaKhoaSqlPublic", searchParams],
     queryFn: () =>
-      hocVienTheoKhoaPublic(selectedKhoaHoc, {
-        text: searchParams?.text || "",
+      getHocVienByMaKhoaSqlPublic({
+        search: searchParams?.text || "",
       }),
     staleTime: 0,
     cacheTime: 0,
     retry: false,
-    enabled: !!searchParams && !!selectedKhoaHoc,
+    enabled: !!searchParams,
   });
 
   const cabinKey =
@@ -432,11 +433,6 @@ const KiemTraPublic = () => {
   }, [chiTietLyThuyetData]);
 
   const handleSearch = () => {
-    if (!selectedKhoaHoc) {
-      message.warning("Vui lòng chọn khóa học trước.");
-      return;
-    }
-
     if (keyword.trim().length < 2) {
       message.warning("Vui lòng nhập từ khóa ít nhất 2 ký tự.");
       return;
@@ -552,7 +548,7 @@ const KiemTraPublic = () => {
         <Content>
           <Card className="!rounded-none !border-x-0 !border-b-0 !border-t !border-[#d8dee8]">
             <Row gutter={[8, 8]} align="bottom">
-              <Col span={9}>
+              <Col span={9} style={{ display: "none" }}>
                 <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
                   Khóa học
                 </Text>
@@ -582,21 +578,16 @@ const KiemTraPublic = () => {
                 />
               </Col>
 
-              <Col span={9}>
+              <Col span={18}>
                 <Text className="!mb-1 !text-xs !uppercase !text-gray-500">
                   Từ khóa
                 </Text>
                 <Input
                   value={keyword}
-                  disabled={!selectedKhoaHoc}
                   onChange={(e) => setKeyword(e.target.value)}
                   onPressEnter={handleSearch}
                   style={{ fontSize: 13 }}
-                  placeholder={
-                    selectedKhoaHoc
-                      ? "Nhập họ tên hoặc CCCD"
-                      : "Vui lòng chọn khóa học trước"
-                  }
+                  placeholder="Nhập họ tên hoặc CCCD"
                 />
               </Col>
 
@@ -605,7 +596,7 @@ const KiemTraPublic = () => {
                   type="primary"
                   className="w-full"
                   onClick={handleSearch}
-                  disabled={!selectedKhoaHoc || keyword.trim().length < 2}
+                  disabled={keyword.trim().length < 2}
                 >
                   Tìm
                 </Button>
@@ -781,7 +772,7 @@ const KiemTraPublic = () => {
                         justify="space-between"
                         className="!mt-2"
                       >
-                        <Text
+                        {/* <Text
                           className="!text-xs !font-bold"
                           style={{ color: statusColor }}
                         >
@@ -793,13 +784,13 @@ const KiemTraPublic = () => {
                           onClick={() => setIsLyThuyetModalOpen(true)}
                         >
                           Xem
-                        </Button>
-                        {/* <Text className="!text-sm !font-bold flex !items-center !justify-center">Bảo trì</Text> */}
+                        </Button> */}
+                        <Text className="!text-sm !font-bold flex !items-center !justify-center">Bảo trì</Text>
                       </Flex>
                     </Card>
                   </Col>
 
-                  {isLyThuyetPassed ? (
+                  {/* {isLyThuyetPassed ? (
                     <Col span={8}>
                       <Card
                         bordered={false}
@@ -843,8 +834,8 @@ const KiemTraPublic = () => {
                         </Flex>
                       </Card>
                     </Col>
-                  ) : null}
-                  {/* <Col span={8}>
+                  ) : null} */}
+                  <Col span={8}>
                     <Card
                       bordered={false}
                       bodyStyle={{ padding: 10 }}
@@ -877,50 +868,17 @@ const KiemTraPublic = () => {
                           className="!rounded-xl !px-3 !text-xs"
                           size="small"
                           onClick={() => {
-                            if (isLyThuyetPassed) {
+                            // if (isLyThuyetPassed) {
                             setIsCabinModalOpen(true);
-                            }
+                            // }
                           }}
                         >
                           Xem
                         </Button>
                       </Flex>
                     </Card>
-                  </Col> */}
-                  {isLyThuyetPassed && isCabinPassed ? (
-                    <Col span={8}>
-                      <Card
-                        bordered={false}
-                        bodyStyle={{ padding: 10 }}
-                        className="!h-full !rounded-xl !bg-[#edf1f7]"
-                      >
-                        <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
-                          DAT
-                        </Text>
-                        <div
-                          className={`!font-semibold text-[13px] flex justify-center ${trangThaiKyDAT
-                            ? "!text-[#1b8a35]"
-                            : "!text-[#ff0000]"
-                            }`}
-                        >
-                          {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
-                        </div>
-                        <Button
-                          type="primary"
-                          className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
-                          size="small"
-                          onClick={() => {
-                            if (isCabinPassed) {
-                              setIsDatModalOpen(true);
-                            }
-                          }}
-                        >
-                          Chi tiết
-                        </Button>
-                      </Card>
-                    </Col>
-                  ) : null}
-                  {/* {isCabinFinalPassed ? (
+                  </Col>
+                  {/* {isLyThuyetPassed && isCabinPassed ? (
                     <Col span={8}>
                       <Card
                         bordered={false}
@@ -953,6 +911,39 @@ const KiemTraPublic = () => {
                       </Card>
                     </Col>
                   ) : null} */}
+                  {isCabinFinalPassed ? (
+                    <Col span={8}>
+                      <Card
+                        bordered={false}
+                        bodyStyle={{ padding: 10 }}
+                        className="!h-full !rounded-xl !bg-[#edf1f7]"
+                      >
+                        <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
+                          DAT
+                        </Text>
+                        <div
+                          className={`!font-semibold text-[13px] flex justify-center ${trangThaiKyDAT
+                            ? "!text-[#1b8a35]"
+                            : "!text-[#ff0000]"
+                            }`}
+                        >
+                          {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
+                        </div>
+                        <Button
+                          type="primary"
+                          className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
+                          size="small"
+                          onClick={() => {
+                            if (isCabinPassed) {
+                              setIsDatModalOpen(true);
+                            }
+                          }}
+                        >
+                          Chi tiết
+                        </Button>
+                      </Card>
+                    </Col>
+                  ) : null}
                 </Row>
               </Card>
             ) : null}

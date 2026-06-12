@@ -3,8 +3,16 @@ import React, { useState, useMemo, useCallback, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatMinutesToHM } from "../../util/helper";
 import { getDanhSachHocVienChiaCabin } from "../../apis/cabinApi";
+import { getDanhSachHocVienHocBuDangHocBu } from "../../apis/apiHocbu";
 
 import { useCabinSchedule } from "./chia-cabin/hooks/useCabinSchedule";
+
+const normalizeApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.result)) return payload.result;
+  return [];
+};
 import { useDragDrop } from "./chia-cabin/hooks/useDragDrop";
 import { Row, Col, Spin, message } from "antd";
 
@@ -26,7 +34,69 @@ const LichCabin = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  const allStudents = useMemo(() => studentsData?.data || [], [studentsData]);
+  const { data: makeupData, isFetching: isFetchingMakeup } = useQuery({
+    queryKey: ["makeupCabinStudents"],
+    queryFn: () => getDanhSachHocVienHocBuDangHocBu({ trang_thai: 6, limit: 1000 }),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const mappedMakeupStudents = useMemo(() => {
+    const list = normalizeApiList(makeupData);
+    return list
+      .filter((item) => {
+        const itemLoaiStr = String(item?.loai ?? item?.student?.loai ?? "").toLowerCase();
+        return itemLoaiStr === "2" || itemLoaiStr === "cabin";
+      })
+      .map((item) => {
+        const student = item?.student || item;
+        const ma_dk = student.ma_dk || item.ma_dk || "";
+        const ho_ten = student.ho_ten || item.ho_ten || "";
+        const giao_vien = student.giao_vien || item.thay_giao || student.thay_giao || item.giao_vien || "-";
+        
+        let hang_xe = student.hang_xe || item.hang_xe || student.hang || item.hang || "";
+        const khoa_hoc = item.ten_khoa || student.khoa_hoc || item.khoa_hoc || "";
+        if (!hang_xe && khoa_hoc) {
+          if (khoa_hoc.toUpperCase().includes("B2")) hang_xe = "B2";
+          else if (khoa_hoc.toUpperCase().includes("B1") || khoa_hoc.toUpperCase().includes("B01")) hang_xe = "B1";
+          else if (khoa_hoc.toUpperCase().startsWith("B")) hang_xe = "B2";
+          else if (khoa_hoc.toUpperCase().includes("C")) hang_xe = "C";
+        }
+        
+        return {
+          ...student,
+          ma_dk,
+          ho_ten,
+          giao_vien,
+          hang_xe,
+          khoa_hoc,
+          is_makeup: 1,
+          phut_cabin: Number(item.phut_cabin ?? student.phut_cabin ?? 0),
+          so_bai_hoc: Number(item.so_bai_hoc ?? student.so_bai_hoc ?? 0),
+        };
+      });
+  }, [makeupData]);
+
+  const allStudents = useMemo(() => {
+    const mainList = studentsData?.data || [];
+    const seen = new Set();
+    const result = [];
+    
+    mainList.forEach((s) => {
+      if (s.ma_dk) {
+        seen.add(s.ma_dk);
+        result.push(s);
+      }
+    });
+    
+    mappedMakeupStudents.forEach((s) => {
+      if (s.ma_dk && !seen.has(s.ma_dk)) {
+        seen.add(s.ma_dk);
+        result.push(s);
+      }
+    });
+    
+    return result;
+  }, [studentsData, mappedMakeupStudents]);
 
   const schedule = useCabinSchedule(allStudents);
   const {
@@ -73,7 +143,7 @@ const LichCabin = () => {
 
 
   const isGlobalLoading =
-    isFetchingStudents || isFetchingSchedule || loadingSync;
+    isFetchingStudents || isFetchingMakeup || isFetchingSchedule || loadingSync;
 
 
   const [noteModal, setNoteModal] = useState({
@@ -387,7 +457,7 @@ const LichCabin = () => {
         <Col span={4}>
           <div className="sticky top-0">
             <WaitingStudentList
-              loading={isFetchingStudents}
+              loading={isFetchingStudents || isFetchingMakeup}
               globalConfig={globalConfig}
               availableStudents={availableStudents}
               allStudents={allStudents}

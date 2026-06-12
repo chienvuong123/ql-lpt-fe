@@ -161,3 +161,8 @@ export const searchHocVienDatPublic = async (params = {}) => {
   const response = await axios.get(`${url}hoc-vien/search`, { params });
   return response.data;
 };
+
+export const getHocVienByMaKhoaSqlPublic = async (params = {}) => {
+  const response = await axios.get(`${url}sync/students`, { params });
+  return response.data;
+};
