@@ -28,6 +28,7 @@ import {
 } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { FaCarRear, FaBook } from "react-icons/fa6";
+import { checkPermission } from "../util/permission";
 
 const { Header, Sider, Content } = Layout;
 const menuPathMap = {
@@ -79,8 +80,6 @@ const LayoutTest = () => {
   const [collapsed, setCollapsed] = useState(false);
   const name = sessionStorage.getItem("name");
   const token = sessionStorage.getItem("token");
-
-  const isGiaoVien = name?.toLowerCase().includes("giao viên");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -280,7 +279,34 @@ const LayoutTest = () => {
     allowedKeys = roleAccessMap[1];
   }
 
-  const menuItems = allMenuItems.filter((item) => allowedKeys.includes(item.key));
+  const filterMenuItemsByPermissions = (items, isTopLevel = true) => {
+    return items
+      .map((item) => {
+        // Only check roleAccessMap (allowedKeys) on top-level items
+        if (isTopLevel && !allowedKeys.includes(item.key)) {
+          return null;
+        }
+
+        // If it has children, recursively filter them
+        if (item.children) {
+          const filteredChildren = filterMenuItemsByPermissions(item.children, false);
+          if (filteredChildren.length === 0) return null;
+          return { ...item, children: filteredChildren };
+        }
+
+        const path = menuPathMap[item.key];
+        if (path) {
+          if (!checkPermission(path, "view")) {
+            return null;
+          }
+        }
+
+        return item;
+      })
+      .filter(Boolean);
+  };
+
+  const menuItems = filterMenuItemsByPermissions(allMenuItems, true);
 
   return (
     <Layout style={{ minHeight: "100vh" }}>

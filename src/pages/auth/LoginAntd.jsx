@@ -41,6 +41,8 @@ export default function LoginAntd() {
         if (role_id !== undefined && role_id !== null) {
           sessionStorage.setItem("role_id", String(role_id));
         }
+        const permissions = resNew?.data?.user?.permissions;
+        sessionStorage.setItem("permissions", JSON.stringify(permissions || []));
 
         if (resOld?.data?.ID !== 0) {
           sessionStorage.setItem("token", resOld?.data?.Token);
