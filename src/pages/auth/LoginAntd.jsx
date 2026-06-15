@@ -33,9 +33,11 @@ export default function LoginAntd() {
         const userToken = resNew.data.token;
         const name = resNew.data.user?.ho_ten;
         const role_id = resNew.data.user?.role_id;
+        const username = resNew.data.user?.username;
 
         sessionStorage.setItem("userToken", userToken);
         if (name) sessionStorage.setItem("name", name);
+        if (username) sessionStorage.setItem("username", username);
         if (role_id !== undefined && role_id !== null) {
           sessionStorage.setItem("role_id", String(role_id));
         }
@@ -113,7 +115,7 @@ export default function LoginAntd() {
                 htmlType="submit"
                 size="large"
                 className="w-full bg-gradient-to-r from-blue-700 to-blue-600"
-                // loading={isLoading}
+              // loading={isLoading}
               >
                 Đăng nhập
               </Button>

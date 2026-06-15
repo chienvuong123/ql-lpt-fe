@@ -69,3 +69,18 @@ export const getTienDoC1Sql = async (params = {}) => {
     return response.data;
 };
 
+export const importXML = async (file, onProgress, createdBy, updatedBy) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (createdBy) formData.append("created_by", createdBy);
+    if (updatedBy) formData.append("updated_by", updatedBy);
+
+    return axios.post(`${baseURL}/sync/import-xml`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (e) => {
+            const percent = Math.round((e.loaded * 100) / (e.total || 1));
+            onProgress?.(percent);
+        },
+    });
+};
+

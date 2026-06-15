@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, Card, Col, message, Row, Select, Upload } from "antd";
 import { importCheckStudentExcel } from "../../apis/kiemTra";
 import { SyncOutlined, UploadOutlined } from "@ant-design/icons";
-import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoXeGiaoVienSql } from "../../apis/apiSynch";
+import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoXeGiaoVienSql, importXML } from "../../apis/apiSynch";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { importHocBuExcel } from "../../apis/apiHocbu";
 import { useState } from "react";
@@ -96,6 +96,24 @@ const ThemDuLieuVaoHeThong = () => {
 
   const handleCustomRequestSync = async ({ file, onProgress }) => {
     mutationSyncXeGiaoVien.mutate({ file, onProgress });
+  };
+
+  const mutationImportXML = useMutation({
+    mutationFn: ({ file, onProgress }) => {
+      const username = sessionStorage.getItem("username") || sessionStorage.getItem("name") || "admin";
+      return importXML(file, onProgress, username, username);
+    },
+    onSuccess: (res) => {
+      const data = res?.data || {};
+      message.success(data.message || "Import file XML thành công!");
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || "Import file XML thất bại!");
+    },
+  });
+
+  const handleCustomRequestXML = async ({ file, onProgress }) => {
+    mutationImportXML.mutate({ file, onProgress });
   };
 
   return (
@@ -231,6 +249,31 @@ const ThemDuLieuVaoHeThong = () => {
                 {mutationImportHocBu.isPending ? "Đang nhập..." : "Tải file Excel"}
               </Button>
             </Upload>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card className="h-full" title="Import XML học viên">
+            <span className="block mb-4 text-gray-500">
+              Nhập dữ liệu học viên từ file XML vào hệ thống
+            </span>
+            <div className="mt-14">
+              <Upload
+                customRequest={handleCustomRequestXML}
+                showUploadList={false}
+                accept=".xml"
+                className="!w-full"
+              >
+                <Button
+                  icon={<UploadOutlined />}
+                  loading={mutationImportXML.isPending}
+                  className="!w-full"
+                  type="primary"
+                >
+                  {mutationImportXML.isPending ? "Đang import..." : "Import XML"}
+                </Button>
+              </Upload>
+            </div>
           </Card>
         </Col>
       </Row>

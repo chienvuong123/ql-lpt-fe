@@ -587,7 +587,7 @@ const KiemTraPublic = () => {
                   onChange={(e) => setKeyword(e.target.value)}
                   onPressEnter={handleSearch}
                   style={{ fontSize: 13 }}
-                  placeholder="Nhập họ tên hoặc CCCD"
+                  placeholder="Nhập họ tên học viên"
                 />
               </Col>
 
