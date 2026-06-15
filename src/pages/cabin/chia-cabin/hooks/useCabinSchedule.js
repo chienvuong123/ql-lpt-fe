@@ -35,6 +35,25 @@ export const useCabinSchedule = (allStudents) => {
   const [onlineStudents, setOnlineStudents] = useState({});
   const [activeSlotKey, setActiveSlotKey] = useState(null);
   const [serverStudents, setServerStudents] = useState({}); // Cache HV từ server (lịch sử)
+  const [cabinConfigs, setCabinConfigsState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cabin_configs");
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const setCabinConfigs = useCallback((newConfigsOrUpdater) => {
+    setCabinConfigsState((prev) => {
+      const next =
+        typeof newConfigsOrUpdater === "function"
+          ? newConfigsOrUpdater(prev)
+          : newConfigsOrUpdater;
+      localStorage.setItem("cabin_configs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
   const queryClient = useQueryClient();
 
 
@@ -58,7 +77,6 @@ export const useCabinSchedule = (allStudents) => {
   const assignedMaDks = currentWeekData.assignedMaDks;
   const schedule = currentWeekData.schedule;
   const dayConfigs = currentWeekData.dayConfigs || {};
-  const cabinConfigs = currentWeekData.cabinConfigs || {};
   const lockedCabins = currentWeekData.lockedCabins || {};
   const slotNotes = currentWeekData.slotNotes || {};
   const slotRecordIds = currentWeekData.slotRecordIds || {};
@@ -141,18 +159,6 @@ export const useCabinSchedule = (allStudents) => {
     [updateCurrentWeek],
   );
 
-  const setCabinConfigs = useCallback(
-    (newConfigsOrUpdater) => {
-      updateCurrentWeek((old) => ({
-        ...old,
-        cabinConfigs:
-          typeof newConfigsOrUpdater === "function"
-            ? newConfigsOrUpdater(old.cabinConfigs || {})
-            : newConfigsOrUpdater,
-      }));
-    },
-    [updateCurrentWeek],
-  );
 
   // ── Sessions ──────────────────────────────────────────────────────────────
   const getDayConfig = useCallback(
@@ -528,7 +534,7 @@ export const useCabinSchedule = (allStudents) => {
           (s) =>
             !globalAssigned.has(s.ma_dk) &&
             config.courses.includes(s.khoa_hoc) &&
-            (isNoData(s) || Number(s.so_lan_chia || 0) >= 1)
+            (isNoData(s) || (s.phut_cabin || 0) < globalConfig.duration || Number(s.so_lan_chia || 0) >= 1)
         );
 
         if (pool.length === 0) continue;
@@ -592,7 +598,7 @@ export const useCabinSchedule = (allStudents) => {
           // Điền cho đến khi hết quota hoặc hết học viên trong pool của khóa đó
           while (filledForThisCourse < quota && poolsByCourse[courseName].length > 0) {
             const student = poolsByCourse[courseName][0];
-            const isStudentMakeup = student.is_makeup === 1;
+            const isStudentMakeup = student.is_makeup === 1 || student.is_makeup === true;
 
             const foundSlotIndex = emptySlots.findIndex((slot) => {
               if (slot.filled) return false;

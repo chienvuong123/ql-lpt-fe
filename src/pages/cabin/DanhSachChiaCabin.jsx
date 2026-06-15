@@ -19,6 +19,7 @@ import { RetweetOutlined, SearchOutlined } from "@ant-design/icons";
 import { cabinNote, danhSachHocVienCaBin } from "../../apis/apiCabinLocal";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { addHocBu } from "../../apis/apiHocbu";
+import { useTableHeight } from "../../components/hooks/useTableHeight";
 
 const { Title } = Typography;
 
@@ -50,6 +51,7 @@ const secondsToHourMinute = (seconds) => {
 };
 
 const DanhSachChiaCabin = () => {
+  const [tableRef, tableHeight] = useTableHeight();
   const queryClient = useQueryClient();
   const [selectedCourseIid, setSelectedCourseIid] = useState();
   const [selectedCabinStatus, setSelectedCabinStatus] = useState();
@@ -530,26 +532,28 @@ const DanhSachChiaCabin = () => {
         </Row>
       </Card>
 
-      <Table
-        columns={columns}
-        dataSource={dataSource}
-        loading={loadingKhoaHoc || isLoadingHocVien}
-        rowKey={(record) =>
-          record?.ma_dk || record?.user?.code || record?.user?.iid
-        }
-        pagination={{
-          current: searchParams.page,
-          pageSize: searchParams.limit,
-          total: totalItems,
-          showSizeChanger: false,
-          showTotal: (total) => `Tổng ${total} học viên`,
-        }}
-        onChange={handleTableChange}
-        size="small"
-        scroll={{ x: 1400 }}
-        bordered
-        className="overflow-hidden table-blue-header"
-      />
+      <div ref={tableRef}>
+        <Table
+          columns={columns}
+          dataSource={dataSource}
+          loading={loadingKhoaHoc || isLoadingHocVien}
+          rowKey={(record) =>
+            record?.ma_dk || record?.user?.code || record?.user?.iid
+          }
+          pagination={{
+            current: searchParams.page,
+            pageSize: searchParams.limit,
+            total: totalItems,
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} học viên`,
+          }}
+          onChange={handleTableChange}
+          size="small"
+          scroll={{ x: 1400, y: tableHeight }}
+          bordered
+          className="overflow-hidden table-blue-header"
+        />
+      </div>
 
       <Modal
         title="Xác nhận chuyển học bù"

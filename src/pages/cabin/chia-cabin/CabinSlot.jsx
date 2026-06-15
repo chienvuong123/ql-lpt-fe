@@ -353,6 +353,7 @@ const CabinSlot = React.memo(({
           </div>
           {students.slice(0, 2).map((s) => {
             const c = getKhoaColor(s.khoa_hoc);
+            const isMakeup = s.is_makeup === 1 || s.is_makeup === true;
             return (
               <div
                 key={s.ma_dk}
@@ -369,7 +370,7 @@ const CabinSlot = React.memo(({
                 }}
                 onDragEnd={handleDragEnd}
                 className={[
-                  "text-[11px] font-medium truncate cursor-grab active:cursor-grabbing leading-4 px-1 rounded",
+                  "text-[11px] font-medium truncate cursor-grab active:cursor-grabbing leading-4 px-1 rounded flex justify-between items-center",
                   dragState?.maDks?.includes(s.ma_dk) ? "opacity-40" : "",
                   c ? `${c.bg} ${c.text}` : "text-gray-800",
                 ]
@@ -377,7 +378,12 @@ const CabinSlot = React.memo(({
                   .join(" ")}
                 title={s.ho_ten}
               >
-                {s.ho_ten}
+                <span className="truncate">{s.ho_ten}</span>
+                {isMakeup && (
+                  <span className="text-[9px] bg-volcano-100 text-volcano-600 px-1 rounded font-bold ml-1 flex-shrink-0">
+                    BÙ
+                  </span>
+                )}
               </div>
             );
           })}
@@ -446,6 +452,11 @@ const CabinSlot = React.memo(({
               >
                 ({students[0].khoa_hoc})
               </span>
+              {(students[0].is_makeup === 1 || students[0].is_makeup === true) && (
+                <span className="text-[9px] bg-volcano-100 text-volcano-600 px-1 rounded shadow-sm border border-volcano-200 font-bold flex-shrink-0">
+                  BÙ
+                </span>
+              )}
             </span>
           </div>
           {isLocalDragOver && (

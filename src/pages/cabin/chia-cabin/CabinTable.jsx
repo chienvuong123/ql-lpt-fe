@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Table } from "antd";
 import CabinSlot from "./CabinSlot";
 import { dateStr } from "./utils";
+import { useTableHeight } from "../../../components/hooks/useTableHeight";
 
 const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
@@ -35,6 +36,7 @@ const CabinTable = ({
   teacherOnlineStatus,
   activeSlotKey,
 }) => {
+  const [tableRef, tableHeight] = useTableHeight();
   const columns = useMemo(
     () => [
       {
@@ -142,14 +144,16 @@ const CabinTable = ({
   );
 
   return (
-    <Table
-      columns={columns}
-      dataSource={dataSource}
-      pagination={false}
-      size="small"
-      bordered
-      scroll={{ x: "max-content" }}
-    />
+    <div ref={tableRef}>
+      <Table
+        columns={columns}
+        dataSource={dataSource}
+        pagination={false}
+        size="small"
+        bordered
+        scroll={{ x: "max-content", y: tableHeight }}
+      />
+    </div>
   );
 };
 

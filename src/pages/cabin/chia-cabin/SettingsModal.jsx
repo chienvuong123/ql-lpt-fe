@@ -310,14 +310,10 @@ const SettingsModal = ({
                         value={(cabinConfigs[selectedCabin] || {}).courses || []}
                         onChange={(vals) => {
                           const oldCfg = cabinConfigs[selectedCabin] || {};
-                          const newRatios = { ...(oldCfg.ratios || {}) };
-                          // Dọn dẹp ratios cũ không còn trong vals
-                          Object.keys(newRatios).forEach(k => {
-                            if (!vals.includes(k)) delete newRatios[k];
-                          });
-                          // Khởi tạo ratios mới nếu chưa có
+                          const newRatios = {};
+                          const equalRatio = vals.length > 0 ? Math.floor(100 / vals.length) : 0;
                           vals.forEach(v => {
-                             if (!newRatios[v]) newRatios[v] = Math.round(100 / vals.length);
+                            newRatios[v] = equalRatio;
                           });
 
                           setCabinConfigs({

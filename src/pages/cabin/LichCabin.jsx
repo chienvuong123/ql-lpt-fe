@@ -278,7 +278,8 @@ const LichCabin = () => {
         if (filterCabin && filterCabin !== "all") {
           const cfg = cabinConfigs[String(filterCabin)];
           if (cfg && cfg.courses && cfg.courses.length > 0) {
-            if (!cfg.courses.includes(s.khoa_hoc)) return false;
+            const isStudentMakeup = s.is_makeup === 1 || s.is_makeup === true;
+            if (!isStudentMakeup && !cfg.courses.includes(s.khoa_hoc)) return false;
           }
         }
 
