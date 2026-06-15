@@ -30,7 +30,7 @@ import { updateGhiChuLichCabin } from "../../apis/cabinApi";
 const LichCabin = () => {
   const { data: studentsData, isFetching: isFetchingStudents } = useQuery({
     queryKey: ["cabinStudents"],
-    queryFn: getDanhSachHocVienChiaCabin,
+    queryFn: () => getDanhSachHocVienChiaCabin(),
     staleTime: 10 * 60 * 1000,
   });
 

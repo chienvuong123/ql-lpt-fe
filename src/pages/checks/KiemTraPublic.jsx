@@ -30,9 +30,9 @@ import {
   optionLopLyThuyetPublic,
   hocVienTheoKhoaPublic,
   getHocVienByMaKhoaSqlPublic,
+  fetchCheckStudentsPublic,
+  ketQuaKiemTraPublic,
 } from "../../apis/apiDeploy";
-import { fetchCheckStudentsPublic } from "../../apis/apiDeploy";
-import { getChiTietHocVienLyThuyetPublic } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
 
 import "./index.css";
@@ -217,14 +217,33 @@ const KiemTraPublic = () => {
   const {
     data: chiTietLyThuyetData,
     isLoading: loadingChiTietLyThuyet,
-    refetch: refetchChiTietLyThuyet,
   } = useQuery({
-    queryKey: ["chiTietHocVienLyThuyetPublic", cabinKey],
-    queryFn: () => getChiTietHocVienLyThuyetPublic(cabinKey),
-    // queryFn: () => getChiTietHocVienLyThuyet(cabinKey),
+    queryKey: ["ketQuaKiemTraPublic", selectedStudent?.code, selectedStudent?.ma_khoa, cabinKey],
+    queryFn: () => {
+      const codeOrPlanId = selectedStudent?.code
+      return ketQuaKiemTraPublic(codeOrPlanId, {
+        text: cabinKey,
+      });
+    },
     staleTime: 0,
     retry: false,
-    // enabled: !!searchParams,
+    enabled: !!selectedStudent,
+  });
+
+  const {
+    data: hocVienTheoKhoaData,
+    isLoading: loadingHocVienTheoKhoa,
+  } = useQuery({
+    queryKey: ["hocVienTheoKhoaPublic", selectedStudent?.code, selectedStudent?.ma_khoa, cabinKey],
+    queryFn: () => {
+      const codeOrPlanId = selectedStudent?.code || selectedStudent?.ma_khoa;
+      return hocVienTheoKhoaPublic(codeOrPlanId, {
+        text: cabinKey,
+      });
+    },
+    staleTime: 0,
+    retry: false,
+    enabled: !!selectedStudent,
   });
 
   const { data: dataCabin, isLoading: loadingCabin } = useQuery({
@@ -389,7 +408,17 @@ const KiemTraPublic = () => {
   const hasResult = !!selectedStudent;
   const hasSearched = !!searchParams;
   const scoreRows = useMemo(() => {
+    const studentData = chiTietLyThuyetData?.data?.[0];
+    const hocVienDetail = Array.isArray(hocVienTheoKhoaData)
+      ? hocVienTheoKhoaData[0]
+      : hocVienTheoKhoaData?.data
+        ? (Array.isArray(hocVienTheoKhoaData.data) ? hocVienTheoKhoaData.data[0] : hocVienTheoKhoaData.data)
+        : hocVienTheoKhoaData;
+
     const rawScores =
+      hocVienDetail?.learning_progress?.score_by_rubrik ||
+      hocVienDetail?.learning?.score_by_rubrik ||
+      studentData?.learning?.score_by_rubrik ||
       selectedStudent?.learning_progress?.score_by_rubrik ||
       chiTietLyThuyetData?.data?.learning_progress?.score_by_rubrik ||
       chiTietLyThuyetData?.learning_progress?.score_by_rubrik ||
@@ -407,24 +436,15 @@ const KiemTraPublic = () => {
         key: item?.iid || `${index}`,
         name: item?.name || "Không rõ",
         score: item?.score ?? 0,
-        passed: Number(item?.passed) === 1,
+        passed: Number(item?.passed) === 1 || item?.passed === true,
       }));
-  }, [selectedStudent, chiTietLyThuyetData]);
+  }, [selectedStudent, chiTietLyThuyetData, hocVienTheoKhoaData]);
 
   const lyThuyetExtraStatus = useMemo(() => {
-    const raw = chiTietLyThuyetData?.data;
-
-    // if (!raw || Object.keys(raw).length === 0) {
-    //   console.log("1");
-
-    //   return {
-    //     loaiHetMon: "Đã làm bài hết môn",
-    //     loaiHetMonStatus: true,
-    //   };
-    // }
+    const studentData = chiTietLyThuyetData?.data?.[0];
+    const raw = studentData?.trang_thai || chiTietLyThuyetData?.data;
 
     const loaiHetMon = raw?.loai_het_mon;
-    // const loaiLyThuyet = raw?.loai_ly_thuyet;
 
     return {
       loaiHetMon: loaiHetMon ? "Đã làm" : "Chưa làm",
@@ -447,7 +467,6 @@ const KiemTraPublic = () => {
       text: keyword.trim(),
     });
     refetchSearchHocVien();
-    refetchChiTietLyThuyet();
   };
 
   const soMonLyThuyetDat = scoreRows.filter((item) => item.passed).length;
@@ -457,16 +476,40 @@ const KiemTraPublic = () => {
       ? Math.round((soMonLyThuyetDat / tongMonLyThuyet) * 100)
       : 0;
 
-  const lyThuyetStatus =
-    lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
-      ? "Đạt"
-      : "Trượt";
-  const statusColor =
-    lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
-      ? "#1b8a35"
-      : "#ff0000";
-  const isLyThuyetPassed =
-    lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus;
+  const hasLyThuyetData = !!chiTietLyThuyetData || !!hocVienTheoKhoaData;
+
+  const isEmptyLyThuyet = useMemo(() => {
+    if (!chiTietLyThuyetData && !hocVienTheoKhoaData) return false;
+
+    const isChiTietEmpty = !chiTietLyThuyetData?.data || chiTietLyThuyetData?.data?.length === 0;
+
+    const hocVienDetail = Array.isArray(hocVienTheoKhoaData)
+      ? hocVienTheoKhoaData[0]
+      : hocVienTheoKhoaData?.data
+        ? (Array.isArray(hocVienTheoKhoaData.data) ? hocVienTheoKhoaData.data[0] : hocVienTheoKhoaData.data)
+        : hocVienTheoKhoaData;
+
+    const isTheoKhoaEmpty = !hocVienDetail || !hocVienDetail?.learning_progress;
+
+    return isChiTietEmpty && isTheoKhoaEmpty;
+  }, [chiTietLyThuyetData, hocVienTheoKhoaData]);
+
+  const lyThuyetStatus = !hasLyThuyetData
+    ? "Chưa xem"
+    : isEmptyLyThuyet
+      ? "Bảo trì"
+      : lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
+        ? "Đạt"
+        : "Trượt";
+  const statusColor = !hasLyThuyetData
+    ? "#7e8ea6"
+    : isEmptyLyThuyet
+      ? "#7e8ea6"
+      : lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus
+        ? "#1b8a35"
+        : "#ff0000";
+  // const isLyThuyetPassed =
+  //   lyThuyetPercent >= 100 && lyThuyetExtraStatus?.loaiHetMonStatus;
 
   const totalCabinSeconds = useMemo(
     () =>
@@ -503,6 +546,15 @@ const KiemTraPublic = () => {
     isAllCabinRulesPassed,
   ]);
   const isCabinFinalPassed = isCabinPassed && isAllCabinRulesPassed;
+
+  console.log("Debug check:", {
+    selectedStudent,
+    cabinKey,
+    chiTietLyThuyetData,
+    loadingChiTietLyThuyet,
+    hocVienTheoKhoaData,
+    loadingHocVienTheoKhoa,
+  });
 
   useEffect(() => {
     window.history.pushState(null, null, window.location.href);
@@ -768,7 +820,7 @@ const KiemTraPublic = () => {
                         Lý thuyết
                       </Text>
                       <Progress
-                        percent={lyThuyetPercent}
+                        percent={hasLyThuyetData ? lyThuyetPercent : 0}
                         showInfo={false}
                         strokeColor="#2f6ce0"
                         size={[110, 8]}
@@ -779,20 +831,21 @@ const KiemTraPublic = () => {
                         justify="space-between"
                         className="!mt-2"
                       >
-                        {/* <Text
+                        <Text
                           className="!text-xs !font-bold"
                           style={{ color: statusColor }}
                         >
                           {lyThuyetStatus}
                         </Text>
-                        <Button
-                          className="!rounded-xl !px-3 !text-xs"
-                          size="small"
-                          onClick={() => setIsLyThuyetModalOpen(true)}
-                        >
-                          Xem
-                        </Button> */}
-                        <Text className="!text-sm !font-bold flex !items-center !justify-center">Bảo trì</Text>
+                        {!isEmptyLyThuyet && (
+                          <Button
+                            className="!rounded-xl !px-3 !text-xs"
+                            size="small"
+                            onClick={() => setIsLyThuyetModalOpen(true)}
+                          >
+                            Xem
+                          </Button>
+                        )}
                       </Flex>
                     </Card>
                   </Col>
@@ -918,39 +971,39 @@ const KiemTraPublic = () => {
                       </Card>
                     </Col>
                   ) : null} */}
-                  {isCabinFinalPassed ? (
-                    <Col span={8}>
-                      <Card
-                        bordered={false}
-                        bodyStyle={{ padding: 10 }}
-                        className="!h-full !rounded-xl !bg-[#edf1f7]"
+                  {/* {isCabinFinalPassed ? ( */}
+                  <Col span={8}>
+                    <Card
+                      bordered={false}
+                      bodyStyle={{ padding: 10 }}
+                      className="!h-full !rounded-xl !bg-[#edf1f7]"
+                    >
+                      <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
+                        DAT
+                      </Text>
+                      <div
+                        className={`!font-semibold text-[13px] flex justify-center ${trangThaiKyDAT
+                          ? "!text-[#1b8a35]"
+                          : "!text-[#ff0000]"
+                          }`}
                       >
-                        <Text className="!text-xs !font-bold !uppercase !tracking-wide !text-[#74839e]">
-                          DAT
-                        </Text>
-                        <div
-                          className={`!font-semibold text-[13px] flex justify-center ${trangThaiKyDAT
-                            ? "!text-[#1b8a35]"
-                            : "!text-[#ff0000]"
-                            }`}
-                        >
-                          {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
-                        </div>
-                        <Button
-                          type="primary"
-                          className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
-                          size="small"
-                          onClick={() => {
-                            if (isCabinPassed) {
-                              setIsDatModalOpen(true);
-                            }
-                          }}
-                        >
-                          Chi tiết
-                        </Button>
-                      </Card>
-                    </Col>
-                  ) : null}
+                        {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
+                      </div>
+                      <Button
+                        type="primary"
+                        className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
+                        size="small"
+                        onClick={() => {
+                          // if (isCabinPassed) {
+                          setIsDatModalOpen(true);
+                          // }
+                        }}
+                      >
+                        Chi tiết
+                      </Button>
+                    </Card>
+                  </Col>
+                  {/* // ) : null} */}
                 </Row>
               </Card>
             ) : null}
@@ -966,7 +1019,7 @@ const KiemTraPublic = () => {
         open={isLyThuyetModalOpen}
         onCancel={() => setIsLyThuyetModalOpen(false)}
         scoreRows={scoreRows}
-        loadingStatus={loadingChiTietLyThuyet}
+        loadingStatus={loadingChiTietLyThuyet || loadingHocVienTheoKhoa}
         loaiHetMon={lyThuyetExtraStatus.loaiHetMon}
       />
 

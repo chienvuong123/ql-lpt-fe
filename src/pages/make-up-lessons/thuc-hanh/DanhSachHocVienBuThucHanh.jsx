@@ -46,6 +46,83 @@ const DanhSachHocVienBuThucHanh = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
 
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [isSelectingAllPages, setIsSelectingAllPages] = useState(false);
+    const [totalValidKeys, setTotalValidKeys] = useState(-1);
+    const [selectedStudentMap, setSelectedStudentMap] = useState({});
+
+    const checkIsEligible = (record) => {
+        return (
+            record.trang_thai === null ||
+            record.trang_thai === undefined ||
+            (String(record.trang_thai) === "4" && (record.trang_thai_thuc_hanh === null || record.trang_thai_thuc_hanh === undefined))
+        );
+    };
+
+    const handleToggleSelectAllPages = async (checked) => {
+        if (!checked) {
+            setSelectedRowKeys([]);
+            setSelectedStudentMap({});
+            return;
+        }
+
+        setIsSelectingAllPages(true);
+        try {
+            message.loading({ content: 'Đang tải toàn bộ dữ liệu...', key: 'selectAll' });
+            
+            let selectedLoai = undefined;
+            if (loai && loai.length === 1) {
+                selectedLoai = loai[0] === "theory" ? "ly_thuyet" : "thuc_hanh";
+            }
+
+            const res = await getDanhSachHocVienHocBuChoDuyetThucHanh({
+                ma_khoa: appliedFilters.ma_khoa,
+                search: appliedFilters.search,
+                loai: selectedLoai,
+                page: 1,
+                limit: 10000,
+            });
+            const list = normalizeApiList(res);
+            const validRecords = list.filter(checkIsEligible);
+            const validKeys = validRecords.map(record => record.id || record.ma_dk);
+
+            setSelectedRowKeys(validKeys);
+            setTotalValidKeys(validKeys.length);
+            
+            const newMap = {};
+            validRecords.forEach(r => {
+                newMap[r.id || r.ma_dk] = r;
+            });
+            setSelectedStudentMap(newMap);
+
+            message.success({ content: `Đã chọn ${validKeys.length} bản ghi`, key: 'selectAll' });
+        } catch (error) {
+            message.error({ content: 'Có lỗi xảy ra khi chọn tất cả', key: 'selectAll' });
+        } finally {
+            setIsSelectingAllPages(false);
+        }
+    };
+
+    const handleToggleSelectRecord = (record, checked) => {
+        const rowKey = record.id || record.ma_dk;
+        if (!rowKey) return;
+
+        setSelectedRowKeys((prev) =>
+            checked
+                ? Array.from(new Set([...prev, rowKey]))
+                : prev.filter((key) => key !== rowKey),
+        );
+
+        setSelectedStudentMap(prev => {
+            const next = { ...prev };
+            if (checked) {
+                next[rowKey] = record;
+            } else {
+                delete next[rowKey];
+            }
+            return next;
+        });
+    };
+
     const handleUpdateStatus = (record) => {
         Modal.confirm({
             title: "Xác nhận đăng ký học bù",
@@ -92,7 +169,7 @@ const DanhSachHocVienBuThucHanh = () => {
             onOk: async () => {
                 const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
                 try {
-                    const selectedStudents = students.filter(item => selectedRowKeys.includes(item.id || item.ma_dk));
+                    const selectedStudents = selectedRowKeys.map(key => selectedStudentMap[key] || students.find(s => (s.id || s.ma_dk) === key)).filter(Boolean);
                     await Promise.all(selectedStudents.map(async (st) => {
                         let payload = {
                             id: st.id,
@@ -114,6 +191,7 @@ const DanhSachHocVienBuThucHanh = () => {
                     }));
                     message.success("Đăng ký học bù cho các học viên được chọn thành công!");
                     setSelectedRowKeys([]);
+                    setSelectedStudentMap({});
                     refetchStudents();
                 } catch (error) {
                     message.error(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật!");
@@ -164,6 +242,9 @@ const DanhSachHocVienBuThucHanh = () => {
     }, [studentData, appliedFilters]);
 
     const totalItems = studentData?.total || studentData?.pagination?.total || 0;
+    const currentTotal = totalValidKeys !== -1 ? totalValidKeys : totalItems;
+    const isAllSelected = currentTotal > 0 && selectedRowKeys.length >= currentTotal;
+    const isIndeterminate = selectedRowKeys.length > 0 && !isAllSelected;
 
     const handleApplyFilter = () => {
         let selectedLoai = undefined;
@@ -188,6 +269,8 @@ const DanhSachHocVienBuThucHanh = () => {
             search: "",
             loai: undefined,
         });
+        setSelectedRowKeys([]);
+        setSelectedStudentMap({});
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
@@ -197,6 +280,30 @@ const DanhSachHocVienBuThucHanh = () => {
     };
 
     const columns = [
+        {
+            title: (
+                <Checkbox
+                    checked={isAllSelected}
+                    indeterminate={isIndeterminate}
+                    disabled={isFetchingStudents || isSelectingAllPages}
+                    onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
+                />
+            ),
+            key: "select_all",
+            width: 40,
+            align: "center",
+            render: (_, record) => {
+                const isEligible = checkIsEligible(record);
+                return (
+                    <Checkbox
+                        checked={selectedRowKeys.includes(record.id || record.ma_dk)}
+                        disabled={!isEligible || isSelectingAllPages}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
+                    />
+                );
+            },
+        },
         {
             title: "#",
             key: "stt",
@@ -401,22 +508,6 @@ const DanhSachHocVienBuThucHanh = () => {
 
             <div ref={tableRef}>
                 <Table
-                    rowSelection={{
-                        selectedRowKeys,
-                        onChange: (keys) => {
-                            setSelectedRowKeys(keys);
-                        },
-                        getCheckboxProps: (record) => {
-                            const isEligible =
-                                record.trang_thai === null ||
-                                record.trang_thai === undefined ||
-                                (String(record.trang_thai) === "4" && (record.trang_thai_thuc_hanh === null || record.trang_thai_thuc_hanh === undefined));
-                            return {
-                                disabled: !isEligible,
-                                name: record.ho_ten || record.student?.ho_ten,
-                            };
-                        }
-                    }}
                     columns={columns}
                     dataSource={students}
                     rowKey={(record) => record.id || record.ma_dk}
