@@ -11,10 +11,12 @@ import {
     getListDates,
     exportExcelReceiveGplx
 } from "../../apis/apidsNhanGplx";
+import { usePermission } from "../../util/permission";
 
 const { Title, Text } = Typography;
 
 const DSKyNhanHoSoVaGPLX = () => {
+    const { canEdit } = usePermission();
     const queryClient = useQueryClient();
     const fileInputRefModal = useRef(null);
 
@@ -154,16 +156,19 @@ const DSKyNhanHoSoVaGPLX = () => {
     };
 
     const handleToggleDaNhan = (record) => {
+        if (!canEdit) return;
         mutateUpdate({ id: record.id, da_nhan: !record.da_nhan });
     };
 
     const handleBulkUpdate = (status) => {
+        if (!canEdit) return;
         if (selectedRowKeys.length === 0) return;
         mutateBulkUpdate({ ids: selectedRowKeys, da_nhan: status });
     };
 
     // Duyệt/Hủy duyệt theo ngày thi (Duyệt/Hủy duyệt tất cả bản ghi của ngày đó)
     const handleDuyetTheoNgayThi = async (da_nhan = true) => {
+        if (!canEdit) return;
         if (!selectedNgayThiDuyet) return;
         setIsFetchingAllForDuyet(true);
         try {
@@ -200,19 +205,27 @@ const DSKyNhanHoSoVaGPLX = () => {
 
     const rowSelection = {
         selectedRowKeys,
-        onChange: onSelectChange,
+        onChange: (keys, rows) => {
+            if (!canEdit) return;
+            onSelectChange(keys, rows);
+        },
         onSelectAll: (selected) => {
+            if (!canEdit) return;
             if (selected) {
                 setIsDuyetModalOpen(true);
                 setSelectedRowKeys(students.map(item => item.id));
             } else {
                 setSelectedRowKeys([]);
             }
-        }
+        },
+        getCheckboxProps: () => ({
+            disabled: !canEdit,
+        }),
     };
 
     // Excel Import Confirmation
     const handleConfirmImport = async () => {
+        if (!canEdit) return;
         if (!selectedFile) {
             message.warning("Vui lòng chọn file Excel!");
             return;
@@ -333,7 +346,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                 <Checkbox
                     checked={val}
                     onChange={() => handleToggleDaNhan(record)}
-                    disabled={isUpdating}
+                    disabled={isUpdating || !canEdit}
                 />
             ),
         },
@@ -357,6 +370,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                             icon={<UploadOutlined />}
                             onClick={() => setIsImportModalOpen(true)}
                             className="bg-white text-gray-600 !h-8"
+                            disabled={!canEdit}
                         >
                             Import Excel
                         </Button>
@@ -478,6 +492,7 @@ const DSKyNhanHoSoVaGPLX = () => {
                             onClick={() => handleBulkUpdate(true)}
                             className="!bg-green-600 !border-green-600 !hover:bg-green-500"
                             loading={isBulkUpdating}
+                            disabled={!canEdit || isBulkUpdating}
                         >
                             Đánh dấu đã nhận
                         </Button>
@@ -487,13 +502,14 @@ const DSKyNhanHoSoVaGPLX = () => {
                             size="small"
                             onClick={() => handleBulkUpdate(false)}
                             loading={isBulkUpdating}
+                            disabled={!canEdit || isBulkUpdating}
                         >
                             Đánh dấu chưa nhận
                         </Button>
                         <Button
                             size="small"
                             onClick={() => setSelectedRowKeys([])}
-                            disabled={isBulkUpdating}
+                            disabled={isBulkUpdating || !canEdit}
                         >
                             Bỏ chọn
                         </Button>

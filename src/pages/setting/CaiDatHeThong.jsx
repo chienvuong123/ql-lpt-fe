@@ -25,6 +25,7 @@ import {
     updateCheckConfig,
     addCheckConfig,
 } from "../../apis/apiSetting";
+import { usePermission } from "../../util/permission";
 
 const { Title, Text } = Typography;
 
@@ -39,6 +40,7 @@ const RULE_NAMES = {
 };
 
 export default function CaiDatHeThong() {
+    const { canEdit } = usePermission();
     const [config, setConfig] = useState({});
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -67,6 +69,7 @@ export default function CaiDatHeThong() {
     }, []);
 
     const updateRuleRemoteConfig = async (ruleKey, field, value) => {
+        if (!canEdit) return;
         const currentRule = config[ruleKey] || {};
         const updatedRule = {
             ...currentRule,
@@ -110,6 +113,7 @@ export default function CaiDatHeThong() {
     };
 
     const handleAddNew = async (values) => {
+        if (!canEdit) return;
         try {
             const payload = {
                 checkKey: values.checkKey,
@@ -177,6 +181,7 @@ export default function CaiDatHeThong() {
                         }
                         checkedChildren="BẬT"
                         unCheckedChildren="TẮT"
+                        disabled={!canEdit}
                     />
                 );
             },
@@ -194,7 +199,7 @@ export default function CaiDatHeThong() {
                 return (
                     <Input
                         key={record.key + "_" + (record.value ?? "")}
-                        disabled={!isEnabled}
+                        disabled={!isEnabled || !canEdit}
                         defaultValue={record.value ?? ""}
                         placeholder="Ví dụ: 20"
                         style={{ width: "100%" }}
@@ -226,7 +231,7 @@ export default function CaiDatHeThong() {
                 return (
                     <Space direction="vertical" size={4} style={{ width: "100%" }}>
                         <DatePicker
-                            disabled={!isEnabled}
+                            disabled={!isEnabled || !canEdit}
                             placeholder="Chọn ngày bắt đầu áp dụng"
                             format="DD/MM/YYYY"
                             style={{ width: "220px" }}
@@ -269,17 +274,19 @@ export default function CaiDatHeThong() {
                     </Title>
                 </Space>
 
-                <Space size={12}>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        size="large"
-                        onClick={() => setIsModalOpen(true)}
-                        style={{ borderRadius: "6px" }}
-                    >
-                        Thêm quy tắc mới
-                    </Button>
-                </Space>
+                {canEdit && (
+                    <Space size={12}>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            size="large"
+                            onClick={() => setIsModalOpen(true)}
+                            style={{ borderRadius: "6px" }}
+                        >
+                            Thêm quy tắc mới
+                        </Button>
+                    </Space>
+                )}
             </div>
 
             {/* Bảng Danh sách quy tắc */}

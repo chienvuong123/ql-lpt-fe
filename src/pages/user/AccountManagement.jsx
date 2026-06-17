@@ -71,6 +71,7 @@ const AccountManagement = () => {
   const { canEdit } = usePermission();
 
   const handleAddAccount = () => {
+    if (!canEdit) return;
     form.resetFields();
     setEditingId(null);
     setPermissions(buildPermissionTree([]));
@@ -78,6 +79,7 @@ const AccountManagement = () => {
   };
 
   const handleEditAccount = async (record) => {
+    if (!canEdit) return;
     try {
       setEditingId(record.id);
       const res = await getDetailUser(record.id);
@@ -122,6 +124,7 @@ const AccountManagement = () => {
   };
 
   const handleSubmit = async (values) => {
+    if (!canEdit) return;
     try {
       const payload = {
         ...values,
@@ -144,6 +147,7 @@ const AccountManagement = () => {
   };
 
   const handleDeleteAccount = async (id) => {
+    if (!canEdit) return;
     try {
       await deleteUser(id);
       message.success("Xóa tài khoản thành công");
@@ -155,6 +159,7 @@ const AccountManagement = () => {
   };
 
   const handlePermissionChange = (routeKey, field, checked) => {
+    if (!canEdit) return;
     const propagatePermission = (nodes, val) => {
       return nodes.map((node) => {
         const updated = { ...node, [field]: val };
