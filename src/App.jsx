@@ -372,12 +372,7 @@ function App() {
                 element={<GuardedRoute path="/danh-sach-ky-nhan-ho-so-gplx" element={<DSKyNhanHoSoVaGPLX />} />}
               />
             </Route>
-            <Route
-              path="kiem-tra-hoc-vien"
-              element={
-                <GuardedRoute path="/kiem-tra-hoc-vien" element={<KiemTraPublic />} />
-              }
-            />
+            <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
             <Route
               path="lich-cabin"
               element={
