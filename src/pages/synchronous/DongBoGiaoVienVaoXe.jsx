@@ -10,6 +10,7 @@ import { ReloadOutlined } from "@ant-design/icons";
 import { DanhSachGiaoVien } from "../../apis/giaoVien";
 import { DanhSachLoaiXe, DanhSachXe } from "../../apis/xe";
 import { useQuery } from "@tanstack/react-query";
+import { usePermission } from "../../util/permission";
 
 message.config({
   top: 100,
@@ -18,6 +19,7 @@ message.config({
 });
 
 export default function AssignTeacherToVehicle() {
+  const { canEdit } = usePermission();
   const [searchParams, setSearchParams] = useState({});
   const [searchText, setSearchText] = useState("");
   const [searchCar, setSearchCar] = useState("");
@@ -191,6 +193,7 @@ export default function AssignTeacherToVehicle() {
   };
 
   const handleSubmit = async () => {
+    if (!canEdit) return;
     if (selectedTeacherKeys.length === 0) {
       message.error("Vui lòng chọn ít nhất 1 giáo viên!", 3);
       return;
@@ -254,6 +257,7 @@ export default function AssignTeacherToVehicle() {
                 size="middle"
                 className="!px-2"
                 type="primary"
+                disabled={!canEdit}
                 onClick={() =>
                   handleToggleAll(
                     dataTeachers?.data?.Data || [],
@@ -284,6 +288,9 @@ export default function AssignTeacherToVehicle() {
               rowSelection={{
                 selectedRowKeys: selectedTeacherKeys,
                 onChange: (keys) => setSelectedTeacherKeys(keys),
+                getCheckboxProps: () => ({
+                  disabled: !canEdit,
+                }),
               }}
               locale={{
                 emptyText: (
@@ -321,6 +328,7 @@ export default function AssignTeacherToVehicle() {
                 size="middle"
                 className="!px-2"
                 type="primary"
+                disabled={!canEdit}
                 onClick={() =>
                   handleToggleAll(
                     carData || [],
@@ -347,6 +355,9 @@ export default function AssignTeacherToVehicle() {
               rowSelection={{
                 selectedRowKeys: selectedCarKeys,
                 onChange: (keys) => setSelectedCarKeys(keys),
+                getCheckboxProps: () => ({
+                  disabled: !canEdit,
+                }),
               }}
               locale={{
                 emptyText: (
@@ -400,6 +411,7 @@ export default function AssignTeacherToVehicle() {
                   size="large"
                   className="w-full bg-blue-600"
                   onClick={handleSubmit}
+                  disabled={!canEdit}
                 >
                   Đồng bộ
                 </Button>

@@ -24,11 +24,13 @@ import {
 import dayjs from 'dayjs';
 import { useMemo, useRef, useState } from 'react';
 import TienDoHocBuModal from './TienDoHocBuModal';
+import { usePermission } from '../../util/permission';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const TienDoHocBu = () => {
+    const { canEdit } = usePermission();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -331,6 +333,7 @@ const TienDoHocBu = () => {
                         type="text"
                         icon={<EditOutlined style={{ color: '#1890ff' }} />}
                         onClick={() => handleEdit(record)}
+                        disabled={!canEdit}
                     />
                 </div>
             ),
@@ -338,6 +341,7 @@ const TienDoHocBu = () => {
     ];
 
     const handleAdd = () => {
+        if (!canEdit) return;
         setModalAction('add');
         setSelectedRecord(null);
         setIsModalOpen(true);
@@ -350,12 +354,14 @@ const TienDoHocBu = () => {
     };
 
     const handleEdit = (record) => {
+        if (!canEdit) return;
         setModalAction('edit');
         setSelectedRecord(record);
         setIsModalOpen(true);
     };
 
     const handleModalSubmit = (values) => {
+        if (!canEdit) return;
         const userName = sessionStorage.getItem("name") || "unknown";
         const payload = { ...values };
 
@@ -402,6 +408,7 @@ const TienDoHocBu = () => {
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={handleAdd}
+                        disabled={!canEdit}
                         style={{ borderRadius: '6px', height: '40px' }}
                     >
                         Thêm tiến độ mới

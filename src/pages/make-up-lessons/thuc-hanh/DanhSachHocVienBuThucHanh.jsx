@@ -21,6 +21,7 @@ import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import HocVienInfo from "../../../components/HocVienInfor";
 import { renderTrangThaiHocBu, renderTrangThaiLyThuyet, renderTrangThaiThucHanh } from "../../../constants/hocBuConstants";
 import { useTableHeight } from "../../../components/hooks/useTableHeight";
+import { usePermission } from "../../../util/permission";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -30,6 +31,7 @@ const normalizeApiList = (payload) => {
 };
 
 const DanhSachHocVienBuThucHanh = () => {
+    const { canEdit } = usePermission();
     const [tableRef, tableHeight] = useTableHeight();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
@@ -124,6 +126,7 @@ const DanhSachHocVienBuThucHanh = () => {
     };
 
     const handleUpdateStatus = (record) => {
+        if (!canEdit) return;
         Modal.confirm({
             title: "Xác nhận đăng ký học bù",
             content: `Bạn có chắc chắn muốn đăng ký học bù cho học viên "${record.ho_ten || record.student?.ho_ten}" không?`,
@@ -160,6 +163,7 @@ const DanhSachHocVienBuThucHanh = () => {
     };
 
     const handleBulkUpdateStatus = () => {
+        if (!canEdit) return;
         if (!selectedRowKeys.length) return;
         Modal.confirm({
             title: "Xác nhận đăng ký học bù hàng loạt",
@@ -285,7 +289,7 @@ const DanhSachHocVienBuThucHanh = () => {
                 <Checkbox
                     checked={isAllSelected}
                     indeterminate={isIndeterminate}
-                    disabled={isFetchingStudents || isSelectingAllPages}
+                    disabled={isFetchingStudents || isSelectingAllPages || !canEdit}
                     onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
                 />
             ),
@@ -297,7 +301,7 @@ const DanhSachHocVienBuThucHanh = () => {
                 return (
                     <Checkbox
                         checked={selectedRowKeys.includes(record.id || record.ma_dk)}
-                        disabled={!isEligible || isSelectingAllPages}
+                        disabled={!isEligible || isSelectingAllPages || !canEdit}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
                     />
@@ -413,6 +417,7 @@ const DanhSachHocVienBuThucHanh = () => {
                                 icon={<PlusCircleOutlined />}
                                 size="small"
                                 onClick={() => handleUpdateStatus(record)}
+                                disabled={!canEdit}
                             />
                         )}
                     </Space>
@@ -497,7 +502,7 @@ const DanhSachHocVienBuThucHanh = () => {
                                 icon={<PlusCircleOutlined />}
                                 onClick={handleBulkUpdateStatus}
                                 className="!bg-[#3366cc] !text-white"
-                                disabled={selectedRowKeys.length === 0}
+                                disabled={selectedRowKeys.length === 0 || !canEdit}
                             >
                                 Đăng ký học bù ({selectedRowKeys.length})
                             </Button>

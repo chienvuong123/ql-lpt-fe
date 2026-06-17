@@ -22,6 +22,7 @@ import StudentMakeUpDetailDrawer from "../StudentMakeUpDetailDrawer";
 import HocVienInfo from "../../../components/HocVienInfor";
 import { renderTrangThaiLyThuyet } from "../../../constants/hocBuConstants";
 import { useTableHeight } from "../../../components/hooks/useTableHeight";
+import { usePermission } from "../../../util/permission";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -31,6 +32,7 @@ const normalizeApiList = (payload) => {
 };
 
 const DanhSachDangHocBuLyThuyet = () => {
+    const { canEdit } = usePermission();
     const [tableRef, tableHeight] = useTableHeight();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
@@ -96,6 +98,7 @@ const DanhSachDangHocBuLyThuyet = () => {
     });
 
     const handleSyncData = () => {
+        if (!canEdit) return;
         mutationDongBo.mutate();
     };
 
@@ -314,6 +317,7 @@ const DanhSachDangHocBuLyThuyet = () => {
                     icon={<SyncOutlined />}
                     loading={mutationDongBo.isPending}
                     onClick={handleSyncData}
+                    disabled={!canEdit}
                 >
                     Đồng bộ sang bù thực hành
                 </Button>

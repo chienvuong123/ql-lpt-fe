@@ -21,6 +21,7 @@ import StudentMakeUpDetailDrawer from "./StudentMakeUpDetailDrawer";
 import TienDoHocBuModal from "./TienDoHocBuModal";
 import dayjs from "dayjs";
 import { Typography } from 'antd'
+import { usePermission } from "../../util/permission";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -30,6 +31,7 @@ const normalizeApiList = (payload) => {
 };
 
 const ChoDuyetHocBu = () => {
+    const { canEdit } = usePermission();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
     const [trangThai, setTrangThai] = useState([2, 3]);
@@ -54,6 +56,7 @@ const ChoDuyetHocBu = () => {
     const [isSavingCourse, setIsSavingCourse] = useState(false);
 
     const handleCourseSubmit = async (values) => {
+        if (!canEdit) return;
         const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
         const payload = {
             ...values,
@@ -508,7 +511,7 @@ const ChoDuyetHocBu = () => {
                                 icon={<PlusCircleOutlined />}
                                 onClick={() => setIsCourseModalOpen(true)}
                                 className="!bg-green-600 hover:!bg-green-700 border-none"
-                                disabled={selectedRowKeys.length === 0}
+                                disabled={selectedRowKeys.length === 0 || !canEdit}
                             >
                                 Thêm vào khóa ({selectedRowKeys.length})
                             </Button>
@@ -524,7 +527,7 @@ const ChoDuyetHocBu = () => {
                     getCheckboxProps: (record) => {
                         const st = record?.trang_thai ?? record?.student?.trang_thai;
                         return {
-                            disabled: String(st) !== "3",
+                            disabled: String(st) !== "3" || !canEdit,
                             name: record.ho_ten || record.student?.ho_ten,
                         };
                     }

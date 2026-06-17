@@ -7,6 +7,7 @@ import { DanhSachKhoaHoc } from "../../apis/hocVien";
 import { getHocVienByMaKhoaSql, kiemTraDongBoSql } from "../../apis/apiSynch";
 import { DanhSachLoaiXe, DanhSachXe, DanhSachXeOnline } from "../../apis/xe";
 import KiemTraDongBoModal from "./KiemTraDongBoModal";
+import { usePermission } from "../../util/permission";
 
 message.config({
   top: 100,
@@ -15,6 +16,7 @@ message.config({
 });
 
 export default function DongBoHocVienVaoXe() {
+  const { canEdit } = usePermission();
   const [searchParams, setSearchParams] = useState({});
   const [searchText, setSearchText] = useState("");
   const [searchCar, setSearchCar] = useState("");
@@ -381,6 +383,7 @@ export default function DongBoHocVienVaoXe() {
   );
 
   const handleSubmit = async () => {
+    if (!canEdit) return;
     const hasStudents = selectedStudentKeys.length > 0;
     const hasTeachers = selectedTeacherKeys.length > 0;
 
@@ -454,6 +457,7 @@ export default function DongBoHocVienVaoXe() {
   };
 
   const handleConfirmSync = async (studentKeysToSync) => {
+    if (!canEdit) return;
     setIsSyncingFromModal(true);
     const hide = message.loading("Đang tiến hành đồng bộ...", 0);
 
@@ -571,6 +575,7 @@ export default function DongBoHocVienVaoXe() {
                   size="middle"
                   className="!px-2"
                   type="primary"
+                  disabled={!canEdit}
                   onClick={() =>
                     handleToggleAll(
                       studentData,
@@ -599,6 +604,9 @@ export default function DongBoHocVienVaoXe() {
                 selectedRowKeys: selectedStudentKeys,
                 onChange: (keys) => setSelectedStudentKeys(keys),
                 hideSelectAll: true,
+                getCheckboxProps: () => ({
+                  disabled: !canEdit,
+                }),
               }}
               locale={{
                 emptyText: (
@@ -637,6 +645,7 @@ export default function DongBoHocVienVaoXe() {
                 size="middle"
                 className="!px-2"
                 type="primary"
+                disabled={!canEdit}
                 onClick={() =>
                   handleToggleAll(
                     carData,
@@ -664,6 +673,9 @@ export default function DongBoHocVienVaoXe() {
                 selectedRowKeys: selectedCarKeys,
                 onChange: (keys) => setSelectedCarKeys(keys),
                 hideSelectAll: true,
+                getCheckboxProps: () => ({
+                  disabled: !canEdit,
+                }),
               }}
               locale={{
                 emptyText: (
@@ -730,6 +742,7 @@ export default function DongBoHocVienVaoXe() {
                   size="large"
                   className="w-full bg-blue-600"
                   onClick={handleSubmit}
+                  disabled={!canEdit}
                 >
                   Đồng bộ
                 </Button>

@@ -22,6 +22,7 @@ import { dongBoTienDoDaoTaoSql } from "../../../apis/apiSynch";
 import { renderTrangThaiHocBu, renderTrangThaiLyThuyet } from "../../../constants/hocBuConstants";
 import HocVienInfo from "../../../components/HocVienInfor";
 import { useTableHeight } from "../../../components/hooks/useTableHeight";
+import { usePermission } from "../../../util/permission";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -47,6 +48,7 @@ const isSelectionEligible = (record) => {
 
 
 const DanhSachChoXepLopLyThuyet = () => {
+    const { canEdit } = usePermission();
     const [tableRef, tableHeight] = useTableHeight();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
@@ -113,6 +115,7 @@ const DanhSachChoXepLopLyThuyet = () => {
     };
 
     const handleCourseSubmit = async (values) => {
+        if (!canEdit) return;
         const userName = sessionStorage.getItem("name") || localStorage.getItem("name") || "Admin";
         const payload = {
             ...values,
@@ -228,7 +231,7 @@ const DanhSachChoXepLopLyThuyet = () => {
                 <Checkbox
                     checked={isAllSelected}
                     indeterminate={isIndeterminate}
-                    disabled={isFetchingStudents || isSelectingAllPages}
+                    disabled={isFetchingStudents || isSelectingAllPages || !canEdit}
                     onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
                 />
             ),
@@ -241,7 +244,7 @@ const DanhSachChoXepLopLyThuyet = () => {
                 return (
                     <Checkbox
                         checked={selectedRowKeys.includes(record.id || record.ma_dk)}
-                        disabled={!canCheck || isSelectingAllPages}
+                        disabled={!canCheck || isSelectingAllPages || !canEdit}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
                     />
@@ -395,7 +398,7 @@ const DanhSachChoXepLopLyThuyet = () => {
                                 icon={<PlusCircleOutlined />}
                                 onClick={() => setIsCourseModalOpen(true)}
                                 className="!bg-green-600 hover:!bg-green-700 border-none"
-                                disabled={selectedRowKeys.length === 0}
+                                disabled={selectedRowKeys.length === 0 || !canEdit}
                             >
                                 Thêm vào khóa ({selectedRowKeys.length})
                             </Button>

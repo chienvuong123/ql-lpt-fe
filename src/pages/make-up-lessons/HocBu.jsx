@@ -22,6 +22,7 @@ import dayjs from "dayjs";
 import { renderTrangThaiHocBu, renderTrangThaiLyThuyet, renderTrangThaiThucHanh } from "../../constants/hocBuConstants";
 import HocVienInfo from "../../components/HocVienInfor";
 import { useTableHeight } from "../../components/hooks/useTableHeight";
+import { usePermission } from "../../util/permission";
 
 const normalizeApiList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -31,6 +32,7 @@ const normalizeApiList = (payload) => {
 };
 
 const HocBu = () => {
+    const { canEdit } = usePermission();
     const [tableRef, tableHeight] = useTableHeight();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
@@ -204,6 +206,7 @@ const HocBu = () => {
     };
 
     const handleUpdateStatus = (record) => {
+        if (!canEdit) return;
         Modal.confirm({
             title: "Xác nhận đăng ký học bù",
             content: `Bạn có chắc chắn muốn đăng ký học bù cho học viên "${record.ho_ten || record.student?.ho_ten}" không?`,
@@ -232,6 +235,7 @@ const HocBu = () => {
     };
 
     const handleBulkUpdateStatus = () => {
+        if (!canEdit) return;
         if (!selectedRowKeys.length) return;
         Modal.confirm({
             title: "Xác nhận đăng ký học bù hàng loạt",
@@ -272,7 +276,7 @@ const HocBu = () => {
                 <Checkbox
                     checked={isAllSelected}
                     indeterminate={isIndeterminate}
-                    disabled={!appliedFilters.loai || isFetchingStudents || isSelectingAllPages}
+                    disabled={!appliedFilters.loai || isFetchingStudents || isSelectingAllPages || !canEdit}
                     onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
                 />
             ),
@@ -289,7 +293,7 @@ const HocBu = () => {
                 return (
                     <Checkbox
                         checked={selectedRowKeys.includes(record.id || record.ma_dk)}
-                        disabled={!canCheck || isSelectingAllPages}
+                        disabled={!canCheck || isSelectingAllPages || !canEdit}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
                     />
@@ -416,6 +420,7 @@ const HocBu = () => {
                                 icon={<PlusOutlined />}
                                 size="small"
                                 onClick={() => handleUpdateStatus(record)}
+                                disabled={!canEdit}
                             />
                         )}
                     </Space>
@@ -499,7 +504,7 @@ const HocBu = () => {
                                 icon={<PlusOutlined />}
                                 onClick={handleBulkUpdateStatus}
                                 className="!bg-green-600 hover:!bg-green-700 border-none"
-                                disabled={selectedRowKeys.length === 0}
+                                disabled={selectedRowKeys.length === 0 || !canEdit}
                             >
                                 Đăng ký học bù ({selectedRowKeys.length})
                             </Button>

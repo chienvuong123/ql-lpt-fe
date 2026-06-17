@@ -24,10 +24,12 @@ import { useMemo, useRef, useState, useCallback } from 'react';
 import { optionLopLyThuyet } from '../../../apis/apiLyThuyetLocal';
 import TienDoHocBuModal from '../TienDoHocBuModal';
 import ChiTietLopBuLyThuyetModal from './ChiTietLopBuLyThuyetModal';
+import { usePermission } from '../../../util/permission';
 
 const { Title, Text } = Typography;
 
 const TienDoHocBuLyThuyet = () => {
+    const { canEdit } = usePermission();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -102,10 +104,11 @@ const TienDoHocBuLyThuyet = () => {
     }, []);
 
     const handleEdit = useCallback((record) => {
+        if (!canEdit) return;
         setModalAction('edit');
         setSelectedRecord(record);
         setIsModalOpen(true);
-    }, []);
+    }, [canEdit]);
 
     const handleCloseMainModal = useCallback(() => {
         setIsModalOpen(false);
@@ -117,6 +120,7 @@ const TienDoHocBuLyThuyet = () => {
     }, []);
 
     const handleModalSubmit = useCallback((values) => {
+        if (!canEdit) return;
         const userName = sessionStorage.getItem("name") || "unknown";
         const payload = { ...values };
 
@@ -126,7 +130,7 @@ const TienDoHocBuLyThuyet = () => {
         payload.updated_by = userName;
 
         mutateTienDo(payload);
-    }, [modalAction, mutateTienDo]);
+    }, [modalAction, mutateTienDo, canEdit]);
 
     const columns = useMemo(() => [
         {
@@ -369,11 +373,12 @@ const TienDoHocBuLyThuyet = () => {
                         type="text"
                         icon={<EditOutlined style={{ color: '#1890ff' }} />}
                         onClick={() => handleEdit(record)}
+                        disabled={!canEdit}
                     />
                 </div>
             ),
         },
-    ], [handleView, handleEdit]);
+    ], [handleView, handleEdit, canEdit]);
 
     // Handlers moved to top for optimization
 
