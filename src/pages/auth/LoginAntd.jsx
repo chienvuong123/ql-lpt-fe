@@ -4,15 +4,17 @@ import { DangNhap } from "../../apis/auth";
 import { loginUser } from "../../apis/apiUser";
 
 import "./loginAntd.css";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const { Text } = Typography;
 
 export default function LoginAntd() {
   const [isLoading, setIsLoading] = useState(false);
-  console.log(isLoading);
+  const isSubmittingRef = useRef(false);
 
   const onSubmit = async (values) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     const { username, password } = values;
     setIsLoading(true);
 
@@ -24,11 +26,24 @@ export default function LoginAntd() {
       });
 
       if (resNew?.data?.token) {
-        // 2. Đăng nhập ngầm hệ thống cũ (DangNhap) bằng tài khoản từ .env
-        const resOld = await DangNhap({
-          Username: import.meta.env.VITE_PUBLIC_CHECK_USERNAME,
-          Password: import.meta.env.VITE_PUBLIC_CHECK_PASSWORD,
-        });
+        // 2. Đăng nhập ngầm hệ thống cũ (DangNhap) bằng tài khoản từ .env (Thử lại tối đa 5 lần)
+        let resOld = null;
+        for (let i = 0; i < 5; i++) {
+          try {
+            resOld = await DangNhap({
+              Username: import.meta.env.VITE_PUBLIC_CHECK_USERNAME,
+              Password: import.meta.env.VITE_PUBLIC_CHECK_PASSWORD,
+            });
+            if (resOld?.data?.ID !== 0 && resOld?.data?.Token) {
+              break;
+            }
+          } catch (err) {
+            console.error(`Attempt ${i + 1} to login old system failed:`, err);
+          }
+          if (i < 4) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
 
         const userToken = resNew.data.token;
         const name = resNew.data.user?.ho_ten;
@@ -44,13 +59,18 @@ export default function LoginAntd() {
         const permissions = resNew?.data?.user?.permissions;
         sessionStorage.setItem("permissions", JSON.stringify(permissions || []));
 
-        if (resOld?.data?.ID !== 0) {
+        if (resOld?.data?.ID !== 0 && resOld?.data?.Token) {
           sessionStorage.setItem("token", resOld?.data?.Token);
+          setIsLoading(false);
+          message.success("Đăng nhập thành công");
+          window.location.href = "/";
+        } else {
+          message.error({
+            content: `Đăng nhập hệ thống DAT thất bại`,
+            className: "!text-red-500",
+          });
+          setIsLoading(false);
         }
-
-        setIsLoading(false);
-        message.success("Đăng nhập thành công");
-        window.location.href = "/";
       } else {
         message.error({
           content: resNew?.message || "Hệ thống mới từ chối đăng nhập",
@@ -62,6 +82,8 @@ export default function LoginAntd() {
       console.error("Login error:", error);
       message.error("Có lỗi xảy ra khi kết nối đến máy chủ");
       setIsLoading(false);
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -117,7 +139,7 @@ export default function LoginAntd() {
                 htmlType="submit"
                 size="large"
                 className="w-full bg-gradient-to-r from-blue-700 to-blue-600"
-              // loading={isLoading}
+                loading={isLoading}
               >
                 Đăng nhập
               </Button>

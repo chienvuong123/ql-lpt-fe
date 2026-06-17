@@ -31,10 +31,12 @@ import dayjs from "dayjs";
 import ModalXe from "./ModalXe";
 import ModalUyQuyen from "./ModalUyQuyen";
 import { useTableHeight } from "../../components/hooks/useTableHeight";
+import { usePermission } from "../../util/permission";
 
 const { Title, Text } = Typography;
 
 const Xe = () => {
+    const { canEdit } = usePermission();
     const [tableRef, tableHeight] = useTableHeight();
     const queryClient = useQueryClient();
     const [params, setParams] = useState({
@@ -327,11 +329,12 @@ const Xe = () => {
                             setIsUyQuyenModalOpen(true);
                         }}
                         style={{ padding: 0 }}
+                        disabled={!canEdit}
                     >
                         {isUyQuyen ? (
-                            <Tag color="success" style={{ cursor: 'pointer', margin: 0 }}>Đã</Tag>
+                            <Tag color="success" style={{ cursor: canEdit ? 'pointer' : 'not-allowed', margin: 0 }}>Đã</Tag>
                         ) : (
-                            <Tag color="error" style={{ cursor: 'pointer', margin: 0 }}>Chưa</Tag>
+                            <Tag color="error" style={{ cursor: canEdit ? 'pointer' : 'not-allowed', margin: 0 }}>Chưa</Tag>
                         )}
                     </Button>
                 );
@@ -404,9 +407,10 @@ const Xe = () => {
                 <div className="flex">
                     <Button
                         type="text"
-                        icon={<EditOutlined style={{ color: '#1890ff' }} />}
+                        icon={<EditOutlined style={{ color: canEdit ? '#1890ff' : '#bfbfbf' }} />}
                         onClick={() => handleEditClick(record)}
                         style={{ padding: 0 }}
+                        disabled={!canEdit}
                     />
                     <Popconfirm
                         title="Bạn có chắc chắn muốn xóa xe này?"
@@ -421,12 +425,14 @@ const Xe = () => {
                         okText="Có"
                         cancelText="Không"
                         okButtonProps={{ loading: isDeleting }}
+                        disabled={!canEdit}
                     >
                         <Button
                             type="text"
                             danger
-                            icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                            icon={<DeleteOutlined style={{ color: canEdit ? '#ff4d4f' : '#bfbfbf' }} />}
                             style={{ padding: 0 }}
+                            disabled={!canEdit}
                         />
                     </Popconfirm>
                 </div>
@@ -463,26 +469,30 @@ const Xe = () => {
                         accept=".xlsx, .xls"
                         onChange={handleFileChange}
                     />
-                    <Button
-                        type="default"
-                        icon={<UploadOutlined />}
-                        onClick={triggerFileInput}
-                        loading={uploading}
-                        className="bg-white text-gray-600 !h-8 !mr-3"
-                    >
-                        {uploading ? `Importing (${uploadPercent}%)` : "Import Excel"}
-                    </Button>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => {
-                            setSelectedRecord(null);
-                            setIsModalOpen(true);
-                        }}
-                        className="!bg-[#3366cc] !text-white !h-8"
-                    >
-                        Thêm xe
-                    </Button>
+                    {canEdit && (
+                        <>
+                            <Button
+                                type="default"
+                                icon={<UploadOutlined />}
+                                onClick={triggerFileInput}
+                                loading={uploading}
+                                className="bg-white text-gray-600 !h-8 !mr-3"
+                            >
+                                {uploading ? `Importing (${uploadPercent}%)` : "Import Excel"}
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => {
+                                    setSelectedRecord(null);
+                                    setIsModalOpen(true);
+                                }}
+                                className="!bg-[#3366cc] !text-white !h-8"
+                            >
+                                Thêm xe
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 

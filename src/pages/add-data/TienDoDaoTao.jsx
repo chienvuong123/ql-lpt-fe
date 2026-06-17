@@ -24,12 +24,13 @@ import {
 import ModalTienDoDaoTao from './ModalTienDoDaoTao';
 import dayjs from 'dayjs';
 import { useMemo, useRef, useState } from 'react';
+import { usePermission } from '../../util/permission';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const TienDoDaoTao = () => {
-    const [form] = Form.useForm();
+    const { canEdit } = usePermission();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalAction, setModalAction] = useState('add');
@@ -169,255 +170,341 @@ const TienDoDaoTao = () => {
             message.error(err.response?.data?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
         }
     });
+    const getColumns = (classType) => {
+        const isC1 = classType === 'C1';
+        const headerBg = isC1
+            ? '!bg-[#9ccb9c]'
+            : classType === 'B1'
+                ? '!bg-[#FFCC99]'
+                : '!bg-[#ffe3b3]';
 
-    const formatDate = (date) => (date ? dayjs(date).format('DD/MM/YYYY') : '-');
+        // Define common Cell class
+        const bodyCellClass = '!bg-[#cdece1] !text-black border border-black text-sm font-semibold text-center';
 
-    const columns = [
-        {
-            title: '#',
-            dataIndex: 'index',
-            key: 'index',
-            width: 40,
-            fixed: 'left',
-            align: 'center',
-            render: (_, __, index) => index + 1,
-        },
-        {
-            title: 'Khóa',
-            dataIndex: 'ten_khoa',
-            key: 'ten_khoa',
-            width: 100,
-            fixed: 'left',
-            align: 'center',
-            render: (text) => <Text strong>{text ? text : '-'}</Text>
-        },
-        // {
-        //     title: 'Hạng',
-        //     dataIndex: 'hang',
-        //     key: 'hang',
-        //     width: 70,
-        //     align: 'center',
-        //     render: (text) => <Tag color="blue">{text || '-'}</Tag>
-        // },
-        {
-            title: 'SL',
-            dataIndex: 'luu_luong',
-            key: 'luu_luong',
-            width: 60,
-            align: 'center',
-        },
-        {
-            title: 'Khai giảng',
-            dataIndex: 'ngay_khai_giang',
-            key: 'ngay_khai_giang',
-            width: 110,
-            align: 'center',
-            render: formatDate
-        },
-        {
-            title: 'Lý Thuyết',
-            children: [
-                {
-                    title: 'Online',
-                    children: [
-                        {
-                            title: 'Bắt đầu',
-                            dataIndex: 'bat_dau_ly_thuyet',
-                            key: 'bat_dau_ly_thuyet',
-                            width: 110,
-                            align: 'center',
-                            className: 'column-online',
-                            render: formatDate
-                        },
-                        {
-                            title: 'Kết thúc',
-                            dataIndex: 'ket_thuc_ly_thuyet',
-                            key: 'ket_thuc_ly_thuyet',
-                            width: 110,
-                            align: 'center',
-                            className: 'column-online',
-                            render: formatDate
-                        },
-                    ],
-                },
-                {
-                    title: 'Kiểm tra hết môn',
-                    dataIndex: 'kiem_tra_het_mon',
-                    key: 'kiem_tra_het_mon',
-                    width: 120,
-                    align: 'center',
-                    className: 'column-exam',
-                    render: formatDate
-                },
-            ],
-        },
-        {
-            title: 'Thực Hành',
-            children: [
-                {
-                    title: 'Cabin',
-                    children: [
-                        {
-                            title: 'Bắt đầu',
-                            dataIndex: 'bat_dau_cabin',
-                            key: 'bat_dau_cabin',
-                            width: 110,
-                            align: 'center',
-                            className: 'column-cabin',
-                            render: formatDate
-                        },
-                        {
-                            title: 'Kết thúc',
-                            dataIndex: 'ket_thuc_cabin',
-                            key: 'ket_thuc_cabin',
-                            width: 110,
-                            align: 'center',
-                            className: 'column-cabin',
-                            render: formatDate
-                        },
-                    ],
-                },
-                {
-                    title: 'Học DAT',
-                    children: [
-                        {
-                            title: 'Bắt đầu',
-                            dataIndex: 'bat_dau_dat',
-                            key: 'bat_dau_dat',
-                            width: 110,
-                            align: 'center',
-                            className: 'column-dat',
-                            render: formatDate
-                        },
-                        {
-                            title: 'Kết thúc',
-                            dataIndex: 'ket_thuc_dat',
-                            key: 'ket_thuc_dat',
-                            width: 110,
-                            align: 'center',
-                            className: 'column-dat',
-                            render: formatDate
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            title: 'Dự thi tốt nghiệp',
-            dataIndex: 'tot_nghiep',
-            key: 'tot_nghiep',
-            width: 120,
-            align: 'center',
-            className: 'column-graduation',
-            render: formatDate
-        },
-        {
-            title: 'Hạn ký ghép tốt nghiệp',
-            dataIndex: 'ghep_tot_nghiep',
-            key: 'ghep_tot_nghiep',
-            width: 150,
-            align: 'center',
-            render: (text) => (
-                <div style={{ color: '#cf1322', fontWeight: '500' }}>
-                    {formatDate(text)}
-                </div>
-            )
-        },
-        {
-            title: 'Bế Giảng',
-            dataIndex: 'be_giang',
-            key: 'be_giang',
-            width: 110,
-            align: 'center',
-            render: formatDate
-        },
-        {
-            title: 'Số ngày còn lại',
-            key: 'soNgayConLai',
-            width: 110,
-            align: 'center',
-            render: (_, record) => {
-                const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
-                const today = dayjs().startOf('day');
+        const headerCell = (className = '') => () => ({
+            className: `${headerBg} !text-black !font-extrabold text-center border border-black text-sm py-2 px-1 ${className}`
+        });
 
-                if (!beGiang) return '-';
+        const redHeaderCell = (className = '') => () => ({
+            className: `${headerBg} !text-red-600 !font-extrabold text-center border border-black text-sm py-2 px-1 ${className}`
+        });
 
-                const diffDays = beGiang.diff(today, 'day');
+        const blueHeaderCell = (className = '') => () => ({
+            className: `${headerBg} !text-blue-600 !font-extrabold text-center border border-black text-sm py-2 px-1 ${className}`
+        });
 
-                if (diffDays < 0) {
-                    return <Tag color="error">Đóng khóa</Tag>;
+        const yellowHeaderCell = (className = '') => () => ({
+            className: `!bg-[#ffff00] !text-red-600 !font-extrabold text-center border border-black text-sm py-2 px-1 ${className}`
+        });
+
+        const yellowHeaderCellBlack = (className = '') => () => ({
+            className: `!bg-[#ffff00] !text-black !font-extrabold text-center border border-black text-sm py-2 px-1 ${className}`
+        });
+
+        const defaultCell = () => ({
+            className: bodyCellClass
+        });
+
+        const cabinAndDatCols = [
+            {
+                title: 'CABIN',
+                onHeaderCell: redHeaderCell(),
+                children: [
+                    {
+                        title: 'BẮT ĐẦU',
+                        dataIndex: 'bat_dau_cabin',
+                        key: 'bat_dau_cabin',
+                        width: 75,
+                        align: 'center',
+                        onHeaderCell: blueHeaderCell(),
+                        onCell: defaultCell,
+                        render: (text) => text ? <span className="text-blue-600 font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                    },
+                    {
+                        title: 'KẾT THÚC',
+                        dataIndex: 'ket_thuc_cabin',
+                        key: 'ket_thuc_cabin',
+                        width: 75,
+                        align: 'center',
+                        onHeaderCell: redHeaderCell(),
+                        onCell: defaultCell,
+                        render: (text) => text ? <span className="text-red-600 font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                    },
+                ]
+            },
+            {
+                title: 'HỌC DAT',
+                onHeaderCell: redHeaderCell(),
+                children: [
+                    {
+                        title: 'BẮT ĐẦU',
+                        dataIndex: 'bat_dau_dat',
+                        key: 'bat_dau_dat',
+                        width: 75,
+                        align: 'center',
+                        onHeaderCell: blueHeaderCell(),
+                        onCell: defaultCell,
+                        render: (text) => text ? <span className="text-blue-600 font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                    },
+                    {
+                        title: 'KẾT THÚC',
+                        dataIndex: 'ket_thuc_dat',
+                        key: 'ket_thuc_dat',
+                        width: 75,
+                        align: 'center',
+                        onHeaderCell: redHeaderCell(),
+                        onCell: defaultCell,
+                        render: (text) => text ? <span className="text-red-600 font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                    },
+                ]
+            }
+        ];
+
+        const middleSection = isC1 ? cabinAndDatCols : [
+            {
+                title: 'THỰC HÀNH',
+                onHeaderCell: redHeaderCell(),
+                children: cabinAndDatCols
+            }
+        ];
+
+        const cols = [
+            {
+                title: 'STT',
+                dataIndex: 'index',
+                key: 'index',
+                width: 40,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (_, __, index) => <span className="font-bold">{index + 1}</span>,
+            },
+            {
+                title: isC1 ? 'KHÓA HỌC' : 'KHÓA',
+                dataIndex: 'ten_khoa',
+                key: 'ten_khoa',
+                width: 80,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text) => <span className="font-bold text-black">{text || '-'}</span>
+            },
+            {
+                title: 'SL',
+                dataIndex: 'luu_luong',
+                key: 'luu_luong',
+                width: 45,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text) => <span className="font-semibold text-black">{text || '0'}</span>
+            },
+            {
+                title: 'KHAI GIẢNG',
+                dataIndex: 'ngay_khai_giang',
+                key: 'ngay_khai_giang',
+                width: 80,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text) => text ? <span className="font-bold text-black">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+            },
+            {
+                title: 'LÝ THUYẾT',
+                onHeaderCell: redHeaderCell(),
+                children: [
+                    {
+                        title: 'ONLINE',
+                        onHeaderCell: redHeaderCell(),
+                        children: [
+                            {
+                                title: 'BẮT ĐẦU',
+                                dataIndex: 'bat_dau_ly_thuyet',
+                                key: 'bat_dau_ly_thuyet',
+                                width: 75,
+                                align: 'center',
+                                onHeaderCell: blueHeaderCell(),
+                                onCell: defaultCell,
+                                render: (text) => text ? <span className="text-blue-600 font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                            },
+                            {
+                                title: 'KẾT THÚC',
+                                dataIndex: 'ket_thuc_ly_thuyet',
+                                key: 'ket_thuc_ly_thuyet',
+                                width: 75,
+                                align: 'center',
+                                onHeaderCell: redHeaderCell(),
+                                onCell: defaultCell,
+                                render: (text) => text ? <span className="text-red-600 font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                            },
+                        ]
+                    },
+                    {
+                        title: 'Kiểm tra hết môn',
+                        dataIndex: 'kiem_tra_het_mon',
+                        key: 'kiem_tra_het_mon',
+                        width: 75,
+                        align: 'center',
+                        onHeaderCell: yellowHeaderCell(),
+                        onCell: defaultCell,
+                        render: (text) => text ? <span className="text-black font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+                    }
+                ]
+            },
+            ...middleSection,
+            {
+                title: 'Dự thi tốt nghiệp',
+                dataIndex: 'tot_nghiep',
+                key: 'tot_nghiep',
+                width: 80,
+                align: 'center',
+                onHeaderCell: yellowHeaderCellBlack(),
+                onCell: defaultCell,
+                render: (text) => text ? <span className="text-black font-bold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+            },
+            {
+                title: 'Hạn ký ghép thi tốt nghiệp',
+                dataIndex: 'ghep_tot_nghiep',
+                key: 'ghep_tot_nghiep',
+                width: 110,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text) => {
+                    if (!text) return '-';
+                    const d = dayjs(text);
+                    if (!d.isValid()) return '-';
+                    const dayOfWeek = d.day();
+                    let dayName = '';
+                    if (dayOfWeek === 0) dayName = 'CHỦ NHẬT';
+                    else dayName = `THỨ ${dayOfWeek + 1}`;
+
+                    return (
+                        <div className="text-red-600 font-bold text-center leading-tight text-sm">
+                            <div className="uppercase">HẾT {dayName}</div>
+                            <div>ngày {d.format('DD/MM/YYYY')}</div>
+                        </div>
+                    );
                 }
+            },
+            {
+                title: 'Bế Giảng',
+                dataIndex: 'be_giang',
+                key: 'be_giang',
+                width: 75,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text) => text ? <span className="font-semibold">{dayjs(text).format('DD/MM/YYYY')}</span> : '-'
+            },
+            {
+                title: 'Số ngày còn lại',
+                key: 'soNgayConLai',
+                width: 100,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (_, record) => {
+                    const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
+                    const today = dayjs().startOf('day');
+                    if (!beGiang) return '-';
+                    const diffDays = beGiang.diff(today, 'day');
+                    if (diffDays < 0) {
+                        return <Tag color="error">Đóng khóa</Tag>;
+                    }
+                    return <Tag color="processing">{diffDays} ngày</Tag>;
+                }
+            },
+            {
+                title: 'SL đạt TN',
+                dataIndex: 'so_luong_dat',
+                key: 'so_luong_dat',
+                width: 100,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text, record) => {
+                    const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
+                    const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
+                    if (isClosed && Number(text) > 0) return text;
+                    return '-';
+                }
+            },
+            {
+                title: 'SL trượt TN',
+                dataIndex: 'so_luong_truot',
+                key: 'so_luong_truot',
+                width: 100,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text, record) => {
+                    const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
+                    const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
+                    if (isClosed && Number(text) > 0) return text;
+                    return '-';
+                }
+            },
+            {
+                title: 'Ghi chú',
+                dataIndex: 'ghi_chu',
+                key: 'ghi_chu',
+                width: 150,
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (text) => <span className="text-gray-700">{text || '-'}</span>
+            },
+            {
+                title: 'Thao tác',
+                key: 'action',
+                width: 70,
+                fixed: 'right',
+                align: 'center',
+                onHeaderCell: headerCell(),
+                onCell: defaultCell,
+                render: (_, record) => (
+                    <div className='flex justify-center gap-1'>
+                        <Button
+                            type="text"
+                            icon={<EyeOutlined style={{ color: '#1890ff' }} />}
+                            onClick={() => handleView(record)}
+                            size="small"
+                        />
+                        <Button
+                            type="text"
+                            icon={<EditOutlined style={{ color: canEdit ? '#1890ff' : '#bfbfbf' }} />}
+                            onClick={() => handleEdit(record)}
+                            disabled={!canEdit}
+                            size="small"
+                        />
+                    </div>
+                ),
+            },
+        ];
 
-                return <Tag color="processing">{diffDays} ngày</Tag>;
+        const mainTitle = classType === 'B1'
+            ? 'Hạng B số tự động'
+            : classType === 'B2'
+                ? 'Hạng B số sàn'
+                : 'Hạng C1';
+
+        const mainTitleBg = classType === 'C1'
+            ? '!bg-[#8fbe8f]'
+            : classType === 'B1'
+                ? '!bg-[#FFCC99]'
+                : '!bg-[#ffe3b3]';
+
+        return [
+            {
+                title: mainTitle,
+                onHeaderCell: () => ({
+                    className: `${mainTitleBg} !text-black !font-extrabold text-center border border-black text-lg py-2 uppercase tracking-wide`
+                }),
+                children: cols
             }
-        },
-        // {
-        //     title: 'Lưu lượng',
-        //     dataIndex: 'luu_luong',
-        //     key: 'luu_luong',
-        //     width: 100,
-        //     align: 'center',
-        //     render: (text, record) => {
-        //         const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
-        //         const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
-        //         return isClosed ? '-' : (text || '-');
-        //     }
-        // },
-        {
-            title: 'SL đạt TN',
-            dataIndex: 'so_luong_dat',
-            key: 'so_luong_dat',
-            width: 100,
-            align: 'center',
-            render: (text, record) => {
-                const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
-                const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
-                if (isClosed && Number(text) > 0) return text;
-                return '-';
-            }
-        },
-        {
-            title: 'SL trượt TN',
-            dataIndex: 'so_luong_truot',
-            key: 'so_luong_truot',
-            width: 100,
-            align: 'center',
-            render: (text, record) => {
-                const beGiang = record.be_giang ? dayjs(record.be_giang) : null;
-                const isClosed = beGiang && beGiang.isBefore(dayjs(), 'day');
-                if (isClosed && Number(text) > 0) return text;
-                return '-';
-            }
-        },
-        {
-            title: 'Ghi chú',
-            dataIndex: 'ghi_chu',
-            key: 'ghi_chu',
-            width: 150,
-            align: 'center',
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            width: 100,
-            fixed: 'right',
-            align: 'center',
-            render: (_, record) => (
-                <div className='flex'>
-                    <Button
-                        type="text"
-                        icon={<EyeOutlined style={{ color: '#1890ff' }} />}
-                        onClick={() => handleView(record)}
-                    />
-                    <Button
-                        type="text"
-                        icon={<EditOutlined style={{ color: '#1890ff' }} />}
-                        onClick={() => handleEdit(record)}
-                    />
-                </div>
-            ),
-        },
-    ];
+        ];
+    };
 
     const handleAdd = () => {
         setModalAction('add');
@@ -437,10 +524,6 @@ const TienDoDaoTao = () => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = (key) => {
-        setData(prev => prev.filter(item => item.key !== key));
-        message.success('Xóa bản ghi thành công');
-    };
 
     const handleModalSubmit = (values) => {
         const userName = sessionStorage.getItem("name") || "unknown";
@@ -490,14 +573,16 @@ const TienDoDaoTao = () => {
                 </Title>
                 <div className="flex justify-between items-center">
                     <Text type="secondary">Quản lý và theo dõi tiến độ đào tạo các khóa học của trung tâm</Text>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={handleAdd}
-                        style={{ borderRadius: '6px', height: '40px' }}
-                    >
-                        Thêm tiến độ mới
-                    </Button>
+                    {canEdit && (
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={handleAdd}
+                            style={{ borderRadius: '6px', height: '40px' }}
+                        >
+                            Thêm tiến độ mới
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -588,15 +673,16 @@ const TienDoDaoTao = () => {
             </Card>
 
 
-            <Card bodyStyle={{ padding: 0 }} className="!mb-6" title={<Title level={5} className=" !text-blue-600">Tiến Độ Hạng B1</Title>}>
+            {/* Tiến Độ Hạng B1 */}
+            <div className="mb-8">
                 <Table
-                    className="table-blue-header"
+                    className="custom-schedule-table"
                     dataSource={dataSourceB1}
-                    columns={columns}
+                    columns={getColumns('B1')}
                     bordered
                     size="small"
                     loading={isLoadingTienDoB1}
-                    scroll={{ x: 1800 }}
+                    scroll={{ x: 2200 }}
                     pagination={{
                         current: paramsB1.page,
                         pageSize: paramsB1.limit,
@@ -608,22 +694,21 @@ const TienDoDaoTao = () => {
                                 limit: pageSize,
                             }));
                         },
-                        // showSizeChanger: true,
-                        // showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
-            </Card>
+            </div>
 
-            <Card bodyStyle={{ padding: 0 }} className="!mb-6" title={<Title level={5} className="!text-blue-600">Tiến Độ Hạng B2</Title>}>
+            {/* Tiến Độ Hạng B2 */}
+            <div className="mb-8">
                 <Table
-                    className="table-blue-header"
+                    className="custom-schedule-table"
                     dataSource={dataSourceB2}
-                    columns={columns}
+                    columns={getColumns('B2')}
                     bordered
                     size="small"
                     loading={isLoadingTienDoB2}
-                    scroll={{ x: 1800 }}
+                    scroll={{ x: 2200 }}
                     pagination={{
                         current: paramsB2.page,
                         pageSize: paramsB2.limit,
@@ -635,22 +720,21 @@ const TienDoDaoTao = () => {
                                 limit: pageSize,
                             }));
                         },
-                        // showSizeChanger: true,
-                        // showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
-            </Card>
+            </div>
 
-            <Card bodyStyle={{ padding: 0 }} title={<Title level={5} className="!text-blue-600">Tiến Độ Hạng C1</Title>}>
+            {/* Tiến Độ Hạng C1 */}
+            <div className="mb-8">
                 <Table
-                    className="table-blue-header"
+                    className="custom-schedule-table"
                     dataSource={dataSourceC1}
-                    columns={columns}
+                    columns={getColumns('C1')}
                     bordered
                     size="small"
                     loading={isLoadingTienDoC1}
-                    scroll={{ x: 1800 }}
+                    scroll={{ x: 2200 }}
                     pagination={{
                         current: paramsC1.page,
                         pageSize: paramsC1.limit,
@@ -662,12 +746,10 @@ const TienDoDaoTao = () => {
                                 limit: pageSize,
                             }));
                         },
-                        // showSizeChanger: true,
-                        // showQuickJumper: true,
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
-            </Card>
+            </div>
 
             <ModalTienDoDaoTao
                 visible={isModalOpen}

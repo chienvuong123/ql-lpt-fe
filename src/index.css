@@ -202,3 +202,19 @@ body {
 .hoc-vien-ky-dat-table .ant-table-cell {
   font-size: 12px;
 }
+
+/* Custom Schedule Table with solid black borders */
+.custom-schedule-table .ant-table-container {
+  border: 1px solid #000000 !important;
+}
+
+.custom-schedule-table .ant-table-thead > tr > th,
+.custom-schedule-table .ant-table-tbody > tr > td {
+  border-inline-end: 1px solid #000000 !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
+/* Thicker separator border between header and body */
+.custom-schedule-table .ant-table-thead > tr:last-child > th {
+  border-bottom: 1px solid #000000 !important;
+}
