@@ -136,34 +136,68 @@ export const flattenTreeTemplate = (nodes) => {
 
 export const ALL_PERMISSION_ROUTES = flattenTreeTemplate(PERMISSION_TREE_TEMPLATE);
 
+const getDefaultPermission = (roleId, path, action) => {
+  const rId = Number(roleId);
+  const fullAccessRoles = [1, 2, 5, 6]; // Quản trị hệ thống, Trưởng phòng đào tạo, Tổ thực hành, Tổ công nghệ
+  if (fullAccessRoles.includes(rId)) {
+    return true;
+  }
+
+  // Routes for Tổ lý thuyết and Tổ nghiệp vụ đào tạo
+  const theoryRoutes = [
+    "/tien-do-dao-tao",
+    "/danh-sach-xe",
+    "/quan-ly-uy-quyen",
+    "/dang-ky-xe-giao-vien",
+    "/dashboard-ly-thuyet",
+    "/quan-ly-hoc-vien-ly-thuyet",
+    "/hoc-bu-ly-thuyet",
+  ];
+
+  const isTheoryRoute = theoryRoutes.includes(path);
+
+  if (rId === 4) { // Tổ lý thuyết
+    return isTheoryRoute; // both view and edit are true
+  }
+
+  if (rId === 3) { // Tổ nghiệp vụ đào tạo
+    if (action === "view") {
+      return isTheoryRoute;
+    }
+    return false; // edit is false
+  }
+
+  return false;
+};
+
 export const checkPermission = (path, action) => {
   const permissionsStr = sessionStorage.getItem("permissions");
   const roleId = sessionStorage.getItem("role_id");
 
   // Nếu chưa cấu hình permissions trong sessionStorage (tài khoản cũ / chưa re-login / rỗng)
-  // thì mặc định Admin (role_id === 1) sẽ có toàn quyền.
+  // thì mặc định tự động lấy theo vai trò mặc định
   if (!permissionsStr) {
-    return roleId === "1";
+    return getDefaultPermission(roleId, path, action);
   }
 
   try {
     const permissions = JSON.parse(permissionsStr);
     if (!Array.isArray(permissions) || permissions.length === 0) {
-      return roleId === "1";
+      return getDefaultPermission(roleId, path, action);
     }
 
     const perm = permissions.find((p) => p.route === path);
     // Nếu route này chưa từng được phân quyền trong mảng (các route mới thêm sau này):
-    // Mặc định Admin được xem, các quyền khác bị chặn.
+    // Tự động fallback lấy theo vai trò mặc định
     if (!perm) {
-      return roleId === "1";
+      return getDefaultPermission(roleId, path, action);
     }
 
     if (action === "view") return !!perm.view;
     if (action === "edit") return !!perm.edit;
     return false;
   } catch {
-    return roleId === "1";
+    return getDefaultPermission(roleId, path, action);
   }
 };
 
