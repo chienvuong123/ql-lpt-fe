@@ -69,9 +69,81 @@ const AccountManagement = () => {
   }, [dataAccount]);
 
   const { canEdit } = usePermission();
+  const currentRoleId = sessionStorage.getItem("role_id");
+  const isSystemAdmin = currentRoleId === "1";
+
+  const getDefaultPermissionsForRole = (roleId) => {
+    const fullAccessRoles = [1, 2, 5, 6]; // Quản trị hệ thống, Trưởng phòng đào tạo, Tổ thực hành, Tổ công nghệ
+    const theoryRouteKeys = [
+      "tien-do-dao-tao",
+      "danh-sach-xe",
+      "quan-ly-uy-quyen",
+      "dang-ky-xe-giao-vien",
+      "dashboard-ly-thuyet",
+      "quan-ly-hoc-vien-ly-thuyet",
+      "hoc-bu-ly-thuyet",
+    ];
+
+    const findLeafNodes = (nodes) => {
+      let leafs = [];
+      nodes.forEach((node) => {
+        if (node.children) {
+          leafs = leafs.concat(findLeafNodes(node.children));
+        } else if (node.route) {
+          leafs.push(node);
+        }
+      });
+      return leafs;
+    };
+
+    const allLeafs = findLeafNodes(PERMISSION_TREE_TEMPLATE);
+
+    if (fullAccessRoles.includes(Number(roleId))) {
+      return allLeafs.map((r) => ({
+        route: r.route,
+        view: true,
+        edit: true,
+      }));
+    }
+
+    if (Number(roleId) === 4) {
+      // Tổ lý thuyết: Edit & View for progress, training, theory
+      return allLeafs.map((r) => {
+        const isAllowed = theoryRouteKeys.includes(r.key);
+        return {
+          route: r.route,
+          view: isAllowed,
+          edit: isAllowed,
+        };
+      });
+    }
+
+    if (Number(roleId) === 3) {
+      // Tổ nghiệp vụ đào tạo: View-only for progress, training, theory
+      return allLeafs.map((r) => {
+        const isAllowed = theoryRouteKeys.includes(r.key);
+        return {
+          route: r.route,
+          view: isAllowed,
+          edit: false,
+        };
+      });
+    }
+
+    return [];
+  };
+
+  const handleRoleChange = (roleId) => {
+    const defaultPerms = getDefaultPermissionsForRole(roleId);
+    setPermissions(buildPermissionTree(defaultPerms));
+  };
 
   const handleAddAccount = () => {
     if (!canEdit) return;
+    if (!isSystemAdmin) {
+      message.warning("Chỉ có tài khoản Quản trị hệ thống mới được phép tạo user mới!");
+      return;
+    }
     form.resetFields();
     setEditingId(null);
     setPermissions(buildPermissionTree([]));
@@ -125,6 +197,10 @@ const AccountManagement = () => {
 
   const handleSubmit = async (values) => {
     if (!canEdit) return;
+    if (!editingId && !isSystemAdmin) {
+      message.warning("Chỉ có tài khoản Quản trị hệ thống mới được phép tạo user mới!");
+      return;
+    }
     try {
       const payload = {
         ...values,
@@ -275,16 +351,15 @@ const AccountManagement = () => {
       width: 150,
       align: "center",
       render: (_, record) => {
-        let label = "Nhân viên";
+        const found = ROLE_OPTIONS.find((opt) => opt.value === record.role_id);
+        const label = found ? found.label : "Nhân viên";
         let color = "blue";
-
-        if (record.role_id === 1) {
-          label = "Admin";
-          color = "red";
-        } else if (record.role_id === 2) {
-          label = "Quản lý";
-          color = "orange";
-        }
+        if (record.role_id === 1) color = "red";
+        else if (record.role_id === 2) color = "orange";
+        else if (record.role_id === 3) color = "purple";
+        else if (record.role_id === 4) color = "cyan";
+        else if (record.role_id === 5) color = "geekblue";
+        else if (record.role_id === 6) color = "green";
 
         return <Tag color={color}>{label}</Tag>;
       },
@@ -338,7 +413,7 @@ const AccountManagement = () => {
       </div>
 
       <div className="flex justify-end mb-4">
-        {canEdit && (
+        {canEdit && isSystemAdmin && (
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -436,7 +511,7 @@ const AccountManagement = () => {
                 name="role_id"
                 rules={[{ required: true, message: "Vui lòng chọn quyền" }]}
               >
-                <Select placeholder="Chọn quyền">
+                <Select placeholder="Chọn quyền" onChange={handleRoleChange}>
                   {ROLE_OPTIONS.filter((opt) => opt.value <= 6).map((option) => (
                     <Select.Option key={option.value} value={option.value}>
                       {option.label}

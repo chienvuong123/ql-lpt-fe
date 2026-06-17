@@ -75,8 +75,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/login-ly-thuyet" element={<DangNhapLopLyThuyet />} />
             <Route path="/tim-hoc-vien" element={<LayoutApp />}>
-              <Route index element={<SearchStudents />} />
-              <Route path="student/:id" element={<StudentDetail />} />
+              <Route index element={<GuardedRoute path="/student-report" element={<SearchStudents />} />} />
+              <Route path="student/:id" element={<GuardedRoute path="/student-report" element={<StudentDetail />} />} />
             </Route>
             {/* roter mới khuyên dùng */}
             <Route path="/" element={<LayoutTest />}>
@@ -372,7 +372,12 @@ function App() {
                 element={<GuardedRoute path="/danh-sach-ky-nhan-ho-so-gplx" element={<DSKyNhanHoSoVaGPLX />} />}
               />
             </Route>
-            <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />
+            <Route
+              path="kiem-tra-hoc-vien"
+              element={
+                <GuardedRoute path="/kiem-tra-hoc-vien" element={<KiemTraPublic />} />
+              }
+            />
             <Route
               path="lich-cabin"
               element={
