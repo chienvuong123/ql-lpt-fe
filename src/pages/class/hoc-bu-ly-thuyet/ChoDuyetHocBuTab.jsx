@@ -10,6 +10,7 @@ import StudentMakeUpDetailDrawer from "../../make-up-lessons/StudentMakeUpDetail
 import { useHocBuLyThuyetActions } from "./hooks/useHocBuLyThuyetActions";
 import { getChoDuyetLyThuyetColumns } from "./HocBuLyThuyetColumns";
 import { useTableHeight } from "../../../components/hooks/useTableHeight";
+import { usePermission } from "../../../util/permission";
 
 const DEFAULT_FILTERS = {
   ma_khoa: null,
@@ -17,6 +18,7 @@ const DEFAULT_FILTERS = {
 };
 
 const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+  const { canEdit } = usePermission();
   const [tableRef, tableHeight] = useTableHeight();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -160,6 +162,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
     onOpenDetail: handleOpenDetail,
     handleDuyet,
     handleHuyDuyet,
+    canEdit,
   });
 
   const columns = [
@@ -168,7 +171,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         <Checkbox
           checked={isAllSelected}
           indeterminate={isIndeterminate}
-          disabled={isFetchingStudents || isSelectingAllPages}
+          disabled={isFetchingStudents || isSelectingAllPages || !canEdit}
           onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
         />
       ),
@@ -181,7 +184,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         return (
           <Checkbox
             checked={selectedRowKeys.includes(record.id || record.ma_dk)}
-            disabled={!canCheck || isSelectingAllPages}
+            disabled={!canCheck || isSelectingAllPages || !canEdit}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
           />
@@ -212,7 +215,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
           type="primary"
           className="!bg-green-600 hover:!bg-green-700 border-none"
           icon={<CheckCircleOutlined />}
-          disabled={selectedRowKeys.length === 0}
+          disabled={selectedRowKeys.length === 0 || !canEdit}
           onClick={onBulkDuyet}
         >
           Duyệt ({selectedRowKeys.length})

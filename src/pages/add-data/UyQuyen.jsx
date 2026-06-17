@@ -33,10 +33,12 @@ import { getDanhSachXe } from "../../apis/xe";
 import { normalizeApiList } from "../../util/helper";
 import ModalFormUyQuyen from "./ModalFormUyQuyen";
 import dayjs from "dayjs";
+import { usePermission } from "../../util/permission";
 
 const { Title, Text } = Typography;
 
 const UyQuyen = () => {
+    const { canEdit } = usePermission();
     const queryClient = useQueryClient();
     const fileInputRef = useRef(null);
     const searchInputRef = useRef(null);
@@ -275,9 +277,10 @@ const UyQuyen = () => {
                 <div className="flex justify-center">
                     <Button
                         type="text"
-                        icon={<EditOutlined style={{ color: '#1890ff' }} />}
+                        icon={<EditOutlined style={{ color: canEdit ? '#1890ff' : '#bfbfbf' }} />}
                         onClick={() => handleEditClick(record)}
                         style={{ padding: 0 }}
+                        disabled={!canEdit}
                     />
                     <Popconfirm
                         title="Bạn có chắc chắn muốn xóa ủy quyền này?"
@@ -292,12 +295,14 @@ const UyQuyen = () => {
                         okText="Có"
                         cancelText="Không"
                         okButtonProps={{ loading: isDeleting }}
+                        disabled={!canEdit}
                     >
                         <Button
                             type="text"
                             danger
-                            icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                            icon={<DeleteOutlined style={{ color: canEdit ? '#ff4d4f' : '#bfbfbf' }} />}
                             style={{ padding: 0 }}
+                            disabled={!canEdit}
                         />
                     </Popconfirm>
                 </div>
@@ -313,35 +318,37 @@ const UyQuyen = () => {
                 </Title>
                 <div className="flex justify-between items-center">
                     <Text type="secondary">Quản lý và theo dõi thông tin ủy quyền xe của trung tâm</Text>
-                    <div>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            style={{ display: 'none' }}
-                            accept=".xlsx, .xls"
-                            onChange={handleFileChange}
-                        />
-                        <Button
-                            type="default"
-                            icon={<UploadOutlined />}
-                            onClick={triggerFileInput}
-                            loading={uploading}
-                            className="bg-white text-gray-600 !h-8 !mr-3"
-                        >
-                            {uploading ? `Importing (${uploadPercent}%)` : "Import Excel"}
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => {
-                                setSelectedRecord(null);
-                                setIsModalOpen(true);
-                            }}
-                            className="!bg-[#3366cc] !text-white !h-8"
-                        >
-                            Thêm ủy quyền mới
-                        </Button>
-                    </div>
+                    {canEdit && (
+                        <div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                accept=".xlsx, .xls"
+                                onChange={handleFileChange}
+                            />
+                            <Button
+                                type="default"
+                                icon={<UploadOutlined />}
+                                onClick={triggerFileInput}
+                                loading={uploading}
+                                className="bg-white text-gray-600 !h-8 !mr-3"
+                            >
+                                {uploading ? `Importing (${uploadPercent}%)` : "Import Excel"}
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => {
+                                    setSelectedRecord(null);
+                                    setIsModalOpen(true);
+                                }}
+                                className="!bg-[#3366cc] !text-white !h-8"
+                            >
+                                Thêm ủy quyền mới
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
             <Card className="!mb-4">

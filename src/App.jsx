@@ -102,10 +102,13 @@ function App() {
               />
 
               {/* Lý thuyết - giáo viên được phép */}
-              <Route path="/thanh-vien-lop-hoc" element={<Member />} />
+              <Route
+                path="/thanh-vien-lop-hoc"
+                element={<GuardedRoute path="/thanh-vien-lop-hoc" element={<Member />} />}
+              />
               <Route
                 path="/quan-ly-hoc-vien-ly-thuyet"
-                element={<QuanLyHocVienLyThuyet />}
+                element={<GuardedRoute path="/quan-ly-hoc-vien-ly-thuyet" element={<QuanLyHocVienLyThuyet />} />}
               />
 
               {/* Các route còn lại cần guard */}
@@ -332,26 +335,41 @@ function App() {
                   />
                 }
               />
-              <Route path="dong-bo-du-lieu-he-thong" element={<ThemDuLieuVaoHeThong />} />
-              <Route path="tien-do-dao-tao" element={<TienDoDaoTao />} />
-              <Route path="danh-sach-xe" element={<Xe />} />
-              <Route path="dang-ky-xe-giao-vien" element={<DangKyXeGiaoVien />} />
-              <Route path="quan-ly-uy-quyen" element={<UyQuyen />} />
+              <Route
+                path="dong-bo-du-lieu-he-thong"
+                element={<GuardedRoute path="/dong-bo-du-lieu-he-thong" element={<ThemDuLieuVaoHeThong />} />}
+              />
+              <Route
+                path="tien-do-dao-tao"
+                element={<GuardedRoute path="/tien-do-dao-tao" element={<TienDoDaoTao />} />}
+              />
+              <Route
+                path="danh-sach-xe"
+                element={<GuardedRoute path="/danh-sach-xe" element={<Xe />} />}
+              />
+              <Route
+                path="dang-ky-xe-giao-vien"
+                element={<GuardedRoute path="/dang-ky-xe-giao-vien" element={<DangKyXeGiaoVien />} />}
+              />
+              <Route
+                path="quan-ly-uy-quyen"
+                element={<GuardedRoute path="/quan-ly-uy-quyen" element={<UyQuyen />} />}
+              />
               <Route
                 path="kiem-tra-hoc-vien-sau-tot-nghiep"
-                element={<KiemTraDuLieuTotNghiep />}
+                element={<GuardedRoute path="/kiem-tra-hoc-vien-sau-tot-nghiep" element={<KiemTraDuLieuTotNghiep />} />}
               />
               <Route
                 path="dashboard-cabin"
-                element={<DashboardCabin />}
+                element={<GuardedRoute path="/dashboard-cabin" element={<DashboardCabin />} />}
               />
               <Route
                 path="cai-dat-he-thong"
-                element={<CaiDatHeThong />}
+                element={<GuardedRoute path="/cai-dat-he-thong" element={<CaiDatHeThong />} />}
               />
               <Route
                 path="danh-sach-ky-nhan-ho-so-gplx"
-                element={<DSKyNhanHoSoVaGPLX />}
+                element={<GuardedRoute path="/danh-sach-ky-nhan-ho-so-gplx" element={<DSKyNhanHoSoVaGPLX />} />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />

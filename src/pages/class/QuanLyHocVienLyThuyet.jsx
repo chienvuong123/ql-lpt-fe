@@ -27,6 +27,7 @@ import {
 } from "../../apis/apiHocVienLopLyThuyet";
 import { ketQuaKiemTra, optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { toTitleCase } from "../../util/helper";
+import { usePermission } from "../../util/permission";
 import StudentDetailModal from "./StudentDetailModal";
 import TheoryStudentDetailModal from "./student-detail/TheoryStudentDetailModal";
 import { useTableHeight } from "../../components/hooks/useTableHeight";
@@ -183,12 +184,12 @@ const QualifiedCell = React.memo(({ isQualified }) => (
   </div>
 ));
 
-const ExamCell = React.memo(({ checked, isSaving, onToggle }) => (
+const ExamCell = React.memo(({ checked, isSaving, disabled, onToggle }) => (
   <div className="flex items-center justify-center">
     <Spin spinning={isSaving} size="small">
       <Checkbox
         checked={checked}
-        disabled={isSaving}
+        disabled={isSaving || disabled}
         onClick={(e) => e.stopPropagation()}
         onChange={(e) => onToggle(e.target.checked)}
       />
@@ -210,6 +211,7 @@ const NoteCell = React.memo(({ maDk, ghiChu, disabled, onBlur }) => (
 
 
 const QuanLyHocVienLyThuyet = () => {
+  const { canEdit } = usePermission();
   const [tableRef, tableHeight] = useTableHeight();
   const [selectedClassIid, setSelectedClassIid] = useState("");
   const [savingStudentCode, setSavingStudentCode] = useState("");
@@ -758,7 +760,7 @@ const QuanLyHocVienLyThuyet = () => {
         <Checkbox
           checked={isAllSelected}
           indeterminate={isIndeterminate}
-          disabled={isSubmittingAll || isLoadingHocVien || isSelectingAllPages}
+          disabled={isSubmittingAll || isLoadingHocVien || isSelectingAllPages || !canEdit}
           onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
         />
       ),
@@ -769,7 +771,7 @@ const QuanLyHocVienLyThuyet = () => {
       render: (_, record) => (
         <Checkbox
           checked={selectedRowKeys.includes(getRowKey(record))}
-          disabled={isSubmittingAll || isSelectingAllPages}
+          disabled={isSubmittingAll || isSelectingAllPages || !canEdit}
           onClick={(e) => e.stopPropagation()}
           onChange={(e) => handleToggleSelectRecord(record, e.target.checked)}
         />
@@ -894,6 +896,7 @@ const QuanLyHocVienLyThuyet = () => {
           <ExamCell
             checked={checked}
             isSaving={isSaving}
+            disabled={!canEdit}
             onToggle={(val) => handleToggleCheckbox(record, "loai_het_mon", val)}
           />
         );
@@ -948,7 +951,7 @@ const QuanLyHocVienLyThuyet = () => {
           <NoteCell
             maDk={maDk}
             ghiChu={state.ghiChu}
-            disabled={savingStudentCode === maDk}
+            disabled={savingStudentCode === maDk || !canEdit}
             onBlur={(val) => handleBlurGhiChu(record, val)}
           />
         );
@@ -964,6 +967,7 @@ const QuanLyHocVienLyThuyet = () => {
     selectedRowKeys,
     savingStudentCode,
     selectedClass,
+    canEdit,
   ]);
 
 
@@ -1101,7 +1105,7 @@ const QuanLyHocVienLyThuyet = () => {
             <Button
               type="primary"
               loading={isSubmittingAll}
-              disabled={selectedRowKeys.length === 0 || isLoadingHocVien}
+              disabled={selectedRowKeys.length === 0 || isLoadingHocVien || !canEdit}
               onClick={handleConfirmSubmitChonTatCa}
             >
               Duyệt học viên đã chọn

@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getDanhSachHocVienHocBuChoDuyetThucHanh, updateHocBuStatus } from "../../../apis/apiHocbu";
 import StudentMakeUpDetailDrawer from "../../make-up-lessons/StudentMakeUpDetailDrawer";
 import dayjs from "dayjs";
+import { usePermission } from "../../../util/permission";
 import HocVienInfo from "../../../components/HocVienInfor";
 import { renderTrangThaiHocBu, renderTrangThaiThucHanh } from "../../../constants/hocBuConstants";
 import { useHocBuActions } from "../../../components/hooks/useHocBuActions";
@@ -34,6 +35,7 @@ const normalizeApiList = (payload) => {
 };
 
 const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
+  const { canEdit } = usePermission();
   const [tableRef, tableHeight] = useTableHeight();
   const [ma_khoa, setMaKhoa] = useState(null);
   const [searchText, setSearchText] = useState("");
@@ -203,7 +205,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
         <Checkbox
           checked={isAllSelected}
           indeterminate={isIndeterminate}
-          disabled={isFetchingStudents || isSelectingAllPages}
+          disabled={isFetchingStudents || isSelectingAllPages || !canEdit}
           onChange={(e) => handleToggleSelectAllPages(e.target.checked)}
         />
       ),
@@ -213,7 +215,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
       fixed: "left",
       render: (_, record) => {
         const st = record?.trang_thai ?? record?.student?.trang_thai;
-        const canCheck = String(st) === "4";
+        const canCheck = String(st) === "4" && canEdit;
         return (
           <Checkbox
             checked={selectedRowKeys.includes(record.id || record.ma_dk)}
@@ -318,12 +320,14 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
                 onConfirm={() => handleDuyet(record.id, record, "cabin")}
                 okText="Có"
                 cancelText="Không"
+                disabled={!canEdit}
               >
                 <Button
                   type="primary"
                   className="!bg-green-600 hover:!bg-green-700 border-none"
                   icon={<CheckOutlined />}
                   size="small"
+                  disabled={!canEdit}
                 />
               </Popconfirm>
             )}
@@ -334,12 +338,14 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
                 onConfirm={() => handleHuyDuyet(record.id, record)}
                 okText="Có"
                 cancelText="Không"
+                disabled={!canEdit}
               >
                 <Button
                   type="primary"
                   className="!bg-red-500 hover:!bg-red-600 border-none"
                   icon={<CloseOutlined />}
                   size="small"
+                  disabled={!canEdit}
                 />
               </Popconfirm>
             )}
@@ -425,7 +431,7 @@ const ChoDuyetHocBuTab = ({ isLoadingKhoaHoc, courseOptions }) => {
           type="primary"
           className="!bg-green-600 hover:!bg-green-700 border-none"
           icon={<CheckCircleOutlined />}
-          disabled={selectedRowKeys.length === 0}
+          disabled={selectedRowKeys.length === 0 || !canEdit}
           onClick={onBulkDuyet}
         >
           Duyệt ({selectedRowKeys.length})

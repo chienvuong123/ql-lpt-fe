@@ -20,6 +20,7 @@ import { cabinNote, danhSachHocVienCaBin } from "../../apis/apiCabinLocal";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { addHocBu } from "../../apis/apiHocbu";
 import { useTableHeight } from "../../components/hooks/useTableHeight";
+import { usePermission } from "../../util/permission";
 
 const { Title } = Typography;
 
@@ -51,6 +52,7 @@ const secondsToHourMinute = (seconds) => {
 };
 
 const DanhSachChiaCabin = () => {
+  const { canEdit } = usePermission();
   const [tableRef, tableHeight] = useTableHeight();
   const queryClient = useQueryClient();
   const [selectedCourseIid, setSelectedCourseIid] = useState();
@@ -411,7 +413,7 @@ const DanhSachChiaCabin = () => {
               <Input
                 key={`${studentKey}-${noteValue}`}
                 defaultValue={noteValue}
-                disabled={isSaving}
+                disabled={isSaving || !canEdit}
                 onBlur={(e) => handleBlurNote(record, e.target.value)}
               />
             </Spin>
@@ -434,6 +436,7 @@ const DanhSachChiaCabin = () => {
               setHocBuModalVisible(true);
             }}
             icon={<RetweetOutlined />}
+            disabled={!canEdit}
           />
         ),
       },
@@ -447,6 +450,7 @@ const DanhSachChiaCabin = () => {
       searchParams.limit,
       searchParams.page,
       selectedCourseName,
+      canEdit,
     ],
   );
 

@@ -26,10 +26,12 @@ import dayjs from "dayjs";
 import HocVienInfo from "../../components/HocVienInfor";
 import { normalizeApiList } from "../../util/helper";
 import { useTableHeight } from "../../components/hooks/useTableHeight";
+import { usePermission } from "../../util/permission";
 
 const { Title, Text } = Typography;
 
 const DangKyXeGiaoVien = () => {
+    const { canEdit } = usePermission();
     const [tableRef, tableHeight] = useTableHeight();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -222,8 +224,9 @@ const DangKyXeGiaoVien = () => {
             render: (_, record) => (
                 <Button
                     type="text"
-                    icon={<EditOutlined style={{ color: '#1890ff' }} />}
+                    icon={<EditOutlined style={{ color: canEdit ? '#1890ff' : '#bfbfbf' }} />}
                     onClick={() => handleEditClick(record)}
+                    disabled={!canEdit}
                 />
             ),
         },

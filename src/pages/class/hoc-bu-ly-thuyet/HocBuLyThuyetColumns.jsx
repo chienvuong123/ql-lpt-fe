@@ -97,7 +97,7 @@ export const getHocBuLyThuyetColumns = ({ pagination, onOpenDetail }) => [
   },
 ];
 
-export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuyet, handleHuyDuyet }) => [
+export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuyet, handleHuyDuyet, canEdit }) => [
   {
     title: "#",
     key: "stt",
@@ -190,12 +190,14 @@ export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuy
               onConfirm={() => handleDuyet(record.id, record)}
               okText="Có"
               cancelText="Không"
+              disabled={!canEdit}
             >
               <Button
                 type="primary"
                 className="!bg-green-600 hover:!bg-green-700 border-none"
                 icon={<CheckOutlined />}
                 size="small"
+                disabled={!canEdit}
               />
             </Popconfirm>
           )}
@@ -206,12 +208,14 @@ export const getChoDuyetLyThuyetColumns = ({ pagination, onOpenDetail, handleDuy
               onConfirm={() => handleHuyDuyet(record.id, record)}
               okText="Có"
               cancelText="Không"
+              disabled={!canEdit}
             >
               <Button
                 type="primary"
                 className="!bg-red-500 hover:!bg-red-600 border-none"
                 icon={<CloseOutlined />}
                 size="small"
+                disabled={!canEdit}
               />
             </Popconfirm>
           )}

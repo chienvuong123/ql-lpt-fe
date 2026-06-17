@@ -34,6 +34,7 @@ const ScheduleHeader = ({
   loadingSync,
   uniqueKhoaHoc,
   onConfigBasedAssign,
+  canEdit,
 }) => {
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -60,6 +61,7 @@ const ScheduleHeader = ({
               icon={<BgColorsOutlined />}
               className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
               onClick={() => onConfigBasedAssign([1, 2, 3, 4, 5])}
+              disabled={!canEdit}
             >
               Tự động chia theo cấu hình
             </Button>
@@ -68,11 +70,12 @@ const ScheduleHeader = ({
               icon={<SettingOutlined />}
               onClick={onOpenLimitModal}
               title="Giới hạn cabin"
+              disabled={!canEdit}
             >
               Giới hạn cabin
             </Button>
 
-            <Button icon={<SettingOutlined />} onClick={onOpenSettings}>
+            <Button icon={<SettingOutlined />} onClick={onOpenSettings} disabled={!canEdit}>
               Cài đặt
             </Button>
 
@@ -82,6 +85,7 @@ const ScheduleHeader = ({
               loading={loadingSync}
               type="primary"
               className="bg-blue-600 hover:bg-blue-700"
+              disabled={!canEdit}
             >
               Lưu lịch
             </Button>
@@ -91,6 +95,7 @@ const ScheduleHeader = ({
               danger
               title="Xóa hết tuần này"
               className="hover:!bg-red-50"
+              disabled={!canEdit}
             >
               Xóa lịch đã chia
             </Button>
@@ -155,6 +160,7 @@ const ScheduleHeader = ({
                 type="dashed" 
                 onClick={() => onConfigBasedAssign([filterCabin])}
                 className="text-blue-600 border-blue-200 hover:text-blue-700 hover:border-blue-400"
+                disabled={!canEdit}
               >
                 Chia theo cấu hình Cabin
               </Button>

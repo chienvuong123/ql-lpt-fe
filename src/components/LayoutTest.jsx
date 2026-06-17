@@ -256,40 +256,12 @@ const LayoutTest = () => {
     },
   ];
 
-  const storedRoleId = sessionStorage.getItem("role_id");
-  const role_id = storedRoleId ? parseInt(storedRoleId) : null;
-
-  // Map role_id to allowed keys
-  const roleAccessMap = {
-    1: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Admin
-    2: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Trưởng phòng
-    3: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao"], // Tổ nghiệp vụ
-    4: ["dashboard", "class", "tien-do-dao-tao", "dao-tao",], // Tổ lý thuyết
-    5: ["dashboard", "cabin", "reports", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Tổ thực hành
-    6: ["dashboard", "class", "cabin", "reports", "sync", "them-du-lieu", "kiem-tra", "hoc-bu", "tai-khoan", "cai-dat-he-thong", "tien-do-dao-tao", "dao-tao", "danh-sach-ky-nhan-ho-so-gplx"], // Tổ công nghệ
-  };
-
-  // Nếu không có role_id nhưng có token (có thể là tài khoản cũ), mặc định cho xem dashboard
-  // Hoặc nếu là role 1, 2, 3, 6 thì xem tất cả
-  let allowedKeys = ["dashboard"];
-  if (role_id && roleAccessMap[role_id]) {
-    allowedKeys = roleAccessMap[role_id];
-  } else if (token && !role_id) {
-    // Fallback cho tài khoản cũ hoặc khi chưa có role_id: cho xem tất cả để tránh bị chặn
-    allowedKeys = roleAccessMap[1];
-  }
-
-  const filterMenuItemsByPermissions = (items, isTopLevel = true) => {
+  const filterMenuItemsByPermissions = (items) => {
     return items
       .map((item) => {
-        // Only check roleAccessMap (allowedKeys) on top-level items
-        if (isTopLevel && !allowedKeys.includes(item.key)) {
-          return null;
-        }
-
         // If it has children, recursively filter them
         if (item.children) {
-          const filteredChildren = filterMenuItemsByPermissions(item.children, false);
+          const filteredChildren = filterMenuItemsByPermissions(item.children);
           if (filteredChildren.length === 0) return null;
           return { ...item, children: filteredChildren };
         }
@@ -306,7 +278,7 @@ const LayoutTest = () => {
       .filter(Boolean);
   };
 
-  const menuItems = filterMenuItemsByPermissions(allMenuItems, true);
+  const menuItems = filterMenuItemsByPermissions(allMenuItems);
 
   return (
     <Layout style={{ minHeight: "100vh" }}>

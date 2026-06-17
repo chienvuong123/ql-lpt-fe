@@ -12,6 +12,7 @@ export const CabinNoteModal = ({
   isAddMode,   // True if triggered by '+' button
   onCancel,
   onSave,      // Callback: (newNoteContent) => void
+  readOnly,    // True if user has no edit permissions
 }) => {
   const [localNote, setLocalNote] = useState("");
 
@@ -36,9 +37,9 @@ export const CabinNoteModal = ({
       title={isAddMode ? "Thêm ghi chú mới" : (slotKey ? "Ghi chú Cabin" : "Xem/Sửa ghi chú")}
       open={visible}
       onCancel={onCancel}
-      onOk={handleOk}
-      okText="Lưu"
-      cancelText="Hủy"
+      onOk={readOnly ? onCancel : handleOk}
+      okText={readOnly ? "Đóng" : "Lưu"}
+      cancelButtonProps={readOnly ? { style: { display: "none" } } : {}}
       destroyOnClose
     >
       <div className="py-2">
@@ -56,7 +57,8 @@ export const CabinNoteModal = ({
           value={localNote}
           onChange={(e) => setLocalNote(e.target.value)}
           placeholder={isAddMode ? "Nhập nội dung mới tại đây..." : "Nội dung ghi chú..."}
-          autoFocus
+          autoFocus={!readOnly}
+          disabled={readOnly}
         />
       </div>
     </Modal>

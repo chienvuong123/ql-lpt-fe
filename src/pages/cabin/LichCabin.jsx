@@ -26,8 +26,10 @@ import CabinTable from "./chia-cabin/CabinTable";
 import { exportCabinExcel } from "./chia-cabin/exportCabinExcel";
 import NoteModal from "./chia-cabin/NoteModal";
 import { updateGhiChuLichCabin } from "../../apis/cabinApi";
+import { usePermission } from "../../util/permission";
 
 const LichCabin = () => {
+  const { canEdit } = usePermission();
   const { data: studentsData, isFetching: isFetchingStudents } = useQuery({
     queryKey: ["cabinStudents"],
     queryFn: () => getDanhSachHocVienChiaCabin(),
@@ -380,6 +382,7 @@ const LichCabin = () => {
     onAddNote,
     teacherOnlineStatus,
     activeSlotKey,
+    canEdit,
   }), [
 
     fullSchedule,
@@ -406,6 +409,7 @@ const LichCabin = () => {
     onAddNote,
     teacherOnlineStatus,
     activeSlotKey,
+    canEdit,
   ]);
 
 
@@ -442,6 +446,7 @@ const LichCabin = () => {
         loadingSync={loadingSync}
         uniqueKhoaHoc={uniqueKhoaHoc}
         onConfigBasedAssign={doConfigBasedAutoAssign}
+        canEdit={canEdit}
       />
 
       <Row gutter={[12, 12]} className="!m-3 flex-1">
@@ -485,6 +490,7 @@ const LichCabin = () => {
               handleDragEnd={handleDragEnd}
               setStudentDetail={setStudentDetail}
               formatMinutesToHM={formatMinutesToHM}
+              canEdit={canEdit}
             />
           </div>
         </Col>
@@ -540,6 +546,7 @@ const LichCabin = () => {
             message.error("Lỗi khi lưu ghi chú");
           }
         }}
+        readOnly={!canEdit}
       />
     </div>
   );

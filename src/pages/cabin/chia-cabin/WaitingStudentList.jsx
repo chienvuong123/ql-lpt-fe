@@ -33,6 +33,7 @@ const WaitingStudentList = ({
   handleDragEnd,
   setStudentDetail,
   formatMinutesToHM,
+  canEdit,
 }) => {
   const [syncLoading, setSyncLoading] = useState(false);
 
@@ -58,6 +59,7 @@ const WaitingStudentList = ({
   const handleDrop = (e) => {
     e.preventDefault();
     setListDropOver(false);
+    if (!canEdit) return;
     if (!dragState?.source) return;
     const { maDks, source } = dragState;
     if (!maDks?.length) return;
@@ -110,6 +112,7 @@ const WaitingStudentList = ({
           onClick={handleSyncClick}
           loading={syncLoading}
           className="bg-blue-600 hover:bg-blue-700 !text-[11px] h-6 px-2 rounded"
+          disabled={!canEdit}
         >
           Đồng bộ
         </Button>
@@ -197,14 +200,20 @@ const WaitingStudentList = ({
             return (
               <div
                 key={student.ma_dk}
-                draggable
-                onDragStart={(e) => handleDragStartFromList(e, student.ma_dk)}
+                draggable={canEdit}
+                onDragStart={(e) => {
+                  if (!canEdit) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleDragStartFromList(e, student.ma_dk);
+                }}
                 onDragEnd={handleDragEnd}
                 onClick={() => setStudentDetail(student)}
                 className={[
                   "px-2 py-1.5 rounded-xl border bg-white",
                   "hover:border-blue-400 hover:shadow-md",
-                  "transition-all cursor-grab active:cursor-grabbing",
+                  canEdit ? "transition-all cursor-grab active:cursor-grabbing" : "cursor-default",
                   hasData ? "border-blue-200" : "border-gray-200",
                   isDraggingThis ? "opacity-40" : "",
                 ]

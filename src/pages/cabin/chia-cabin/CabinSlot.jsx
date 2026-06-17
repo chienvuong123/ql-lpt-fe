@@ -76,6 +76,7 @@ const CabinSlot = React.memo(({
   onAddNote,
   teacherOnlineStatus,
   activeSlotKey,
+  canEdit,
 }) => {
   const [isLocalDragOver, setIsLocalDragOver] = useState(false);
   const slotKey = `${dateIndex}-${sessionNum}-${cabinNum}`;
@@ -120,12 +121,13 @@ const CabinSlot = React.memo(({
   const draggingMaDks = dragState?.maDks ?? [];
 
   const willSwap =
+    canEdit &&
     !isLocked &&
     !isEmpty &&
     draggingMaDks.length > 0 &&
     canSwap(maDkList, draggingMaDks, cabinNum);
 
-  const dropAllowed = !isLocked && canDropIntoCabin(maDkList, draggingMaDks, cabinNum, slotKey);
+  const dropAllowed = canEdit && !isLocked && canDropIntoCabin(maDkList, draggingMaDks, cabinNum, slotKey);
 
   // ── Màu theo khóa học ────────────────────────────────────────────────────
   const dominantKhoa = students[0]?.khoa_hoc ?? null;
@@ -155,12 +157,16 @@ const CabinSlot = React.memo(({
       <div className="flex flex-col gap-1.5 pt-1">
         {hasMultiple && (
           <div
-            draggable
-            onDragStart={(e) =>
-              handleDragStartAll(e, maDkList, dateIndex, sessionNum, cabinNum)
-            }
+            draggable={canEdit}
+            onDragStart={(e) => {
+              if (!canEdit) {
+                e.preventDefault();
+                return;
+              }
+              handleDragStartAll(e, maDkList, dateIndex, sessionNum, cabinNum);
+            }}
             onDragEnd={handleDragEnd}
-            className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 border border-blue-200 cursor-grab active:cursor-grabbing text-xs text-blue-700 font-medium select-none"
+            className={`flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 border border-blue-200 text-xs text-blue-700 font-medium select-none ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
           >
             <DragOutlined />
             Kéo toàn bộ {students.length} học viên
@@ -176,9 +182,9 @@ const CabinSlot = React.memo(({
               setStudentDetail(s);
               setOpenPopover(null);
             }}
-            onRemove={() =>
+            onRemove={canEdit ? () =>
               handleRemoveStudent(dateIndex, sessionNum, cabinNum, student.ma_dk)
-            }
+            : undefined}
           />
         ))}
       </div>
@@ -250,6 +256,7 @@ const CabinSlot = React.memo(({
           )}
           <button
             onClick={(e) => {
+              if (!canEdit) return;
               e.preventDefault();
               e.stopPropagation();
               toggleLock(slotKey);
@@ -259,6 +266,8 @@ const CabinSlot = React.memo(({
               : "hover:bg-gray-200 text-gray-400"
               }`}
             title={isLocked ? "Mở khoá Cabin" : "Khoá Cabin"}
+            disabled={!canEdit}
+            style={{ opacity: canEdit ? 1 : 0.5, cursor: canEdit ? "pointer" : "not-allowed" }}
           >
             {isLocked ? (
               <LockOutlined style={{ fontSize: 10 }} />
@@ -268,7 +277,7 @@ const CabinSlot = React.memo(({
           </button>
 
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {!currentNote && (
+            {!currentNote && canEdit && (
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -291,7 +300,7 @@ const CabinSlot = React.memo(({
                 onAddNote(slotKey, currentNote, null, false); // false = Edit Mode
               }}
               className="p-0.5 rounded text-amber-500 hover:bg-amber-50 ml-0.5"
-              title="Xem ghi chú"
+              title={canEdit ? "Sửa ghi chú" : "Xem ghi chú"}
             >
               <FileTextOutlined style={{ fontSize: 11 }} />
             </button>
@@ -357,8 +366,12 @@ const CabinSlot = React.memo(({
             return (
               <div
                 key={s.ma_dk}
-                draggable
+                draggable={canEdit}
                 onDragStart={(ev) => {
+                  if (!canEdit) {
+                    ev.preventDefault();
+                    return;
+                  }
                   ev.stopPropagation();
                   handleDragStartOne(
                     ev,
@@ -370,7 +383,8 @@ const CabinSlot = React.memo(({
                 }}
                 onDragEnd={handleDragEnd}
                 className={[
-                  "text-[11px] font-medium truncate cursor-grab active:cursor-grabbing leading-4 px-1 rounded flex justify-between items-center",
+                  "text-[11px] font-medium truncate leading-4 px-1 rounded flex justify-between items-center",
+                  canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default",
                   dragState?.maDks?.includes(s.ma_dk) ? "opacity-40" : "",
                   c ? `${c.bg} ${c.text}` : "text-gray-800",
                 ]
@@ -418,9 +432,13 @@ const CabinSlot = React.memo(({
           )}
         </div>
       ) : (
-        <div
-          draggable
+         <div
+          draggable={canEdit}
           onDragStart={(e) => {
+            if (!canEdit) {
+              e.preventDefault();
+              return;
+            }
             e.stopPropagation();
             handleDragStartOne(
               e,
@@ -431,7 +449,7 @@ const CabinSlot = React.memo(({
             );
           }}
           onDragEnd={handleDragEnd}
-          className={`relative flex justify-between items-center gap-1 cursor-grab active:cursor-grabbing ${dragState?.maDks?.includes(students[0].ma_dk) ? "opacity-40" : ""
+          className={`relative flex justify-between items-center gap-1 ${canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${dragState?.maDks?.includes(students[0].ma_dk) ? "opacity-40" : ""
             }`}
         >
           <div
@@ -471,21 +489,23 @@ const CabinSlot = React.memo(({
               {willSwap ? "⇄" : dropAllowed ? "+" : "✕"}
             </span>
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemoveStudent(
-                dateIndex,
-                sessionNum,
-                cabinNum,
-                students[0].ma_dk,
-              );
-            }}
-            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity flex-shrink-0"
-            title="Xóa"
-          >
-            <DeleteOutlined style={{ fontSize: 11, color: "red" }} />
-          </button>
+          {canEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveStudent(
+                  dateIndex,
+                  sessionNum,
+                  cabinNum,
+                  students[0].ma_dk,
+                );
+              }}
+              className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity flex-shrink-0"
+              title="Xóa"
+            >
+              <DeleteOutlined style={{ fontSize: 11, color: "red" }} />
+            </button>
+          )}
         </div>
       )}
     </div>
