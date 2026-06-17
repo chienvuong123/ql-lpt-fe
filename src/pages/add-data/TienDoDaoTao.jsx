@@ -201,9 +201,16 @@ const TienDoDaoTao = () => {
             className: `!bg-[#ffff00] !text-black !font-extrabold text-center border border-black text-sm py-2 px-1 ${className}`
         });
 
-        const defaultCell = () => ({
-            className: bodyCellClass
-        });
+        const defaultCell = (record) => {
+            const beGiang = record?.be_giang ? dayjs(record.be_giang) : null;
+            const today = dayjs().startOf('day');
+            const isClosed = beGiang && beGiang.diff(today, 'day') < 0;
+            return {
+                className: isClosed
+                    ? '!bg-[#ffd1d1] !text-black border border-black text-sm font-semibold text-center'
+                    : bodyCellClass
+            };
+        };
 
         const cabinAndDatCols = [
             {
@@ -499,7 +506,7 @@ const TienDoDaoTao = () => {
             {
                 title: mainTitle,
                 onHeaderCell: () => ({
-                    className: `${mainTitleBg} !text-black !font-extrabold text-center border border-black text-lg py-2 uppercase tracking-wide`
+                    className: `${mainTitleBg} !text-black !font-extrabold text-center sticky left-1/3 -translate-x-1/2 border border-black text-xl py-2 uppercase tracking-wide`
                 }),
                 children: cols
             }
