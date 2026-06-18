@@ -506,7 +506,7 @@ const TienDoDaoTao = () => {
             {
                 title: mainTitle,
                 onHeaderCell: () => ({
-                    className: `${mainTitleBg} !text-black !font-extrabold text-center sticky left-1/3 -translate-x-1/2 border border-black text-xl py-2 uppercase tracking-wide`
+                    className: `${mainTitleBg} !text-black !font-extrabold text-center sticky border border-black text-xl py-2 uppercase tracking-wide`
                 }),
                 children: cols
             }

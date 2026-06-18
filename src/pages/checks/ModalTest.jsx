@@ -347,6 +347,18 @@ const ModalTest = ({
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
 
+  const resolvedStudentCheckInfo = useMemo(() => {
+    const base = studentCheckInfo || {};
+    return {
+      maDangKy: base.maDangKy || student?.ma_dk || student?.user?.admission_code || "",
+      giaoVien: base.giaoVien || base.giao_vien || student?.giaoVien || student?.giao_vien || student?.giao_vien_theo_xe?.giao_vien || "",
+      xeB1: base.xeB1 || base.xe_b1 || student?.xeB1 || student?.xe_b1 || "",
+      xeB2: base.xeB2 || base.xe_b2 || student?.xeB2 || student?.xe_b2 || "",
+      hang: student?.hang_dao_tao || student?.HangDaoTao || base.hang || "",
+      ...base,
+    };
+  }, [studentCheckInfo, student]);
+
   const maDk = String(student?.ma_dk || student?.user?.admission_code || "").trim();
 
   const fetchLoTrinh = useCallback(async () => {
@@ -418,7 +430,7 @@ const ModalTest = ({
     // Nguồn duy nhất — nhất quán với derivedInvalid/_status
     const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
       sorted,
-      studentCheckInfo,
+      resolvedStudentCheckInfo,
       loTrinhResults,
     );
 
@@ -478,7 +490,7 @@ const ModalTest = ({
         _isInvalid: effectiveStatus === "HUY",
       };
     });
-  }, [rows, studentCheckInfo, statusMap, loTrinhResults]);
+  }, [rows, resolvedStudentCheckInfo, statusMap, loTrinhResults]);
 
   const totalDistance = useMemo(
     () =>
@@ -508,15 +520,16 @@ const ModalTest = ({
   const hangDaoTao = useMemo(() => {
     return (
       rows[0]?.HangDaoTao ||
-      studentCheckInfo?.HangDaoTao ||
+      resolvedStudentCheckInfo?.HangDaoTao ||
+      resolvedStudentCheckInfo?.hang ||
       student?.hang_dao_tao ||
       ""
     );
-  }, [rows, studentCheckInfo, student]);
+  }, [rows, resolvedStudentCheckInfo, student]);
 
   const summaryWarnings = useMemo(
-    () => computeQuickSummary(rowsWithStatus, hangDaoTao, studentCheckInfo),
-    [rowsWithStatus, hangDaoTao, studentCheckInfo],
+    () => computeQuickSummary(rowsWithStatus, hangDaoTao, resolvedStudentCheckInfo),
+    [rowsWithStatus, hangDaoTao, resolvedStudentCheckInfo],
   );
 
   const filteredSummaryWarnings = useMemo(
@@ -633,69 +646,80 @@ const ModalTest = ({
               )}
 
             {/* Danh sách phiên */}
-            <div className="!space-y-2 !overflow-y-auto !max-h-[56vh]">
-              {rowsWithStatus.map((item, index) => {
-                const start = item?.ThoiDiemDangNhap;
-                const end = item?.ThoiDiemDangXuat;
+            {(() => {
+              const renderSessionErrorBadges = (item) => {
+                return null;
+              };
 
-                return (
-                  <Card
-                    key={item?.ID || index}
-                    bodyStyle={{ padding: 0 }}
-                    className="!border-0 !shadow-sm !overflow-hidden"
-                    style={{
-                      borderLeft: `3px solid ${item?._isInvalid ? "#cf1322" : "#52c41a"}`,
-                      borderRadius: "8px",
-                    }}
-                  >
-                    <div className="!flex !items-stretch">
-                      <div
-                        className="!w-8 !shrink-0 !flex !items-center !justify-center !text-xs !font-bold"
+              return (
+                <div className="!space-y-2 !overflow-y-auto !max-h-[56vh]">
+                  {rowsWithStatus.map((item, index) => {
+                    const start = item?.ThoiDiemDangNhap;
+                    const end = item?.ThoiDiemDangXuat;
+
+                    return (
+                      <Card
+                        key={item?.ID || index}
+                        bodyStyle={{ padding: 0 }}
+                        className="!border-0 !shadow-sm !overflow-hidden"
                         style={{
-                          color: item?._isInvalid ? "#cf1322" : "#52c41a",
-                          background: item?._isInvalid ? "#fff1f0" : "#f6ffed",
+                          borderLeft: `3px solid ${item?._isInvalid ? "#cf1322" : "#52c41a"}`,
+                          borderRadius: "8px",
                         }}
                       >
-                        {index + 1}
-                      </div>
-
-                      <div className="!flex-1 !px-3 !py-2 !text-xs">
-                        <div className="!flex !items-center !justify-between !mb-1">
-                          <div className="!flex !items-center !gap-1 flex-wrap">
-                            <span className="!font-semibold !text-gray-800 !text-sm !mr-1">
-                              {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
-                            </span>
-                          </div>
-                          <span
-                            className="!text-xs !font-semibold !px-2 !py-0.5 !rounded-full"
+                        <div className="!flex !items-stretch">
+                          <div
+                            className="!w-8 !shrink-0 !flex !items-center !justify-center !text-xs !font-bold"
                             style={{
-                              color: item?._isInvalid ? "#cf1322" : "#1e88d8",
-                              background: item?._isInvalid
-                                ? "#fff1f0"
-                                : "#e6f4ff",
-                              border: `1px solid ${item?._isInvalid ? "#ffccc7" : "#91caff"}`,
+                              color: item?._isInvalid ? "#cf1322" : "#52c41a",
+                              background: item?._isInvalid ? "#fff1f0" : "#f6ffed",
                             }}
                           >
-                            {item?.BienSo || "--"}
-                          </span>
-                        </div>
+                            {index + 1}
+                          </div>
 
-                        <div className="!flex !items-center !justify-between !text-gray-500">
-                          <span>
-                            {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
-                            {end ? dayjs(end).format("HH:mm") : "--"}
-                          </span>
-                          <span className="!text-gray-600 text-[13px] font-bold">
-                            {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
-                            {toNumber(item?.TongQuangDuong).toFixed(2)} km
-                          </span>
+                          <div className="!flex-1 !px-3 !py-2 !text-xs">
+                            <div className="!flex !items-center !justify-between !mb-1">
+                              <div className="!flex !items-center !gap-1 flex-wrap">
+                                <span className="!font-semibold !text-gray-800 !text-sm flex items-center gap-3">
+                                  {start ? dayjs(start).format("DD-MM-YYYY") : "--"}
+                                  <span className="flex items-center">
+                                    {renderSessionErrorBadges(item)}
+                                  </span>
+                                </span>
+                              </div>
+                              <span
+                                className="!text-xs !font-semibold !px-2 !py-0.5 !rounded-full"
+                                style={{
+                                  color: item?._isInvalid ? "#cf1322" : "#1e88d8",
+                                  background: item?._isInvalid
+                                    ? "#fff1f0"
+                                    : "#e6f4ff",
+                                  border: `1px solid ${item?._isInvalid ? "#ffccc7" : "#91caff"}`,
+                                }}
+                              >
+                                {item?.BienSo || "--"}
+                              </span>
+                            </div>
+
+                            <div className="!flex !items-center !justify-between !text-gray-500">
+                              <span>
+                                {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
+                                {end ? dayjs(end).format("HH:mm") : "--"}
+                              </span>
+                              <span className="!text-gray-600 text-[13px] font-bold">
+                                {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
+                                {toNumber(item?.TongQuangDuong).toFixed(2)} km
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </>
         ) : (
           <Empty description="Không có dữ liệu DAT" />

@@ -207,7 +207,7 @@ export function evaluateSaiGiaoVien(dataSource, studentCheckInfo) {
     if (!sessionTeacher) return;
     if (sessionTeacher.toUpperCase() !== registeredTeacher.toUpperCase()) {
       errors.push({
-        type: "warning",
+        type: "error",
         label: "Sai giáo viên",
         message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): giáo viên "${phien.HoTenGV}" không khớp với đăng ký "${studentCheckInfo.giaoVien}".`,
       });
@@ -252,7 +252,7 @@ export function evaluateSaiBienSo(dataSource, studentCheckInfo) {
     if (!sessionPlate) return;
     if (!allowedPlates.includes(sessionPlate)) {
       errors.push({
-        type: "warning",
+        type: "error",
         label: "Sai biển số xe",
         message: `Phiên ${idx + 1} (${formatTime(phien.ThoiDiemDangNhap)}): biển số "${phien.BienSo}" không nằm trong danh sách xe đăng ký (${allowedPlates.join(", ")}).`,
       });
@@ -544,8 +544,19 @@ export function evaluate(
   // ── Các check bổ sung ────────────────────────────────────────────────────
   warnings.push(...evaluateNghiGiuaPhien(dataSource)); // nghỉ < 15 phút
   warnings.push(...evaluateTocDoPhien(dataSource)); // tốc độ < 18 km/h
-  warnings.push(...evaluateSaiGiaoVien(dataSource, studentCheckInfo)); //sai giáo viên
-  warnings.push(...evaluateSaiBienSo(dataSource, studentCheckInfo)); //sai biển số xe
+
+  const wrongGVIssues = evaluateSaiGiaoVien(dataSource, studentCheckInfo);
+  wrongGVIssues.forEach((issue) => {
+    if (issue.type === "error") errors.push(issue);
+    else warnings.push(issue);
+  });
+
+  const wrongXeIssues = evaluateSaiBienSo(dataSource, studentCheckInfo);
+  wrongXeIssues.forEach((issue) => {
+    if (issue.type === "error") errors.push(issue);
+    else warnings.push(issue);
+  });
+
   warnings.push(...evaluatePhienDuoi5Phut(dataSource)); //thêm dòng này
 
   const courseCode =

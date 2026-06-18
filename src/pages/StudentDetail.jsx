@@ -366,11 +366,14 @@ const StudentDetail = ({ data }) => {
   const annualStudentInfo = useMemo(() => {
     const code = String(admissionCode).trim();
     if (!code) return null;
-    const baseInfo = studentMap.get(code);
-    if (!baseInfo) return null;
+    const baseInfo = studentMap.get(code) || {};
     return {
+      maDangKy: code,
+      giaoVien: baseInfo.giaoVien || baseInfo.giao_vien || data?.giaoVien || data?.giao_vien || data?.giao_vien_theo_xe?.giao_vien || "",
+      xeB1: baseInfo.xeB1 || baseInfo.xe_b1 || data?.xeB1 || data?.xe_b1 || "",
+      xeB2: baseInfo.xeB2 || baseInfo.xe_b2 || data?.xeB2 || data?.xe_b2 || "",
+      hang: data?.HangDaoTao || baseInfo.hang || baseInfo.HangDaoTao || "",
       ...baseInfo,
-      hang: data?.HangDaoTao || baseInfo?.hang || baseInfo?.HangDaoTao || "",
     };
   }, [studentMap, admissionCode, data]);
 
@@ -496,7 +499,37 @@ const StudentDetail = ({ data }) => {
       key: "HoTenGV",
       width: 150,
       align: "center",
-      render: (text) => renderValue(text),
+      render: (text, record, index) => {
+        const valueDisplay = renderValue(text);
+        const isApproved = getMappedStatus(record, statusMap) === "DUYET";
+        if (isApproved) return valueDisplay;
+
+        const reasons = invalidReasons.get(index) || [];
+        const teacherReason = reasons.find(
+          (r) =>
+            r.includes("Tên giáo viên") || r.includes("Không có tên giáo viên"),
+        );
+        if (teacherReason) {
+          return (
+            <Space
+              size={4}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <span className="text-red-600 font-semibold">
+                {text || "(trống)"}
+              </span>
+              <Popover content={teacherReason} trigger="hover" placement="top">
+                <WarningOutlined style={{ color: "#f5222d", cursor: "help" }} />
+              </Popover>
+            </Space>
+          );
+        }
+        return valueDisplay;
+      },
     },
     {
       title: "Ảnh đăng nhập",
@@ -572,7 +605,36 @@ const StudentDetail = ({ data }) => {
       key: "BienSo",
       width: 90,
       responsive: ["md"],
-      render: (text) => renderValue(text),
+      render: (text, record, index) => {
+        const valueDisplay = renderValue(text);
+        const isApproved = getMappedStatus(record, statusMap) === "DUYET";
+        if (isApproved) return valueDisplay;
+
+        const reasons = invalidReasons.get(index) || [];
+        const plateReason = reasons.find(
+          (r) => r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
+        );
+        if (plateReason) {
+          return (
+            <Space
+              size={4}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <span className="text-red-600 font-semibold">
+                {text || "(trống)"}
+              </span>
+              <Popover content={plateReason} trigger="hover" placement="top">
+                <WarningOutlined style={{ color: "#f5222d", cursor: "help" }} />
+              </Popover>
+            </Space>
+          );
+        }
+        return valueDisplay;
+      },
     },
     {
       title: "ND",
@@ -956,7 +1018,14 @@ const StudentDetail = ({ data }) => {
                     scroll={{ x: 1200, y: "calc(100vh - 425px)" }}
                     // className="table-blue-header"
                     bordered
-                    rowClassName={() => ""}
+                    rowClassName={(record, index) => {
+                      const isApproved = getMappedStatus(record, statusMap) === "DUYET";
+                      if (isApproved) return "";
+                      if (invalidIndexes.has(index)) {
+                        return "!bg-red-50/50 hover:!bg-red-100/50";
+                      }
+                      return "";
+                    }}
                     locale={{
                       emptyText:
                         "Không có phiên đào tạo nào trong khoảng thời gian đã chọn.",

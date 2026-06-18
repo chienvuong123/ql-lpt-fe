@@ -484,7 +484,7 @@ const TruyVetModal = ({
   // ─── Kiểm tra từng điều kiện đã đủ chưa ──────────────────────────────────
   const summaryMissingCases = useMemo(() => {
     const { tongGio, tongKm, dem, tuDong } = actualTotals;
-    
+
     const normalizedH = String(hangDaoTao || "").trim().toUpperCase();
     const isB2 = normalizedH === "B2" || normalizedH === "B";
     const isC1 = normalizedH === "C1" || normalizedH === "C";

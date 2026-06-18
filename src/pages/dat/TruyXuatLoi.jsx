@@ -299,16 +299,16 @@ export default function TruyXuatLoi() {
         student={
           selectedStudent
             ? {
-                user: {
-                  name: selectedStudent?.HoTen,
-                  admission_code: selectedStudent?.MaDK,
-                  birth_year: selectedStudent?.NgaySinh
-                    ? dayjs(selectedStudent?.NgaySinh).year()
-                    : null,
-                  avatar: selectedStudent?.srcAvatar || "",
-                  default_avatar: selectedStudent?.srcAvatar || "",
-                },
-              }
+              user: {
+                name: selectedStudent?.HoTen,
+                admission_code: selectedStudent?.MaDK,
+                birth_year: selectedStudent?.NgaySinh
+                  ? dayjs(selectedStudent?.NgaySinh).year()
+                  : null,
+                avatar: selectedStudent?.srcAvatar || "",
+                default_avatar: selectedStudent?.srcAvatar || "",
+              },
+            }
             : null
         }
         courseLabel={selectedStudent?.TenKhoaHoc || selectedCourseLabel}

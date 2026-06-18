@@ -538,8 +538,8 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
 
   // Có thông tin đăng ký xe → xeB1 là xe tự động
   if (studentInfo) {
-    const bs1 = normalizePlate(studentInfo.xeB1);
-    const bs2 = normalizePlate(studentInfo.xeB2);
+    const bs1 = normalizePlate(studentInfo.xeB1 || studentInfo.xe_b1);
+    const bs2 = normalizePlate(studentInfo.xeB2 || studentInfo.xe_b2);
 
     // Có cả 2 xe → xeB1 là xe tự động
     if (bs1 && bs2) return bs1;
@@ -610,8 +610,9 @@ export function getInvalidSessionIndexes(
   // 0. Xác định tên GV hợp lệ
   //    Ưu tiên: dùng studentInfo nếu có, fallback: tên xuất hiện nhiều nhất
   let tenGVHopLe = null;
-  if (studentInfo?.giaoVien) {
-    tenGVHopLe = normalizeForCompare(studentInfo.giaoVien);
+  const rawGiaoVien = studentInfo?.giaoVien || studentInfo?.giao_vien;
+  if (rawGiaoVien) {
+    tenGVHopLe = normalizeForCompare(rawGiaoVien);
   } else {
     const gvCount = {};
     dataSource.forEach((item) => {
@@ -728,18 +729,20 @@ export function getInvalidSessionIndexes(
   }
 
   // 5. Sai biển số xe (không phải xeB1 cũng không phải xeB2)
-  if (studentInfo?.xeB1 || studentInfo?.xeB2) {
+  const regB1 = studentInfo?.xeB1 || studentInfo?.xe_b1;
+  const regB2 = studentInfo?.xeB2 || studentInfo?.xe_b2;
+  if (regB1 || regB2) {
     dataSource.forEach((phien, idx) => {
       if (!isRuleApplicable("checkSaiXe", phien.ThoiDiemDangNhap)) return;
       const bs = normalizePlate(phien.BienSo);
       if (bs) {
-        const isMatched = [studentInfo.xeB1, studentInfo.xeB2]
+        const isMatched = [regB1, regB2]
           .filter(Boolean)
           .some((reg) => isPlateSimilar(bs, reg));
         if (!isMatched) {
           addReason(
             idx,
-            `Biển số xe "${phien.BienSo}" không thuộc xe đăng ký (${[studentInfo.xeB1, studentInfo.xeB2].filter(Boolean).join(", ")})`,
+            `Biển số xe "${phien.BienSo}" không thuộc xe đăng ký (${[regB1, regB2].filter(Boolean).join(", ")})`,
           );
         }
       }
@@ -970,6 +973,8 @@ export function evaluateTuDongSau17h(dataSource) {
 }
 
 export function evaluateSaiGiaoVien(dataSource) {
+  console.log(dataSource);
+
   if (!dataSource || dataSource.length === 0) return [];
 
   // Tên GV xuất hiện nhiều nhất = hợp lệ
@@ -1032,7 +1037,8 @@ export function evaluatePhienDuoi5Phut(dataSource) {
 function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
   if (!studentInfo) return [];
 
-  const registeredTeacherNorm = normalizeForCompare(studentInfo.giaoVien || "");
+  const rawGiaoVien = studentInfo.giaoVien || studentInfo.giao_vien;
+  const registeredTeacherNorm = normalizeForCompare(rawGiaoVien || "");
   if (!registeredTeacherNorm) {
     return [
       {
@@ -1060,9 +1066,9 @@ function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
 
   return [
     {
-      type: "warning",
+      type: "error",
       label: "Sai giáo viên (theo đăng ký)",
-      message: `Đăng ký với GV: "${removeBirthYear(studentInfo.giaoVien)}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongSessions.length} phiên không khớp).`,
+      message: `Đăng ký với GV: "${removeBirthYear(rawGiaoVien)}", nhưng hành trình có phiên dạy bởi: "${wrongNames}" (${wrongSessions.length} phiên không khớp).`,
     },
   ];
 }
@@ -1072,19 +1078,21 @@ function evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo) {
 function evaluateSaiXe(dataSource, studentInfo) {
   if (!studentInfo) return [];
 
-  const registeredPlateB1 = normalizePlate(studentInfo.xeB1);
-  const registeredPlateB2 = normalizePlate(studentInfo.xeB2);
+  const regB1 = studentInfo.xeB1 || studentInfo.xe_b1;
+  const regB2 = studentInfo.xeB2 || studentInfo.xe_b2;
+  const registeredPlateB1 = normalizePlate(regB1);
+  const registeredPlateB2 = normalizePlate(regB2);
   const hasTwoPlates = !!registeredPlateB2;
-  const warnings = [];
+  const issues = [];
 
   if (!registeredPlateB1 && !registeredPlateB2) {
-    warnings.push({
+    issues.push({
       type: "warning",
       label: "Không có thông tin xe",
       message:
         "Học viên không có thông tin biển số xe đăng ký. Không thể kiểm tra biển số.",
     });
-    return warnings;
+    return issues;
   }
 
   const wrongPlateSessions = dataSource.filter(
@@ -1097,12 +1105,12 @@ function evaluateSaiXe(dataSource, studentInfo) {
     const wrongPlates = [
       ...new Set(wrongPlateSessions.map((s) => s.BienSo || "(trống)")),
     ].join(", ");
-    const allowedList = [studentInfo.xeB1, studentInfo.xeB2]
+    const allowedList = [regB1, regB2]
       .filter(Boolean)
       .join(", ");
 
-    warnings.push({
-      type: "warning",
+    issues.push({
+      type: "error",
       label: "Sai biển số xe",
       message: `Xe đăng ký: "${allowedList}", nhưng hành trình có phiên dùng xe: "${wrongPlates}" (${wrongPlateSessions.length} phiên không đúng).`,
     });
@@ -1114,23 +1122,23 @@ function evaluateSaiXe(dataSource, studentInfo) {
     );
     const hasUsedB1 = Array.from(platesUsed).some((plate) => isPlateSimilar(plate, registeredPlateB1));
     if (!hasUsedB1) {
-      warnings.push({
+      issues.push({
         type: "warning",
         label: "Thiếu phiên xe B1",
-        message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B1: "${studentInfo.xeB1}".`,
+        message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B1: "${regB1}".`,
       });
     }
     const hasUsedB2 = Array.from(platesUsed).some((plate) => isPlateSimilar(plate, registeredPlateB2));
     if (!hasUsedB2) {
-      warnings.push({
+      issues.push({
         type: "warning",
         label: "Thiếu phiên xe B2",
-        message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B2: "${studentInfo.xeB2}".`,
+        message: `Học viên đăng ký 2 xe nhưng chưa có phiên học nào trên xe B2: "${regB2}".`,
       });
     }
   }
 
-  return warnings;
+  return issues;
 }
 
 // ─── computeSummary ───────────────────────────────────────────────────────────
@@ -1456,10 +1464,23 @@ export function evaluate(
   });
 
   if (studentInfo) {
-    warnings.push(
-      ...evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo),
-    );
-    warnings.push(...evaluateSaiXe(dataSource, studentInfo));
+    const wrongGV = evaluateSaiGiaoVienTheoStudentInfo(dataSource, studentInfo);
+    wrongGV.forEach((issue) => {
+      if (issue.type === "error") {
+        errors.push(issue);
+      } else {
+        warnings.push(issue);
+      }
+    });
+
+    const wrongXe = evaluateSaiXe(dataSource, studentInfo);
+    wrongXe.forEach((issue) => {
+      if (issue.type === "error") {
+        errors.push(issue);
+      } else {
+        warnings.push(issue);
+      }
+    });
   }
 
   // Các phiên vi phạm đã bị loại khỏi tổng → chỉ cảnh báo, không ảnh hưởng status
@@ -1467,7 +1488,9 @@ export function evaluate(
   warnings.push(...evaluateTocDoPhien(dataSource));
   warnings.push(...evaluateTuDongSau17h(dataSource));
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
-  warnings.push(...evaluateSaiGiaoVien(dataSource));
+  if (!studentInfo || !(studentInfo.giaoVien || studentInfo.giao_vien)) {
+    warnings.push(...evaluateSaiGiaoVien(dataSource));
+  }
   warnings.push(...evaluateDungNghiPhien(dataSource, loTrinh));
 
   // Check vùng cấm cho toàn bộ hành trình
