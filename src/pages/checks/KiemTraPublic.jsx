@@ -16,6 +16,7 @@ import {
   Select,
   Space,
   Typography,
+  Spin,
 } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -137,23 +138,22 @@ const KiemTraPublic = () => {
   const [isCabinModalOpen, setIsCabinModalOpen] = useState(false);
   const [isDatModalOpen, setIsDatModalOpen] = useState(false);
 
-  const { data, refetch } = useQuery({
+  const { data, refetch, isLoading: isLoggingIn } = useQuery({
     queryKey: ["loginPublicCheck"],
     queryFn: async () => {
       const res = await DangNhapPublic({
         Username: PUBLIC_CHECK_USERNAME || "chienvx",
         Password: PUBLIC_CHECK_PASSWORD || "@chienvx",
       });
+      if (!res?.data || res?.data?.ID === 0) {
+        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
+      }
       return res?.data;
     },
     enabled: true,
+    retry: true,
+    retryDelay: 3000,
   });
-
-  useEffect(() => {
-    for (let i = 0; i < 3; i++) {
-      refetch();
-    }
-  }, [refetch, data]);
 
   const { data: khoaHocData, isLoading: isLoadingKhoaHoc } = useQuery({
     queryKey: ["optionLopLyThuyet"],
@@ -266,7 +266,7 @@ const KiemTraPublic = () => {
         limit: 20,
         page: 1,
       }),
-    enabled: isDatModalOpen && !!cabinKey,
+    enabled: isDatModalOpen && !!cabinKey && !!data && data.ID !== 0,
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
@@ -659,92 +659,88 @@ const KiemTraPublic = () => {
               <Card
                 className="!mt-4 !rounded-xl !border-[#d9dee8]"
                 bodyStyle={{ padding: 12 }}
-                loading={loadingStudents}
               >
-                {hasSearched ? (
-                  <>
-                    <Text className="!mb-2 !block !text-sm !font-semibold !text-[#2f6ce0]">
-                      {results.length} kết quả
-                    </Text>
+                <Spin
+                  spinning={loadingStudents}
+                  tip="Đang tải danh sách học viên..."
+                >
+                  {hasSearched ? (
+                    <>
+                      <Text className="!mb-2 !block !text-sm !font-semibold !text-[#2f6ce0]">
+                        {results.length} kết quả
+                      </Text>
 
-                    {results.length > 0 ? (
-                      <Space direction="vertical" size={4} className="!w-full">
-                        {results.map((item, index) => (
-                          <div
-                            key={
-                              item?.ma_dk || item?.id || item?._id || item?.user?.iid || index
-                            }
-                            className="!cursor-pointer !rounded-lg !px-2 !py-1 hover:!bg-[#f2f7ff]"
-                            onClick={() => {
-                              setSelectedStudent(item);
-                              setIsLyThuyetModalOpen(false);
-                              setIsCabinModalOpen(false);
-                              setIsDatModalOpen(false);
-                            }}
-                          >
-                            <Row>
-                              <Col span={4} className="mr-2">
-                                <Image
-                                  src={
-                                    item?.anh ||
-                                    item?.user?.avatar ||
-                                    item?.user?.default_avatar ||
-                                    ""
-                                  }
-                                  width={50}
-                                  height={55}
-                                  preview={false}
-                                  className="!rounded-lg "
-                                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-                                />
-                              </Col>
-                              <Col span={19}>
-                                <Col span={24}>
-                                  <Text strong className="!uppercase">
-                                    {item?.ho_ten || item?.user?.name || "Không rõ tên"} (
-                                    {item?.ngay_sinh ? dayjs(item.ngay_sinh).format("YYYY") : item?.user?.birth_year || "--"})
-                                  </Text>
+                      {results.length > 0 ? (
+                        <Space direction="vertical" size={4} className="!w-full">
+                          {results.map((item, index) => (
+                            <div
+                              key={
+                                item?.ma_dk || item?.id || item?._id || item?.user?.iid || index
+                              }
+                              className="!cursor-pointer !rounded-lg !px-2 !py-1 hover:!bg-[#f2f7ff]"
+                              onClick={() => {
+                                setSelectedStudent(item);
+                                setIsLyThuyetModalOpen(false);
+                                setIsCabinModalOpen(false);
+                                setIsDatModalOpen(false);
+                              }}
+                            >
+                              <Row>
+                                <Col span={4} className="mr-2">
+                                  <Image
+                                    src={
+                                      item?.anh ||
+                                      item?.user?.avatar ||
+                                      item?.user?.default_avatar ||
+                                      ""
+                                    }
+                                    width={50}
+                                    height={55}
+                                    preview={false}
+                                    className="!rounded-lg "
+                                    fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                                  />
                                 </Col>
-                                {/* <Col span={24}>
-                                  <Text className="!text-xs !text-gray-500">
-                                    <span>
-                                      Mã HV: {item?.ma_dk || item?.user?.admission_code || ""}
-                                    </span>
-                                  </Text>
-                                </Col> */}
-                                <Col span={24}>
-                                  <Text className="!text-xs !text-gray-500">
-                                    <span>
-                                      Khóa học: {item?.ten_khoa || item?.ma_khoa || ""}
-                                    </span>
-                                  </Text>
+                                <Col span={19}>
+                                  <Col span={24}>
+                                    <Text strong className="!uppercase">
+                                      {item?.ho_ten || item?.user?.name || "Không rõ tên"} (
+                                      {item?.ngay_sinh ? dayjs(item.ngay_sinh).format("YYYY") : item?.user?.birth_year || "--"})
+                                    </Text>
+                                  </Col>
+                                  <Col span={24}>
+                                    <Text className="!text-xs !text-gray-500">
+                                      <span>
+                                        Khóa học: {item?.ten_khoa || item?.ma_khoa || ""}
+                                      </span>
+                                    </Text>
+                                  </Col>
+                                  <Col span={24}>
+                                    <Text className="!text-xs !text-gray-500">
+                                      <span>
+                                        CCCD:{" "}
+                                        {item?.cccd ||
+                                          item?.user?.identification_card ||
+                                          item?.user?.code ||
+                                          ""}
+                                      </span>
+                                    </Text>
+                                  </Col>
                                 </Col>
-                                <Col span={24}>
-                                  <Text className="!text-xs !text-gray-500">
-                                    <span>
-                                      CCCD:{" "}
-                                      {item?.cccd ||
-                                        item?.user?.identification_card ||
-                                        item?.user?.code ||
-                                        ""}
-                                    </span>
-                                  </Text>
-                                </Col>
-                              </Col>
-                            </Row>
-                          </div>
-                        ))}
-                      </Space>
-                    ) : (
-                      <Empty description="Không có dữ liệu" />
-                    )}
-                  </>
-                ) : (
-                  <Empty description="Không có dữ liệu" />
-                )}
+                              </Row>
+                            </div>
+                          ))}
+                        </Space>
+                      ) : (
+                        <Empty description="Không có dữ liệu" />
+                      )}
+                    </>
+                  ) : (
+                    <Empty description="Không có dữ liệu" />
+                  )}
+                </Spin>
               </Card>
             )}
-
             {hasResult ? (
               <Card
                 className="!mt-4 !rounded-2xl !border-[#d9dee8]"
@@ -808,7 +804,11 @@ const KiemTraPublic = () => {
                   </Col>
 
                 </Row>
-
+                {(isLoggingIn || !data || data.ID === 0) && (
+                  <div className="!text-[13px] !text-gray-500 !text-center !mt-3 !leading-tight">
+                    Đang xử lý dữ liệu DAT, vui lòng chờ ít phút
+                  </div>
+                )}
                 <Row gutter={8} className="!mt-3">
                   <Col span={8}>
                     <Card
@@ -994,10 +994,9 @@ const KiemTraPublic = () => {
                         className="!mt-2 !w-full !rounded-xl !bg-[#2f6ce0] !text-xs"
                         size="small"
                         onClick={() => {
-                          // if (isCabinPassed) {
                           setIsDatModalOpen(true);
-                          // }
                         }}
+                        loading={isLoggingIn || !data || data.ID === 0}
                       >
                         Chi tiết
                       </Button>

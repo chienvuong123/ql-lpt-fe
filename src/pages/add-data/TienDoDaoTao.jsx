@@ -22,6 +22,7 @@ import {
     EyeOutlined,
 } from '@ant-design/icons';
 import ModalTienDoDaoTao from './ModalTienDoDaoTao';
+import ModalChiTietDaoTao from './ModalChiTietDaoTao';
 import dayjs from 'dayjs';
 import { useMemo, useRef, useState } from 'react';
 import { usePermission } from '../../util/permission';
@@ -35,6 +36,13 @@ const TienDoDaoTao = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalAction, setModalAction] = useState('add');
     const [selectedRecord, setSelectedRecord] = useState(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [detailModalMaKhoa, setDetailModalMaKhoa] = useState("");
+
+    const handleOpenDetailModal = (record) => {
+        setDetailModalMaKhoa(record);
+        setIsDetailModalOpen(true);
+    };
     const keywordInputRef = useRef(null);
     const [paramsB1, setParamsB1] = useState({
         page: 1,
@@ -294,7 +302,14 @@ const TienDoDaoTao = () => {
                 align: 'center',
                 onHeaderCell: headerCell(),
                 onCell: defaultCell,
-                render: (text) => <span className="font-bold text-black">{text || '-'}</span>
+                render: (text, record) => (
+                    <span
+                        className="font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        onClick={() => handleOpenDetailModal(record)}
+                    >
+                        {text || '-'}
+                    </span>
+                )
             },
             {
                 title: 'SL',
@@ -520,9 +535,7 @@ const TienDoDaoTao = () => {
     };
 
     const handleView = (record) => {
-        setModalAction('view');
-        setSelectedRecord(record);
-        setIsModalOpen(true);
+        handleOpenDetailModal(record);
     };
 
     const handleEdit = (record) => {
@@ -765,6 +778,12 @@ const TienDoDaoTao = () => {
                 onCancel={() => setIsModalOpen(false)}
                 onSubmit={handleModalSubmit}
                 loading={isSaving}
+            />
+
+            <ModalChiTietDaoTao
+                visible={isDetailModalOpen}
+                record={detailModalMaKhoa}
+                onCancel={() => setIsDetailModalOpen(false)}
             />
         </div>
     );
