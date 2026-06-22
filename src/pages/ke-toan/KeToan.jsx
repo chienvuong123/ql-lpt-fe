@@ -278,34 +278,6 @@ const KeToan = () => {
                 </Text>
             ),
         },
-        {
-            title: "Thao tác",
-            key: "action",
-            width: 200,
-            fixed: "right",
-            align: "center",
-            render: (_, record) => (
-                <Space size="small">
-                    <Button
-                        type="primary"
-                        size="small"
-                        onClick={() => handleOpenModal(record)}
-                        style={{ backgroundColor: "#2b6cb0", borderColor: "#2b6cb0", fontWeight: 600, borderRadius: 4 }}
-                    >
-                        Xác nhận
-                    </Button>
-                    <Button
-                        type="default"
-                        danger
-                        size="small"
-                        onClick={() => handleOpenTransferModal(record)}
-                        style={{ fontWeight: 600, borderRadius: 4 }}
-                    >
-                        Chuyển học phí
-                    </Button>
-                </Space>
-            ),
-        }
     ];
 
     return (

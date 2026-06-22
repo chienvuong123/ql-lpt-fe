@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, Select, Row, Col, Typography, Card, Button, Divider, message, Spin } from "antd";
-import { getUnassignedStudents, transferFeeTuyenSinh } from "../../apis/apiTuyenSinh";
+import { transferFeeTuyenSinh } from "../../apis/apiTuyenSinh";
+import { getUnassignedStudents2026 } from "../../apis/apiKeToan";
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -26,7 +27,7 @@ const ModalChuyenHocPhi = ({ open, sourceStudent, onClose, onSave }) => {
     const handleSearch = async (value) => {
         setFetching(true);
         try {
-            const res = await getUnassignedStudents(value);
+            const res = await getUnassignedStudents2026({ search: value });
             if (res?.success) {
                 // Filter out the source student from options
                 const filtered = res.data.filter(item => item.cccd !== sourceStudent?.cccd);
@@ -139,7 +140,7 @@ const ModalChuyenHocPhi = ({ open, sourceStudent, onClose, onSave }) => {
                             >
                                 {options.map(item => (
                                     <Option key={item.cccd} value={item.cccd}>
-                                        {item.ten_hoc_vien} - CCCD: {item.cccd} (SĐT: {item.dien_thoai || "-"})
+                                        {item.ten_hoc_vien}({item.ngay_sinh}) - CCCD: {item.cccd} (SĐT: {item.dien_thoai || "-"})
                                     </Option>
                                 ))}
                             </Select>
