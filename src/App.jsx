@@ -52,6 +52,7 @@ import Xe from "./pages/add-data/Xe";
 import DangKyXeGiaoVien from "./pages/add-data/DangKyXeGiaoVien";
 import UyQuyen from "./pages/add-data/UyQuyen";
 import DSKyNhanHoSoVaGPLX from "./pages/orther/DSKyNhanHoSoVaGPLX";
+import KeToan from "./pages/ke-toan/KeToan";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -370,6 +371,10 @@ function App() {
               <Route
                 path="danh-sach-ky-nhan-ho-so-gplx"
                 element={<GuardedRoute path="/danh-sach-ky-nhan-ho-so-gplx" element={<DSKyNhanHoSoVaGPLX />} />}
+              />
+              <Route
+                path="ke-toan"
+                element={<GuardedRoute path="/ke-toan" element={<KeToan />} />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />

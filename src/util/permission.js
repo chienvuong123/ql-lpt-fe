@@ -110,6 +110,11 @@ export const PERMISSION_TREE_TEMPLATE = [
     route: "/danh-sach-ky-nhan-ho-so-gplx",
   },
   {
+    key: "ke-toan",
+    name: "Quản lý kế toán",
+    route: "/ke-toan",
+  },
+  {
     key: "tai-khoan",
     name: "Quản lý tài khoản",
     route: "/tai-khoan",

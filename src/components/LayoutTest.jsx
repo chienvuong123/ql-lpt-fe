@@ -13,6 +13,7 @@ import {
   AppstoreAddOutlined,
   RetweetOutlined,
   FileOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 import { BsCalendar3 } from "react-icons/bs";
 import {
@@ -74,6 +75,7 @@ const menuPathMap = {
   "dang-ky-xe-giao-vien": "/dang-ky-xe-giao-vien",
   "quan-ly-uy-quyen": "/quan-ly-uy-quyen",
   "danh-sach-ky-nhan-ho-so-gplx": "/danh-sach-ky-nhan-ho-so-gplx",
+  "ke-toan": "/ke-toan",
 };
 
 const LayoutTest = () => {
@@ -243,6 +245,11 @@ const LayoutTest = () => {
       key: "danh-sach-ky-nhan-ho-so-gplx",
       icon: <FileOutlined />,
       label: "DS ký nhận hồ sơ GPLX",
+    },
+    {
+      key: "ke-toan",
+      icon: <DollarOutlined />,
+      label: "Quản lý kế toán",
     },
     {
       key: "tai-khoan",
