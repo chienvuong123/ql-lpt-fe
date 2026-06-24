@@ -52,10 +52,12 @@ const DanhSachChoXepLopLyThuyet = () => {
     const [tableRef, tableHeight] = useTableHeight();
     const [ma_khoa, setMaKhoa] = useState(null);
     const [searchText, setSearchText] = useState("");
+    const [ma_dk, setMaDk] = useState("");
 
     const [appliedFilters, setAppliedFilters] = useState({
         ma_khoa: null,
         search: "",
+        ma_dk: "",
         trang_thai: 2,
         loai: "ly_thuyet",
     });
@@ -83,6 +85,7 @@ const DanhSachChoXepLopLyThuyet = () => {
             const res = await getDanhSachHocVienHocBuChoDuyet({
                 ma_khoa: appliedFilters.ma_khoa,
                 text: appliedFilters.search,
+                ma_dk: appliedFilters.ma_dk,
                 trang_thai: appliedFilters.trang_thai,
                 loai: appliedFilters.loai,
                 page: 1,
@@ -170,6 +173,7 @@ const DanhSachChoXepLopLyThuyet = () => {
             "hocVienHocBuChoDuyet",
             appliedFilters.ma_khoa,
             appliedFilters.search,
+            appliedFilters.ma_dk,
             appliedFilters.trang_thai,
             appliedFilters.loai,
             pagination.page,
@@ -179,6 +183,7 @@ const DanhSachChoXepLopLyThuyet = () => {
             getDanhSachHocVienHocBuChoDuyet({
                 ma_khoa: appliedFilters.ma_khoa,
                 text: appliedFilters.search,
+                ma_dk: appliedFilters.ma_dk,
                 trang_thai: appliedFilters.trang_thai,
                 loai: appliedFilters.loai,
                 page: pagination.page,
@@ -199,9 +204,17 @@ const DanhSachChoXepLopLyThuyet = () => {
     const isIndeterminate = selectedRowKeys.length > 0 && !isAllSelected;
 
     const handleApplyFilter = () => {
+        const cleanedMaDk = ma_dk
+            ? ma_dk
+                .split(/[\s,;\u3000]+/)
+                .map((item) => item.trim())
+                .filter(Boolean)
+                .join(",")
+            : "";
         setAppliedFilters({
             ma_khoa,
             search: searchText,
+            ma_dk: cleanedMaDk,
             trang_thai: 2,
             loai: "ly_thuyet",
         });
@@ -211,9 +224,11 @@ const DanhSachChoXepLopLyThuyet = () => {
     const handleResetFilter = () => {
         setMaKhoa(null);
         setSearchText("");
+        setMaDk("");
         setAppliedFilters({
             ma_khoa: null,
             search: "",
+            ma_dk: "",
             trang_thai: 2,
             loai: "ly_thuyet",
         });
@@ -347,8 +362,8 @@ const DanhSachChoXepLopLyThuyet = () => {
 
             <Card className="!mb-5">
                 <Row gutter={[16, 16]} align="bottom">
-                    <Col xs={24} sm={10} md={8} lg={8}>
-                        <label className="block text-xs text-gray-500 uppercase">
+                    <Col xs={24} sm={12} md={6} lg={6}>
+                        <label className="block text-xs text-gray-500 uppercase mb-1">
                             Khóa Học
                         </label>
                         <Select
@@ -363,9 +378,9 @@ const DanhSachChoXepLopLyThuyet = () => {
                             options={courseOptions}
                         />
                     </Col>
-                    <Col xs={24} sm={10} md={8} lg={8}>
-                        <label className="block text-xs text-gray-500 uppercase">
-                            Học viên / Mã DK
+                    <Col xs={24} sm={12} md={6} lg={6}>
+                        <label className="block text-xs text-gray-500 uppercase mb-1">
+                            Học viên
                         </label>
                         <Input
                             placeholder="Nhập tên hoặc mã học viên"
@@ -374,9 +389,26 @@ const DanhSachChoXepLopLyThuyet = () => {
                             onPressEnter={handleApplyFilter}
                         />
                     </Col>
+                    <Col xs={24} sm={12} md={6} lg={6}>
+                        <label className="block text-xs text-gray-500 uppercase mb-1">
+                            Danh sách Mã ĐK (dấu phẩy, cách hoặc xuống dòng)
+                        </label>
+                        <Input.TextArea
+                            placeholder="VD: 30004-xxx, 30004-yyy hoặc xuống dòng"
+                            value={ma_dk}
+                            onChange={(e) => setMaDk(e.target.value)}
+                            autoSize={{ minRows: 1, maxRows: 1 }}
+                            onPressEnter={(e) => {
+                                if (!e.shiftKey) {
+                                    e.preventDefault();
+                                    handleApplyFilter();
+                                }
+                            }}
+                        />
+                    </Col>
 
-                    <Col xs={24} sm={14} md={12} lg={8}>
-                        <Space className="w-full justify-start flex-wrap mt-[18px]">
+                    <Col xs={24} sm={12} md={6} lg={6}>
+                        <Space className="w-full justify-start flex-wrap">
                             <Button
                                 type="primary"
                                 className="!bg-[#3366cc]"
