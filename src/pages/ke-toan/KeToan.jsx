@@ -12,15 +12,16 @@ import {
     Typography,
     Space,
     message,
-    Modal,
-    Descriptions,
 } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { SyncOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
-import { getHocVienListTuyenSinh, syncDataTuyenSinh } from "../../apis/apiTuyenSinh";
+import { syncDataTuyenSinh } from "../../apis/apiTuyenSinh";
+import { danhSachKeToan } from "../../apis/apiKeToan";
 import { useTableHeight } from "../../components/hooks/useTableHeight";
 import ModalXacNhanKeToan from "./ModalXacNhanKeToan";
 import ModalChuyenHocPhi from "./ModalChuyenHocPhi";
+import ModalDuyetHocPhi from "./ModalDuyetHocPhi";
+import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
 
@@ -35,6 +36,7 @@ const KeToan = () => {
         search: undefined,
         co_so: undefined,
         hang: undefined,
+        trang_thai: undefined,
         nguoi_tuyen_sinh: undefined,
     });
 
@@ -52,6 +54,20 @@ const KeToan = () => {
     const handleCloseModal = () => {
         setSelectedStudent(null);
         setIsModalVisible(false);
+    };
+
+    // Modal states for approval
+    const [isDuyetModalVisible, setIsDuyetModalVisible] = useState(false);
+    const [duyetStudent, setDuyetStudent] = useState(null);
+
+    const handleOpenDuyetModal = (student) => {
+        setDuyetStudent(student);
+        setIsDuyetModalVisible(true);
+    };
+
+    const handleCloseDuyetModal = () => {
+        setDuyetStudent(null);
+        setIsDuyetModalVisible(false);
     };
 
     // Transfer modal states
@@ -77,8 +93,8 @@ const KeToan = () => {
 
     // Query student list from database
     const { data: responseData, isLoading, isFetching, refetch } = useQuery({
-        queryKey: ["getHocVienListTuyenSinh", queryParams],
-        queryFn: () => getHocVienListTuyenSinh(queryParams),
+        queryKey: ["danhSachKeToan", queryParams],
+        queryFn: () => danhSachKeToan(queryParams),
         keepPreviousData: true,
         staleTime: 1000 * 60 * 5, // Cache for 5 mins
     });
@@ -96,6 +112,7 @@ const KeToan = () => {
             search: values.search || undefined,
             co_so: values.co_so || undefined,
             hang: values.hang || undefined,
+            trang_thai: values.trang_thai !== undefined && values.trang_thai !== "" ? values.trang_thai : undefined,
             nguoi_tuyen_sinh: values.nguoi_tuyen_sinh || undefined,
         });
     };
@@ -108,6 +125,7 @@ const KeToan = () => {
             search: undefined,
             co_so: undefined,
             hang: undefined,
+            trang_thai: undefined,
             nguoi_tuyen_sinh: undefined,
         });
     };
@@ -137,7 +155,7 @@ const KeToan = () => {
         {
             title: "STT",
             key: "stt",
-            width: 45,
+            width: 40,
             align: "center",
             fixed: "left",
             render: (_, record, index) => (page - 1) * limit + index + 1,
@@ -145,7 +163,7 @@ const KeToan = () => {
         {
             title: "Học Viên",
             key: "ten_hoc_vien",
-            width: 200,
+            width: 180,
             fixed: "left",
             render: (_, record) => (
                 <span onClick={() => handleOpenModal(record)} className="cursor-pointer">
@@ -157,124 +175,104 @@ const KeToan = () => {
             title: "CCCD / CMND",
             dataIndex: "cccd",
             key: "cccd",
-            width: 125,
+            width: 100,
+            align: "right",
         },
         {
             title: "Ngày Sinh",
             dataIndex: "ngay_sinh",
             key: "ngay_sinh",
-            width: 110,
-            align: "center",
+            width: 80,
+            align: "right",
         },
         {
             title: "Điện Thoại",
             dataIndex: "dien_thoai",
             key: "dien_thoai",
-            width: 110,
-            render: (val) => val || <span className="text-center">-</span>,
+            width: 80,
+            align: "right",
+            render: (val) =>
+                val ? (
+                    val
+                ) : (
+                    <div className="text-center">-</div>
+                ),
         },
         {
             title: "Cơ Sở",
             dataIndex: "co_so",
             key: "co_so",
-            width: 70,
+            width: 50,
             align: "center",
-            render: (val) => {
-                return val ? <span>{val}</span> : <span className="text-center">-</span>;
-            },
+            render: (val) => val || "-",
         },
         {
             title: "Hạng",
             dataIndex: "hang",
             key: "hang",
-            width: 70,
+            width: 50,
             align: "center",
-            render: (val) => val ? <span>{val}</span> : <span className="text-center">-</span>,
+            render: (val) => val || "-",
         },
         {
             title: "Loại hình",
             dataIndex: "loai",
             key: "loai",
-            width: 70,
+            width: 50,
             align: "center",
-            render: (val) => val ? <span>{val}</span> : <span className="text-center">-</span>,
+            render: (val) => val || "-",
         },
         {
-            title: "Đặt Cọc",
-            dataIndex: "dat_coc",
-            key: "dat_coc",
-            width: 90,
-            align: "right",
-            render: (val) => {
-                if (!val) return <span className="text-center">-</span>;
-                const num = parseFloat(val.toString().replace(/[^0-9.-]+/g, ""));
-                if (!isNaN(num)) {
-                    return <span>{num.toLocaleString()}đ</span>;
-                }
-                return val;
-            },
-        },
-        {
-            title: "CCCD Photo",
-            dataIndex: "cccd_pho_to",
-            key: "cccd_pho_to",
-            width: 90,
+            title: "Thời gian nộp",
+            dataIndex: "thoi_gian_parsed",
+            key: "thoi_gian_parsed",
+            width: 140,
             align: "center",
-            render: (val) => (
-                <Tag color={val ? "success" : "error"} className="font-medium">
-                    {val ? "Đã có" : "Chưa có"}
-                </Tag>
-            ),
+            render: (val) => val || "-",
         },
         {
             title: "Người Tuyển Sinh",
             dataIndex: "nguoi_tuyen_sinh",
             key: "nguoi_tuyen_sinh",
-            width: 180,
+            width: 150,
             render: (val, record) => (
                 <div>
-                    <div className="font-medium text-slate-700">{val || <span className="text-center">-</span>}</div>
+                    <div className="font-medium text-slate-700">{val || "-"}</div>
                     {record.ctv && <div className="text-xs text-slate-400">CTV: {record.ctv}</div>}
                 </div>
             ),
         },
         {
-            title: "Mã Ảnh",
-            dataIndex: "ma_anh",
-            key: "ma_anh",
-            width: 100,
-            align: "center",
-            render: (val) => val || <span className="text-center">-</span>,
-        },
-        {
-            title: "Thời Gian Đăng Ký",
-            dataIndex: "thoi_gian",
-            key: "thoi_gian",
-            width: 160,
-            align: "center",
-        },
-        {
             title: "Trạng thái",
-            key: "status",
+            dataIndex: "trang_thai_thanh_toan",
+            key: "trang_thai_thanh_toan",
             width: 130,
             align: "center",
-            render: (_, record) => {
-                const hasMaKeToan = record.ma_ke_toan && record.ma_ke_toan.toString().trim() !== "";
+            render: (val) => {
+                let color = "warning";
+                let text = "Chưa nộp";
+                if (val === 2 || val === "da_nop_du" || val === "da_nop") {
+                    color = "success";
+                    text = "Đã nộp đủ";
+                } else if (val === 1 || val === "da_nop_mot_phan") {
+                    color = "processing";
+                    text = "Nộp một phần";
+                }
                 return (
-                    <Tag color={hasMaKeToan ? "success" : "warning"} className="font-semibold">
-                        {hasMaKeToan ? "Đã đóng tiền" : "Chưa đóng tiền"}
+                    <Tag color={color} className="font-semibold">
+                        {text}
                     </Tag>
                 );
             }
         },
         {
-            title: "Ghi Chú",
-            dataIndex: "ghi_chu",
-            key: "ghi_chu",
-            width: 250,
+            title: "Ghi Chú Kế Toán",
+            dataIndex: "ghi_chu_ke_toan",
+            key: "ghi_chu_ke_toan",
+            width: 180,
             render: (val) => (
-                <Text ellipsis={{ tooltip: val }} style={{ maxWidth: 230 }}>
-                    {val || <span className="text-center">-</span>}
+                <Text ellipsis={{ tooltip: val }} style={{ maxWidth: 160 }}>
+                    {val || "-"}
                 </Text>
             ),
         },
@@ -316,27 +314,21 @@ const KeToan = () => {
             >
                 <Form form={form} layout="vertical" onFinish={handleSearchSubmit}>
                     <Row gutter={[16, 12]}>
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={5}>
                             <Form.Item name="search" label="Từ khóa tìm kiếm" style={{ marginBottom: 0 }}>
                                 <Input
-                                    placeholder="Nhập tên học viên"
+                                    placeholder="Tên, CCCD, Điện thoại..."
                                     allowClear
                                 />
                             </Form.Item>
                         </Col>
 
-                        <Col xs={24} sm={12} md={6}>
-                            <Form.Item name="nguoi_tuyen_sinh" label="Người tuyển sinh" style={{ marginBottom: 0 }}>
-                                <Input placeholder="Tên người tuyển sinh..." allowClear />
-                            </Form.Item>
-                        </Col>
-
-                        <Col xs={12} sm={6} md={5}>
-                            <Form.Item name="hang" label="Hạng đăng ký" style={{ marginBottom: 0 }}>
+                        <Col xs={24} sm={12} md={4}>
+                            <Form.Item name="trang_thai" label="Trạng thái thanh toán" style={{ marginBottom: 0 }}>
                                 <Select placeholder="Tất cả" allowClear>
-                                    <Select.Option value="B1">Hạng B1</Select.Option>
-                                    <Select.Option value="B2">Hạng B2</Select.Option>
-                                    <Select.Option value="C1">Hạng C1</Select.Option>
+                                    <Select.Option value="0">Chưa nộp</Select.Option>
+                                    <Select.Option value="1">Nộp một phần</Select.Option>
+                                    <Select.Option value="2">Đã nộp đủ</Select.Option>
                                 </Select>
                             </Form.Item>
                         </Col>
@@ -347,6 +339,22 @@ const KeToan = () => {
                                     <Select.Option value="CS 1">Cơ sở 1</Select.Option>
                                     <Select.Option value="CS 3">Cơ sở 3</Select.Option>
                                 </Select>
+                            </Form.Item>
+                        </Col>
+
+                        <Col xs={12} sm={6} md={4}>
+                            <Form.Item name="hang" label="Hạng đăng ký" style={{ marginBottom: 0 }}>
+                                <Select placeholder="Tất cả" allowClear>
+                                    <Select.Option value="B1">Hạng B1</Select.Option>
+                                    <Select.Option value="B2">Hạng B2</Select.Option>
+                                    <Select.Option value="C1">Hạng C1</Select.Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+
+                        <Col xs={24} sm={12} md={4}>
+                            <Form.Item name="nguoi_tuyen_sinh" label="Người tuyển sinh" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Tên người tuyển sinh..." allowClear />
                             </Form.Item>
                         </Col>
 
@@ -396,7 +404,7 @@ const KeToan = () => {
                         showTotal: (total) => `Tổng cộng ${total} học viên`,
                     }}
                     className="table-blue-header"
-                    scroll={{ x: 1800, y: tableHeight }}
+                    scroll={{ x: 1600, y: tableHeight }}
                     size="small"
                     bordered
                 />
@@ -409,6 +417,14 @@ const KeToan = () => {
                 onClose={handleCloseModal}
                 onSave={refetch}
                 onTransferClick={handleOpenTransferModal}
+            />
+
+            {/* Standalone Modal for Approving Tuition Fee */}
+            <ModalDuyetHocPhi
+                open={isDuyetModalVisible}
+                student={duyetStudent}
+                onClose={handleCloseDuyetModal}
+                onSave={refetch}
             />
 
             {/* Standalone Modal for Transferring and Swapping Student Fees */}

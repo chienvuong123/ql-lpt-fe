@@ -129,7 +129,7 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
             }
             open={open}
             onCancel={onClose}
-            width={650}
+            width={800}
             destroyOnClose
             footer={[
                 <Button key="cancel" onClick={onClose} style={{ borderRadius: 6 }}>
@@ -166,7 +166,7 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                 <div style={{ marginTop: 16 }}>
                     <Form form={form} layout="vertical">
                         <Row gutter={16}>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item
                                     name="ten_hoc_vien"
                                     label="Họ và tên"
@@ -175,7 +175,7 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                                     <Input placeholder="Nhập tên học viên..." />
                                 </Form.Item>
                             </Col>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item
                                     name="cccd"
                                     label="Số CCCD / CMND"
@@ -184,23 +184,20 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                                     <Input placeholder="Nhập số CCCD/CMND..." />
                                 </Form.Item>
                             </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item name="ngay_sinh" label="Ngày sinh">
                                     <Input placeholder="VD: 15/08/1998" />
                                 </Form.Item>
                             </Col>
-                            <Col span={12}>
+                        </Row>
+
+                        <Row gutter={16}>
+                            <Col span={8}>
                                 <Form.Item name="dien_thoai" label="Số điện thoại">
                                     <Input placeholder="Nhập số điện thoại..." />
                                 </Form.Item>
                             </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item name="co_so" label="Cơ sở">
                                     <Select placeholder="Chọn cơ sở...">
                                         <Select.Option value="CS 1">Cơ sở 1</Select.Option>
@@ -208,7 +205,7 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                                     </Select>
                                 </Form.Item>
                             </Col>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item name="nguoi_tuyen_sinh" label="Người tuyển sinh">
                                     <Input placeholder="Tên người tuyển sinh..." />
                                 </Form.Item>
@@ -216,7 +213,7 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                         </Row>
 
                         <Row gutter={16}>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item name="hang" label="Hạng đăng ký">
                                     <Select placeholder="Chọn hạng...">
                                         <Select.Option value="B1">Hạng B1</Select.Option>
@@ -225,13 +222,23 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                                     </Select>
                                 </Form.Item>
                             </Col>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Form.Item name="loai" label="Loại hình">
                                     <Select placeholder="Chọn loại hình...">
                                         <Select.Option value="TT">TT</Select.Option>
                                         <Select.Option value="LK">LK</Select.Option>
                                         <Select.Option value="CBNV">CBNV</Select.Option>
                                     </Select>
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item name="dat_coc" label="Đặt cọc">
+                                    <InputNumber
+                                        placeholder="VD: 1.000.000"
+                                        style={{ width: "100%" }}
+                                        formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                                        parser={value => value.replace(/\./g, '')}
+                                    />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -264,16 +271,6 @@ const ModalXacNhanKeToan = ({ open, student, onClose, onSave, onTransferClick })
                         </Row>
 
                         <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item name="dat_coc" label="Đặt cọc">
-                                    <InputNumber
-                                        placeholder="VD: 1.000.000"
-                                        style={{ width: "100%" }}
-                                        formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                                        parser={value => value.replace(/\./g, '')}
-                                    />
-                                </Form.Item>
-                            </Col>
                             <Col span={12}>
                                 {student.ctv && (
                                     <div style={{ marginTop: 30 }}>
