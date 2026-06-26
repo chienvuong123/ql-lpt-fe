@@ -536,15 +536,23 @@ const StudentDetail = ({ data }) => {
       dataIndex: "SrcdnAvatar",
       key: "SrcdnAvatar",
       width: 120,
-      render: (url) => <Image src={url} width={110} height={76} preview />,
+      render: (url, record) => {
+        const imgs = getImagesForSession(record);
+        const displayUrl = imgs.length > 0 ? imgs[0].url : url;
+        return <Image src={displayUrl} width={110} height={76} preview />;
+      },
     },
     {
       title: "Ảnh đăng xuất",
       dataIndex: "SrcdxAvatar",
-      key: "SrcdnAvatar",
+      key: "SrcdxAvatar",
       width: 120,
       ellipsis: true,
-      render: (url) => <Image src={url} width={110} height={76} preview />,
+      render: (url, record) => {
+        const imgs = getImagesForSession(record);
+        const displayUrl = imgs.length > 0 ? imgs[imgs.length - 1].url : url;
+        return <Image src={displayUrl} width={110} height={76} preview />;
+      },
     },
     {
       title: "Ảnh",

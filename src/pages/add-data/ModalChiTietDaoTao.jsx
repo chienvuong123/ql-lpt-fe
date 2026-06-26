@@ -5,19 +5,13 @@ import {
   Table,
   Input,
   Button,
-  Tag,
   Collapse,
-  Space,
   Row,
   Col,
-  Card,
   Spin,
-  Statistic,
   Empty
 } from "antd";
 import {
-  SearchOutlined,
-  UserOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined
 } from "@ant-design/icons";
@@ -244,106 +238,100 @@ export default function ModalChiTietDaoTao({ visible, record, onCancel }) {
       style={{ top: 30 }}
       bodyStyle={{ height: "calc(100vh - 220px)", overflowY: "auto", padding: "12px 24px" }}
     >
-      {isLoading ? (
-        <div className="flex flex-col justify-center items-center h-full w-full">
-          <Spin size="large" tip="Đang tải dữ liệu tiến độ chi tiết..." />
-        </div>
-      ) : (
-        <Spin spinning={isFetching} tip="Đang tải dữ liệu...">
-          {/* Statistics and Filter Panel */}
-          <SearchPanel
-            key={record?.ma_khoa || "search"}
-            onSearch={({ student, teacher }) => {
-              setSearchQuery(student);
-              setTeacherSearchQuery(teacher);
-              setPage(1);
-            }}
-            onReset={() => {
-              setSearchQuery("");
-              setTeacherSearchQuery("");
-              setPage(1);
-            }}
-          />
+      <Spin spinning={isLoading || isFetching} tip="Đang tải dữ liệu tiến độ chi tiết...">
+        {/* Statistics and Filter Panel */}
+        <SearchPanel
+          key={record?.ma_khoa || "search"}
+          onSearch={({ student, teacher }) => {
+            setSearchQuery(student);
+            setTeacherSearchQuery(teacher);
+            setPage(1);
+          }}
+          onReset={() => {
+            setSearchQuery("");
+            setTeacherSearchQuery("");
+            setPage(1);
+          }}
+        />
 
-          {/* Details Accordion grouped by Teacher */}
-          {paginatedData.length > 0 ? (
-            <Collapse
-              defaultActiveKey={paginatedData.map((_, i) => String(i))}
-              expandIconPosition="right"
-            >
-              {paginatedData.map((teacherData, index) => {
-                const teacherName = teacherData.giao_vien || "Chưa phân công";
-                const students = teacherData.hoc_vien || [];
-                const datCount = students.filter(
-                  (st) =>
-                    st.tien_do?.ly_thuyet?.dat &&
-                    st.tien_do?.cabin?.dat &&
-                    st.tien_do?.dat?.dat
-                ).length;
+        {/* Details Accordion grouped by Teacher */}
+        {paginatedData.length > 0 ? (
+          <Collapse
+            defaultActiveKey={paginatedData.map((_, i) => String(i))}
+            expandIconPosition="right"
+          >
+            {paginatedData.map((teacherData, index) => {
+              const teacherName = teacherData.giao_vien || "Chưa phân công";
+              const students = teacherData.hoc_vien || [];
+              const datCount = students.filter(
+                (st) =>
+                  st.tien_do?.ly_thuyet?.dat &&
+                  st.tien_do?.cabin?.dat &&
+                  st.tien_do?.dat?.dat
+              ).length;
 
-                return (
-                  <Panel
-                    key={String(index)}
-                    header={
-                      <div className="flex items-center justify-between w-[97%] py-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-800 text-base">
-                            Giáo viên: {teacherName}
-                          </span>
-                        </div>
+              return (
+                <Panel
+                  key={String(index)}
+                  header={
+                    <div className="flex items-center justify-between w-[97%] py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-800 text-base">
+                          Giáo viên: {teacherName}
+                        </span>
                       </div>
-                    }
-                    className="bg-white border-b border-gray-100 last:border-b-0"
-                  >
-                    <Table
-                      dataSource={students}
-                      columns={columns}
-                      rowKey="ma_dk"
-                      pagination={false}
-                      bordered
-                      size="small"
-                      className="table-blue-header"
-                      scroll={{ x: 1000 }}
-                    />
-                  </Panel>
-                );
-              })}
-            </Collapse>
-          ) : (
-            <Empty description="Không tìm thấy thông tin tiến độ đào tạo chi tiết của khóa" className="py-10" />
-          )}
+                    </div>
+                  }
+                  className="bg-white border-b border-gray-100 last:border-b-0"
+                >
+                  <Table
+                    dataSource={students}
+                    columns={columns}
+                    rowKey="ma_dk"
+                    pagination={false}
+                    bordered
+                    size="small"
+                    className="table-blue-header"
+                    scroll={{ x: 1000 }}
+                  />
+                </Panel>
+              );
+            })}
+          </Collapse>
+        ) : (
+          <Empty description="Không tìm thấy thông tin tiến độ đào tạo chi tiết của khóa" className="py-10" />
+        )}
 
-          {/* Modal Pagination */}
-          {rawData.length > 0 && (
-            <div className="flex justify-end mt-4 items-center">
-              <span className="text-gray-500 mr-4 text-sm">
-                Tổng số học viên: <strong>{totalStudentsCount}</strong> | Giáo viên: <strong>{totalTeachers}</strong>
-              </span>
-              {totalTeachers > limit && (
-                <div className="inline-flex gap-2">
-                  <Button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    size="small"
-                  >
-                    Trước
-                  </Button>
-                  <span className="px-3 py-1 bg-gray-100 border rounded text-xs font-semibold">
-                    Trang {page} / {Math.ceil(totalTeachers / limit)}
-                  </span>
-                  <Button
-                    disabled={page >= Math.ceil(totalTeachers / limit)}
-                    onClick={() => setPage((p) => p + 1)}
-                    size="small"
-                  >
-                    Sau
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </Spin>
-      )}
+        {/* Modal Pagination */}
+        {rawData.length > 0 && (
+          <div className="flex justify-end mt-4 items-center">
+            <span className="text-gray-500 mr-4 text-sm">
+              Tổng số học viên: <strong>{totalStudentsCount}</strong> | Giáo viên: <strong>{totalTeachers}</strong>
+            </span>
+            {totalTeachers > limit && (
+              <div className="inline-flex gap-2">
+                <Button
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  size="small"
+                >
+                  Trước
+                </Button>
+                <span className="px-3 py-1 bg-gray-100 border rounded text-xs font-semibold">
+                  Trang {page} / {Math.ceil(totalTeachers / limit)}
+                </span>
+                <Button
+                  disabled={page >= Math.ceil(totalTeachers / limit)}
+                  onClick={() => setPage((p) => p + 1)}
+                  size="small"
+                >
+                  Sau
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Spin>
     </Modal>
   );
 }
