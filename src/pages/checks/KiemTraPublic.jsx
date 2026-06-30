@@ -129,6 +129,83 @@ const extractKhoaNumber = (value = "") => {
   return match ? Number(match[1]) : null;
 };
 
+const SearchControls = ({
+  isLoadingKhoaHoc,
+  selectedKhoaHoc,
+  setSelectedKhoaHoc,
+  khoaHocOptions,
+  sortedCourses,
+  onSearch,
+  keyword,
+  setKeyword,
+}) => {
+  const [localKeyword, setLocalKeyword] = useState(keyword);
+
+  useEffect(() => {
+    setLocalKeyword(keyword);
+  }, [keyword]);
+
+  const handleSearchClick = () => {
+    onSearch(localKeyword);
+  };
+
+  return (
+    <Row gutter={[8, 8]} align="bottom">
+      <Col span={9}>
+        <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
+          Khóa học
+        </Text>
+        <Select
+          className="w-full"
+          placeholder="-- Chọn khóa học --"
+          loading={isLoadingKhoaHoc}
+          value={selectedKhoaHoc || undefined}
+          style={{ fontSize: 13 }}
+          onChange={(value) => {
+            const newCourseId = value || "";
+            setSelectedKhoaHoc(newCourseId);
+            setKeyword("");
+            setLocalKeyword("");
+          }}
+          options={khoaHocOptions}
+          allowClear
+          showSearch
+          filterOption={(input, option) =>
+            (option?.label ?? "")
+              .toLowerCase()
+              .includes(input.toLowerCase())
+          }
+        />
+      </Col>
+
+      <Col span={9}>
+        <Text className="!mb-1 !text-xs !uppercase !text-gray-500">
+          Từ khóa
+        </Text>
+        <Input
+          value={localKeyword}
+          onChange={(e) => setLocalKeyword(e.target.value)}
+          onPressEnter={handleSearchClick}
+          style={{ fontSize: 13 }}
+          placeholder="Nhập tên học viên"
+          disabled={!selectedKhoaHoc}
+        />
+      </Col>
+
+      <Col span={6}>
+        <Button
+          type="primary"
+          className="w-full"
+          onClick={handleSearchClick}
+          disabled={!selectedKhoaHoc && localKeyword.trim().length < 2}
+        >
+          Tìm
+        </Button>
+      </Col>
+    </Row>
+  );
+};
+
 const KiemTraPublic = () => {
   const [keyword, setKeyword] = useState("");
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
@@ -137,23 +214,6 @@ const KiemTraPublic = () => {
   const [isLyThuyetModalOpen, setIsLyThuyetModalOpen] = useState(false);
   const [isCabinModalOpen, setIsCabinModalOpen] = useState(false);
   const [isDatModalOpen, setIsDatModalOpen] = useState(false);
-
-  const { data, refetch, isLoading: isLoggingIn } = useQuery({
-    queryKey: ["loginPublicCheck"],
-    queryFn: async () => {
-      const res = await DangNhapPublic({
-        Username: PUBLIC_CHECK_USERNAME || "chienvx",
-        Password: PUBLIC_CHECK_PASSWORD || "@chienvx",
-      });
-      if (!res?.data || res?.data?.ID === 0) {
-        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
-      }
-      return res?.data;
-    },
-    enabled: true,
-    retry: true,
-    retryDelay: 3000,
-  });
 
   const { data: khoaHocData, isLoading: isLoadingKhoaHoc } = useQuery({
     queryKey: ["optionLopLyThuyet"],
@@ -183,6 +243,47 @@ const KiemTraPublic = () => {
     );
   }, [sortedCourses, selectedKhoaHoc]);
 
+  const useNewAccount = useMemo(() => {
+    if (!selectedCourse) return false;
+
+    const targetCourse = sortedCourses.find((c) => {
+      const code = String(c?.code || "").toUpperCase();
+      const name = String(c?.name || "").toUpperCase();
+      return code.includes("K26B014") || name.includes("K26B014");
+    });
+
+    if (!targetCourse) return false;
+
+    const targetDate = targetCourse.start_date || targetCourse.start_time || 0;
+    const selectedDate = selectedCourse.start_date || selectedCourse.start_time || 0;
+
+    return selectedDate >= targetDate;
+  }, [selectedCourse, sortedCourses]);
+
+  const { data, refetch, isLoading: isLoggingIn } = useQuery({
+    queryKey: ["loginPublicCheck", useNewAccount],
+    queryFn: async () => {
+      const username = useNewAccount
+        ? import.meta.env.VITE_USERNAME_NEW || "dltx_lpt_31011"
+        : PUBLIC_CHECK_USERNAME || "chienvx";
+      const password = useNewAccount
+        ? import.meta.env.VITE_PASSWORD_NEW || "@tcdbvn"
+        : PUBLIC_CHECK_PASSWORD || "@chienvx";
+
+      const res = await DangNhapPublic({
+        Username: username,
+        Password: password,
+      });
+      if (!res?.data || res?.data?.ID === 0) {
+        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
+      }
+      return res?.data;
+    },
+    enabled: true,
+    retry: true,
+    retryDelay: 3000,
+  });
+
   const selectedKhoaHocLabel = useMemo(() => {
     return selectedCourse?.suffix_name || selectedCourse?.name || selectedStudent?.ten_khoa || selectedStudent?.ma_khoa || "";
   }, [selectedCourse, selectedStudent]);
@@ -200,6 +301,7 @@ const KiemTraPublic = () => {
     queryFn: () =>
       getHocVienByMaKhoaSqlPublic({
         search: searchParams?.text || "",
+        ma_khoa: searchParams?.ma_khoa || "",
       }),
     staleTime: 0,
     cacheTime: 0,
@@ -452,9 +554,12 @@ const KiemTraPublic = () => {
     };
   }, [chiTietLyThuyetData]);
 
-  const handleSearch = () => {
-    if (keyword.trim().length < 2) {
-      message.warning("Vui lòng nhập từ khóa ít nhất 2 ký tự.");
+  const handleSearch = (searchKeyword = "") => {
+    // Sync the parent's keyword state
+    setKeyword(searchKeyword);
+
+    if (!selectedKhoaHoc && searchKeyword.trim().length < 2) {
+      message.warning("Vui lòng nhập từ khóa ít nhất 2 ký tự hoặc chọn khóa học.");
       return;
     }
 
@@ -464,7 +569,8 @@ const KiemTraPublic = () => {
     setIsDatModalOpen(false);
     setSearchParams({
       page: 1,
-      text: keyword.trim(),
+      text: searchKeyword.trim(),
+      ma_khoa: selectedKhoaHocCode,
     });
     refetchSearchHocVien();
   };
@@ -599,61 +705,16 @@ const KiemTraPublic = () => {
 
         <Content>
           <Card className="!rounded-none !border-x-0 !border-b-0 !border-t !border-[#d8dee8]">
-            <Row gutter={[8, 8]} align="bottom">
-              <Col span={9} style={{ display: "none" }}>
-                <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
-                  Khóa học
-                </Text>
-                <Select
-                  className="w-full"
-                  placeholder="-- Chọn khóa học --"
-                  loading={isLoadingKhoaHoc}
-                  value={selectedKhoaHoc || undefined}
-                  style={{ fontSize: 13 }}
-                  onChange={(value) => {
-                    setSelectedKhoaHoc(value || "");
-                    setKeyword("");
-                    setSearchParams(null);
-                    setSelectedStudent(null);
-                    setIsLyThuyetModalOpen(false);
-                    setIsCabinModalOpen(false);
-                    setIsDatModalOpen(false);
-                  }}
-                  options={khoaHocOptions}
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Col>
-
-              <Col span={18}>
-                <Text className="!mb-1 !text-xs !uppercase !text-gray-500">
-                  Từ khóa
-                </Text>
-                <Input
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  onPressEnter={handleSearch}
-                  style={{ fontSize: 13 }}
-                  placeholder="Nhập họ tên học viên"
-                />
-              </Col>
-
-              <Col span={6}>
-                <Button
-                  type="primary"
-                  className="w-full"
-                  onClick={handleSearch}
-                  disabled={keyword.trim().length < 2}
-                >
-                  Tìm
-                </Button>
-              </Col>
-            </Row>
+            <SearchControls
+              isLoadingKhoaHoc={isLoadingKhoaHoc}
+              selectedKhoaHoc={selectedKhoaHoc}
+              setSelectedKhoaHoc={setSelectedKhoaHoc}
+              khoaHocOptions={khoaHocOptions}
+              sortedCourses={sortedCourses}
+              onSearch={handleSearch}
+              keyword={keyword}
+              setKeyword={setKeyword}
+            />
 
             {!hasResult && (
               <Card
@@ -683,6 +744,19 @@ const KiemTraPublic = () => {
                                 setIsLyThuyetModalOpen(false);
                                 setIsCabinModalOpen(false);
                                 setIsDatModalOpen(false);
+
+                                // Sync course dropdown to student's course
+                                const studentCourseCode = item?.ma_khoa || item?.user?.course_code || "";
+                                if (studentCourseCode) {
+                                  const matchingCourse = sortedCourses.find(
+                                    (c) =>
+                                      String(c?.code).toUpperCase() === String(studentCourseCode).toUpperCase() ||
+                                      String(c?.name).toUpperCase() === String(studentCourseCode).toUpperCase()
+                                  );
+                                  if (matchingCourse) {
+                                    setSelectedKhoaHoc(matchingCourse.iid);
+                                  }
+                                }
                               }}
                             >
                               <Row>

@@ -13,15 +13,40 @@ import {
   Button,
   Row,
   Select,
+  Switch,
 } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import { searchStudent } from "../apis/hocVien";
+import { searchStudent, DanhSachHocVien } from "../apis/hocVien";
 import StudentDetail from "./StudentDetail";
 import { exportReport } from "../apis/report";
 import dayjs from "dayjs";
 import { courseOptions } from "../apis/khoaHoc";
+import { DangNhap } from "../apis/auth";
 
 const { Title } = Typography;
+
+const getCourseStartDate = (course) => {
+  const rawValue =
+    course?.start_date ??
+    course?.StartDate ??
+    course?.NgayKhaiGiang ??
+    course?.ngay_khai_giang ??
+    course?.NgayBatDau ??
+    course?.ngay_bat_dau;
+
+  if (rawValue === null || rawValue === undefined || rawValue === "") {
+    return null;
+  }
+
+  const numericValue = Number(rawValue);
+  if (Number.isFinite(numericValue) && String(rawValue).trim() !== "") {
+    const unixDate = dayjs.unix(numericValue);
+    if (unixDate.isValid()) return unixDate;
+  }
+
+  const parsedDate = dayjs(rawValue);
+  return parsedDate.isValid() ? parsedDate : null;
+};
 
 export default function SearchStudents() {
   const [searchText, setSearchText] = useState("");
@@ -30,27 +55,95 @@ export default function SearchStudents() {
   const [openedDrawer, setOpenedDrawer] = useState(false);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
 
+  const [accountType, setAccountType] = useState("old");
+  const useNewAccount = useMemo(() => accountType === "new", [accountType]);
+
+  const { isLoading: isLoggingIn } = useQuery({
+    queryKey: ["loginSearchStudents", useNewAccount],
+    queryFn: async () => {
+      const username = useNewAccount
+        ? import.meta.env.VITE_USERNAME_NEW || "dltx_lpt_31011"
+        : import.meta.env.VITE_PUBLIC_CHECK_USERNAME || "chienvx";
+      const password = useNewAccount
+        ? import.meta.env.VITE_PASSWORD_NEW || "@tcdbvn"
+        : import.meta.env.VITE_PUBLIC_CHECK_PASSWORD || "@chienvx";
+
+      const res = await DangNhap({
+        Username: username,
+        Password: password,
+      });
+
+      if (res?.data?.ID !== 0 && res?.data?.Token) {
+        sessionStorage.setItem("token", res.data.Token);
+      } else {
+        throw new Error(res?.data?.Name || "Đăng nhập DAT thất bại");
+      }
+      return res?.data;
+    },
+    enabled: true,
+    retry: true,
+    retryDelay: 3000,
+  });
+
   const { data: results = [], isLoading } = useQuery({
-    queryKey: ["danhSachHocVien", searchParams],
-    queryFn: () => searchStudent(searchParams),
+    queryKey: ["danhSachHocVien", searchParams, useNewAccount],
+    queryFn: () => {
+      if (useNewAccount) {
+        const apiParams = {
+          page: 1,
+          limit: 100,
+        };
+        if (searchParams.search) {
+          apiParams.soCmt = searchParams.search;
+        }
+        const courseObj = (dataKhoaHoc?.data?.Data || []).find(
+          (kh) => String(kh.MaKhoaHoc || "") === String(searchParams.ma_khoa || "")
+        );
+        if (courseObj?.ID) {
+          apiParams.idkhoahoc = courseObj.ID;
+        }
+        return DanhSachHocVien(apiParams);
+      } else {
+        const apiParams = {};
+        if (searchParams.search) {
+          apiParams.search = searchParams.search;
+        }
+        if (searchParams.ma_khoa) {
+          apiParams.ma_khoa = searchParams.ma_khoa;
+        }
+        return searchStudent(apiParams);
+      }
+    },
     staleTime: 1000 * 60 * 5,
     retry: false,
     enabled: Object.keys(searchParams).length > 0,
   });
 
   const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
-    queryKey: ["khoahocOptions"],
+    queryKey: ["khoahocOptions", useNewAccount],
     queryFn: () => courseOptions(),
     staleTime: 1000 * 60 * 5,
-    keepPreviousData: true,
+    keepPreviousData: false,
+    enabled: !isLoggingIn,
   });
 
   const dataSource = useMemo(() => {
-    const students = Array.isArray(results)
-      ? results
-      : Array.isArray(results?.data)
-        ? results.data
-        : [];
+    let students = [];
+    if (useNewAccount) {
+      students = Array.isArray(results?.data?.Data)
+        ? results.data.Data
+        : Array.isArray(results?.data)
+          ? results.data
+          : Array.isArray(results)
+            ? results
+            : [];
+    } else {
+      students = Array.isArray(results)
+        ? results
+        : Array.isArray(results?.data)
+          ? results.data
+          : [];
+    }
 
     const currentYear = dayjs().format("YY");
 
@@ -59,16 +152,25 @@ export default function SearchStudents() {
       return match ? match[1] : null;
     };
 
+    const courses = dataKhoaHoc?.data?.Data || [];
+
     return students
       .map((student) => {
+        const course = courses.find(
+          (c) =>
+            String(c.ID) === String(student.IDKhoaHoc || student.idkhoahoc) ||
+            String(c.MaKhoaHoc || "").toUpperCase() === String(student.MaKhoaHoc || student.ma_khoa || "").toUpperCase()
+        );
+
         return {
           ...student,
-          MaDK: student.ma_dk,
-          HoTen: student.ho_ten,
-          TenKhoaHoc: student.ten_khoa,
-          NgaySinh: student.ngay_sinh,
-          srcAvatar: student.anh,
-          HangDaoTao: student.hang_gplx || student.hang || "",
+          MaDK: student.MaDK || student.ma_dk,
+          HoTen: student.HoTen || student.ho_ten,
+          TenKhoaHoc: course?.Ten || student.TenKhoaHoc || student.ten_khoa || "",
+          NgaySinh: student.NgaySinh || student.ngay_sinh,
+          srcAvatar: student.srcAvatar || student.anh,
+          HangDaoTao: student.HangDaoTao || student.hang_gplx || student.hang || "",
+          ma_khoa: course?.MaKhoaHoc || student.MaKhoaHoc || student.ma_khoa || "",
         };
       })
       .sort((a, b) => {
@@ -90,7 +192,7 @@ export default function SearchStudents() {
         // Final fallback: alphabetical by course name
         return (a.TenKhoaHoc || "").localeCompare(b.TenKhoaHoc || "");
       });
-  }, [results]);
+  }, [results, useNewAccount]);
 
   const khoaHocOptions = useMemo(() => {
     const options = dataKhoaHoc?.data?.Data || [];
@@ -106,7 +208,7 @@ export default function SearchStudents() {
   const handleSearch = () => {
     const params = {};
 
-    if (searchText.trim().length >= 2) {
+    if (searchText.trim()) {
       params.search = searchText.trim();
     }
 
@@ -138,7 +240,13 @@ export default function SearchStudents() {
         title: "Thông tin chi tiết học viên",
         content: (
           <div className="bg-gray-50">
-            <StudentDetail data={selectedRecord} />
+            {isLoggingIn ? (
+              <div className="p-10 text-center">
+                <Spin tip="Đang chuyển đổi tài khoản..." />
+              </div>
+            ) : (
+              <StudentDetail data={selectedRecord} />
+            )}
           </div>
         ),
       };
@@ -259,14 +367,31 @@ export default function SearchStudents() {
       </Title>
       <Card className="!mt-5">
         <Row gutter={16} align="bottom">
-          <Col xs={24} sm={12} md={10}>
-            <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+          <Col xs={24} sm={12} md={3}>
+            <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1 font-semibold text-blue-600">
+              Dữ liệu mới
+            </label>
+            <div className="flex items-center h-10 pl-1">
+              <Switch
+                checked={accountType === "new"}
+                onChange={(checked) => {
+                  setAccountType(checked ? "new" : "old");
+                  setSelectedKhoaHoc("");
+                  setSearchParams({});
+                }}
+                checkedChildren="Mới"
+                unCheckedChildren="Cũ"
+              />
+            </div>
+          </Col>
+          <Col xs={24} sm={12} md={9}>
+            <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1">
               Khóa học
             </label>
             <Select
-              className="w-full"
+              className="w-full !text-sm"
               placeholder="-- Chọn khóa học --"
-              loading={loadingKhoaHoc}
+              loading={loadingKhoaHoc || isLoggingIn}
               value={selectedKhoaHoc}
               onChange={(value) => setSelectedKhoaHoc(value)}
               options={khoaHocOptions}
@@ -277,10 +402,11 @@ export default function SearchStudents() {
                   .toLowerCase()
                   .includes(input.toLowerCase())
               }
+              size="large"
             />
           </Col>
-          <Col span={11}>
-            <label className="block text-xs text-gray-500 uppercase mb-1 ml-1">
+          <Col span={9}>
+            <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1">
               Từ khóa
             </label>
             <Input
@@ -292,10 +418,11 @@ export default function SearchStudents() {
               onPressEnter={handleSearch}
             />
           </Col>
-          <Col span={3} className="pl-4 flex items-center">
+          <Col span={3}>
             <Button
               type="primary"
-              className="w-full !font-medium !py-4.5 !rounded-md !bg-[#3366CC] "
+              size="large"
+              className="w-full !font-medium !rounded-md !bg-[#3366CC] !text-sm"
               onClick={handleSearch}
               icon={<SearchOutlined />}
               onKeyDown={(e) => {
