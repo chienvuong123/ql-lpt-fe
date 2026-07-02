@@ -1,4 +1,6 @@
 /api/* http://113.160.131.3:7782/api/:splat  200!
+/api-new/HanhTrinh  http://113.160.131.3:7782/api/HanhTrinh  200!
+/api-new/HanhTrinh/*  http://113.160.131.3:7782/api/HanhTrinh/:splat  200!
 /api-new/* http://113.160.131.3:7186/api/:splat  200!
 /api-local/* https://api.lapphuongthanh.io.vn/api:splat 200!
 /* /index.html  200
