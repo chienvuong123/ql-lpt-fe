@@ -76,8 +76,7 @@ api.interceptors.response.use(
 );
 
 export const DangNhapPublic = async (data, isNewCourse = false) => {
-  const client = isNewCourse ? apiNew : api;
-  const response = await client.post("/Login", data);
+  const response = await api.post("/Login", data);
 
   if (response.data && response.data.Token) {
     const tokenKey = isNewCourse ? "token-public-new" : "token-public";
