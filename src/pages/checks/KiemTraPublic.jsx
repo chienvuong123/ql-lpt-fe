@@ -43,6 +43,8 @@ const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
 const PUBLIC_CHECK_USERNAME = import.meta.env.VITE_PUBLIC_CHECK_USERNAME;
 const PUBLIC_CHECK_PASSWORD = import.meta.env.VITE_PUBLIC_CHECK_PASSWORD;
+const PUBLIC_CHECK_USERNAME_NEW = import.meta.env.VITE_USERNAME_NEW;
+const PUBLIC_CHECK_PASSWORD_NEW = import.meta.env.VITE_PASSWORD_NEW;
 
 const CABIN_RULES = [
   {
@@ -302,8 +304,8 @@ const KiemTraPublic = () => {
   const { data: dataNew, isLoading: isLoggingInNew } = useQuery({
     queryKey: ["loginPublicCheckNew"],
     queryFn: async () => {
-      const username = PUBLIC_CHECK_USERNAME || "chienvx";
-      const password = PUBLIC_CHECK_PASSWORD || "@chienvx";
+      const username = PUBLIC_CHECK_USERNAME_NEW || "dltx_lpt_31011";
+      const password = PUBLIC_CHECK_PASSWORD_NEW || "@tcdbvn";
 
       const res = await DangNhapPublic({
         Username: username,
