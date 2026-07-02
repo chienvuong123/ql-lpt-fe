@@ -1014,17 +1014,19 @@ const KiemTraPublic = () => {
                         >
                           {cabinText}
                         </Text>
-                        <Button
-                          className="!rounded-xl !px-3 !text-xs"
-                          size="small"
-                          onClick={() => {
-                            // if (isLyThuyetPassed) {
-                            setIsCabinModalOpen(true);
-                            // }
-                          }}
-                        >
-                          Xem
-                        </Button>
+                        {!isCabinMaintenance && (
+                          <Button
+                            className="!rounded-xl !px-3 !text-xs"
+                            size="small"
+                            onClick={() => {
+                              // if (isLyThuyetPassed) {
+                              setIsCabinModalOpen(true);
+                              // }
+                            }}
+                          >
+                            Xem
+                          </Button>
+                        )}
                       </Flex>
                     </Card>
                   </Col>
