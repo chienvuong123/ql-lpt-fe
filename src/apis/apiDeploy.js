@@ -18,6 +18,25 @@ export const apiLocal = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+export const apiNew = axios.create({
+  baseURL: `${APP_URL}/api-new`,
+  timeout: 50000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+apiNew.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token-public-new");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token-public");
@@ -56,18 +75,21 @@ api.interceptors.response.use(
   (error) => Promise.reject(error),
 );
 
-export const DangNhapPublic = async (data) => {
-  const response = await api.post("/Login", data);
+export const DangNhapPublic = async (data, isNewCourse = false) => {
+  const client = isNewCourse ? apiNew : api;
+  const response = await client.post("/Login", data);
 
   if (response.data && response.data.Token) {
-    localStorage.setItem("token-public", response.data.Token);
+    const tokenKey = isNewCourse ? "token-public-new" : "token-public";
+    localStorage.setItem(tokenKey, response.data.Token);
   }
 
   return response;
 };
 
-export const HanhTrinhPublic = async (params) => {
-  return api({
+export const HanhTrinhPublic = async (params, isNewCourse = false) => {
+  const client = isNewCourse ? apiNew : api;
+  return client({
     method: "get",
     url: "/HanhTrinh",
     params,

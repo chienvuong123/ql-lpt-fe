@@ -215,26 +215,6 @@ const KiemTraPublic = () => {
     );
   }, [sortedCourses, selectedKhoaHoc]);
 
-  const { data, refetch, isLoading: isLoggingIn } = useQuery({
-    queryKey: ["loginPublicCheck"],
-    queryFn: async () => {
-      const username = PUBLIC_CHECK_USERNAME || "chienvx";
-      const password = PUBLIC_CHECK_PASSWORD || "@chienvx";
-
-      const res = await DangNhapPublic({
-        Username: username,
-        Password: password,
-      });
-      if (!res?.data || res?.data?.ID === 0) {
-        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
-      }
-      return res?.data;
-    },
-    enabled: true,
-    retry: true,
-    retryDelay: 3000,
-  });
-
   const selectedKhoaHocLabel = useMemo(() => {
     return selectedCourse?.suffix_name || selectedCourse?.name || selectedStudent?.ten_khoa || selectedStudent?.ma_khoa || "";
   }, [selectedCourse, selectedStudent]);
@@ -298,6 +278,51 @@ const KiemTraPublic = () => {
     }
     return code;
   }, [isK26B014OrLater, selectedKhoaHocCode]);
+
+  const { data, refetch, isLoading: isLoggingIn } = useQuery({
+    queryKey: ["loginPublicCheck"],
+    queryFn: async () => {
+      const username = PUBLIC_CHECK_USERNAME || "chienvx";
+      const password = PUBLIC_CHECK_PASSWORD || "@chienvx";
+
+      const res = await DangNhapPublic({
+        Username: username,
+        Password: password,
+      }, false);
+      if (!res?.data || res?.data?.ID === 0) {
+        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
+      }
+      return res?.data;
+    },
+    enabled: true,
+    retry: true,
+    retryDelay: 3000,
+  });
+
+  const { data: dataNew, isLoading: isLoggingInNew } = useQuery({
+    queryKey: ["loginPublicCheckNew"],
+    queryFn: async () => {
+      const username = PUBLIC_CHECK_USERNAME || "chienvx";
+      const password = PUBLIC_CHECK_PASSWORD || "@chienvx";
+
+      const res = await DangNhapPublic({
+        Username: username,
+        Password: password,
+      }, true);
+      if (!res?.data || res?.data?.ID === 0) {
+        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
+      }
+      return res?.data;
+    },
+    enabled: isK26B014OrLater,
+    retry: true,
+    retryDelay: 3000,
+  });
+
+  const isPublicLoggingIn = isLoggingIn || (isK26B014OrLater && isLoggingInNew);
+  const isPublicAuthSuccess = isK26B014OrLater
+    ? (!!dataNew && dataNew.ID !== 0)
+    : (!!data && data.ID !== 0);
 
   const {
     data: danhSachHocVien = {},
@@ -373,8 +398,8 @@ const KiemTraPublic = () => {
         makhoahoc: datCourseCode,
         limit: 20,
         page: 1,
-      }),
-    enabled: isDatModalOpen && !!cabinKey && !!data && data.ID !== 0,
+      }, isK26B014OrLater),
+    enabled: isDatModalOpen && !!cabinKey && isPublicAuthSuccess,
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
@@ -1088,7 +1113,7 @@ const KiemTraPublic = () => {
                         onClick={() => {
                           setIsDatModalOpen(true);
                         }}
-                        loading={isLoggingIn || !data || data.ID === 0}
+                        loading={isPublicLoggingIn || !isPublicAuthSuccess}
                       >
                         Chi tiết
                       </Button>
