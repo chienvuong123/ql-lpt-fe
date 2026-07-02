@@ -151,34 +151,7 @@ const SearchControls = ({
 
   return (
     <Row gutter={[8, 8]} align="bottom">
-      <Col span={9}>
-        <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
-          Khóa học
-        </Text>
-        <Select
-          className="w-full"
-          placeholder="-- Chọn khóa học --"
-          loading={isLoadingKhoaHoc}
-          value={selectedKhoaHoc || undefined}
-          style={{ fontSize: 13 }}
-          onChange={(value) => {
-            const newCourseId = value || "";
-            setSelectedKhoaHoc(newCourseId);
-            setKeyword("");
-            setLocalKeyword("");
-          }}
-          options={khoaHocOptions}
-          allowClear
-          showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? "")
-              .toLowerCase()
-              .includes(input.toLowerCase())
-          }
-        />
-      </Col>
-
-      <Col span={9}>
+      <Col span={18}>
         <Text className="!mb-1 !text-xs !uppercase !text-gray-500">
           Từ khóa
         </Text>
@@ -188,7 +161,6 @@ const SearchControls = ({
           onPressEnter={handleSearchClick}
           style={{ fontSize: 13 }}
           placeholder="Nhập tên học viên"
-          disabled={!selectedKhoaHoc}
         />
       </Col>
 
@@ -197,7 +169,7 @@ const SearchControls = ({
           type="primary"
           className="w-full"
           onClick={handleSearchClick}
-          disabled={!selectedKhoaHoc && localKeyword.trim().length < 2}
+          disabled={localKeyword.trim().length === 0}
         >
           Tìm
         </Button>
@@ -243,32 +215,11 @@ const KiemTraPublic = () => {
     );
   }, [sortedCourses, selectedKhoaHoc]);
 
-  const useNewAccount = useMemo(() => {
-    if (!selectedCourse) return false;
-
-    const targetCourse = sortedCourses.find((c) => {
-      const code = String(c?.code || "").toUpperCase();
-      const name = String(c?.name || "").toUpperCase();
-      return code.includes("K26B014") || name.includes("K26B014");
-    });
-
-    if (!targetCourse) return false;
-
-    const targetDate = targetCourse.start_date || targetCourse.start_time || 0;
-    const selectedDate = selectedCourse.start_date || selectedCourse.start_time || 0;
-
-    return selectedDate >= targetDate;
-  }, [selectedCourse, sortedCourses]);
-
   const { data, refetch, isLoading: isLoggingIn } = useQuery({
-    queryKey: ["loginPublicCheck", useNewAccount],
+    queryKey: ["loginPublicCheck"],
     queryFn: async () => {
-      const username = useNewAccount
-        ? import.meta.env.VITE_USERNAME_NEW || "dltx_lpt_31011"
-        : PUBLIC_CHECK_USERNAME || "chienvx";
-      const password = useNewAccount
-        ? import.meta.env.VITE_PASSWORD_NEW || "@tcdbvn"
-        : PUBLIC_CHECK_PASSWORD || "@chienvx";
+      const username = PUBLIC_CHECK_USERNAME || "chienvx";
+      const password = PUBLIC_CHECK_PASSWORD || "@chienvx";
 
       const res = await DangNhapPublic({
         Username: username,
@@ -292,6 +243,62 @@ const KiemTraPublic = () => {
     return selectedCourse?.code || selectedCourse?.name || selectedStudent?.ma_khoa || "";
   }, [selectedCourse, selectedStudent]);
 
+  const isK26B014OrLater = useMemo(() => {
+    const courseCode = String(
+      selectedCourse?.code ||
+      selectedCourse?.name ||
+      selectedStudent?.ma_khoa ||
+      selectedStudent?.MaKhoaHoc ||
+      ""
+    ).toUpperCase();
+
+    if (!courseCode) return false;
+
+    const course = selectedCourse || sortedCourses.find(
+      (c) =>
+        String(c?.code).toUpperCase() === courseCode ||
+        String(c?.name).toUpperCase() === courseCode
+    );
+
+    if (course) {
+      const selectedDate = course.start_date || course.start_time || 0;
+      if (selectedDate > 0) {
+        return selectedDate >= 1776272400; // start_date of K26B014
+      }
+    }
+
+    const isLaterByCode = (code = "") => {
+      const match = code.match(/K(\d+)[A-Z]*(\d+)/);
+      if (match) {
+        const kNum = parseInt(match[1], 10);
+        const classNum = parseInt(match[2], 10);
+        if (kNum > 26) return true;
+        if (kNum === 26 && classNum >= 14) return true;
+      }
+      return false;
+    };
+
+    return isLaterByCode(courseCode);
+  }, [selectedCourse, sortedCourses, selectedStudent]);
+
+  const datCourseCode = useMemo(() => {
+    const code = selectedKhoaHocCode;
+    if (isK26B014OrLater) {
+      let newCode = code;
+      if (newCode.includes("3101130004")) {
+        newCode = newCode.replace("3101130004", "31011");
+      } else if (newCode.includes("30004")) {
+        newCode = newCode.replace("30004", "31011");
+      }
+
+      if (!newCode.startsWith("31011")) {
+        return `31011${newCode}`;
+      }
+      return newCode;
+    }
+    return code;
+  }, [isK26B014OrLater, selectedKhoaHocCode]);
+
   const {
     data: danhSachHocVien = {},
     isLoading: loadingStudents,
@@ -301,7 +308,6 @@ const KiemTraPublic = () => {
     queryFn: () =>
       getHocVienByMaKhoaSqlPublic({
         search: searchParams?.text || "",
-        ma_khoa: searchParams?.ma_khoa || "",
       }),
     staleTime: 0,
     cacheTime: 0,
@@ -358,13 +364,13 @@ const KiemTraPublic = () => {
   });
 
   const { data: dataDat, isLoading: loadingDat } = useQuery({
-    queryKey: ["hanhTrinhPublic", cabinKey, selectedKhoaHocCode],
+    queryKey: ["hanhTrinhPublic", cabinKey, datCourseCode],
     queryFn: () =>
       HanhTrinhPublic({
         ngaybatdau: "2020-01-01",
-        ngayketthuc: "2026-12-31",
+        ngayketthuc: `${dayjs().format("YYYY-MM-DD")}T23:59:00`,
         ten: cabinKey,
-        makhoahoc: selectedKhoaHocCode,
+        makhoahoc: datCourseCode,
         limit: 20,
         page: 1,
       }),
@@ -558,11 +564,12 @@ const KiemTraPublic = () => {
     // Sync the parent's keyword state
     setKeyword(searchKeyword);
 
-    if (!selectedKhoaHoc && searchKeyword.trim().length < 2) {
-      message.warning("Vui lòng nhập từ khóa ít nhất 2 ký tự hoặc chọn khóa học.");
+    if (searchKeyword.trim().length === 0) {
+      message.warning("Vui lòng nhập từ khóa tìm kiếm.");
       return;
     }
 
+    setSelectedKhoaHoc("");
     setSelectedStudent(null);
     setIsLyThuyetModalOpen(false);
     setIsCabinModalOpen(false);
@@ -570,7 +577,6 @@ const KiemTraPublic = () => {
     setSearchParams({
       page: 1,
       text: searchKeyword.trim(),
-      ma_khoa: selectedKhoaHocCode,
     });
     refetchSearchHocVien();
   };
@@ -640,13 +646,19 @@ const KiemTraPublic = () => {
     cabinGroupedByRule.length > 0 &&
     cabinGroupedByRule.every((item) => item.learnedMinutes >= item.passMinutes);
 
+  const isCabinMaintenance = useMemo(() => {
+    return dataCabin?.success === true && cabinDataList.length === 0;
+  }, [dataCabin, cabinDataList]);
+
   const cabinText = useMemo(() => {
     if (loadingCabin) return "Đang tải dữ liệu CABIN...";
+    if (isCabinMaintenance) return "Bảo trì";
     if (cabinDataList.length === 0) return "Trượt";
 
     return isCabinPassed && isAllCabinRulesPassed ? "Đạt" : "Trượt";
   }, [
     loadingCabin,
+    isCabinMaintenance,
     cabinDataList.length,
     isCabinPassed,
     isAllCabinRulesPassed,
@@ -991,10 +1003,14 @@ const KiemTraPublic = () => {
                         className="!mt-2"
                       >
                         <Text
-                          className={`!text-xs !font-bold ${isCabinFinalPassed
-                            ? "!text-[#1b8a35]"
-                            : "!text-[#dc2626]"
-                            }`}
+                          className="!text-xs !font-bold"
+                          style={{
+                            color: isCabinFinalPassed
+                              ? "#1b8a35"
+                              : isCabinMaintenance
+                                ? "#7e8ea6"
+                                : "#dc2626"
+                          }}
                         >
                           {cabinText}
                         </Text>
@@ -1097,7 +1113,7 @@ const KiemTraPublic = () => {
       />
 
       <ModalTest
-        open={isCabinPassed && isDatModalOpen}
+        open={isDatModalOpen}
         onCancel={() => setIsDatModalOpen(false)}
         loading={loadingDat}
         student={selectedStudent}
