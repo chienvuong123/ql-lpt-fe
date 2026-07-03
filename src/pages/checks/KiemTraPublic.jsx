@@ -236,6 +236,34 @@ const KiemTraPublic = () => {
 
     if (!courseCode) return false;
 
+    const isLaterByCode = (code = "") => {
+      const match = code.match(/K(\d+)[A-Z]*(\d+)/);
+      if (match) {
+        const kNum = parseInt(match[1], 10);
+        const classNum = parseInt(match[2], 10);
+        if (kNum > 26) return true;
+        if (kNum < 26) return false;
+
+        // kNum === 26
+        const isB = code.includes("B");
+        const isC = code.includes("C");
+
+        if (isB) {
+          if (classNum >= 113) return true;
+          if (classNum >= 14 && classNum < 100) return true;
+        } else if (isC) {
+          if (classNum >= 1004) return true;
+        }
+        return false;
+      }
+      return null;
+    };
+
+    const codeCheckResult = isLaterByCode(courseCode);
+    if (codeCheckResult !== null) {
+      return codeCheckResult;
+    }
+
     const course = selectedCourse || sortedCourses.find(
       (c) =>
         String(c?.code).toUpperCase() === courseCode ||
@@ -249,18 +277,7 @@ const KiemTraPublic = () => {
       }
     }
 
-    const isLaterByCode = (code = "") => {
-      const match = code.match(/K(\d+)[A-Z]*(\d+)/);
-      if (match) {
-        const kNum = parseInt(match[1], 10);
-        const classNum = parseInt(match[2], 10);
-        if (kNum > 26) return true;
-        if (kNum === 26 && classNum >= 14) return true;
-      }
-      return false;
-    };
-
-    return isLaterByCode(courseCode);
+    return false;
   }, [selectedCourse, sortedCourses, selectedStudent]);
 
   const datCourseCode = useMemo(() => {
