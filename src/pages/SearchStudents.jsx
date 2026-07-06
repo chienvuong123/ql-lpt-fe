@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -58,32 +58,52 @@ export default function SearchStudents() {
   const [accountType, setAccountType] = useState("old");
   const useNewAccount = useMemo(() => accountType === "new", [accountType]);
 
-  const { isLoading: isLoggingIn } = useQuery({
-    queryKey: ["loginSearchStudents", useNewAccount],
-    queryFn: async () => {
-      const username = useNewAccount
-        ? import.meta.env.VITE_USERNAME_NEW || "dltx_lpt_31011"
-        : import.meta.env.VITE_PUBLIC_CHECK_USERNAME || "chienvx";
-      const password = useNewAccount
-        ? import.meta.env.VITE_PASSWORD_NEW || "@tcdbvn"
-        : import.meta.env.VITE_PUBLIC_CHECK_PASSWORD || "@chienvx";
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [tokenReadyFor, setTokenReadyFor] = useState(null);
 
-      const res = await DangNhap({
-        Username: username,
-        Password: password,
-      });
+  useEffect(() => {
+    let active = true;
+    const performLogin = async () => {
+      setIsLoggingIn(true);
+      setTokenReadyFor(null);
+      try {
+        const username = useNewAccount
+          ? import.meta.env.VITE_USERNAME_NEW || "dltx_lpt_31011"
+          : import.meta.env.VITE_PUBLIC_CHECK_USERNAME || "chienvx";
+        const password = useNewAccount
+          ? import.meta.env.VITE_PASSWORD_NEW || "@tcdbvn"
+          : import.meta.env.VITE_PUBLIC_CHECK_PASSWORD || "@chienvx";
 
-      if (res?.data?.ID !== 0 && res?.data?.Token) {
-        sessionStorage.setItem("token", res.data.Token);
-      } else {
-        throw new Error(res?.data?.Name || "Đăng nhập DAT thất bại");
+        const res = await DangNhap({
+          Username: username,
+          Password: password,
+        });
+
+        if (active) {
+          if (res?.data?.ID !== 0 && res?.data?.Token) {
+            sessionStorage.setItem("token", res.data.Token);
+            setTokenReadyFor(useNewAccount ? "new" : "old");
+          } else {
+            throw new Error(res?.data?.Name || "Đăng nhập DAT thất bại");
+          }
+        }
+      } catch (err) {
+        if (active) {
+          message.error(err.message || "Đăng nhập thất bại");
+        }
+      } finally {
+        if (active) {
+          setIsLoggingIn(false);
+        }
       }
-      return res?.data;
-    },
-    enabled: true,
-    retry: true,
-    retryDelay: 3000,
-  });
+    };
+
+    performLogin();
+
+    return () => {
+      active = false;
+    };
+  }, [useNewAccount]);
 
   const { data: results = [], isLoading } = useQuery({
     queryKey: ["danhSachHocVien", searchParams, useNewAccount],
@@ -116,7 +136,7 @@ export default function SearchStudents() {
     },
     staleTime: 1000 * 60 * 5,
     retry: false,
-    enabled: Object.keys(searchParams).length > 0,
+    enabled: Object.keys(searchParams).length > 0 && !isLoggingIn && tokenReadyFor === accountType,
   });
 
   const { data: dataKhoaHoc, isLoading: loadingKhoaHoc } = useQuery({
@@ -124,7 +144,7 @@ export default function SearchStudents() {
     queryFn: () => courseOptions(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: false,
-    enabled: !isLoggingIn,
+    enabled: !isLoggingIn && tokenReadyFor === accountType,
   });
 
   const dataSource = useMemo(() => {
@@ -156,21 +176,28 @@ export default function SearchStudents() {
 
     return students
       .map((student) => {
-        const course = courses.find(
-          (c) =>
-            String(c.ID) === String(student.IDKhoaHoc || student.idkhoahoc) ||
-            String(c.MaKhoaHoc || "").toUpperCase() === String(student.MaKhoaHoc || student.ma_khoa || "").toUpperCase()
-        );
+        const courseId = student.IDKhoaHoc || student.idkhoahoc || student.id_khoa_hoc || student.idKhoaHoc;
+        const studentCourseCode = student.MaKhoaHoc || student.ma_khoa;
+
+        const course = courses.find((c) => {
+          const matchId = courseId && (String(c.ID) === String(courseId) || String(c.id) === String(courseId));
+          const matchCode = studentCourseCode && (
+            String(c.MaKhoaHoc || c.ma_khoa || c.maKhoaHoc || "").toUpperCase() === String(studentCourseCode).toUpperCase()
+          );
+          return matchId || matchCode;
+        });
+
+        const tenKhoaHoc = student.TenKhoaHoc || student.ten_khoa || course?.Ten || course?.ten || course?.TenKhoaHoc || course?.ten_khoa || "";
 
         return {
           ...student,
           MaDK: student.MaDK || student.ma_dk,
           HoTen: student.HoTen || student.ho_ten,
-          TenKhoaHoc: course?.Ten || student.TenKhoaHoc || student.ten_khoa || "",
+          TenKhoaHoc: tenKhoaHoc,
           NgaySinh: student.NgaySinh || student.ngay_sinh,
           srcAvatar: student.srcAvatar || student.anh,
           HangDaoTao: student.HangDaoTao || student.hang_gplx || student.hang || "",
-          ma_khoa: course?.MaKhoaHoc || student.MaKhoaHoc || student.ma_khoa || "",
+          ma_khoa: course?.MaKhoaHoc || course?.ma_khoa || student.MaKhoaHoc || student.ma_khoa || "",
         };
       })
       .sort((a, b) => {
@@ -361,127 +388,143 @@ export default function SearchStudents() {
   );
 
   return (
-    <div>
-      <Title level={3} className="!mb-1">
-        Tìm kiếm học viên
-      </Title>
-      <Card className="!mt-5">
-        <Row gutter={16} align="bottom">
-          <Col xs={24} sm={12} md={3}>
-            <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1 font-semibold text-blue-600">
-              Dữ liệu mới
-            </label>
-            <div className="flex items-center h-10 pl-1">
-              <Switch
-                checked={accountType === "new"}
-                onChange={(checked) => {
-                  setAccountType(checked ? "new" : "old");
-                  setSelectedKhoaHoc("");
-                  setSearchParams({});
-                }}
-                checkedChildren="Mới"
-                unCheckedChildren="Cũ"
-              />
-            </div>
-          </Col>
-          <Col xs={24} sm={12} md={9}>
-            <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1">
-              Khóa học
-            </label>
-            <Select
-              className="w-full !text-sm"
-              placeholder="-- Chọn khóa học --"
-              loading={loadingKhoaHoc || isLoggingIn}
-              value={selectedKhoaHoc}
-              onChange={(value) => setSelectedKhoaHoc(value)}
-              options={khoaHocOptions}
-              allowClear
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              size="large"
-            />
-          </Col>
-          <Col span={9}>
-            <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1">
-              Từ khóa
-            </label>
-            <Input
-              placeholder="Nhập tối thiểu 2 ký tự..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              size="large"
-              className="!text-sm"
-              onPressEnter={handleSearch}
-            />
-          </Col>
-          <Col span={3}>
-            <Button
-              type="primary"
-              size="large"
-              className="w-full !font-medium !rounded-md !bg-[#3366CC] !text-sm"
-              onClick={handleSearch}
-              icon={<SearchOutlined />}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
-            >
-              Tìm kiếm
-            </Button>
-          </Col>
-        </Row>
-      </Card>
-
-      {Object.keys(searchParams).length > 0 && (
-        <Card
-          style={{ marginTop: 16 }}
-          bodyStyle={{ padding: 0 }}
-          className="!max-h-[60vh] !shadow-md overflow-y-auto"
-        >
-          <div className="mb-3 text-sm text-blue-600 font-medium px-3 py-2">
-            {dataSource.length} kết quả
+    <div className="relative">
+      {isLoggingIn && (
+        <div className="fixed inset-0 flex flex-col justify-center items-center">
+          <Spin size="middle" />
+          <div className="mt-4 font-medium text-base text-[#1890ff]">
+            Đang chuyển đổi dữ liệu...
           </div>
-
-          <Spin spinning={isLoading}>
-            {dataSource.length > 0 ? (
-              <div className="border-white rounded-lg overflow-hidden">
-                {dataSource.map((student) => renderStudentCard(student))}
-              </div>
-            ) : (
-              <Empty description="Không có dữ liệu" />
-            )}
-          </Spin>
-        </Card>
+        </div>
       )}
+      <div>
+        <Title level={3} className="!mb-1">
+          Tìm kiếm học viên
+        </Title>
+        <Card className="!mt-5">
+          <Row gutter={16} align="bottom">
+            <Col xs={24} sm={12} md={3}>
+              <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1 font-semibold text-blue-600">
+                Dữ liệu mới
+              </label>
+              <div className="flex items-center h-10 pl-1">
+                <Switch
+                  checked={accountType === "new"}
+                  disabled={isLoggingIn}
+                  onChange={(checked) => {
+                    setIsLoggingIn(true);
+                    setTokenReadyFor(null);
+                    setAccountType(checked ? "new" : "old");
+                    setSelectedKhoaHoc("");
+                    setSearchParams({});
+                  }}
+                  checkedChildren="Mới"
+                  unCheckedChildren="Cũ"
+                />
+              </div>
+            </Col>
+            <Col xs={24} sm={12} md={9}>
+              <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1">
+                Khóa học
+              </label>
+              <Select
+                className="w-full !text-sm"
+                placeholder="-- Chọn khóa học --"
+                loading={loadingKhoaHoc || isLoggingIn}
+                disabled={isLoggingIn}
+                value={selectedKhoaHoc}
+                onChange={(value) => setSelectedKhoaHoc(value)}
+                options={khoaHocOptions}
+                allowClear
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                size="large"
+              />
+            </Col>
+            <Col span={9}>
+              <label className="block text-xs text-gray-500 uppercase mb-1.5 ml-1">
+                Từ khóa
+              </label>
+              <Input
+                placeholder="Nhập tối thiểu 2 ký tự..."
+                disabled={isLoggingIn}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                size="large"
+                className="!text-sm"
+                onPressEnter={handleSearch}
+              />
+            </Col>
+            <Col span={3}>
+              <Button
+                type="primary"
+                size="large"
+                className="w-full !font-medium !rounded-md !bg-[#3366CC] !text-sm"
+                onClick={handleSearch}
+                disabled={isLoggingIn}
+                icon={<SearchOutlined />}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+              >
+                Tìm kiếm
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
-      <Drawer
-        title={drawerProps.title}
-        onClose={handleCloseForm}
-        open={openedDrawer}
-        width="100vw"
-        maskClosable={false}
-        extra={
-          <div>
-            <Button
-              type="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleReport();
-              }}
-              className="!font-medium"
-            >
-              Báo cáo
-            </Button>
-          </div>
-        }
-      >
-        {openedDrawer && drawerProps.content}
-      </Drawer>
+        {Object.keys(searchParams).length > 0 && (
+          <Card
+            style={{ marginTop: 16 }}
+            bodyStyle={{ padding: 0 }}
+            className="!max-h-[60vh] !shadow-md overflow-y-auto"
+          >
+            <div className="mb-3 text-sm text-blue-600 font-medium px-3 py-2">
+              {dataSource.length} kết quả
+            </div>
+
+            <Spin spinning={isLoading}>
+              {dataSource.length > 0 ? (
+                <div className="border-white rounded-lg overflow-hidden">
+                  {dataSource.map((student) => renderStudentCard(student))}
+                </div>
+              ) : (
+                <Empty description="Không có dữ liệu" />
+              )}
+            </Spin>
+          </Card>
+        )}
+
+        <Drawer
+          title={drawerProps.title}
+          onClose={handleCloseForm}
+          open={openedDrawer}
+          width="100vw"
+          maskClosable={false}
+          extra={
+            <div>
+              <Button
+                type="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReport();
+                }}
+                className="!font-medium"
+              >
+                Báo cáo
+              </Button>
+            </div>
+          }
+        >
+          {openedDrawer && drawerProps.content}
+        </Drawer>
+      </div>
     </div>
   );
 }

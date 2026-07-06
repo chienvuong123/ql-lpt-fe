@@ -49,6 +49,7 @@ import { getForbiddenZones } from "../apis/forbiddenZone";
 import { getCheckConfigs } from "../apis/apiSetting";
 
 import { fetchCheckStudents } from "../apis/kiemTra";
+import { danhSachXeGiaoVien } from "../apis/apiTrungXeGiaoVien";
 import { getDuLieuCabin } from "../apis/searchPublic";
 import { getLichSuDuyetPhienHoc } from "../apis/apiDuyetPhienHoc";
 import { formatLocalTime, formatSecondsToTime } from "../util/helper";
@@ -192,6 +193,13 @@ const StudentDetail = ({ data }) => {
     queryFn: () => fetchCheckStudents(),
     staleTime: 1000 * 60 * 5,
     keepPreviousData: true,
+  });
+
+  const { data: xeGiaoVienDangKyRes } = useQuery({
+    queryKey: ["xeGiaoVienDangKy", data?.MaDK],
+    queryFn: () => danhSachXeGiaoVien({ search: data?.MaDK }),
+    enabled: !!data?.MaDK,
+    staleTime: 1000 * 60 * 5,
   });
 
   const cabinKey = String(data?.MaDK || "").trim();
@@ -367,15 +375,17 @@ const StudentDetail = ({ data }) => {
     const code = String(admissionCode).trim();
     if (!code) return null;
     const baseInfo = studentMap.get(code) || {};
+    const regInfo = xeGiaoVienDangKyRes?.data?.[0] || {};
     return {
       maDangKy: code,
-      giaoVien: baseInfo.giaoVien || baseInfo.giao_vien || data?.giaoVien || data?.giao_vien || data?.giao_vien_theo_xe?.giao_vien || "",
-      xeB1: baseInfo.xeB1 || baseInfo.xe_b1 || data?.xeB1 || data?.xe_b1 || "",
-      xeB2: baseInfo.xeB2 || baseInfo.xe_b2 || data?.xeB2 || data?.xe_b2 || "",
-      hang: data?.HangDaoTao || baseInfo.hang || baseInfo.HangDaoTao || "",
       ...baseInfo,
+      ...regInfo,
+      giaoVien: regInfo.giao_vien || baseInfo.giaoVien || baseInfo.giao_vien || data?.giaoVien || data?.giao_vien || data?.giao_vien_theo_xe?.giao_vien || "",
+      xeB1: regInfo.xeB1 || baseInfo.xeB1 || baseInfo.xe_b1 || data?.xeB1 || data?.xe_b1 || "",
+      xeB2: regInfo.xeB2 || baseInfo.xeB2 || baseInfo.xe_b2 || data?.xeB2 || data?.xe_b2 || "",
+      hang: regInfo.hang || data?.HangDaoTao || baseInfo.hang || baseInfo.HangDaoTao || "",
     };
-  }, [studentMap, admissionCode, data]);
+  }, [studentMap, admissionCode, data, xeGiaoVienDangKyRes]);
 
   const teacherName = useMemo(() => {
     if (hocVienCheckData?.data?.gv_dat) {
