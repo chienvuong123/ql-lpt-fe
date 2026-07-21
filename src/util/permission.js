@@ -105,9 +105,12 @@ export const PERMISSION_TREE_TEMPLATE = [
     ]
   },
   {
-    key: "danh-sach-ky-nhan-ho-so-gplx",
-    name: "DS ký nhận hồ sơ GPLX",
-    route: "/danh-sach-ky-nhan-ho-so-gplx",
+    key: "gplx",
+    name: "GPLX",
+    children: [
+      { key: "danh-sach-ky-nhan-ho-so-gplx", name: "DS ký nhận hồ sơ GPLX", route: "/danh-sach-ky-nhan-ho-so-gplx" },
+      { key: "gplx-hoan", name: "GPLX hoàn trả bưu điện", route: "/gplx-hoan" },
+    ],
   },
   {
     key: "ke-toan",
