@@ -6,9 +6,15 @@ export const getListGplxHoan = async (params = {}) => {
     return response.data;
 };
 
-export const importExcelGplxHoan = (file, onProgress) => {
+export const getNgayNhanBuuDienOptions = async () => {
+    const response = await axios.get(`${baseURL}/gplx-hoan/ngay-nhan-buu-dien`);
+    return response.data;
+};
+
+export const importExcelGplxHoan = (file, ngayNhanBuuDien, onProgress) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("ngay_nhan_buu_dien", ngayNhanBuuDien);
 
     return axios.post(`${baseURL}/gplx-hoan/import`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -17,4 +23,14 @@ export const importExcelGplxHoan = (file, onProgress) => {
             onProgress?.(percent);
         },
     });
+};
+
+export const scanGplxHoan = async ({ scanned_text, ngay_nhan_buu_dien, from_trang_thai }) => {
+    const response = await axios.post(`${baseURL}/gplx-hoan/scan`, { scanned_text, ngay_nhan_buu_dien, from_trang_thai });
+    return response.data;
+};
+
+export const updateTrangThaiGplxHoan = async ({ id, trang_thai }) => {
+    const response = await axios.post(`${baseURL}/gplx-hoan/update-trang-thai`, { id, trang_thai });
+    return response.data;
 };

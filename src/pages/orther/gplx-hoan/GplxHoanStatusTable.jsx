@@ -1,0 +1,308 @@
+import React, { useMemo, useState } from "react";
+import {
+  Table,
+  Input,
+  Button,
+  Card,
+  Row,
+  Col,
+  Space,
+  Select,
+  message,
+} from "antd";
+import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getListGplxHoan,
+  scanGplxHoan,
+  updateTrangThaiGplxHoan,
+} from "../../../apis/apiGplxHoan";
+import ScanInput from "./ScanInput";
+import { getGplxHoanColumns } from "./columns";
+
+const ALL_TRANG_THAI = ["cho_nhap_kho", "da_nhap_kho", "da_xuat_kho"];
+
+// Nút chuyển trạng thái thủ công hiển thị theo từng tab — chỉ cho phép chuyển 1 bước
+// liền kề (tới hoặc lùi), không cho nhảy cóc qua bước.
+const MANUAL_ACTIONS = {
+  cho_nhap_kho: [{ target: "da_nhap_kho", label: "Nhập kho", type: "primary" }],
+  da_nhap_kho: [
+    { target: "cho_nhap_kho", label: "Chờ nhập kho", type: "default" },
+    { target: "da_xuat_kho", label: "Xuất kho", type: "primary" },
+  ],
+  da_xuat_kho: [{ target: "da_nhap_kho", label: "Nhập kho", type: "default" }],
+};
+
+// Bảng dùng chung cho 3 tab (Chờ nhập kho / Nhập kho / Xuất kho), chỉ khác nhau
+// ở trang_thai lọc và có bật ô quét hay không.
+const GplxHoanStatusTable = ({
+  trangThai,
+  ngayNhanBuuDien,
+  ngayOptions = [],
+  onChangeNgayNhanBuuDien,
+  scannable = false,
+  active = true,
+}) => {
+  const queryClient = useQueryClient();
+
+  const [hoTenText, setHoTenText] = useState("");
+  const [soGplxText, setSoGplxText] = useState("");
+  const [hangText, setHangText] = useState("");
+  const [appliedHoTen, setAppliedHoTen] = useState("");
+  const [appliedSoGplx, setAppliedSoGplx] = useState("");
+  const [appliedHang, setAppliedHang] = useState("");
+  const [pagination, setPagination] = useState({ page: 1, limit: 10 });
+  const [scanLoading, setScanLoading] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const actions = MANUAL_ACTIONS[trangThai] || [];
+
+  const { data: apiResponse, isFetching } = useQuery({
+    queryKey: [
+      "listGplxHoan",
+      trangThai,
+      ngayNhanBuuDien,
+      pagination.page,
+      pagination.limit,
+      appliedHoTen,
+      appliedSoGplx,
+      appliedHang,
+    ],
+    queryFn: () =>
+      getListGplxHoan({
+        page: pagination.page,
+        limit: pagination.limit,
+        ho_ten: appliedHoTen,
+        so_gplx: appliedSoGplx,
+        hang: appliedHang,
+        trang_thai: trangThai,
+        ngay_nhan_buu_dien: ngayNhanBuuDien,
+      }),
+    enabled: !!ngayNhanBuuDien,
+    keepPreviousData: true,
+  });
+
+  const records = useMemo(() => apiResponse?.data || [], [apiResponse]);
+  const totalItems = apiResponse?.pagination?.total || 0;
+
+  const handleSearch = () => {
+    setAppliedHoTen(hoTenText);
+    setAppliedSoGplx(soGplxText);
+    setAppliedHang(hangText);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleReset = () => {
+    setHoTenText("");
+    setSoGplxText("");
+    setHangText("");
+    setAppliedHoTen("");
+    setAppliedSoGplx("");
+    setAppliedHang("");
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleScan = async (scannedText) => {
+    setScanLoading(true);
+    try {
+      const res = await scanGplxHoan({
+        scanned_text: scannedText,
+        ngay_nhan_buu_dien: ngayNhanBuuDien,
+        from_trang_thai: trangThai,
+      });
+      const result = res?.data || {};
+      if (result.code === "IGNORE") {
+        return; // Dòng URL đi kèm mã QR, bỏ qua hoàn toàn, không hiện thông báo gì
+      }
+      if (result.success) {
+        message.success("Quét thành công!");
+        ALL_TRANG_THAI.forEach((status) => {
+          queryClient.invalidateQueries({
+            queryKey: ["listGplxHoan", status, ngayNhanBuuDien],
+          });
+        });
+        queryClient.invalidateQueries({ queryKey: ["ngayNhanBuuDienOptions"] });
+      } else if (result.code === "ALREADY_IN_STATE") {
+        message.warning(result.message);
+      } else {
+        message.error("Quét thất bại!");
+      }
+    } catch {
+      message.error("Quét thất bại!");
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  const handleManualTransition = async (record, targetTrangThai) => {
+    setUpdatingId(record.id);
+    try {
+      const res = await updateTrangThaiGplxHoan({
+        id: record.id,
+        trang_thai: targetTrangThai,
+      });
+      const result = res?.data || {};
+      if (result.success) {
+        message.success("Cập nhật thành công!");
+        ALL_TRANG_THAI.forEach((status) => {
+          queryClient.invalidateQueries({
+            queryKey: ["listGplxHoan", status, ngayNhanBuuDien],
+          });
+        });
+        queryClient.invalidateQueries({ queryKey: ["ngayNhanBuuDienOptions"] });
+      } else {
+        message.error("Cập nhật thất bại!");
+      }
+    } catch {
+      message.error("Cập nhật thất bại!");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const baseColumns = getGplxHoanColumns(pagination);
+  const columns =
+    actions.length === 0
+      ? baseColumns
+      : [
+          ...baseColumns,
+          {
+            title: "Thao tác",
+            key: "actions",
+            align: "center",
+            width: actions.length > 1 ? 260 : 180,
+            render: (_, record) => (
+              <Space>
+                {actions.map((action) => (
+                  <Button
+                    key={action.target}
+                    size="small"
+                    type={action.type}
+                    loading={updatingId === record.id}
+                    disabled={updatingId !== null && updatingId !== record.id}
+                    onClick={() =>
+                      handleManualTransition(record, action.target)
+                    }
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </Space>
+            ),
+          },
+        ];
+
+  return (
+    <div>
+      {scannable && (
+        <div className="mb-4">
+          <ScanInput
+            onScan={handleScan}
+            loading={scanLoading}
+            active={active}
+          />
+        </div>
+      )}
+
+      <Card className="!mb-4">
+        <Row gutter={[16, 16]} align="bottom">
+          <Col xs={24} sm={18} md={18}>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={6}>
+                <label className="block text-xs text-gray-500 uppercase mb-1">
+                  Ngày nhận bưu điện
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="Chọn ngày nhận bưu điện"
+                  options={ngayOptions}
+                  value={ngayNhanBuuDien}
+                  onChange={onChangeNgayNhanBuuDien}
+                  allowClear={false}
+                  notFoundContent="Chưa có dữ liệu import"
+                />
+              </Col>
+              <Col xs={24} md={6}>
+                <label className="block text-xs text-gray-500 uppercase mb-1">
+                  Tìm theo họ tên
+                </label>
+                <Input
+                  placeholder="Nhập họ và tên..."
+                  value={hoTenText}
+                  onChange={(e) => setHoTenText(e.target.value)}
+                  onPressEnter={handleSearch}
+                  allowClear
+                />
+              </Col>
+              <Col xs={24} md={6}>
+                <label className="block text-xs text-gray-500 uppercase mb-1">
+                  Tìm theo số GPLX
+                </label>
+                <Input
+                  placeholder="Nhập số GPLX..."
+                  value={soGplxText}
+                  onChange={(e) => setSoGplxText(e.target.value)}
+                  onPressEnter={handleSearch}
+                  allowClear
+                />
+              </Col>
+              <Col xs={24} md={6}>
+                <label className="block text-xs text-gray-500 uppercase mb-1">
+                  Tìm theo hạng xe
+                </label>
+                <Input
+                  placeholder="Nhập hạng xe (A1, B, C...)..."
+                  value={hangText}
+                  onChange={(e) => setHangText(e.target.value)}
+                  onPressEnter={handleSearch}
+                  allowClear
+                />
+              </Col>
+            </Row>
+          </Col>
+          <Col xs={24} sm={6} md={6} className="text-right">
+            <Space>
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={handleSearch}
+                style={{ backgroundColor: "#3366cc" }}
+                loading={isFetching}
+              >
+                Lọc
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleReset}
+                disabled={isFetching}
+              >
+                Reset
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      <Table
+        columns={columns}
+        dataSource={records}
+        rowKey="id"
+        bordered
+        size="small"
+        scroll={{ x: 1100, y: "calc(100vh - 420px)" }}
+        className="table-blue-header"
+        loading={isFetching}
+        pagination={{
+          current: pagination.page,
+          pageSize: pagination.limit,
+          total: totalItems,
+          onChange: (page, limit) => setPagination({ page, limit }),
+          showSizeChanger: true,
+          showTotal: (total) => `Tổng cộng ${total} bản ghi`,
+        }}
+      />
+    </div>
+  );
+};
+
+export default GplxHoanStatusTable;
