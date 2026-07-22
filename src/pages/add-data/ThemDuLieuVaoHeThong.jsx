@@ -5,6 +5,7 @@ import { SyncOutlined, UploadOutlined } from "@ant-design/icons";
 import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoXeGiaoVienSql, importXML } from "../../apis/apiSynch";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { importHocBuExcel } from "../../apis/apiHocbu";
+import { importExcelGoogleSheetA1 } from "../../apis/apiGoogleSheetA1";
 import { useState } from "react";
 import { Input } from "antd";
 
@@ -114,6 +115,23 @@ const ThemDuLieuVaoHeThong = () => {
 
   const handleCustomRequestXML = async ({ file, onProgress }) => {
     mutationImportXML.mutate({ file, onProgress });
+  };
+
+  const mutationImportGoogleSheetA1 = useMutation({
+    mutationFn: ({ file, onProgress }) => importExcelGoogleSheetA1(file, onProgress),
+    onSuccess: (res) => {
+      const { total, inserted, updated } = res?.data?.data || {};
+      message.success(
+        `Import danh sách A1 thành công! Hợp lệ: ${total ?? 0} (thêm mới: ${inserted ?? 0}, cập nhật: ${updated ?? 0})`
+      );
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || "Import danh sách A1 thất bại!");
+    },
+  });
+
+  const handleCustomRequestGoogleSheetA1 = async ({ file, onProgress }) => {
+    mutationImportGoogleSheetA1.mutate({ file, onProgress });
   };
 
   return (
@@ -271,6 +289,31 @@ const ThemDuLieuVaoHeThong = () => {
                   type="primary"
                 >
                   {mutationImportXML.isPending ? "Đang import..." : "Import XML"}
+                </Button>
+              </Upload>
+            </div>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card className="h-full" title="Import danh sách A1">
+            <span className="block mb-4 text-gray-500">
+              Nhập danh sách học viên đăng ký A1 từ file Excel vào bảng riêng
+            </span>
+            <div className="mt-14">
+              <Upload
+                customRequest={handleCustomRequestGoogleSheetA1}
+                showUploadList={false}
+                accept=".xlsx, .xls"
+                className="!w-full"
+              >
+                <Button
+                  icon={<UploadOutlined />}
+                  loading={mutationImportGoogleSheetA1.isPending}
+                  className="!w-full"
+                  type="primary"
+                >
+                  {mutationImportGoogleSheetA1.isPending ? "Đang import..." : "Import Excel"}
                 </Button>
               </Upload>
             </div>
