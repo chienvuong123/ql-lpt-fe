@@ -15,6 +15,7 @@ import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getListGplxHoan,
+  getNgayCapOptions,
   scanGplxHoan,
   updateTrangThaiGplxHoan,
 } from "../../../apis/apiGplxHoan";
@@ -55,11 +56,25 @@ const GplxHoanStatusTable = ({
   const [appliedSoGplx, setAppliedSoGplx] = useState("");
   const [appliedHang, setAppliedHang] = useState([]);
   const [appliedDauMoi, setAppliedDauMoi] = useState("");
+  const [appliedNgayCap, setAppliedNgayCap] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 10 });
   const [scanLoading, setScanLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
 
   const actions = MANUAL_ACTIONS[trangThai] || [];
+
+  const { data: ngayCapRes } = useQuery({
+    queryKey: ["ngayCapOptions"],
+    queryFn: getNgayCapOptions,
+  });
+
+  const ngayCapOptions = useMemo(() => {
+    const list = ngayCapRes?.data || [];
+    return list.map((item) => ({
+      value: item.ngay_cap,
+      label: `${item.ngay_cap} (${item.so_luong} bằng)`,
+    }));
+  }, [ngayCapRes]);
 
   const { data: apiResponse, isFetching } = useQuery({
     queryKey: [
@@ -72,6 +87,7 @@ const GplxHoanStatusTable = ({
       appliedSoGplx,
       appliedHang,
       appliedDauMoi,
+      appliedNgayCap,
     ],
     queryFn: () =>
       getListGplxHoan({
@@ -81,6 +97,7 @@ const GplxHoanStatusTable = ({
         so_gplx: appliedSoGplx,
         hang: appliedHang.join(","),
         dau_moi: appliedDauMoi,
+        ngay_cap: appliedNgayCap,
         trang_thai: trangThai,
         ngay_nhan_buu_dien: ngayNhanBuuDien,
       }),
@@ -108,6 +125,7 @@ const GplxHoanStatusTable = ({
     setAppliedSoGplx("");
     setAppliedHang([]);
     setAppliedDauMoi("");
+    setAppliedNgayCap(null);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -215,7 +233,7 @@ const GplxHoanStatusTable = ({
 
       <Card className="!mb-4">
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={5}>
+          <Col xs={24} md={4}>
             <label className="block text-xs text-gray-500 uppercase mb-1">
               Ngày nhận bưu điện
             </label>
@@ -229,7 +247,28 @@ const GplxHoanStatusTable = ({
               notFoundContent="Chưa có dữ liệu import"
             />
           </Col>
-          <Col xs={24} md={5}>
+          <Col xs={24} md={4}>
+            <label className="block text-xs text-gray-500 uppercase mb-1">
+              Ngày cấp
+            </label>
+            <Select
+              className="w-full"
+              placeholder="Tất cả ngày cấp"
+              options={ngayCapOptions}
+              value={appliedNgayCap}
+              onChange={(value) => {
+                setAppliedNgayCap(value ?? null);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              allowClear
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+              }
+              notFoundContent="Chưa có dữ liệu"
+            />
+          </Col>
+          <Col xs={24} md={4}>
             <label className="block text-xs text-gray-500 uppercase mb-1">
               Tìm theo họ tên
             </label>
@@ -265,7 +304,7 @@ const GplxHoanStatusTable = ({
               allowClear
             />
           </Col>
-          <Col xs={24} md={6}>
+          <Col xs={24} md={4}>
             <label className="block text-xs text-gray-500 uppercase mb-1">
               Hạng xe
             </label>

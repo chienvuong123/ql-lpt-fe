@@ -11,6 +11,11 @@ export const getNgayNhanBuuDienOptions = async () => {
     return response.data;
 };
 
+export const getNgayCapOptions = async () => {
+    const response = await axios.get(`${baseURL}/gplx-hoan/ngay-cap`);
+    return response.data;
+};
+
 export const importExcelGplxHoan = (file, ngayNhanBuuDien, onProgress) => {
     const formData = new FormData();
     formData.append("file", file);
