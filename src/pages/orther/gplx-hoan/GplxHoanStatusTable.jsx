@@ -8,6 +8,7 @@ import {
   Col,
   Space,
   Select,
+  Checkbox,
   message,
 } from "antd";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
@@ -21,6 +22,7 @@ import ScanInput from "./ScanInput";
 import { getGplxHoanColumns } from "./columns";
 
 const ALL_TRANG_THAI = ["cho_nhap_kho", "da_nhap_kho", "da_xuat_kho"];
+const HANG_OPTIONS = ["A1", "A", "B", "C", "C1"];
 
 // Nút chuyển trạng thái thủ công hiển thị theo từng tab — chỉ cho phép chuyển 1 bước
 // liền kề (tới hoặc lùi), không cho nhảy cóc qua bước.
@@ -47,10 +49,12 @@ const GplxHoanStatusTable = ({
 
   const [hoTenText, setHoTenText] = useState("");
   const [soGplxText, setSoGplxText] = useState("");
-  const [hangText, setHangText] = useState("");
+  const [hangChecked, setHangChecked] = useState([]);
+  const [dauMoiText, setDauMoiText] = useState("");
   const [appliedHoTen, setAppliedHoTen] = useState("");
   const [appliedSoGplx, setAppliedSoGplx] = useState("");
-  const [appliedHang, setAppliedHang] = useState("");
+  const [appliedHang, setAppliedHang] = useState([]);
+  const [appliedDauMoi, setAppliedDauMoi] = useState("");
   const [pagination, setPagination] = useState({ page: 1, limit: 10 });
   const [scanLoading, setScanLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
@@ -67,6 +71,7 @@ const GplxHoanStatusTable = ({
       appliedHoTen,
       appliedSoGplx,
       appliedHang,
+      appliedDauMoi,
     ],
     queryFn: () =>
       getListGplxHoan({
@@ -74,7 +79,8 @@ const GplxHoanStatusTable = ({
         limit: pagination.limit,
         ho_ten: appliedHoTen,
         so_gplx: appliedSoGplx,
-        hang: appliedHang,
+        hang: appliedHang.join(","),
+        dau_moi: appliedDauMoi,
         trang_thai: trangThai,
         ngay_nhan_buu_dien: ngayNhanBuuDien,
       }),
@@ -88,17 +94,20 @@ const GplxHoanStatusTable = ({
   const handleSearch = () => {
     setAppliedHoTen(hoTenText);
     setAppliedSoGplx(soGplxText);
-    setAppliedHang(hangText);
+    setAppliedHang(hangChecked);
+    setAppliedDauMoi(dauMoiText);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleReset = () => {
     setHoTenText("");
     setSoGplxText("");
-    setHangText("");
+    setHangChecked([]);
+    setDauMoiText("");
     setAppliedHoTen("");
     setAppliedSoGplx("");
-    setAppliedHang("");
+    setAppliedHang([]);
+    setAppliedDauMoi("");
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -205,62 +214,72 @@ const GplxHoanStatusTable = ({
       )}
 
       <Card className="!mb-4">
-        <Row gutter={[16, 16]} align="bottom">
-          <Col xs={24} sm={18} md={18}>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={6}>
-                <label className="block text-xs text-gray-500 uppercase mb-1">
-                  Ngày nhận bưu điện
-                </label>
-                <Select
-                  className="w-full"
-                  placeholder="Chọn ngày nhận bưu điện"
-                  options={ngayOptions}
-                  value={ngayNhanBuuDien}
-                  onChange={onChangeNgayNhanBuuDien}
-                  allowClear={false}
-                  notFoundContent="Chưa có dữ liệu import"
-                />
-              </Col>
-              <Col xs={24} md={6}>
-                <label className="block text-xs text-gray-500 uppercase mb-1">
-                  Tìm theo họ tên
-                </label>
-                <Input
-                  placeholder="Nhập họ và tên..."
-                  value={hoTenText}
-                  onChange={(e) => setHoTenText(e.target.value)}
-                  onPressEnter={handleSearch}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} md={6}>
-                <label className="block text-xs text-gray-500 uppercase mb-1">
-                  Tìm theo số GPLX
-                </label>
-                <Input
-                  placeholder="Nhập số GPLX..."
-                  value={soGplxText}
-                  onChange={(e) => setSoGplxText(e.target.value)}
-                  onPressEnter={handleSearch}
-                  allowClear
-                />
-              </Col>
-              <Col xs={24} md={6}>
-                <label className="block text-xs text-gray-500 uppercase mb-1">
-                  Tìm theo hạng xe
-                </label>
-                <Input
-                  placeholder="Nhập hạng xe (A1, B, C...)..."
-                  value={hangText}
-                  onChange={(e) => setHangText(e.target.value)}
-                  onPressEnter={handleSearch}
-                  allowClear
-                />
-              </Col>
-            </Row>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={5}>
+            <label className="block text-xs text-gray-500 uppercase mb-1">
+              Ngày nhận bưu điện
+            </label>
+            <Select
+              className="w-full"
+              placeholder="Chọn ngày nhận bưu điện"
+              options={ngayOptions}
+              value={ngayNhanBuuDien}
+              onChange={onChangeNgayNhanBuuDien}
+              allowClear={false}
+              notFoundContent="Chưa có dữ liệu import"
+            />
           </Col>
-          <Col xs={24} sm={6} md={6} className="text-right">
+          <Col xs={24} md={5}>
+            <label className="block text-xs text-gray-500 uppercase mb-1">
+              Tìm theo họ tên
+            </label>
+            <Input
+              placeholder="Nhập họ và tên..."
+              value={hoTenText}
+              onChange={(e) => setHoTenText(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+            />
+          </Col>
+          <Col xs={24} md={4}>
+            <label className="block text-xs text-gray-500 uppercase mb-1">
+              Tìm theo số GPLX
+            </label>
+            <Input
+              placeholder="Nhập số GPLX..."
+              value={soGplxText}
+              onChange={(e) => setSoGplxText(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+            />
+          </Col>
+          <Col xs={24} md={4}>
+            <label className="block text-xs text-gray-500 uppercase mb-1">
+              Tìm theo đầu mối
+            </label>
+            <Input
+              placeholder="Nhập tên đầu mối..."
+              value={dauMoiText}
+              onChange={(e) => setDauMoiText(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+            />
+          </Col>
+          <Col xs={24} md={6}>
+            <label className="block text-xs text-gray-500 uppercase mb-1">
+              Hạng xe
+            </label>
+            <Checkbox.Group
+              options={HANG_OPTIONS}
+              value={hangChecked}
+              onChange={(checked) => {
+                setHangChecked(checked);
+                setAppliedHang(checked);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+            />
+          </Col>
+          <Col xs={24} className="text-left">
             <Space>
               <Button
                 type="primary"
