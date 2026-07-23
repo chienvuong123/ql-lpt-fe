@@ -39,3 +39,11 @@ export const updateTrangThaiGplxHoan = async ({ id, trang_thai }) => {
     const response = await axios.post(`${baseURL}/gplx-hoan/update-trang-thai`, { id, trang_thai });
     return response.data;
 };
+
+export const exportExcelGplxHoan = async (params = {}) => {
+    const response = await axios.get(`${baseURL}/gplx-hoan/export`, {
+        params,
+        responseType: "blob",
+    });
+    return response.data;
+};

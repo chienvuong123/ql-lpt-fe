@@ -11,13 +11,18 @@ import {
   Checkbox,
   message,
 } from "antd";
-import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  SearchOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+} from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getListGplxHoan,
   getNgayCapOptions,
   scanGplxHoan,
   updateTrangThaiGplxHoan,
+  exportExcelGplxHoan,
 } from "../../../apis/apiGplxHoan";
 import ScanInput from "./ScanInput";
 import { getGplxHoanColumns } from "./columns";
@@ -60,6 +65,7 @@ const GplxHoanStatusTable = ({
   const [pagination, setPagination] = useState({ page: 1, limit: 10 });
   const [scanLoading, setScanLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const actions = MANUAL_ACTIONS[trangThai] || [];
 
@@ -127,6 +133,37 @@ const GplxHoanStatusTable = ({
     setAppliedDauMoi("");
     setAppliedNgayCap(null);
     setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportExcelGplxHoan({
+        ho_ten: appliedHoTen,
+        so_gplx: appliedSoGplx,
+        hang: appliedHang.join(","),
+        dau_moi: appliedDauMoi,
+        ngay_cap: appliedNgayCap,
+        trang_thai: trangThai,
+        ngay_nhan_buu_dien: ngayNhanBuuDien,
+      });
+
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      const cleanDate = ngayNhanBuuDien
+        ? ngayNhanBuuDien.replace(/\//g, "-")
+        : "tat_ca";
+      link.setAttribute("download", `gplx_hoan_${trangThai}_${cleanDate}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      message.error("Xuất Excel thất bại!");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleScan = async (scannedText) => {
@@ -221,7 +258,7 @@ const GplxHoanStatusTable = ({
 
   return (
     <div>
-      {scannable && (
+      {/* {scannable && (
         <div className="mb-4">
           <ScanInput
             onScan={handleScan}
@@ -229,7 +266,7 @@ const GplxHoanStatusTable = ({
             active={active}
           />
         </div>
-      )}
+      )} */}
 
       <Card className="!mb-4">
         <Row gutter={[16, 16]}>
@@ -263,7 +300,9 @@ const GplxHoanStatusTable = ({
               allowClear
               showSearch
               filterOption={(input, option) =>
-                (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
               notFoundContent="Chưa có dữ liệu"
             />
@@ -292,7 +331,7 @@ const GplxHoanStatusTable = ({
               allowClear
             />
           </Col>
-          <Col xs={24} md={4}>
+          <Col xs={24} md={3}>
             <label className="block text-xs text-gray-500 uppercase mb-1">
               Tìm theo đầu mối
             </label>
@@ -304,7 +343,7 @@ const GplxHoanStatusTable = ({
               allowClear
             />
           </Col>
-          <Col xs={24} md={4}>
+          <Col xs={24} md={5}>
             <label className="block text-xs text-gray-500 uppercase mb-1">
               Hạng xe
             </label>
@@ -335,6 +374,15 @@ const GplxHoanStatusTable = ({
                 disabled={isFetching}
               >
                 Reset
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleExport}
+                loading={exporting}
+                style={{ backgroundColor: "#3366cc" }}
+                type="primary"
+              >
+                Xuất Excel
               </Button>
             </Space>
           </Col>
