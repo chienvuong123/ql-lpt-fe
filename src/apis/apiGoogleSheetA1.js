@@ -6,9 +6,11 @@ export const getListGoogleSheetA1 = async (params = {}) => {
     return response.data;
 };
 
-export const importExcelGoogleSheetA1 = (file, onProgress) => {
+export const importExcelGoogleSheetA1 = (file, onProgress, options = {}) => {
     const formData = new FormData();
     formData.append("file", file);
+    if (options.sheetName) formData.append("sheetName", options.sheetName);
+    if (options.year) formData.append("year", options.year);
 
     return axios.post(`${baseURL}/google-sheet-a1/import`, formData, {
         headers: { "Content-Type": "multipart/form-data" },

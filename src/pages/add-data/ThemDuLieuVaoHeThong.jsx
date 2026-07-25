@@ -118,16 +118,24 @@ const ThemDuLieuVaoHeThong = () => {
     mutationImportXML.mutate({ file, onProgress });
   };
 
+  // Mặc định lọc theo năm 2024 sẵn — người dùng không cần tự gõ, chỉ đổi khi muốn import năm khác.
+  const DEFAULT_IMPORT_META = { sheetName: "", year: "2024" };
+
+  const [importA1Meta, setImportA1Meta] = useState(DEFAULT_IMPORT_META);
+
   const mutationImportGoogleSheetA1 = useMutation({
-    mutationFn: ({ file, onProgress }) => importExcelGoogleSheetA1(file, onProgress),
+    mutationFn: ({ file, onProgress }) => importExcelGoogleSheetA1(file, onProgress, importA1Meta),
     onSuccess: (res) => {
-      const { total, inserted, updated } = res?.data?.data || {};
-      message.success(
-        `Import danh sách A1 thành công! Hợp lệ: ${total ?? 0} (thêm mới: ${inserted ?? 0}, cập nhật: ${updated ?? 0})`
-      );
+      const { total, inserted, updated, skipped, duplicateMaPhieuInFile } = res?.data?.data || {};
+      let msg = `Import danh sách A1 thành công! Hợp lệ: ${total ?? 0} (thêm mới: ${inserted ?? 0}, cập nhật: ${updated ?? 0})`;
+      if (skipped) msg += `, bỏ qua ${skipped} dòng thiếu thông tin`;
+      if (duplicateMaPhieuInFile) msg += `, ${duplicateMaPhieuInFile} dòng trùng mã phiếu trong file`;
+      message.success(msg);
+      setImportA1Meta(DEFAULT_IMPORT_META);
     },
     onError: (err) => {
       message.error(err.response?.data?.message || "Import danh sách A1 thất bại!");
+      setImportA1Meta(DEFAULT_IMPORT_META);
     },
   });
 
@@ -135,14 +143,18 @@ const ThemDuLieuVaoHeThong = () => {
     mutationImportGoogleSheetA1.mutate({ file, onProgress });
   };
 
+  const [importOtoMeta, setImportOtoMeta] = useState(DEFAULT_IMPORT_META);
+
   const mutationImportGoogleSheetData = useMutation({
-    mutationFn: ({ file, onProgress }) => importExcelGoogleSheetData(file, onProgress),
+    mutationFn: ({ file, onProgress }) => importExcelGoogleSheetData(file, onProgress, importOtoMeta),
     onSuccess: (res) => {
       const count = res?.data?.count ?? 0;
       message.success(`Import danh sách học viên (ô tô) thành công! ${count} bản ghi.`);
+      setImportOtoMeta(DEFAULT_IMPORT_META);
     },
     onError: (err) => {
       message.error(err.response?.data?.message || "Import danh sách học viên (ô tô) thất bại!");
+      setImportOtoMeta(DEFAULT_IMPORT_META);
     },
   });
 
@@ -313,51 +325,71 @@ const ThemDuLieuVaoHeThong = () => {
 
         <Col xs={24} md={6}>
           <Card className="h-full" title="Import danh sách A1">
-            <span className="block mb-4 text-gray-500">
+            <span className="block mb-2 text-gray-500">
               Nhập danh sách học viên đăng ký A1 từ file Excel vào bảng riêng
             </span>
-            <div className="mt-14">
-              <Upload
-                customRequest={handleCustomRequestGoogleSheetA1}
-                showUploadList={false}
-                accept=".xlsx, .xls"
+            <Input
+              placeholder="Tên sheet (bỏ trống = đọc hết các sheet)"
+              value={importA1Meta.sheetName}
+              onChange={(e) => setImportA1Meta((p) => ({ ...p, sheetName: e.target.value }))}
+              className="!mb-2"
+            />
+            <Input
+              placeholder="Chỉ lấy năm (mặc định 2024, bỏ trống = lấy hết)"
+              value={importA1Meta.year}
+              onChange={(e) => setImportA1Meta((p) => ({ ...p, year: e.target.value }))}
+              className="!mb-3"
+            />
+            <Upload
+              customRequest={handleCustomRequestGoogleSheetA1}
+              showUploadList={false}
+              accept=".xlsx, .xls"
+              className="!w-full"
+            >
+              <Button
+                icon={<UploadOutlined />}
+                loading={mutationImportGoogleSheetA1.isPending}
                 className="!w-full"
+                type="primary"
               >
-                <Button
-                  icon={<UploadOutlined />}
-                  loading={mutationImportGoogleSheetA1.isPending}
-                  className="!w-full"
-                  type="primary"
-                >
-                  {mutationImportGoogleSheetA1.isPending ? "Đang import..." : "Import Excel"}
-                </Button>
-              </Upload>
-            </div>
+                {mutationImportGoogleSheetA1.isPending ? "Đang import..." : "Import Excel"}
+              </Button>
+            </Upload>
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
           <Card className="h-full" title="Import danh sách học viên (ô tô)">
-            <span className="block mb-4 text-gray-500">
+            <span className="block mb-2 text-gray-500">
               Nhập danh sách học viên từ file Excel vào bảng google_sheet_data
             </span>
-            <div className="mt-14">
-              <Upload
-                customRequest={handleCustomRequestGoogleSheetData}
-                showUploadList={false}
-                accept=".xlsx, .xls"
+            <Input
+              placeholder="Tên sheet (bỏ trống = đọc hết các sheet)"
+              value={importOtoMeta.sheetName}
+              onChange={(e) => setImportOtoMeta((p) => ({ ...p, sheetName: e.target.value }))}
+              className="!mb-2"
+            />
+            <Input
+              placeholder="Chỉ lấy năm (mặc định 2024, bỏ trống = lấy hết)"
+              value={importOtoMeta.year}
+              onChange={(e) => setImportOtoMeta((p) => ({ ...p, year: e.target.value }))}
+              className="!mb-3"
+            />
+            <Upload
+              customRequest={handleCustomRequestGoogleSheetData}
+              showUploadList={false}
+              accept=".xlsx, .xls"
+              className="!w-full"
+            >
+              <Button
+                icon={<UploadOutlined />}
+                loading={mutationImportGoogleSheetData.isPending}
                 className="!w-full"
+                type="primary"
               >
-                <Button
-                  icon={<UploadOutlined />}
-                  loading={mutationImportGoogleSheetData.isPending}
-                  className="!w-full"
-                  type="primary"
-                >
-                  {mutationImportGoogleSheetData.isPending ? "Đang import..." : "Import Excel"}
-                </Button>
-              </Upload>
-            </div>
+                {mutationImportGoogleSheetData.isPending ? "Đang import..." : "Import Excel"}
+              </Button>
+            </Upload>
           </Card>
         </Col>
       </Row>
