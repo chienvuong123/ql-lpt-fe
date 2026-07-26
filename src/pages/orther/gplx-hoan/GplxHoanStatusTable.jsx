@@ -9,12 +9,15 @@ import {
   Space,
   Select,
   Checkbox,
+  Modal,
+  Form,
   message,
 } from "antd";
 import {
   SearchOutlined,
   ReloadOutlined,
   DownloadOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +25,7 @@ import {
   getNgayCapOptions,
   scanGplxHoan,
   updateTrangThaiGplxHoan,
+  updateGplxHoan,
   exportExcelGplxHoan,
 } from "../../../apis/apiGplxHoan";
 import ScanInput from "./ScanInput";
@@ -66,6 +70,9 @@ const GplxHoanStatusTable = ({
   const [scanLoading, setScanLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editForm] = Form.useForm();
 
   const actions = MANUAL_ACTIONS[trangThai] || [];
 
@@ -224,37 +231,85 @@ const GplxHoanStatusTable = ({
     }
   };
 
+  const handleOpenEdit = (record) => {
+    setEditingRecord(record);
+    editForm.setFieldsValue({
+      so_gplx: record.so_gplx,
+      ho_ten: record.ho_ten,
+      ngay_sinh: record.ngay_sinh,
+      hang: record.hang,
+      ngay_cap: record.ngay_cap,
+      thoi_han: record.thoi_han,
+      dia_chi: record.dia_chi,
+      dau_moi: record.dau_moi,
+    });
+  };
+
+  const handleCloseEdit = () => {
+    setEditingRecord(null);
+    editForm.resetFields();
+  };
+
+  const handleSaveEdit = async () => {
+    const values = await editForm.validateFields();
+    setSavingEdit(true);
+    try {
+      const res = await updateGplxHoan(editingRecord.id, values);
+      if (res?.success) {
+        message.success("Cập nhật bản ghi thành công!");
+        ALL_TRANG_THAI.forEach((status) => {
+          queryClient.invalidateQueries({
+            queryKey: ["listGplxHoan", status, ngayNhanBuuDien],
+          });
+        });
+        queryClient.invalidateQueries({ queryKey: ["ngayCapOptions"] });
+        handleCloseEdit();
+      } else {
+        message.error(res?.message || "Cập nhật thất bại!");
+      }
+    } catch (err) {
+      if (err?.errorFields) return; // lỗi validate form, không phải lỗi gọi API
+      message.error(err.response?.data?.message || "Cập nhật thất bại!");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const baseColumns = getGplxHoanColumns(pagination);
-  const columns =
-    actions.length === 0
-      ? baseColumns
-      : [
-          ...baseColumns,
-          {
-            title: "Thao tác",
-            key: "actions",
-            align: "center",
-            width: actions.length > 1 ? 260 : 180,
-            render: (_, record) => (
-              <Space>
-                {actions.map((action) => (
-                  <Button
-                    key={action.target}
-                    size="small"
-                    type={action.type}
-                    loading={updatingId === record.id}
-                    disabled={updatingId !== null && updatingId !== record.id}
-                    onClick={() =>
-                      handleManualTransition(record, action.target)
-                    }
-                  >
-                    {action.label}
-                  </Button>
-                ))}
-              </Space>
-            ),
-          },
-        ];
+  const columns = [
+    ...baseColumns,
+    {
+      title: "Thao tác",
+      key: "actions",
+      align: "center",
+      width: actions.length > 0 ? (actions.length > 1 ? 320 : 240) : 90,
+      render: (_, record) => (
+        <Space>
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEdit(record)}
+          >
+            Sửa
+          </Button>
+          {actions.map((action) => (
+            <Button
+              key={action.target}
+              size="small"
+              type={action.type}
+              loading={updatingId === record.id}
+              disabled={updatingId !== null && updatingId !== record.id}
+              onClick={() =>
+                handleManualTransition(record, action.target)
+              }
+            >
+              {action.label}
+            </Button>
+          ))}
+        </Space>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -407,6 +462,70 @@ const GplxHoanStatusTable = ({
           showTotal: (total) => `Tổng cộng ${total} bản ghi`,
         }}
       />
+
+      <Modal
+        title="Sửa bản ghi GPLX hoàn trả"
+        open={!!editingRecord}
+        onCancel={handleCloseEdit}
+        onOk={handleSaveEdit}
+        confirmLoading={savingEdit}
+        okText="Lưu"
+        cancelText="Hủy"
+        destroyOnClose
+      >
+        <Form form={editForm} layout="vertical" className="!mt-4">
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                label="Số GPLX"
+                name="so_gplx"
+                rules={[{ required: true, message: "Vui lòng nhập số GPLX" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Họ và tên"
+                name="ho_ten"
+                rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Ngày sinh" name="ngay_sinh">
+                <Input placeholder="dd/mm/yyyy" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Hạng" name="hang">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Ngày cấp" name="ngay_cap">
+                <Input placeholder="dd/mm/yyyy" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Thời hạn" name="thoi_han">
+                <Input placeholder="dd/mm/yyyy" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Địa chỉ" name="dia_chi">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Đầu mối" name="dau_moi">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
     </div>
   );
 };

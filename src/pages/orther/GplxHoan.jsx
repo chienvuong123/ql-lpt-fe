@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, DatePicker, Modal, Tabs, Typography, message } from "antd";
+import { Button, DatePicker, Modal, Select, Tabs, Typography, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -20,7 +20,13 @@ const GplxHoan = () => {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [importDate, setImportDate] = useState(dayjs());
+    const [importFormat, setImportFormat] = useState("scan");
     const [uploading, setUploading] = useState(false);
+
+    const IMPORT_FORMAT_OPTIONS = [
+        { value: "scan", label: "Mã quét CSGT (mỗi dòng: số GPLX;họ tên;ngày sinh;hạng;...)" },
+        { value: "buu_dien", label: "File tra cứu kết quả trả GPLX qua bưu điện" },
+    ];
 
     // Ngày nhận bưu điện đang xem
     const [selectedNgayNhan, setSelectedNgayNhan] = useState(null);
@@ -59,7 +65,7 @@ const GplxHoan = () => {
         }
         setUploading(true);
         try {
-            const res = await importExcelGplxHoan(selectedFile, importDate.format("YYYY-MM-DD"));
+            const res = await importExcelGplxHoan(selectedFile, importDate.format("YYYY-MM-DD"), importFormat);
             const { total, inserted, updated, skipped } = res?.data?.data || {};
             message.success(
                 `Import thành công! Hợp lệ: ${total ?? 0} (thêm mới: ${inserted ?? 0}, cập nhật: ${updated ?? 0})` +
@@ -67,6 +73,7 @@ const GplxHoan = () => {
             );
             setIsImportModalOpen(false);
             setSelectedFile(null);
+            setImportFormat("scan");
             setSelectedNgayNhan(importDate.format("YYYY-MM-DD"));
             queryClient.invalidateQueries({ queryKey: ["ngayNhanBuuDienOptions"] });
             queryClient.invalidateQueries({ queryKey: ["listGplxHoan"] });
@@ -148,6 +155,7 @@ const GplxHoan = () => {
                 onCancel={() => {
                     setIsImportModalOpen(false);
                     setSelectedFile(null);
+                    setImportFormat("scan");
                 }}
                 onOk={handleConfirmImport}
                 confirmLoading={uploading}
@@ -155,6 +163,17 @@ const GplxHoan = () => {
                 cancelText="Hủy"
             >
                 <div className="space-y-4 my-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                            Loại file Excel
+                        </label>
+                        <Select
+                            className="w-full"
+                            value={importFormat}
+                            onChange={setImportFormat}
+                            options={IMPORT_FORMAT_OPTIONS}
+                        />
+                    </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
                             Ngày nhận bưu điện
