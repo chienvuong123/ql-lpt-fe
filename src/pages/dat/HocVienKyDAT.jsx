@@ -105,8 +105,10 @@ const HocVienKyDAT = () => {
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      const exportCourse = selectedCourse || filters.maKhoa || "";
-      const exportStudentName = searchName.trim() || filters.keyword || "";
+      // Dùng đúng filters ĐÃ ÁP DỤNG (đang hiển thị trên bảng), không dùng giá trị đang gõ/chọn
+      // dở trên UI nhưng chưa bấm "Lọc" — tránh export ra kết quả khác với danh sách đang xem.
+      const exportCourse = filters.maKhoa || "";
+      const exportStudentName = filters.keyword || "";
 
       const blob = await exportDanhSachHocVienKyDAT({
         ma_khoa: exportCourse,
