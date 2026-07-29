@@ -33,6 +33,8 @@ import {
   getHocVienByMaKhoaSqlPublic,
   fetchCheckStudentsPublic,
   ketQuaKiemTraPublic,
+  searchHocVienTHPublic,
+  getKhoaHocListPublic,
 } from "../../apis/apiDeploy";
 import ModalTest from "./ModalTest";
 
@@ -134,12 +136,12 @@ const extractKhoaNumber = (value = "") => {
 const SearchControls = ({
   isLoadingKhoaHoc,
   selectedKhoaHoc,
-  setSelectedKhoaHoc,
+  onSelectCourse,
   khoaHocOptions,
-  sortedCourses,
   onSearch,
   keyword,
   setKeyword,
+  isAuthLoading,
 }) => {
   const [localKeyword, setLocalKeyword] = useState(keyword);
 
@@ -153,31 +155,105 @@ const SearchControls = ({
 
   return (
     <Row gutter={[8, 8]} align="bottom">
-      <Col span={18}>
-        <Text className="!mb-1 !text-xs !uppercase !text-gray-500">
-          Từ khóa
+      <Col span={24}>
+        <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
+          Khóa học
         </Text>
-        <Input
-          value={localKeyword}
-          onChange={(e) => setLocalKeyword(e.target.value)}
-          onPressEnter={handleSearchClick}
-          style={{ fontSize: 13 }}
-          placeholder="Nhập tên học viên"
+        <Select
+          className="!w-full"
+          placeholder="Chọn khóa học"
+          loading={isLoadingKhoaHoc}
+          value={selectedKhoaHoc || undefined}
+          options={khoaHocOptions}
+          showSearch
+          optionFilterProp="label"
+          onChange={onSelectCourse}
         />
       </Col>
 
-      <Col span={6}>
-        <Button
-          type="primary"
-          className="w-full"
-          onClick={handleSearchClick}
-          disabled={localKeyword.trim().length === 0}
-        >
-          Tìm
-        </Button>
-      </Col>
+      {selectedKhoaHoc && isAuthLoading ? (
+        <Col span={24}>
+          <Text className="!block !text-center !text-xs !text-gray-500">
+            Đang đăng nhập hệ thống DAT, vui lòng chờ...
+          </Text>
+        </Col>
+      ) : null}
+
+      {selectedKhoaHoc && !isAuthLoading ? (
+        <>
+          <Col span={18}>
+            <Text className="!mb-1 !block !text-xs !uppercase !text-gray-500">
+              Từ khóa
+            </Text>
+            <Input
+              value={localKeyword}
+              onChange={(e) => setLocalKeyword(e.target.value)}
+              onPressEnter={handleSearchClick}
+              style={{ fontSize: 13 }}
+              placeholder="Nhập tên học viên"
+            />
+          </Col>
+
+          <Col span={6}>
+            <Button
+              type="primary"
+              className="w-full"
+              onClick={handleSearchClick}
+              disabled={localKeyword.trim().length === 0}
+            >
+              Tìm
+            </Button>
+          </Col>
+        </>
+      ) : null}
     </Row>
   );
+};
+
+const K26B014_START_DATE = 1776272400; // start_date của K26B014
+
+const mapNewCourseStudent = (item) => ({
+  ma_dk: item?.MaDK || "",
+  ho_ten: item?.HoTen || "",
+  ngay_sinh: item?.NgaySinh || "",
+  cccd: item?.SoCMT || "",
+  anh: item?.srcAvatar || "",
+  ma_khoa: item?.IDKhoaHoc != null ? String(item.IDKhoaHoc) : "",
+  ten_khoa: item?.TenKhoaHoc || "",
+});
+
+const toDayStr = (value) => {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// Khớp khóa học đã chọn (nguồn ly-thuyet, start_date/end_date dạng epoch giây) sang
+// bản ghi tương ứng bên hệ thống DAT /api/course (NgayBatDau/NgayKetThuc dạng ISO date)
+// bằng cách so khoảng thời gian, vì 2 hệ đặt tên/mã khóa khác quy ước nhau.
+const findKhoaHocIdByDate = (selectedCourse, khoaHocList) => {
+  if (!selectedCourse || !Array.isArray(khoaHocList) || khoaHocList.length === 0) {
+    return null;
+  }
+
+  const startDay = selectedCourse.start_date
+    ? toDayStr(Number(selectedCourse.start_date) * 1000)
+    : null;
+  const endDay = selectedCourse.end_date
+    ? toDayStr(Number(selectedCourse.end_date) * 1000)
+    : null;
+  if (!startDay) return null;
+
+  const exact = khoaHocList.find(
+    (c) =>
+      toDayStr(c?.NgayBatDau) === startDay &&
+      (!endDay || toDayStr(c?.NgayKetThuc) === endDay),
+  );
+  if (exact) return exact.ID ?? null;
+
+  const startOnly = khoaHocList.find((c) => toDayStr(c?.NgayBatDau) === startDay);
+  return startOnly?.ID ?? null;
 };
 
 const KiemTraPublic = () => {
@@ -225,64 +301,15 @@ const KiemTraPublic = () => {
     return selectedCourse?.code || selectedCourse?.name || selectedStudent?.ma_khoa || "";
   }, [selectedCourse, selectedStudent]);
 
-  const isK26B014OrLater = useMemo(() => {
-    const courseCode = String(
-      selectedCourse?.code ||
-      selectedCourse?.name ||
-      selectedStudent?.ma_khoa ||
-      selectedStudent?.MaKhoaHoc ||
-      ""
-    ).toUpperCase();
-
-    if (!courseCode) return false;
-
-    const isLaterByCode = (code = "") => {
-      const match = code.match(/K(\d+)[A-Z]*(\d+)/);
-      if (match) {
-        const kNum = parseInt(match[1], 10);
-        const classNum = parseInt(match[2], 10);
-        if (kNum > 26) return true;
-        if (kNum < 26) return false;
-
-        // kNum === 26
-        const isB = code.includes("B");
-        const isC = code.includes("C");
-
-        if (isB) {
-          if (classNum >= 113) return true;
-          if (classNum >= 14 && classNum < 100) return true;
-        } else if (isC) {
-          if (classNum >= 1004) return true;
-        }
-        return false;
-      }
-      return null;
-    };
-
-    const codeCheckResult = isLaterByCode(courseCode);
-    if (codeCheckResult !== null) {
-      return codeCheckResult;
-    }
-
-    const course = selectedCourse || sortedCourses.find(
-      (c) =>
-        String(c?.code).toUpperCase() === courseCode ||
-        String(c?.name).toUpperCase() === courseCode
-    );
-
-    if (course) {
-      const selectedDate = course.start_date || course.start_time || 0;
-      if (selectedDate > 0) {
-        return selectedDate >= 1776272400; // start_date of K26B014
-      }
-    }
-
-    return false;
-  }, [selectedCourse, sortedCourses, selectedStudent]);
+  // Khóa MỚI (đăng nhập tài khoản mới để lấy dữ liệu) khi start_date >= mốc K26B014.
+  const isNewCourse = useMemo(() => {
+    const startDate = Number(selectedCourse?.start_date || 0);
+    return startDate >= K26B014_START_DATE;
+  }, [selectedCourse]);
 
   const datCourseCode = useMemo(() => {
     const code = selectedKhoaHocCode;
-    if (isK26B014OrLater) {
+    if (isNewCourse) {
       let newCode = code;
       if (newCode.includes("3101130004")) {
         newCode = newCode.replace("3101130004", "31011");
@@ -296,7 +323,7 @@ const KiemTraPublic = () => {
       return newCode;
     }
     return code;
-  }, [isK26B014OrLater, selectedKhoaHocCode]);
+  }, [isNewCourse, selectedKhoaHocCode]);
 
   const { data, refetch, isLoading: isLoggingIn } = useQuery({
     queryKey: ["loginPublicCheck"],
@@ -333,26 +360,53 @@ const KiemTraPublic = () => {
       }
       return res?.data;
     },
-    enabled: isK26B014OrLater,
+    enabled: isNewCourse,
     retry: true,
     retryDelay: 3000,
   });
 
-  const isPublicLoggingIn = isLoggingIn || (isK26B014OrLater && isLoggingInNew);
-  const isPublicAuthSuccess = isK26B014OrLater
+  const isPublicLoggingIn = isLoggingIn || (isNewCourse && isLoggingInNew);
+  const isPublicAuthSuccess = isNewCourse
     ? (!!dataNew && dataNew.ID !== 0)
     : (!!data && data.ID !== 0);
+
+  // Danh sách khóa bên hệ thống DAT (tenant MỚI) — chỉ gọi khi đã đăng nhập xong, để lấy idkhoahoc khi tìm học viên.
+  const { data: khoaHocListData, isLoading: isLoadingKhoaHocList } = useQuery({
+    queryKey: ["khoaHocListPublic"],
+    queryFn: () => getKhoaHocListPublic(),
+    enabled: isNewCourse && isPublicAuthSuccess,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  const newCourseId = useMemo(() => {
+    const list =
+      khoaHocListData?.data?.Data ||
+      khoaHocListData?.Data ||
+      khoaHocListData?.data ||
+      (Array.isArray(khoaHocListData) ? khoaHocListData : []);
+    return findKhoaHocIdByDate(selectedCourse, Array.isArray(list) ? list : []);
+  }, [khoaHocListData, selectedCourse]);
 
   const {
     data: danhSachHocVien = {},
     isLoading: loadingStudents,
     refetch: refetchSearchHocVien,
   } = useQuery({
-    queryKey: ["getHocVienByMaKhoaSqlPublic", searchParams],
-    queryFn: () =>
-      getHocVienByMaKhoaSqlPublic({
+    queryKey: ["searchHocVienPublic", searchParams, isNewCourse, newCourseId],
+    queryFn: () => {
+      if (isNewCourse) {
+        return searchHocVienTHPublic({
+          soCmt: searchParams?.text || "",
+          idkhoahoc: newCourseId,
+          page: 1,
+          limit: 20,
+        });
+      }
+      return getHocVienByMaKhoaSqlPublic({
         search: searchParams?.text || "",
-      }),
+      });
+    },
     staleTime: 0,
     cacheTime: 0,
     retry: false,
@@ -417,7 +471,7 @@ const KiemTraPublic = () => {
         makhoahoc: datCourseCode,
         limit: 20,
         page: 1,
-      }, isK26B014OrLater),
+      }, isNewCourse),
     enabled: isDatModalOpen && !!cabinKey && isPublicAuthSuccess,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -522,7 +576,17 @@ const KiemTraPublic = () => {
   }, [sortedCourses]);
 
   const results = useMemo(() => {
-    const list = danhSachHocVien?.data || danhSachHocVien?.result || (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
+    let list;
+    if (isNewCourse) {
+      const raw =
+        danhSachHocVien?.data?.Data ||
+        danhSachHocVien?.Data ||
+        danhSachHocVien?.data ||
+        (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
+      list = (Array.isArray(raw) ? raw : []).map(mapNewCourseStudent);
+    } else {
+      list = danhSachHocVien?.data || danhSachHocVien?.result || (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
+    }
     if (!Array.isArray(list)) return [];
 
     const searchText = searchParams?.text?.trim()?.toLowerCase();
@@ -550,7 +614,7 @@ const KiemTraPublic = () => {
         norm(cccd).includes(normalizedSearch)
       );
     });
-  }, [danhSachHocVien, searchParams]);
+  }, [danhSachHocVien, searchParams, isNewCourse]);
 
   const trangThaiKyDAT = useMemo(() => {
     const status = dataHocVienKyDat?.data?.trang_thai === "da_ky";
@@ -604,16 +668,46 @@ const KiemTraPublic = () => {
     };
   }, [chiTietLyThuyetData]);
 
+  const handleSelectCourse = (value) => {
+    setSelectedKhoaHoc(value);
+    setKeyword("");
+    setSearchParams(null);
+    setSelectedStudent(null);
+    setIsLyThuyetModalOpen(false);
+    setIsCabinModalOpen(false);
+    setIsDatModalOpen(false);
+  };
+
   const handleSearch = (searchKeyword = "") => {
     // Sync the parent's keyword state
     setKeyword(searchKeyword);
+
+    if (!selectedKhoaHoc) {
+      message.warning("Vui lòng chọn khóa học trước.");
+      return;
+    }
 
     if (searchKeyword.trim().length === 0) {
       message.warning("Vui lòng nhập từ khóa tìm kiếm.");
       return;
     }
 
-    setSelectedKhoaHoc("");
+    if (isPublicLoggingIn) {
+      message.warning("Đang đăng nhập hệ thống DAT, vui lòng chờ trong giây lát.");
+      return;
+    }
+
+    if (isNewCourse) {
+      if (isLoadingKhoaHocList) {
+        message.warning("Đang tải dữ liệu khóa học, vui lòng thử lại sau giây lát.");
+        return;
+      }
+      if (!newCourseId) {
+        message.warning("Không tìm thấy khóa học tương ứng trên hệ thống DAT.");
+        return;
+      }
+    }
+
     setSelectedStudent(null);
     setIsLyThuyetModalOpen(false);
     setIsCabinModalOpen(false);
@@ -764,12 +858,12 @@ const KiemTraPublic = () => {
             <SearchControls
               isLoadingKhoaHoc={isLoadingKhoaHoc}
               selectedKhoaHoc={selectedKhoaHoc}
-              setSelectedKhoaHoc={setSelectedKhoaHoc}
+              onSelectCourse={handleSelectCourse}
               khoaHocOptions={khoaHocOptions}
-              sortedCourses={sortedCourses}
               onSearch={handleSearch}
               keyword={keyword}
               setKeyword={setKeyword}
+              isAuthLoading={isPublicLoggingIn}
             />
 
             {!hasResult && (
@@ -781,7 +875,9 @@ const KiemTraPublic = () => {
                   spinning={loadingStudents}
                   tip="Đang tải danh sách học viên..."
                 >
-                  {hasSearched ? (
+                  {!selectedKhoaHoc ? (
+                    <Empty description="Vui lòng chọn khóa học trước khi tìm kiếm." />
+                  ) : hasSearched ? (
                     <>
                       <Text className="!mb-2 !block !text-sm !font-semibold !text-[#2f6ce0]">
                         {results.length} kết quả
@@ -800,19 +896,6 @@ const KiemTraPublic = () => {
                                 setIsLyThuyetModalOpen(false);
                                 setIsCabinModalOpen(false);
                                 setIsDatModalOpen(false);
-
-                                // Sync course dropdown to student's course
-                                const studentCourseCode = item?.ma_khoa || item?.user?.course_code || "";
-                                if (studentCourseCode) {
-                                  const matchingCourse = sortedCourses.find(
-                                    (c) =>
-                                      String(c?.code).toUpperCase() === String(studentCourseCode).toUpperCase() ||
-                                      String(c?.name).toUpperCase() === String(studentCourseCode).toUpperCase()
-                                  );
-                                  if (matchingCourse) {
-                                    setSelectedKhoaHoc(matchingCourse.iid);
-                                  }
-                                }
                               }}
                             >
                               <Row>

@@ -187,3 +187,16 @@ export const getHocVienByMaKhoaSqlPublic = async (params = {}) => {
   const response = await axios.get(`${url}sync/students`, { params });
   return response.data;
 };
+
+// Tìm kiếm học viên khóa MỚI (từ K26B014 trở đi) qua hệ thống DAT (soCmt nhận cả tên hoặc CMT).
+// Dùng tài khoản MỚI (MaCSDT 31011) — cùng host với /api nhưng khác tenant nên phải qua apiNew.
+export const searchHocVienTHPublic = async (params = {}) => {
+  const response = await apiNew.get("/HocVienTH", { params });
+  return response.data;
+};
+
+// Danh sách khóa học bên hệ thống DAT (tenant MỚI) — dùng để lấy ID khóa (idkhoahoc) khi tìm học viên khóa mới
+export const getKhoaHocListPublic = async (params = {}) => {
+  const response = await apiNew.get("/course", { params });
+  return response.data;
+};
