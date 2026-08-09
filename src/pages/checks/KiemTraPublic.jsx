@@ -366,15 +366,23 @@ const KiemTraPublic = () => {
     selectedStudent?.MaDK ||
     "";
 
+  // Hệ Lotus LMS (lý thuyết) lưu "code" (mã ĐK) riêng của nó, được set lúc ghi danh và
+  // KHÔNG được đồng bộ khi ta đổi ma_dk sang định dạng mới -> tìm theo ma_dk mới sẽ ra rỗng.
+  // CCCD không đổi nên dùng CCCD làm khóa tìm kiếm bên Lotus LMS để không phụ thuộc định dạng ma_dk.
+  const studentCccd =
+    selectedStudent?.cccd ||
+    selectedStudent?.user?.identification_card ||
+    "";
+
   const {
     data: chiTietLyThuyetData,
     isLoading: loadingChiTietLyThuyet,
   } = useQuery({
-    queryKey: ["ketQuaKiemTraPublic", selectedStudent?.code, selectedStudent?.ma_khoa, cabinKey],
+    queryKey: ["ketQuaKiemTraPublic", selectedStudent?.code, selectedStudent?.ma_khoa, studentCccd],
     queryFn: () => {
       const codeOrPlanId = selectedStudent?.code
       return ketQuaKiemTraPublic(codeOrPlanId, {
-        text: cabinKey,
+        text: studentCccd,
       });
     },
     staleTime: 0,
@@ -386,11 +394,11 @@ const KiemTraPublic = () => {
     data: hocVienTheoKhoaData,
     isLoading: loadingHocVienTheoKhoa,
   } = useQuery({
-    queryKey: ["hocVienTheoKhoaPublic", selectedStudent?.code, selectedStudent?.ma_khoa, cabinKey],
+    queryKey: ["hocVienTheoKhoaPublic", selectedStudent?.code, selectedStudent?.ma_khoa, studentCccd],
     queryFn: () => {
       const codeOrPlanId = selectedStudent?.code || selectedStudent?.ma_khoa;
       return hocVienTheoKhoaPublic(codeOrPlanId, {
-        text: cabinKey,
+        text: studentCccd,
       });
     },
     staleTime: 0,
