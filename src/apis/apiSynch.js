@@ -69,6 +69,13 @@ export const getTienDoC1Sql = async (params = {}) => {
     return response.data;
 };
 
+export const dongBoMaDkHocVienTH = async () => {
+    const response = await axios.post(`${baseURL}/dk-mapping/sync-tu-hoc-vien-th`, null, {
+        params: { apply: true },
+    });
+    return response.data;
+};
+
 export const importXML = async (file, onProgress, createdBy, updatedBy) => {
     const formData = new FormData();
     formData.append("file", file);

@@ -1,8 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, Col, message, Row, Select, Upload } from "antd";
+import { Button, Card, Col, message, Modal, Row, Select, Upload } from "antd";
 import { importCheckStudentExcel } from "../../apis/kiemTra";
 import { SyncOutlined, UploadOutlined } from "@ant-design/icons";
-import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoXeGiaoVienSql, importXML } from "../../apis/apiSynch";
+import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoMaDkHocVienTH, dongBoXeGiaoVienSql, importXML } from "../../apis/apiSynch";
 import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { importHocBuExcel } from "../../apis/apiHocbu";
 import { importExcelGoogleSheetA1 } from "../../apis/apiGoogleSheetA1";
@@ -160,6 +160,34 @@ const ThemDuLieuVaoHeThong = () => {
 
   const handleCustomRequestGoogleSheetData = async ({ file, onProgress }) => {
     mutationImportGoogleSheetData.mutate({ file, onProgress });
+  };
+
+  const mutationSyncMaDkTH = useMutation({
+    mutationFn: () => dongBoMaDkHocVienTH(),
+    onSuccess: (res) => {
+      const applied = res?.applied ?? 0;
+      const total = res?.totalChanges ?? 0;
+      const failed = res?.failed ?? 0;
+      message.success(
+        `Đồng bộ mã ĐK học viên TH thành công: ${applied}/${total} học viên` +
+        (failed ? `, ${failed} lỗi` : "")
+      );
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || "Đồng bộ mã ĐK học viên TH thất bại!");
+    },
+  });
+
+  const handleSyncMaDkTH = () => {
+    Modal.confirm({
+      title: "Xác nhận đồng bộ mã ĐK học viên TH",
+      content:
+        "Hệ thống sẽ đối chiếu CCCD + khóa học với dữ liệu từ hệ TH rồi cập nhật mã ĐK mới cho học viên trên toàn bộ hệ thống. Thao tác không thể hoàn tác, bạn có chắc chắn muốn tiếp tục?",
+      okText: "Đồng bộ",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: () => mutationSyncMaDkTH.mutate(),
+    });
   };
 
   return (
@@ -390,6 +418,26 @@ const ThemDuLieuVaoHeThong = () => {
                 {mutationImportGoogleSheetData.isPending ? "Đang import..." : "Import Excel"}
               </Button>
             </Upload>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card className="h-full" title="Đồng bộ mã ĐK học viên TH">
+            <span className="block mb-4 text-gray-500">
+              Đối chiếu CCCD + khóa học với hệ TH (tài khoản mới) và cập nhật mã ĐK mới cho học viên trên toàn hệ thống.
+            </span>
+            <div className="mt-14">
+              <Button
+                icon={<SyncOutlined />}
+                onClick={handleSyncMaDkTH}
+                loading={mutationSyncMaDkTH.isPending}
+                className="!w-full"
+                type="primary"
+                danger
+              >
+                {mutationSyncMaDkTH.isPending ? "Đang đồng bộ..." : "Đồng bộ"}
+              </Button>
+            </div>
           </Card>
         </Col>
       </Row>
