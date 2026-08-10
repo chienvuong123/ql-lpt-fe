@@ -34,6 +34,11 @@ export const getTienDoDaoTaoListSql = async (params = {}) => {
     return response.data;
 };
 
+export const xoaTienDoDaoTaoSql = async (data) => {
+    const response = await axios.delete(`${baseURL}/sync/tien-do`, { data });
+    return response.data;
+};
+
 export const getKhoaHocListSql = async () => {
     const response = await axios.get(`${baseURL}/sync/courses`);
     return response.data;

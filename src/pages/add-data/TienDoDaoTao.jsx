@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { optionLopLyThuyet } from '../../apis/apiLyThuyetLocal';
-import { dongBoTienDoDaoTaoSql, getTienDoB1Sql, getTienDoB2Sql, getTienDoC1Sql } from '../../apis/apiSynch';
+import { dongBoTienDoDaoTaoSql, getTienDoB1Sql, getTienDoB2Sql, getTienDoC1Sql, xoaTienDoDaoTaoSql } from '../../apis/apiSynch';
 import {
     Table,
     Form,
@@ -14,12 +14,14 @@ import {
     Typography,
     Tag,
     message,
-    Select
+    Select,
+    Popconfirm
 } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
     EyeOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import ModalTienDoDaoTao from './ModalTienDoDaoTao';
 import ModalChiTietDaoTao from './ModalChiTietDaoTao';
@@ -120,9 +122,20 @@ const TienDoDaoTao = () => {
         staleTime: 1000 * 60 * 5,
     });
 
-    const dataSourceB1 = useMemo(() => normalizeApiList(tienDoDataB1), [tienDoDataB1]);
-    const dataSourceB2 = useMemo(() => normalizeApiList(tienDoDataB2), [tienDoDataB2]);
-    const dataSourceC1 = useMemo(() => normalizeApiList(tienDoDataC1), [tienDoDataC1]);
+    const sortByNgayKhaiGiang = (list) => {
+        return [...list].sort((a, b) => {
+            const timeA = a.ngay_khai_giang ? new Date(a.ngay_khai_giang).getTime() : null;
+            const timeB = b.ngay_khai_giang ? new Date(b.ngay_khai_giang).getTime() : null;
+            if (timeA === null && timeB === null) return 0;
+            if (timeA === null) return 1;
+            if (timeB === null) return -1;
+            return timeA - timeB;
+        });
+    };
+
+    const dataSourceB1 = useMemo(() => sortByNgayKhaiGiang(normalizeApiList(tienDoDataB1)), [tienDoDataB1]);
+    const dataSourceB2 = useMemo(() => sortByNgayKhaiGiang(normalizeApiList(tienDoDataB2)), [tienDoDataB2]);
+    const dataSourceC1 = useMemo(() => sortByNgayKhaiGiang(normalizeApiList(tienDoDataC1)), [tienDoDataC1]);
 
     const totalRecordsB1 = tienDoDataB1?.total || dataSourceB1.length || 0;
     const totalRecordsB2 = tienDoDataB2?.total || dataSourceB2.length || 0;
@@ -178,6 +191,24 @@ const TienDoDaoTao = () => {
             message.error(err.response?.data?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
         }
     });
+
+    const { mutate: mutateDeleteTienDo } = useMutation({
+        mutationFn: xoaTienDoDaoTaoSql,
+        onSuccess: () => {
+            message.success('Xóa thành công');
+            queryClient.invalidateQueries(["getTienDoB1"]);
+            queryClient.invalidateQueries(["getTienDoB2"]);
+            queryClient.invalidateQueries(["getTienDoC1"]);
+        },
+        onError: (err) => {
+            message.error(err.response?.data?.message || 'Có lỗi xảy ra khi xóa dữ liệu');
+        }
+    });
+
+    const handleDelete = (record) => {
+        mutateDeleteTienDo({ ma_khoa: record.ma_khoa, loai: record.loai });
+    };
+
     const getColumns = (classType) => {
         const isC1 = classType === 'C1';
         const headerBg = isC1
@@ -480,7 +511,7 @@ const TienDoDaoTao = () => {
             {
                 title: 'Thao tác',
                 key: 'action',
-                width: 70,
+                width: 100,
                 fixed: 'right',
                 align: 'center',
                 onHeaderCell: headerCell(),
@@ -500,6 +531,21 @@ const TienDoDaoTao = () => {
                             disabled={!canEdit}
                             size="small"
                         />
+                        <Popconfirm
+                            title="Xóa tiến độ đào tạo"
+                            description={`Bạn có chắc chắn muốn xóa khóa "${record.ten_khoa || record.ma_khoa}"?`}
+                            onConfirm={() => handleDelete(record)}
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            disabled={!canEdit}
+                        >
+                            <Button
+                                type="text"
+                                icon={<DeleteOutlined style={{ color: canEdit ? '#ff4d4f' : '#bfbfbf' }} />}
+                                disabled={!canEdit}
+                                size="small"
+                            />
+                        </Popconfirm>
                     </div>
                 ),
             },
