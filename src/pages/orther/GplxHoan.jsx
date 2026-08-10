@@ -66,9 +66,10 @@ const GplxHoan = () => {
         setUploading(true);
         try {
             const res = await importExcelGplxHoan(selectedFile, importDate.format("YYYY-MM-DD"), importFormat);
-            const { total, inserted, updated, skipped } = res?.data?.data || {};
+            const { total, inserted, duplicated, skipped } = res?.data?.data || {};
             message.success(
-                `Import thành công! Hợp lệ: ${total ?? 0} (thêm mới: ${inserted ?? 0}, cập nhật: ${updated ?? 0})` +
+                `Import thành công! Hợp lệ: ${total ?? 0} (thêm mới: ${inserted ?? 0})` +
+                (duplicated ? `, bỏ qua ${duplicated} dòng đã có số GPLX này (không đụng vào trạng thái kho hiện tại)` : "") +
                 (skipped ? `, bỏ qua ${skipped} dòng thiếu thông tin` : "")
             );
             setIsImportModalOpen(false);

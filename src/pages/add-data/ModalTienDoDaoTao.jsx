@@ -10,17 +10,20 @@ import {
     Col,
     Divider,
     Space,
-    Typography
+    Typography,
+    Button,
+    message
 } from 'antd';
 import {
     CalendarOutlined,
     TeamOutlined,
     CarOutlined,
     SolutionOutlined,
-    FileTextOutlined
+    FileTextOutlined,
+    SyncOutlined
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import { getKhoaHocListSql } from '../../apis/apiSynch';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getKhoaHocListSql, dongBoKhoaHocSql } from '../../apis/apiSynch';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -28,12 +31,27 @@ const { TextArea } = Input;
 
 const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading }) => {
     const [form] = Form.useForm();
+    const queryClient = useQueryClient();
 
     const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
         queryKey: ["getKhoaHocListSql"],
         queryFn: () => getKhoaHocListSql(),
         staleTime: 1000 * 60 * 5,
         enabled: visible && (action === 'add' || action === 'edit'),
+    });
+
+    // Danh sách khóa học ở đây lấy từ bảng khoa_hoc nội bộ (đồng bộ thủ công từ Lotus LMS) —
+    // khóa mới tạo bên Lotus sẽ không có ở đây cho tới khi được đồng bộ lại. Cho phép đồng bộ
+    // ngay tại đây để không phải rời màn hình sang trang "Thêm dữ liệu vào hệ thống".
+    const mutationSyncKhoaHoc = useMutation({
+        mutationFn: () => dongBoKhoaHocSql(),
+        onSuccess: () => {
+            message.success('Đồng bộ danh sách khóa học thành công!');
+            queryClient.invalidateQueries({ queryKey: ["getKhoaHocListSql"] });
+        },
+        onError: (err) => {
+            message.error(err.response?.data?.message || 'Đồng bộ khóa học thất bại!');
+        },
     });
 
     const normalizeApiList = (payload) => {
@@ -216,8 +234,23 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
                     <Col span={6}>
                         <Form.Item
                             name="ma_khoa"
-                            label="Khóa học"
                             rules={[{ required: true, message: 'Vui lòng chọn khóa học!' }]}
+                            label={
+                                <Space size={4}>
+                                    <span>Khóa học</span>
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        icon={<SyncOutlined />}
+                                        loading={mutationSyncKhoaHoc.isPending}
+                                        onClick={() => mutationSyncKhoaHoc.mutate()}
+                                        className="!p-0 !h-auto"
+                                        title="Không thấy khóa mới? Bấm để đồng bộ lại từ Lotus"
+                                    >
+                                        Đồng bộ
+                                    </Button>
+                                </Space>
+                            }
                         >
                             <Select
                                 placeholder="Chọn khóa học"
@@ -228,6 +261,7 @@ const ModalTienDoDaoTao = ({ visible, action, data, onCancel, onSubmit, loading 
                                 filterOption={(input, option) =>
                                     (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
                                 }
+                                notFoundContent={isLoadingKhoaHoc ? 'Đang tải...' : 'Không tìm thấy — thử bấm "Đồng bộ"'}
                             />
                         </Form.Item>
                     </Col>
