@@ -129,7 +129,7 @@ const TienDoDaoTao = () => {
             if (timeA === null && timeB === null) return 0;
             if (timeA === null) return 1;
             if (timeB === null) return -1;
-            return timeA - timeB;
+            return timeB - timeA;
         });
     };
 
