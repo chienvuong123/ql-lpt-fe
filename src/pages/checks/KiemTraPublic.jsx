@@ -222,20 +222,31 @@ const KiemTraPublic = () => {
   }, [sortedCourses, selectedKhoaHoc]);
 
   const selectedKhoaHocLabel = useMemo(() => {
-    return selectedCourse?.suffix_name || selectedCourse?.name || selectedStudent?.ten_khoa || selectedStudent?.ma_khoa || "";
+    return (
+      selectedCourse?.suffix_name ||
+      selectedCourse?.name ||
+      selectedStudent?.ten_khoa ||
+      selectedStudent?.ma_khoa ||
+      ""
+    );
   }, [selectedCourse, selectedStudent]);
 
   const selectedKhoaHocCode = useMemo(() => {
-    return selectedCourse?.code || selectedCourse?.name || selectedStudent?.ma_khoa || "";
+    return (
+      selectedCourse?.code ||
+      selectedCourse?.name ||
+      selectedStudent?.ma_khoa ||
+      ""
+    );
   }, [selectedCourse, selectedStudent]);
 
   const isK26B014OrLater = useMemo(() => {
     const courseCode = String(
       selectedCourse?.code ||
-      selectedCourse?.name ||
-      selectedStudent?.ma_khoa ||
-      selectedStudent?.MaKhoaHoc ||
-      ""
+        selectedCourse?.name ||
+        selectedStudent?.ma_khoa ||
+        selectedStudent?.MaKhoaHoc ||
+        "",
     ).toUpperCase();
 
     if (!courseCode) return false;
@@ -268,11 +279,13 @@ const KiemTraPublic = () => {
       return codeCheckResult;
     }
 
-    const course = selectedCourse || sortedCourses.find(
-      (c) =>
-        String(c?.code).toUpperCase() === courseCode ||
-        String(c?.name).toUpperCase() === courseCode
-    );
+    const course =
+      selectedCourse ||
+      sortedCourses.find(
+        (c) =>
+          String(c?.code).toUpperCase() === courseCode ||
+          String(c?.name).toUpperCase() === courseCode,
+      );
 
     if (course) {
       const selectedDate = course.start_date || course.start_time || 0;
@@ -308,10 +321,13 @@ const KiemTraPublic = () => {
       const username = PUBLIC_CHECK_USERNAME_NEW || "dltx_lpt_31011";
       const password = PUBLIC_CHECK_PASSWORD_NEW || "@tcdbvn";
 
-      const res = await DangNhapPublic({
-        Username: username,
-        Password: password,
-      }, true);
+      const res = await DangNhapPublic(
+        {
+          Username: username,
+          Password: password,
+        },
+        true,
+      );
       if (!res?.data || res?.data?.ID === 0) {
         throw new Error(res?.data?.Name || "Đăng nhập thất bại");
       }
@@ -352,41 +368,45 @@ const KiemTraPublic = () => {
   // KHÔNG được đồng bộ khi ta đổi ma_dk sang định dạng mới -> tìm theo ma_dk mới sẽ ra rỗng.
   // CCCD không đổi nên dùng CCCD làm khóa tìm kiếm bên Lotus LMS để không phụ thuộc định dạng ma_dk.
   const studentCccd =
-    selectedStudent?.cccd ||
-    selectedStudent?.user?.identification_card ||
-    "";
+    selectedStudent?.cccd || selectedStudent?.user?.identification_card || "";
 
-  const {
-    data: chiTietLyThuyetData,
-    isLoading: loadingChiTietLyThuyet,
-  } = useQuery({
-    queryKey: ["ketQuaKiemTraPublic", selectedStudent?.code, selectedStudent?.ma_khoa, studentCccd],
-    queryFn: () => {
-      const codeOrPlanId = selectedStudent?.code
-      return ketQuaKiemTraPublic(codeOrPlanId, {
-        text: studentCccd,
-      });
-    },
-    staleTime: 0,
-    retry: false,
-    enabled: !!selectedStudent,
-  });
+  const { data: chiTietLyThuyetData, isLoading: loadingChiTietLyThuyet } =
+    useQuery({
+      queryKey: [
+        "ketQuaKiemTraPublic",
+        selectedStudent?.code,
+        selectedStudent?.ma_khoa,
+        studentCccd,
+      ],
+      queryFn: () => {
+        const codeOrPlanId = selectedStudent?.code;
+        return ketQuaKiemTraPublic(codeOrPlanId, {
+          text: studentCccd,
+        });
+      },
+      staleTime: 0,
+      retry: false,
+      enabled: !!selectedStudent,
+    });
 
-  const {
-    data: hocVienTheoKhoaData,
-    isLoading: loadingHocVienTheoKhoa,
-  } = useQuery({
-    queryKey: ["hocVienTheoKhoaPublic", selectedStudent?.code, selectedStudent?.ma_khoa, studentCccd],
-    queryFn: () => {
-      const codeOrPlanId = selectedStudent?.code || selectedStudent?.ma_khoa;
-      return hocVienTheoKhoaPublic(codeOrPlanId, {
-        text: studentCccd,
-      });
-    },
-    staleTime: 0,
-    retry: false,
-    enabled: !!selectedStudent,
-  });
+  const { data: hocVienTheoKhoaData, isLoading: loadingHocVienTheoKhoa } =
+    useQuery({
+      queryKey: [
+        "hocVienTheoKhoaPublic",
+        selectedStudent?.code,
+        selectedStudent?.ma_khoa,
+        studentCccd,
+      ],
+      queryFn: () => {
+        const codeOrPlanId = selectedStudent?.code || selectedStudent?.ma_khoa;
+        return hocVienTheoKhoaPublic(codeOrPlanId, {
+          text: studentCccd,
+        });
+      },
+      staleTime: 0,
+      retry: false,
+      enabled: !!selectedStudent,
+    });
 
   const { data: dataCabin, isLoading: loadingCabin } = useQuery({
     queryKey: ["cabin", cabinKey],
@@ -400,14 +420,17 @@ const KiemTraPublic = () => {
   const { data: dataDat, isLoading: loadingDat } = useQuery({
     queryKey: ["hanhTrinhPublic", cabinKey, datCourseCode],
     queryFn: () =>
-      HanhTrinhPublic({
-        ngaybatdau: "2020-01-01",
-        ngayketthuc: `${dayjs().format("YYYY-MM-DD")}T23:59:00`,
-        ten: cabinKey,
-        makhoahoc: datCourseCode,
-        limit: 20,
-        page: 1,
-      }, isK26B014OrLater),
+      HanhTrinhPublic(
+        {
+          ngaybatdau: "2020-01-01",
+          ngayketthuc: `${dayjs().format("YYYY-MM-DD")}T23:59:00`,
+          ten: cabinKey,
+          makhoahoc: datCourseCode,
+          limit: 20,
+          page: 1,
+        },
+        isK26B014OrLater,
+      ),
     enabled: isDatModalOpen && !!cabinKey && isPublicAuthSuccess,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -431,7 +454,8 @@ const KiemTraPublic = () => {
 
   const { data: tienDoData } = useQuery({
     queryKey: ["tienDoDaoTao", selectedKhoaHocCode],
-    queryFn: () => getTienDoDaoTaoByMaHocVienSqlDeploy({ ma_khoa: selectedKhoaHocCode }),
+    queryFn: () =>
+      getTienDoDaoTaoByMaHocVienSqlDeploy({ ma_khoa: selectedKhoaHocCode }),
     enabled: !!selectedKhoaHocCode,
     staleTime: 1000 * 60 * 5,
   });
@@ -512,7 +536,10 @@ const KiemTraPublic = () => {
   }, [sortedCourses]);
 
   const resultsBeforeKhoaFilter = useMemo(() => {
-    const list = danhSachHocVien?.data || danhSachHocVien?.result || (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
+    const list =
+      danhSachHocVien?.data ||
+      danhSachHocVien?.result ||
+      (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
     if (!Array.isArray(list)) return [];
 
     const searchText = searchParams?.text?.trim()?.toLowerCase();
@@ -531,7 +558,12 @@ const KiemTraPublic = () => {
 
     return list.filter((item) => {
       const name = item?.ho_ten || item?.user?.name || item?.name || "";
-      const code = item?.ma_dk || item?.user?.admission_code || item?.user?.code || item?.code || "";
+      const code =
+        item?.ma_dk ||
+        item?.user?.admission_code ||
+        item?.user?.code ||
+        item?.code ||
+        "";
       const cccd = item?.cccd || item?.user?.identification_card || "";
 
       return (
@@ -546,7 +578,9 @@ const KiemTraPublic = () => {
   const results = useMemo(
     () =>
       resultsBeforeKhoaFilter.filter((item) =>
-        isNewFormatMaKhoa(item?.ma_khoa || item?.user?.course_code || item?.code),
+        isNewFormatMaKhoa(
+          item?.ma_khoa || item?.user?.course_code || item?.code,
+        ),
       ),
     [resultsBeforeKhoaFilter],
   );
@@ -563,7 +597,9 @@ const KiemTraPublic = () => {
     const hocVienDetail = Array.isArray(hocVienTheoKhoaData)
       ? hocVienTheoKhoaData[0]
       : hocVienTheoKhoaData?.data
-        ? (Array.isArray(hocVienTheoKhoaData.data) ? hocVienTheoKhoaData.data[0] : hocVienTheoKhoaData.data)
+        ? Array.isArray(hocVienTheoKhoaData.data)
+          ? hocVienTheoKhoaData.data[0]
+          : hocVienTheoKhoaData.data
         : hocVienTheoKhoaData;
 
     const rawScores =
@@ -636,12 +672,15 @@ const KiemTraPublic = () => {
   const isEmptyLyThuyet = useMemo(() => {
     if (!chiTietLyThuyetData && !hocVienTheoKhoaData) return false;
 
-    const isChiTietEmpty = !chiTietLyThuyetData?.data || chiTietLyThuyetData?.data?.length === 0;
+    const isChiTietEmpty =
+      !chiTietLyThuyetData?.data || chiTietLyThuyetData?.data?.length === 0;
 
     const hocVienDetail = Array.isArray(hocVienTheoKhoaData)
       ? hocVienTheoKhoaData[0]
       : hocVienTheoKhoaData?.data
-        ? (Array.isArray(hocVienTheoKhoaData.data) ? hocVienTheoKhoaData.data[0] : hocVienTheoKhoaData.data)
+        ? Array.isArray(hocVienTheoKhoaData.data)
+          ? hocVienTheoKhoaData.data[0]
+          : hocVienTheoKhoaData.data
         : hocVienTheoKhoaData;
 
     const isTheoKhoaEmpty = !hocVienDetail || !hocVienDetail?.learning_progress;
@@ -694,7 +733,12 @@ const KiemTraPublic = () => {
     if (cabinDataList.length === 0) return "Trượt";
 
     return isCabinPassed && isAllCabinRulesPassed ? "Đạt" : "Trượt";
-  }, [loadingCabin, cabinDataList.length, isCabinPassed, isAllCabinRulesPassed]);
+  }, [
+    loadingCabin,
+    cabinDataList.length,
+    isCabinPassed,
+    isAllCabinRulesPassed,
+  ]);
   const isCabinFinalPassed = isCabinPassed && isAllCabinRulesPassed;
 
   console.log("Debug check:", {
@@ -742,8 +786,10 @@ const KiemTraPublic = () => {
             TRA CỨU DỮ LIỆU HỌC TẬP
           </Title>
           <Paragraph className="!mb-0 !mt-3 !text-center !text-sm !text-white/90">
-            Dữ liệu mang tính chất tham khảo, dữ liệu đủ điều kiện phải được học
-            viên ký và duyệt từ phòng DAT.
+            {/* Dữ liệu mang tính chất tham khảo, dữ liệu đủ điều kiện phải được học
+            viên ký và duyệt từ phòng DAT. <br /> */}
+            Dữ liệu kiểm tra công khai chỉ áp dụng cho các khóa mới từ khóa
+            K260001B.
           </Paragraph>
         </Header>
 
@@ -776,11 +822,19 @@ const KiemTraPublic = () => {
                       </Text>
 
                       {results.length > 0 ? (
-                        <Space direction="vertical" size={4} className="!w-full">
+                        <Space
+                          direction="vertical"
+                          size={4}
+                          className="!w-full"
+                        >
                           {results.map((item, index) => (
                             <div
                               key={
-                                item?.ma_dk || item?.id || item?._id || item?.user?.iid || index
+                                item?.ma_dk ||
+                                item?.id ||
+                                item?._id ||
+                                item?.user?.iid ||
+                                index
                               }
                               className="!cursor-pointer !rounded-lg !px-2 !py-1 hover:!bg-[#f2f7ff]"
                               onClick={() => {
@@ -790,12 +844,19 @@ const KiemTraPublic = () => {
                                 setIsDatModalOpen(false);
 
                                 // Sync course dropdown to student's course
-                                const studentCourseCode = item?.ma_khoa || item?.user?.course_code || "";
+                                const studentCourseCode =
+                                  item?.ma_khoa ||
+                                  item?.user?.course_code ||
+                                  "";
                                 if (studentCourseCode) {
                                   const matchingCourse = sortedCourses.find(
                                     (c) =>
-                                      String(c?.code).toUpperCase() === String(studentCourseCode).toUpperCase() ||
-                                      String(c?.name).toUpperCase() === String(studentCourseCode).toUpperCase()
+                                      String(c?.code).toUpperCase() ===
+                                        String(
+                                          studentCourseCode,
+                                        ).toUpperCase() ||
+                                      String(c?.name).toUpperCase() ===
+                                        String(studentCourseCode).toUpperCase(),
                                   );
                                   if (matchingCourse) {
                                     setSelectedKhoaHoc(matchingCourse.iid);
@@ -822,14 +883,21 @@ const KiemTraPublic = () => {
                                 <Col span={19}>
                                   <Col span={24}>
                                     <Text strong className="!uppercase">
-                                      {item?.ho_ten || item?.user?.name || "Không rõ tên"} (
-                                      {item?.ngay_sinh ? dayjs(item.ngay_sinh).format("YYYY") : item?.user?.birth_year || "--"})
+                                      {item?.ho_ten ||
+                                        item?.user?.name ||
+                                        "Không rõ tên"}{" "}
+                                      (
+                                      {item?.ngay_sinh
+                                        ? dayjs(item.ngay_sinh).format("YYYY")
+                                        : item?.user?.birth_year || "--"}
+                                      )
                                     </Text>
                                   </Col>
                                   <Col span={24}>
                                     <Text className="!text-xs !text-gray-500">
                                       <span>
-                                        Khóa học: {item?.ten_khoa || item?.ma_khoa || ""}
+                                        Khóa học:{" "}
+                                        {item?.ten_khoa || item?.ma_khoa || ""}
                                       </span>
                                     </Text>
                                   </Col>
@@ -887,7 +955,11 @@ const KiemTraPublic = () => {
                         selectedStudent?.user?.default_avatar ||
                         ""
                       }
-                      alt={selectedStudent?.ho_ten || selectedStudent?.user?.name || "Hoc vien"}
+                      alt={
+                        selectedStudent?.ho_ten ||
+                        selectedStudent?.user?.name ||
+                        "Hoc vien"
+                      }
                       preview={false}
                       width={120}
                       height={120}
@@ -900,11 +972,16 @@ const KiemTraPublic = () => {
                       level={2}
                       className="!mb-0 !text-base !font-extrabold !uppercase !text-[#151b2d]"
                     >
-                      {selectedStudent?.ho_ten || selectedStudent?.user?.name || "Không rõ tên"}
+                      {selectedStudent?.ho_ten ||
+                        selectedStudent?.user?.name ||
+                        "Không rõ tên"}
                     </Title>
                     <Text className="!mt-2 !block !text-sm !text-[#151b2d] !font-medium">
                       Lớp ·{" "}
-                      {selectedKhoaHocLabel || selectedStudent?.ma_khoa || selectedStudent?.MaKhoaHoc || ""}
+                      {selectedKhoaHocLabel ||
+                        selectedStudent?.ma_khoa ||
+                        selectedStudent?.MaKhoaHoc ||
+                        ""}
                     </Text>
                     <Text className="!mt-1 !block !text-sm !text-[#151b2d] !font-medium">
                       CCCD:{" "}
@@ -920,7 +997,6 @@ const KiemTraPublic = () => {
                         : "Chưa có lịch"}
                     </Text> */}
                   </Col>
-
                 </Row>
                 {(isLoggingInNew || !dataNew || dataNew.ID === 0) && (
                   <div className="!text-[13px] !text-gray-500 !text-center !mt-3 !leading-tight">
@@ -1037,7 +1113,7 @@ const KiemTraPublic = () => {
                         <Text
                           className="!text-xs !font-bold"
                           style={{
-                            color: isCabinFinalPassed ? "#1b8a35" : "#dc2626"
+                            color: isCabinFinalPassed ? "#1b8a35" : "#dc2626",
                           }}
                         >
                           {cabinText}
@@ -1096,10 +1172,9 @@ const KiemTraPublic = () => {
                         DAT
                       </Text>
                       <div
-                        className={`!font-semibold text-[13px] flex justify-center ${trangThaiKyDAT
-                          ? "!text-[#1b8a35]"
-                          : "!text-[#ff0000]"
-                          }`}
+                        className={`!font-semibold text-[13px] flex justify-center ${
+                          trangThaiKyDAT ? "!text-[#1b8a35]" : "!text-[#ff0000]"
+                        }`}
                       >
                         {trangThaiKyDAT ? "Đã ký" : "Chưa ký"}
                       </div>
