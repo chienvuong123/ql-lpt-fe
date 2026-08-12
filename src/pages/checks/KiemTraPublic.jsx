@@ -41,8 +41,6 @@ import "./index.css";
 
 const { Header, Footer, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
-const PUBLIC_CHECK_USERNAME = import.meta.env.VITE_PUBLIC_CHECK_USERNAME;
-const PUBLIC_CHECK_PASSWORD = import.meta.env.VITE_PUBLIC_CHECK_PASSWORD;
 const PUBLIC_CHECK_USERNAME_NEW = import.meta.env.VITE_USERNAME_NEW;
 const PUBLIC_CHECK_PASSWORD_NEW = import.meta.env.VITE_PASSWORD_NEW;
 
@@ -130,6 +128,12 @@ const extractKhoaNumber = (value = "") => {
   const match = prefix.match(/^k(\d{2})$/);
   return match ? Number(match[1]) : null;
 };
+
+// Chỉ các khóa mới (mã khóa đồng bộ từ Lotus LMS với tiền tố 31011...) mới được
+// tra cứu qua link công khai — khóa cũ (tiền tố 30004...) không còn hỗ trợ ở đây nữa.
+const NEW_MA_KHOA_PREFIX = "31011";
+const isNewFormatMaKhoa = (maKhoa = "") =>
+  String(maKhoa).trim().toUpperCase().startsWith(NEW_MA_KHOA_PREFIX);
 
 const SearchControls = ({
   isLoadingKhoaHoc,
@@ -298,26 +302,6 @@ const KiemTraPublic = () => {
     return code;
   }, [isK26B014OrLater, selectedKhoaHocCode]);
 
-  const { data, refetch, isLoading: isLoggingIn } = useQuery({
-    queryKey: ["loginPublicCheck"],
-    queryFn: async () => {
-      const username = PUBLIC_CHECK_USERNAME || "chienvx";
-      const password = PUBLIC_CHECK_PASSWORD || "@chienvx";
-
-      const res = await DangNhapPublic({
-        Username: username,
-        Password: password,
-      }, false);
-      if (!res?.data || res?.data?.ID === 0) {
-        throw new Error(res?.data?.Name || "Đăng nhập thất bại");
-      }
-      return res?.data;
-    },
-    enabled: true,
-    retry: true,
-    retryDelay: 3000,
-  });
-
   const { data: dataNew, isLoading: isLoggingInNew } = useQuery({
     queryKey: ["loginPublicCheckNew"],
     queryFn: async () => {
@@ -333,15 +317,13 @@ const KiemTraPublic = () => {
       }
       return res?.data;
     },
-    enabled: isK26B014OrLater,
+    enabled: true,
     retry: true,
     retryDelay: 3000,
   });
 
-  const isPublicLoggingIn = isLoggingIn || (isK26B014OrLater && isLoggingInNew);
-  const isPublicAuthSuccess = isK26B014OrLater
-    ? (!!dataNew && dataNew.ID !== 0)
-    : (!!data && data.ID !== 0);
+  const isPublicLoggingIn = isLoggingInNew;
+  const isPublicAuthSuccess = !!dataNew && dataNew.ID !== 0;
 
   const {
     data: danhSachHocVien = {},
@@ -529,7 +511,7 @@ const KiemTraPublic = () => {
     }));
   }, [sortedCourses]);
 
-  const results = useMemo(() => {
+  const resultsBeforeKhoaFilter = useMemo(() => {
     const list = danhSachHocVien?.data || danhSachHocVien?.result || (Array.isArray(danhSachHocVien) ? danhSachHocVien : []);
     if (!Array.isArray(list)) return [];
 
@@ -559,6 +541,15 @@ const KiemTraPublic = () => {
       );
     });
   }, [danhSachHocVien, searchParams]);
+
+  // Chỉ cho tra cứu học viên thuộc khóa mới (mã khóa 31011...) — ẩn học viên khóa cũ khỏi kết quả.
+  const results = useMemo(
+    () =>
+      resultsBeforeKhoaFilter.filter((item) =>
+        isNewFormatMaKhoa(item?.ma_khoa || item?.user?.course_code || item?.code),
+      ),
+    [resultsBeforeKhoaFilter],
+  );
 
   const trangThaiKyDAT = useMemo(() => {
     const status = dataHocVienKyDat?.data?.trang_thai === "da_ky";
@@ -698,23 +689,12 @@ const KiemTraPublic = () => {
     cabinGroupedByRule.length > 0 &&
     cabinGroupedByRule.every((item) => item.learnedMinutes >= item.passMinutes);
 
-  const isCabinMaintenance = useMemo(() => {
-    return dataCabin?.success === true && cabinDataList.length === 0;
-  }, [dataCabin, cabinDataList]);
-
   const cabinText = useMemo(() => {
     if (loadingCabin) return "Đang tải dữ liệu CABIN...";
-    if (isCabinMaintenance) return "Bảo trì";
     if (cabinDataList.length === 0) return "Trượt";
 
     return isCabinPassed && isAllCabinRulesPassed ? "Đạt" : "Trượt";
-  }, [
-    loadingCabin,
-    isCabinMaintenance,
-    cabinDataList.length,
-    isCabinPassed,
-    isAllCabinRulesPassed,
-  ]);
+  }, [loadingCabin, cabinDataList.length, isCabinPassed, isAllCabinRulesPassed]);
   const isCabinFinalPassed = isCabinPassed && isAllCabinRulesPassed;
 
   console.log("Debug check:", {
@@ -942,7 +922,7 @@ const KiemTraPublic = () => {
                   </Col>
 
                 </Row>
-                {(isLoggingIn || !data || data.ID === 0) && (
+                {(isLoggingInNew || !dataNew || dataNew.ID === 0) && (
                   <div className="!text-[13px] !text-gray-500 !text-center !mt-3 !leading-tight">
                     Đang xử lý dữ liệu DAT, vui lòng chờ ít phút
                   </div>
@@ -1057,28 +1037,18 @@ const KiemTraPublic = () => {
                         <Text
                           className="!text-xs !font-bold"
                           style={{
-                            color: isCabinFinalPassed
-                              ? "#1b8a35"
-                              : isCabinMaintenance
-                                ? "#7e8ea6"
-                                : "#dc2626"
+                            color: isCabinFinalPassed ? "#1b8a35" : "#dc2626"
                           }}
                         >
                           {cabinText}
                         </Text>
-                        {!isCabinMaintenance && (
-                          <Button
-                            className="!rounded-xl !px-3 !text-xs"
-                            size="small"
-                            onClick={() => {
-                              // if (isLyThuyetPassed) {
-                              setIsCabinModalOpen(true);
-                              // }
-                            }}
-                          >
-                            Xem
-                          </Button>
-                        )}
+                        <Button
+                          className="!rounded-xl !px-3 !text-xs"
+                          size="small"
+                          onClick={() => setIsCabinModalOpen(true)}
+                        >
+                          Xem
+                        </Button>
                       </Flex>
                     </Card>
                   </Col>
