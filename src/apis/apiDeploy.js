@@ -18,8 +18,12 @@ export const apiLocal = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// `/api-new/Login` hiện trả 404 trên proxy Netlify (route bị gãy), trong khi
+// `/api-new/HanhTrinh` vẫn hoạt động và trả đúng dữ liệu cho khóa mới nếu có token hợp lệ
+// -> cùng backend với `/api`. Trỏ tạm baseURL về `/api` để lấy được token, tránh việc
+// trang tra cứu public không bao giờ đăng nhập được và luôn hiện "Không có dữ liệu DAT".
 export const apiNew = axios.create({
-  baseURL: `${APP_URL}/api-new`,
+  baseURL: `${APP_URL}/api`,
   timeout: 50000,
   headers: {
     "Content-Type": "application/json",
