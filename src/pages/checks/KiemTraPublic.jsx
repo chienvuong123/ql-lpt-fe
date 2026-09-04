@@ -297,24 +297,6 @@ const KiemTraPublic = () => {
     return false;
   }, [selectedCourse, sortedCourses, selectedStudent]);
 
-  const datCourseCode = useMemo(() => {
-    const code = selectedKhoaHocCode;
-    if (isK26B014OrLater) {
-      let newCode = code;
-      if (newCode.includes("3101130004")) {
-        newCode = newCode.replace("3101130004", "31011");
-      } else if (newCode.includes("30004")) {
-        newCode = newCode.replace("30004", "31011");
-      }
-
-      if (!newCode.startsWith("31011")) {
-        return `31011${newCode}`;
-      }
-      return newCode;
-    }
-    return code;
-  }, [isK26B014OrLater, selectedKhoaHocCode]);
-
   const { data: dataNew, isLoading: isLoggingInNew } = useQuery({
     queryKey: ["loginPublicCheckNew"],
     queryFn: async () => {
@@ -418,14 +400,17 @@ const KiemTraPublic = () => {
   });
 
   const { data: dataDat, isLoading: loadingDat } = useQuery({
-    queryKey: ["hanhTrinhPublic", cabinKey, datCourseCode],
+    queryKey: ["hanhTrinhPublic", cabinKey],
     queryFn: () =>
+      // Không lọc theo makhoahoc: mã khóa đồng bộ trong DB (ma_khoa/khoa_hoc.code, có thể
+      // mang hậu tố "_old") đôi khi lệch với MaKhoaHoc thực tế mà thiết bị DAT ghi nhận,
+      // khiến bộ lọc loại bỏ nhầm toàn bộ phiên hợp lệ của học viên. ma_dk (ten) đã là
+      // khóa duy nhất nên đủ để xác định đúng học viên.
       HanhTrinhPublic(
         {
           ngaybatdau: "2020-01-01",
           ngayketthuc: `${dayjs().format("YYYY-MM-DD")}T23:59:00`,
           ten: cabinKey,
-          makhoahoc: datCourseCode,
           limit: 20,
           page: 1,
         },
