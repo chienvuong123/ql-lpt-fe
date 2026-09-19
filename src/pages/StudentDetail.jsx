@@ -612,6 +612,14 @@ const StudentDetail = ({ data }) => {
       },
     },
     {
+      title: "Mã GV",
+      dataIndex: "IDGV",
+      key: "IDGV",
+      width: 100,
+      align: "center",
+      render: (text) => renderValue(text),
+    },
+    {
       title: "Tên giáo viên",
       dataIndex: "HoTenGV",
       key: "HoTenGV",

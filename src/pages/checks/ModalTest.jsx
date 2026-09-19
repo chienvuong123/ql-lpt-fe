@@ -7,6 +7,7 @@ import {
   getBienSoTuDong,
 } from "./DieuKienKiemTra";
 import { getHocVienDuyetPublic, getLichSuDuyetPhienHocPublic, LoTringOnlinePublic } from "../../apis/apiDeploy";
+import { getPhienHocThucHanhCsdtByMaPhienHocList } from "../../apis/apiPhienHocThucHanhCsdt";
 
 const { Text } = Typography;
 
@@ -343,6 +344,8 @@ const ModalTest = ({
   const [approveState, setApproveState] = useState(INITIAL_APPROVE_STATE);
   const [loTrinhResults, setLoTrinhResults] = useState([]);
   const [loadingLoTrinh, setLoadingLoTrinh] = useState(false);
+  const [csdtMap, setCsdtMap] = useState({});
+  const [loadingCsdt, setLoadingCsdt] = useState(false);
 
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
@@ -404,15 +407,36 @@ const ModalTest = ({
     }
   }, [maDk]);
 
+  const fetchCsdtMap = useCallback(async () => {
+    const sessionIds = Array.from(
+      new Set((rows || []).map((r) => r?.SessionId).filter(Boolean)),
+    );
+    if (sessionIds.length === 0) {
+      setCsdtMap({});
+      return;
+    }
+    setLoadingCsdt(true);
+    try {
+      const map = await getPhienHocThucHanhCsdtByMaPhienHocList(sessionIds);
+      setCsdtMap(map || {});
+    } catch {
+      setCsdtMap({});
+    } finally {
+      setLoadingCsdt(false);
+    }
+  }, [rows]);
+
   useEffect(() => {
     if (!open) return;
     setStatusMap({});
     setApproveState(INITIAL_APPROVE_STATE);
     setLoTrinhResults([]);
+    setCsdtMap({});
     fetchApproveStatuses();
     fetchSessionStatuses();
     fetchLoTrinh();
-  }, [open, fetchSessionStatuses, fetchApproveStatuses, fetchLoTrinh]);
+    fetchCsdtMap();
+  }, [open, fetchSessionStatuses, fetchApproveStatuses, fetchLoTrinh, fetchCsdtMap]);
 
   const rowsWithStatus = useMemo(() => {
     // Lọc trùng theo ID, giữ lại 1 phiên
@@ -427,11 +451,16 @@ const ModalTest = ({
       (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
 
-    // Nguồn duy nhất — nhất quán với derivedInvalid/_status
+    // Nguồn duy nhất — nhất quán với derivedInvalid/_status.
+    // csdtMap: đối chiếu với dữ liệu CSĐT — phiên nào lệch sẽ rơi vào invalidIndexes như
+    // mọi lỗi khác (báo đỏ, trừ khỏi tổng), không hiện chi tiết riêng trên link online.
     const { invalidIndexes, invalidReasons } = getInvalidSessionIndexes(
       sorted,
       resolvedStudentCheckInfo,
       loTrinhResults,
+      [],
+      {},
+      csdtMap,
     );
 
     return sorted.map((item, index) => {
@@ -490,7 +519,7 @@ const ModalTest = ({
         _isInvalid: effectiveStatus === "HUY",
       };
     });
-  }, [rows, resolvedStudentCheckInfo, statusMap, loTrinhResults]);
+  }, [rows, resolvedStudentCheckInfo, statusMap, loTrinhResults, csdtMap]);
 
   const totalDistance = useMemo(
     () =>
@@ -541,7 +570,7 @@ const ModalTest = ({
     [summaryWarnings, approveState],
   );
 
-  const isModalLoading = loading || loadingStatus || loadingLoTrinh;
+  const isModalLoading = loading || loadingStatus || loadingLoTrinh || loadingCsdt;
 
   return (
     <Drawer
