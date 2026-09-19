@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, Col, message, Modal, Row, Select, Upload } from "antd";
+import { Button, Card, Col, DatePicker, message, Modal, Row, Select, Upload } from "antd";
 import { importCheckStudentExcel } from "../../apis/kiemTra";
 import { SyncOutlined, UploadOutlined } from "@ant-design/icons";
 import { dongBoHocVienSql, dongBoKhoaHocSql, dongBoMaDkHocVienTH, dongBoXeGiaoVienSql, importXML } from "../../apis/apiSynch";
@@ -7,6 +7,8 @@ import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 import { importHocBuExcel } from "../../apis/apiHocbu";
 import { importExcelGoogleSheetA1 } from "../../apis/apiGoogleSheetA1";
 import { importExcelGoogleSheetData } from "../../apis/apiGoogleSheetData";
+import { importExcelPhienHocThucHanhCsdt } from "../../apis/apiPhienHocThucHanhCsdt";
+import dayjs from "dayjs";
 import { useState } from "react";
 import { Input } from "antd";
 
@@ -177,6 +179,36 @@ const ThemDuLieuVaoHeThong = () => {
       message.error(err.response?.data?.message || "Đồng bộ mã ĐK học viên TH thất bại!");
     },
   });
+
+  const [importCsdtDate, setImportCsdtDate] = useState(dayjs());
+
+  const mutationImportPhienHocCsdt = useMutation({
+    mutationFn: ({ file, onProgress }) =>
+      importExcelPhienHocThucHanhCsdt(file, importCsdtDate.format("YYYY-MM-DD"), onProgress),
+    onSuccess: (res) => {
+      const {
+        total,
+        inserted,
+        updated,
+        skippedExistingKhaDung,
+        duplicatedInFile,
+        skippedNoMaPhienHoc,
+      } = res?.data?.data || {};
+      let msg = `Import thành công! Tổng ${total ?? 0} phiên (thêm mới: ${inserted ?? 0}, cập nhật: ${updated ?? 0})`;
+      if (duplicatedInFile) msg += `, ${duplicatedInFile} dòng trùng mã phiên học trong file (đã giữ bản Khả dụng)`;
+      if (skippedExistingKhaDung) msg += `, bỏ qua ${skippedExistingKhaDung} phiên đã có bản Khả dụng trong hệ thống`;
+      if (skippedNoMaPhienHoc) msg += `, bỏ qua ${skippedNoMaPhienHoc} dòng thiếu Mã phiên học`;
+      message.success(msg, 8);
+      setImportCsdtDate(dayjs());
+    },
+    onError: (err) => {
+      message.error(err.response?.data?.message || "Import phiên học CSĐT thất bại!");
+    },
+  });
+
+  const handleCustomRequestPhienHocCsdt = async ({ file, onProgress }) => {
+    mutationImportPhienHocCsdt.mutate({ file, onProgress });
+  };
 
   const handleSyncMaDkTH = () => {
     Modal.confirm({
@@ -438,6 +470,38 @@ const ThemDuLieuVaoHeThong = () => {
                 {mutationSyncMaDkTH.isPending ? "Đang đồng bộ..." : "Đồng bộ"}
               </Button>
             </div>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card className="h-full" title="Import phiên học thực hành CSĐT">
+            <span className="block mb-2 text-gray-500">
+              Nhập dữ liệu phiên học thực hành lái xe trên đường do CSĐT/Sở GTVT xuất ra, dùng để
+              đối chiếu với dữ liệu DAT ở phần chi tiết học viên.
+            </span>
+            <DatePicker
+              className="w-full !mb-3"
+              format="DD/MM/YYYY"
+              value={importCsdtDate}
+              onChange={(v) => setImportCsdtDate(v || dayjs())}
+              allowClear={false}
+              placeholder="Ngày import"
+            />
+            <Upload
+              customRequest={handleCustomRequestPhienHocCsdt}
+              showUploadList={false}
+              accept=".xlsx, .xls"
+              className="!w-full"
+            >
+              <Button
+                icon={<UploadOutlined />}
+                loading={mutationImportPhienHocCsdt.isPending}
+                className="!w-full"
+                type="primary"
+              >
+                {mutationImportPhienHocCsdt.isPending ? "Đang import..." : "Import Excel"}
+              </Button>
+            </Upload>
           </Card>
         </Col>
       </Row>

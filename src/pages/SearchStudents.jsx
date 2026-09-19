@@ -55,7 +55,7 @@ export default function SearchStudents() {
   const [openedDrawer, setOpenedDrawer] = useState(false);
   const [selectedKhoaHoc, setSelectedKhoaHoc] = useState("");
 
-  const [accountType, setAccountType] = useState("old");
+  const [accountType, setAccountType] = useState("new");
   const useNewAccount = useMemo(() => accountType === "new", [accountType]);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);

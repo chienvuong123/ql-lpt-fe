@@ -52,6 +52,7 @@ import { fetchCheckStudents } from "../apis/kiemTra";
 import { danhSachXeGiaoVien } from "../apis/apiTrungXeGiaoVien";
 import { getDuLieuCabin } from "../apis/searchPublic";
 import { getLichSuDuyetPhienHoc } from "../apis/apiDuyetPhienHoc";
+import { getPhienHocThucHanhCsdtByMaPhienHocList } from "../apis/apiPhienHocThucHanhCsdt";
 import { formatLocalTime, formatSecondsToTime } from "../util/helper";
 
 const { TextArea } = Input;
@@ -81,9 +82,12 @@ const toStatusMap = (response) => {
           : [];
 
   return list.reduce((map, item) => {
-    const status = item?.phien_hoc_dat_id !== undefined
-      ? (item.trang_thai === 1 ? "DUYET" : "HUY")
-      : normalizeStatus(item?.trang_thai ?? item?.TrangThai ?? item?.status);
+    const status =
+      item?.phien_hoc_dat_id !== undefined
+        ? item.trang_thai === 1
+          ? "DUYET"
+          : "HUY"
+        : normalizeStatus(item?.trang_thai ?? item?.TrangThai ?? item?.status);
 
     if (!status) return map;
 
@@ -249,6 +253,24 @@ const StudentDetail = ({ data }) => {
     return toStatusMap(duyetHistoryData);
   }, [duyetHistoryData]);
 
+  const sessionGuidList = useMemo(() => {
+    const list = Array.isArray(results?.data?.Data) ? results.data.Data : [];
+    const set = new Set();
+    list.forEach((item) => {
+      if (item?.SessionId) set.add(item.SessionId);
+    });
+    return Array.from(set);
+  }, [results]);
+
+  const { data: csdtMapData } = useQuery({
+    queryKey: ["phienHocCsdt", sessionGuidList],
+    queryFn: () => getPhienHocThucHanhCsdtByMaPhienHocList(sessionGuidList),
+    enabled: sessionGuidList.length > 0,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const csdtMap = useMemo(() => csdtMapData || {}, [csdtMapData]);
+
   const getImagesForSession = useMemo(() => {
     return (record) => {
       if (!record || !apiAnhData?.data) return [];
@@ -262,7 +284,10 @@ const StudentDetail = ({ data }) => {
 
       return dayImages.filter((img) => {
         if (!img.time) return false;
-        const imgTime = dayjs(`${sessionDate} ${img.time}`, "DD/MM/YYYY HH:mm:ss");
+        const imgTime = dayjs(
+          `${sessionDate} ${img.time}`,
+          "DD/MM/YYYY HH:mm:ss",
+        );
         if (!imgTime.isValid()) return false;
         return !imgTime.isBefore(startTime) && !imgTime.isAfter(endTime);
       });
@@ -283,11 +308,11 @@ const StudentDetail = ({ data }) => {
       list.reduce((acc, item) => {
         acc[item.ID] = item;
         return acc;
-      }, {})
+      }, {}),
     );
 
     return unique.sort(
-      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap)
+      (a, b) => new Date(a.ThoiDiemDangNhap) - new Date(b.ThoiDiemDangNhap),
     );
   }, [results]);
 
@@ -380,10 +405,34 @@ const StudentDetail = ({ data }) => {
       maDangKy: code,
       ...baseInfo,
       ...regInfo,
-      giaoVien: regInfo.giao_vien || baseInfo.giaoVien || baseInfo.giao_vien || data?.giaoVien || data?.giao_vien || data?.giao_vien_theo_xe?.giao_vien || "",
-      xeB1: regInfo.xeB1 || baseInfo.xeB1 || baseInfo.xe_b1 || data?.xeB1 || data?.xe_b1 || "",
-      xeB2: regInfo.xeB2 || baseInfo.xeB2 || baseInfo.xe_b2 || data?.xeB2 || data?.xe_b2 || "",
-      hang: regInfo.hang || data?.HangDaoTao || baseInfo.hang || baseInfo.HangDaoTao || "",
+      giaoVien:
+        regInfo.giao_vien ||
+        baseInfo.giaoVien ||
+        baseInfo.giao_vien ||
+        data?.giaoVien ||
+        data?.giao_vien ||
+        data?.giao_vien_theo_xe?.giao_vien ||
+        "",
+      xeB1:
+        regInfo.xeB1 ||
+        baseInfo.xeB1 ||
+        baseInfo.xe_b1 ||
+        data?.xeB1 ||
+        data?.xe_b1 ||
+        "",
+      xeB2:
+        regInfo.xeB2 ||
+        baseInfo.xeB2 ||
+        baseInfo.xe_b2 ||
+        data?.xeB2 ||
+        data?.xe_b2 ||
+        "",
+      hang:
+        regInfo.hang ||
+        data?.HangDaoTao ||
+        baseInfo.hang ||
+        baseInfo.HangDaoTao ||
+        "",
     };
   }, [studentMap, admissionCode, data, xeGiaoVienDangKyRes]);
 
@@ -429,7 +478,8 @@ const StudentDetail = ({ data }) => {
       fixed: "left",
       responsive: ["sm"],
       render: (_text, record, index) => {
-        const isTuDong = bienSoTuDong && isPlateSimilar(record.BienSo, bienSoTuDong);
+        const isTuDong =
+          bienSoTuDong && isPlateSimilar(record.BienSo, bienSoTuDong);
         const hour = dayjs(record.ThoiDiemDangNhap).hour();
 
         let className = "";
@@ -443,6 +493,55 @@ const StudentDetail = ({ data }) => {
           props: { className },
           children: index + 1,
         };
+      },
+    },
+    {
+      title: "DL Cục",
+      key: "csdtCheck",
+      width: 70,
+      align: "center",
+      responsive: ["md"],
+      render: (_, record, index) => {
+        const maPhienHoc = record?.SessionId || record?.guid_session_id;
+
+        if (!maPhienHoc || !csdtMap?.[maPhienHoc]) {
+          return (
+            <Popover
+              content="Chưa có dữ liệu CSĐT để đối chiếu phiên này"
+              trigger="hover"
+              placement="top"
+            >
+              <WarningOutlined
+                style={{ color: "#faad14", cursor: "help", fontSize: "16px" }}
+              />
+            </Popover>
+          );
+        }
+
+        if (csdtVerifiedIndexes.has(index)) {
+          return (
+            <CheckCircleOutlined
+              style={{ color: "#52c41a", fontSize: "16px" }}
+            />
+          );
+        }
+
+        const reasons = invalidReasons.get(index) || [];
+        const csdtReason = reasons.find((r) =>
+          r.includes("Không khớp dữ liệu CSĐT"),
+        );
+
+        return (
+          <Popover
+            content={csdtReason || "Không khớp dữ liệu CSĐT"}
+            trigger="hover"
+            placement="top"
+          >
+            <WarningOutlined
+              style={{ color: "#f5222d", cursor: "help", fontSize: "16px" }}
+            />
+          </Popover>
+        );
       },
     },
     {
@@ -479,13 +578,22 @@ const StudentDetail = ({ data }) => {
               </div>
               <div>
                 <strong>Ghi chú: </strong>
-                <span className="text-sm">{entry.ly_do || "Không có ghi chú"}</span>
+                <span className="text-sm">
+                  {entry.ly_do || "Không có ghi chú"}
+                </span>
               </div>
             </div>
           );
 
           return (
-            <Space size={4} style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <Space
+              size={4}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <span>{`${start} - ${end}`}</span>
               <Popover content={content} trigger="click" placement="top">
                 <InfoCircleOutlined
@@ -630,7 +738,8 @@ const StudentDetail = ({ data }) => {
 
         const reasons = invalidReasons.get(index) || [];
         const plateReason = reasons.find(
-          (r) => r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
+          (r) =>
+            r.includes("Biển số xe") || r.includes("không thuộc xe đăng ký"),
         );
         if (plateReason) {
           return (
@@ -692,7 +801,9 @@ const StudentDetail = ({ data }) => {
   const hasJourneyData = dataSource.length > 0;
 
   const zonesToUse = useMemo(() => {
-    return checkConfigsData?.checkKhuVucCam?.enabled ? (forbiddenZonesData || []) : [];
+    return checkConfigsData?.checkKhuVucCam?.enabled
+      ? forbiddenZonesData || []
+      : [];
   }, [checkConfigsData, forbiddenZonesData]);
 
   const summaryData = useMemo(
@@ -703,20 +814,38 @@ const StudentDetail = ({ data }) => {
         annualStudentInfo,
         loTrinhResults?.data || [],
         zonesToUse,
-        statusMap
+        statusMap,
+        csdtMap,
       ),
-    [dataSource, data, annualStudentInfo, loTrinhResults, zonesToUse, statusMap],
+    [
+      dataSource,
+      data,
+      annualStudentInfo,
+      loTrinhResults,
+      zonesToUse,
+      statusMap,
+      csdtMap,
+    ],
   );
 
-  const { invalidIndexes, invalidReasons } = useMemo(() => {
-    return getInvalidSessionIndexes(
+  const { invalidIndexes, invalidReasons, csdtVerifiedIndexes } =
+    useMemo(() => {
+      return getInvalidSessionIndexes(
+        dataSource,
+        annualStudentInfo,
+        loTrinhResults?.data || [],
+        zonesToUse,
+        statusMap,
+        csdtMap,
+      );
+    }, [
       dataSource,
       annualStudentInfo,
-      loTrinhResults?.data || [],
+      loTrinhResults,
       zonesToUse,
-      statusMap
-    );
-  }, [dataSource, annualStudentInfo, loTrinhResults, zonesToUse, statusMap]);
+      statusMap,
+      csdtMap,
+    ]);
 
   const totalAchievedImagesCount = useMemo(() => {
     let count = 0;
@@ -739,7 +868,7 @@ const StudentDetail = ({ data }) => {
       loTrinhResults?.data || [],
       annualStudentInfo,
       zonesToUse,
-      statusMap
+      statusMap,
     );
 
     return {
@@ -929,7 +1058,11 @@ const StudentDetail = ({ data }) => {
                         layout="vertical"
                         onFinish={onFinish}
                       >
-                        <Row gutter={[8, 8]} justify="space-between" align="middle">
+                        <Row
+                          gutter={[8, 8]}
+                          justify="space-between"
+                          align="middle"
+                        >
                           <Text strong className="mt-2">
                             Ký Xác Nhận DAT
                           </Text>
@@ -958,7 +1091,10 @@ const StudentDetail = ({ data }) => {
                         </Form.Item>
 
                         <Form.Item label="Ghi chú công khai" name="ghi_chu_2">
-                          <TextArea rows={2} placeholder="Ghi chú công khai ..." />
+                          <TextArea
+                            rows={2}
+                            placeholder="Ghi chú công khai ..."
+                          />
                         </Form.Item>
 
                         <Form.Item>
@@ -1037,7 +1173,8 @@ const StudentDetail = ({ data }) => {
                     // className="table-blue-header"
                     bordered
                     rowClassName={(record, index) => {
-                      const isApproved = getMappedStatus(record, statusMap) === "DUYET";
+                      const isApproved =
+                        getMappedStatus(record, statusMap) === "DUYET";
                       if (isApproved) return "";
                       if (invalidIndexes.has(index)) {
                         return "!bg-red-50/50 hover:!bg-red-100/50";
@@ -1061,7 +1198,7 @@ const StudentDetail = ({ data }) => {
           style={{ marginTop: 16 }}
         >
           {dataSource.length > 0 && (
-            <div >
+            <div>
               <Row gutter={[12, 12]}>
                 <Title level={4}>Tổng hợp</Title>
                 <Col span={24} className="pl-20">
@@ -1071,9 +1208,8 @@ const StudentDetail = ({ data }) => {
                     Tổng quãng đường:{" "}
                     <Text strong>
                       {summaryData?.tongQuangDuong.toFixed(2) || 0.0} km
-                    </Text> ·
-                    Tổng ảnh:{" "}
-                    <Text strong>{totalAchievedImagesCount}</Text>
+                    </Text>{" "}
+                    · Tổng ảnh: <Text strong>{totalAchievedImagesCount}</Text>
                   </Text>
                 </Col>
               </Row>
@@ -1116,7 +1252,9 @@ const StudentDetail = ({ data }) => {
                         {allIssues.length > 0 && (
                           <div>
                             <Text strong>Lý do:</Text>
-                            <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+                            <ul
+                              style={{ margin: "8px 0", paddingLeft: "20px" }}
+                            >
                               {allIssues.map((issue, index) => (
                                 <li
                                   key={index}
@@ -1130,7 +1268,10 @@ const StudentDetail = ({ data }) => {
                                 >
                                   {issue.type === "warning" ? (
                                     <WarningOutlined
-                                      style={{ color: "#CC9966", marginRight: 4 }}
+                                      style={{
+                                        color: "#CC9966",
+                                        marginRight: 4,
+                                      }}
                                     />
                                   ) : (
                                     <CloseCircleOutlined
@@ -1166,7 +1307,7 @@ const StudentDetail = ({ data }) => {
                           </Text>
 
                           {dataSource[0]?.HangDaoTao !== "B1" &&
-                            dataSource[0]?.HangDaoTao !== "B11" ? (
+                          dataSource[0]?.HangDaoTao !== "B11" ? (
                             <Text className="text-[#888888] font-medium">
                               Trải nghiệm hộp số tự động (17h-7h):{" "}
                               {fmtGio(summaryData.thoiGianTuDongGio)}
@@ -1186,13 +1327,13 @@ const StudentDetail = ({ data }) => {
                           {/* Tổng phiên không hợp lệ bị loại */}
                           {(summaryData.tongThoiGianLoiGio > 0 ||
                             summaryData.tongQuangDuongLoi > 0) && (
-                              <Text className="!text-red-500 font-medium">
-                                ⚠ Phiên không hợp lệ bị loại:{" "}
-                                {fmtGio(summaryData.tongThoiGianLoiGio)}
-                                {" - "}
-                                {summaryData.tongQuangDuongLoi.toFixed(2)} km
-                              </Text>
-                            )}
+                            <Text className="!text-red-500 font-medium">
+                              ⚠ Phiên không hợp lệ bị loại:{" "}
+                              {fmtGio(summaryData.tongThoiGianLoiGio)}
+                              {" - "}
+                              {summaryData.tongQuangDuongLoi.toFixed(2)} km
+                            </Text>
+                          )}
                         </Space>
                       </Space>
                     </Card>
@@ -1207,9 +1348,20 @@ const StudentDetail = ({ data }) => {
             <div style={{ fontSize: "16px", fontWeight: "bold" }}>
               Ảnh Chi Tiết Phiên Đào Tạo
               {selectedSessionInfo && (
-                <span style={{ fontSize: "13px", fontWeight: "normal", color: "#666", marginLeft: "8px" }}>
-                  ({dayjs(selectedSessionInfo.ThoiDiemDangNhap).format("DD/MM/YYYY")}{" "}
-                  {dayjs(selectedSessionInfo.ThoiDiemDangNhap).format("HH:mm")} -{" "}
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "normal",
+                    color: "#666",
+                    marginLeft: "8px",
+                  }}
+                >
+                  (
+                  {dayjs(selectedSessionInfo.ThoiDiemDangNhap).format(
+                    "DD/MM/YYYY",
+                  )}{" "}
+                  {dayjs(selectedSessionInfo.ThoiDiemDangNhap).format("HH:mm")}{" "}
+                  -{" "}
                   {dayjs(selectedSessionInfo.ThoiDiemDangXuat).format("HH:mm")})
                 </span>
               )}
@@ -1222,10 +1374,20 @@ const StudentDetail = ({ data }) => {
           centered
           destroyOnClose
         >
-          <Row gutter={[12, 12]} style={{ maxHeight: "60vh", overflowY: "auto", padding: "4px" }}>
+          <Row
+            gutter={[12, 12]}
+            style={{ maxHeight: "60vh", overflowY: "auto", padding: "4px" }}
+          >
             {selectedSessionImages.length === 0 ? (
               <Col span={24}>
-                <Text style={{ display: "block", textAlign: "center", color: "#999", padding: "20px" }}>
+                <Text
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    color: "#999",
+                    padding: "20px",
+                  }}
+                >
                   Không tìm thấy ảnh trong phiên này.
                 </Text>
               </Col>

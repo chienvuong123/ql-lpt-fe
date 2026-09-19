@@ -581,13 +581,15 @@ export function getInvalidSessionIndexes(
   loTrinh = [],
   forbiddenZones = [],
   statusMap = {},
+  csdtMap = {},
 ) {
   const invalidIndexes = new Set();
   const tuDongLoiIndexes = new Set();
   const invalidReasons = new Map();
+  const csdtVerifiedIndexes = new Set();
 
   if (!dataSource || dataSource.length === 0)
-    return { invalidIndexes, tuDongLoiIndexes, invalidReasons };
+    return { invalidIndexes, tuDongLoiIndexes, invalidReasons, csdtVerifiedIndexes };
 
   const addReason = (idx, reason) => {
     const phien = dataSource[idx];
@@ -751,6 +753,154 @@ export function getInvalidSessionIndexes(
 
 
 
+  // 6. Đối chiếu với dữ liệu phiên học CSĐT (import Excel) theo Mã phiên học (SessionId).
+  //    Đúng/sai chỉ dựa vào việc TẤT CẢ nội dung (ngày, thời gian, xe, khóa, GV, HV) có khớp
+  //    hay không — KHÔNG dựa vào cột "Trạng thái" của CSĐT (chỉ dùng trạng thái để ưu tiên
+  //    bản ghi khi import trùng mã phiên học, không dùng để quyết định đúng/sai ở đây).
+  //    Phiên không có dữ liệu CSĐT tương ứng thì bỏ qua (chưa có gì để đối chiếu).
+  if (csdtMap && Object.keys(csdtMap).length > 0) {
+    const CSDT_KM_TOLERANCE = 0.15;
+    const CSDT_HOUR_TOLERANCE = 0.05;
+    const CSDT_START_TIME_TOLERANCE_MIN = 5;
+
+    const toDateStr = (value) => {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return null;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    const normalizeCode = (v) => String(v || "").replace(/\s+/g, "").toUpperCase();
+
+    // So 1 trường nội bộ với CSĐT. QUAN TRỌNG: nếu nội bộ có giá trị mà CSĐT lại thiếu (null/rỗng)
+    // thì KHÔNG được coi là "bỏ qua" — phải tính là cảnh báo, vì không có cơ sở để xác nhận là đúng.
+    // Chỉ thực sự bỏ qua khi bên nội bộ cũng không có dữ liệu để so (không thể kết luận gì).
+    const compareField = (mismatches, label, noiboVal, csdtVal, isEqualFn) => {
+      const hasNoiBo = noiboVal !== null && noiboVal !== undefined && noiboVal !== "";
+      const hasCsdt = csdtVal !== null && csdtVal !== undefined && csdtVal !== "";
+      if (!hasNoiBo && !hasCsdt) return;
+      if (hasNoiBo && !hasCsdt) {
+        mismatches.push(`CSĐT thiếu ${label} để đối chiếu (nội bộ "${noiboVal}")`);
+        return;
+      }
+      if (!hasNoiBo && hasCsdt) {
+        mismatches.push(`Nội bộ thiếu ${label} để đối chiếu (CSĐT "${csdtVal}")`);
+        return;
+      }
+      if (!isEqualFn(noiboVal, csdtVal)) {
+        mismatches.push(`${label} khác (nội bộ "${noiboVal}", CSĐT "${csdtVal}")`);
+      }
+    };
+
+    dataSource.forEach((phien, idx) => {
+      const maPhienHoc = phien.SessionId || phien.guid_session_id;
+      if (!maPhienHoc) return;
+      const csdt = csdtMap[maPhienHoc];
+      if (!csdt) return;
+
+      const mismatches = [];
+
+      // Ngày + giờ bắt đầu phiên học
+      const ngayNoiBo = toDateStr(phien.ThoiDiemDangNhap);
+      const ngayCsdt = toDateStr(csdt.thoi_gian_bat_dau);
+      compareField(mismatches, "ngày học", ngayNoiBo, ngayCsdt, (a, b) => a === b);
+
+      if (phien.ThoiDiemDangNhap && csdt.thoi_gian_bat_dau) {
+        const tNoiBo = new Date(phien.ThoiDiemDangNhap).getTime();
+        const tCsdt = new Date(csdt.thoi_gian_bat_dau).getTime();
+        if (!isNaN(tNoiBo) && !isNaN(tCsdt)) {
+          const lechPhut = Math.abs(tNoiBo - tCsdt) / 60000;
+          if (lechPhut > CSDT_START_TIME_TOLERANCE_MIN) {
+            mismatches.push(`giờ bắt đầu lệch ${lechPhut.toFixed(0)} phút`);
+          }
+        }
+      }
+
+      // Thời lượng thực hành
+      const gioNoiBo = phien.TongThoiGian != null ? phien.TongThoiGian / 3600 : null;
+      const gioCsdt = csdt.thoi_gian_thuc_hanh_gio ?? csdt.ThoiGianThucHanhGio ?? null;
+      compareField(
+        mismatches,
+        "thời gian thực hành",
+        gioNoiBo !== null ? fmtGio(gioNoiBo) : null,
+        gioCsdt !== null ? fmtGio(gioCsdt) : null,
+        () => Math.abs(gioNoiBo - gioCsdt) <= CSDT_HOUR_TOLERANCE,
+      );
+
+      // Quãng đường thực hành
+      const kmNoiBo = phien.TongQuangDuong ?? null;
+      const kmCsdt = csdt.quang_duong_thuc_hanh_km ?? csdt.QuangDuongThucHanhKm ?? null;
+      compareField(
+        mismatches,
+        "quãng đường",
+        kmNoiBo !== null ? `${Number(kmNoiBo).toFixed(2)} km` : null,
+        kmCsdt !== null ? `${Number(kmCsdt).toFixed(2)} km` : null,
+        () => Math.abs(kmNoiBo - kmCsdt) <= CSDT_KM_TOLERANCE,
+      );
+
+      // Biển số xe
+      compareField(
+        mismatches,
+        "biển số xe",
+        phien.BienSo || null,
+        csdt.bien_so_xe ?? csdt.BienSoXe ?? null,
+        (a, b) => normalizePlate(a) === normalizePlate(b),
+      );
+
+      // Mã khóa học
+      compareField(
+        mismatches,
+        "mã khóa học",
+        phien.MaKhoaHoc || phien.MaKhoa || phien.KhoaHoc || null,
+        csdt.ma_khoa_hoc ?? csdt.MaKhoaHoc ?? null,
+        (a, b) => normalizeCode(a) === normalizeCode(b),
+      );
+
+      // Giáo viên — so bằng MÃ giáo viên (không so tên, vì tên dễ trùng/lệch định dạng).
+      // Mã dạng "LPT..." là mã CŨ — mặc định coi là SAI (cần cập nhật mã mới), không đem so
+      // với CSĐT nữa vì chắc chắn không khớp định dạng mã hiện hành.
+      const idGvNoiBo = phien.IDGV || phien.MaGV || phien.id_gv || null;
+      const isMaGvCu = idGvNoiBo && /^LPT/i.test(String(idGvNoiBo).trim());
+      if (isMaGvCu) {
+        mismatches.push(`mã giáo viên nội bộ đang là mã cũ "${idGvNoiBo}", cần cập nhật mã mới`);
+      } else {
+        compareField(
+          mismatches,
+          "mã giáo viên",
+          idGvNoiBo,
+          csdt.ma_giao_vien ?? csdt.MaGiaoVien ?? null,
+          (a, b) => normalizeCode(a) === normalizeCode(b),
+        );
+      }
+
+      // Học viên — so bằng MÃ học viên
+      compareField(
+        mismatches,
+        "mã học viên",
+        phien.MaDK || phien.ma_dk || null,
+        csdt.ma_hoc_vien ?? csdt.MaHocVien ?? null,
+        (a, b) => normalizeCode(a) === normalizeCode(b),
+      );
+
+      // Tên học viên
+      compareField(
+        mismatches,
+        "tên học viên",
+        phien.HoTen || phien.HoTenHV || studentInfo?.ho_ten || studentInfo?.hoTen || null,
+        csdt.ho_ten_hoc_vien ?? csdt.HoTenHocVien ?? null,
+        (a, b) => normalizeForCompare(a) === normalizeForCompare(b),
+      );
+
+      if (mismatches.length > 0) {
+        addReason(idx, `Không khớp dữ liệu CSĐT: ${mismatches.join("; ")}`);
+      } else {
+        csdtVerifiedIndexes.add(idx);
+      }
+    });
+  }
+
   // 7. Vi phạm vùng cấm
   if (Array.isArray(loTrinh) && loTrinh.length > 0 && forbiddenZones.length > 0) {
     dataSource.forEach((phien, idx) => {
@@ -816,7 +966,7 @@ export function getInvalidSessionIndexes(
     }
   });
 
-  return { invalidIndexes, tuDongLoiIndexes, invalidReasons };
+  return { invalidIndexes, tuDongLoiIndexes, invalidReasons, csdtVerifiedIndexes };
 }
 
 // ─── Các hàm evaluate riêng lẻ ───────────────────────────────────────────────
@@ -1159,6 +1309,7 @@ export function computeSummary(
   loTrinh = [],
   forbiddenZones = [],
   statusMap = {},
+  csdtMap = {},
 ) {
   const empty = {
     tongThoiGianGio: 0,
@@ -1184,6 +1335,7 @@ export function computeSummary(
     loTrinh,
     forbiddenZones,
     statusMap,
+    csdtMap,
   );
 
   const t = dataSource.reduce(
