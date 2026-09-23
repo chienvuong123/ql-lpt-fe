@@ -2,10 +2,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Card, Input, Button, Table, Row, Col, message, Select } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { DanhSachGiaoVien } from "../../apis/giaoVien";
-import { DanhSachKhoaHoc } from "../../apis/hocVien";
 import { getHocVienByMaKhoaSql, kiemTraDongBoSql } from "../../apis/apiSynch";
-import { DanhSachLoaiXe, DanhSachXe, DanhSachXeOnline } from "../../apis/xe";
+// Trang này làm việc hoàn toàn với tài khoản DAT mới: khóa đã đổi tên, xe đã chuyển mã mới
+import {
+  DanhSachGiaoVienNew as DanhSachGiaoVien,
+  DanhSachKhoaHocNew as DanhSachKhoaHoc,
+  DanhSachLoaiXeNew as DanhSachLoaiXe,
+  DanhSachXeNew as DanhSachXe,
+  DanhSachXeOnlineNew as DanhSachXeOnline,
+} from "../../apis/apiDatNew";
 import KiemTraDongBoModal from "./KiemTraDongBoModal";
 import { usePermission } from "../../util/permission";
 
@@ -39,14 +44,14 @@ export default function DongBoHocVienVaoXe() {
     isLoading: isLoadingCar,
     refetch: refetchCars,
   } = useQuery({
-    queryKey: ["danhSachXe"],
+    queryKey: ["danhSachXeNew"],
     queryFn: () => DanhSachXe(),
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
   const { data: dataOnline = {} } = useQuery({
-    queryKey: ["danhSachXeOnline"],
+    queryKey: ["danhSachXeOnlineNew"],
     queryFn: () => DanhSachXeOnline(),
     refetchInterval: 30000,
     retry: false,
@@ -64,14 +69,14 @@ export default function DongBoHocVienVaoXe() {
   }, [dataOnline]);
 
   const { data: dataLoaiXe = {} } = useQuery({
-    queryKey: ["danhSachLoaiXe"],
+    queryKey: ["danhSachLoaiXeNew"],
     queryFn: () => DanhSachLoaiXe(),
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
   const { data: resultsCourse = {} } = useQuery({
-    queryKey: ["danhSachKhoaHoc"],
+    queryKey: ["danhSachKhoaHocNew"],
     queryFn: () => DanhSachKhoaHoc(),
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -89,7 +94,7 @@ export default function DongBoHocVienVaoXe() {
   });
 
   const { data: dataTeachers = {}, isLoading: isLoadingTeachers } = useQuery({
-    queryKey: ["danhSachGiaoVien", teacherSearch],
+    queryKey: ["danhSachGiaoVienNew", teacherSearch],
     queryFn: () =>
       DanhSachGiaoVien({
         page: 1,
@@ -113,11 +118,15 @@ export default function DongBoHocVienVaoXe() {
       ? resultsCourse.data.Data
       : [];
 
-    return courses.map((course) => ({
-      value: course.MaKhoaHoc,
-      label: course.Ten,
-      id: course.ID,
-    }));
+    // Chỉ lấy khóa mới, bắt đầu từ K260001B: tên dạng K + 6 chữ số (K260001B, K260008B01...),
+    // loại các khóa tên cũ như K26B0118, K26C1007
+    return courses
+      .filter((course) => /^K\d{6}/i.test(String(course.Ten || "").trim()))
+      .map((course) => ({
+        value: course.MaKhoaHoc,
+        label: course.Ten,
+        id: course.ID,
+      }));
   }, [resultsCourse]);
 
   useEffect(() => {
@@ -408,10 +417,8 @@ export default function DongBoHocVienVaoXe() {
       setVerifyData([]);
 
       try {
-        const selectedOption = khoaHocOptions.find((k) => k.value === selectedKhoaHoc);
-        const khoaValue = selectedOption ? selectedOption.label : selectedKhoaHoc;
-
-        const res = await kiemTraDongBoSql({ khoa: khoaValue });
+        // Gửi mã khóa đầy đủ (31011...) — tên khóa mới (VD K260004B) không còn khớp mã khóa
+        const res = await kiemTraDongBoSql({ khoa: selectedKhoaHoc });
         if (res?.success) {
           setVerifyData(res.data || []);
         } else {
