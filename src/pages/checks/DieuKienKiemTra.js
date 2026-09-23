@@ -754,9 +754,8 @@ export function getInvalidSessionIndexes(
 
 
   // 6. Đối chiếu với dữ liệu phiên học CSĐT (import Excel) theo Mã phiên học (SessionId).
-  //    Đúng/sai chỉ dựa vào việc TẤT CẢ nội dung (ngày, thời gian, xe, khóa, GV, HV) có khớp
-  //    hay không — KHÔNG dựa vào cột "Trạng thái" của CSĐT (chỉ dùng trạng thái để ưu tiên
-  //    bản ghi khi import trùng mã phiên học, không dùng để quyết định đúng/sai ở đây).
+  //    Chỉ tính là ĐÚNG khi thỏa CẢ HAI: (a) toàn bộ nội dung (ngày, thời gian, xe, khóa,
+  //    GV, HV) khớp nhau, VÀ (b) trạng thái bên CSĐT là "Khả dụng". Sai 1 trong 2 -> tính là sai.
   //    Phiên không có dữ liệu CSĐT tương ứng thì bỏ qua (chưa có gì để đối chiếu).
   if (csdtMap && Object.keys(csdtMap).length > 0) {
     const CSDT_KM_TOLERANCE = 0.15;
@@ -801,6 +800,15 @@ export function getInvalidSessionIndexes(
       if (!csdt) return;
 
       const mismatches = [];
+
+      // Trạng thái bên CSĐT PHẢI là "Khả dụng" thì mới tính là đúng — dù nội dung có khớp
+      // hết đi nữa mà trạng thái không phải Khả dụng thì vẫn tính là sai.
+      const trangThaiCsdt = String(csdt.trang_thai ?? csdt.TrangThai ?? "").trim();
+      if (trangThaiCsdt.toLowerCase() !== "khả dụng") {
+        mismatches.push(
+          `CSĐT ghi nhận trạng thái "${trangThaiCsdt || "(không rõ)"}" (không phải Khả dụng)`,
+        );
+      }
 
       // Ngày + giờ bắt đầu phiên học
       const ngayNoiBo = toDateStr(phien.ThoiDiemDangNhap);
