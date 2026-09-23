@@ -3,6 +3,7 @@ import { Card, Input, Button, Table, Row, Col, message, Select } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { getHocVienByMaKhoaSql, kiemTraDongBoSql } from "../../apis/apiSynch";
+import { optionLopLyThuyet } from "../../apis/apiLyThuyetLocal";
 // Trang này làm việc hoàn toàn với tài khoản DAT mới: khóa đã đổi tên, xe đã chuyển mã mới
 import {
   DanhSachGiaoVienNew as DanhSachGiaoVien,
@@ -16,7 +17,9 @@ import { usePermission } from "../../util/permission";
 
 // Khóa mốc bắt đầu tính khóa mới (đổi tên) — dự phòng ngày bắt đầu nếu API không trả khóa này
 const MOC_KHOA_MOI = "K260001B";
-const MOC_NGAY_KHOA_MOI = new Date("2026-07-10T00:00:00").getTime();
+const MOC_NGAY_KHOA_MOI = new Date("2026-07-09T00:00:00").getTime() / 1000;
+
+const normalizeTen = (value) => String(value || "").trim().toUpperCase();
 
 message.config({
   top: 100,
@@ -86,6 +89,14 @@ export default function DongBoHocVienVaoXe() {
     retry: false,
   });
 
+  // Danh sách khóa lấy từ Lotus (đầy đủ các khóa đã đổi tên); hệ DAT có thể chưa tạo hết
+  const { data: dataKhoaLotus } = useQuery({
+    queryKey: ["optionLopLyThuyet"],
+    queryFn: () => optionLopLyThuyet(),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
   const { data: dataStudents = {}, isLoading: isLoadingStudents } = useQuery({
     queryKey: ["danhSachHocVien", searchParams],
     queryFn: () =>
@@ -118,26 +129,34 @@ export default function DongBoHocVienVaoXe() {
   }, [searchCar]);
 
   const khoaHocOptions = useMemo(() => {
-    const courses = Array.isArray(resultsCourse?.data?.Data)
+    const rawLotus = dataKhoaLotus?.data || dataKhoaLotus?.result || dataKhoaLotus;
+    const lotusCourses = Array.isArray(rawLotus) ? rawLotus : [];
+    const datCourses = Array.isArray(resultsCourse?.data?.Data)
       ? resultsCourse.data.Data
       : [];
 
+    // ID khóa bên DAT (cần khi đồng bộ vào xe) — ghép theo tên khóa
+    const datIdByTen = {};
+    datCourses.forEach((course) => {
+      datIdByTen[normalizeTen(course.Ten)] = course.ID;
+    });
+
     // Chỉ lấy khóa mới: ngày bắt đầu từ ngày bắt đầu của khóa K260001B trở đi
-    const getStart = (course) => new Date(course.NgayBatDau).getTime() || 0;
-    const mocKhoa = courses.find(
-      (course) => String(course.Ten || "").trim().toUpperCase() === MOC_KHOA_MOI,
+    const getStart = (course) => Number(course.start_date) || 0;
+    const mocKhoa = lotusCourses.find(
+      (course) => normalizeTen(course.name) === MOC_KHOA_MOI,
     );
     const mocNgay = mocKhoa ? getStart(mocKhoa) : MOC_NGAY_KHOA_MOI;
 
-    return courses
-      .filter((course) => getStart(course) >= mocNgay)
+    return lotusCourses
+      .filter((course) => course.code && getStart(course) >= mocNgay)
       .sort((a, b) => getStart(b) - getStart(a))
       .map((course) => ({
-        value: course.MaKhoaHoc,
-        label: course.Ten,
-        id: course.ID,
+        value: course.code,
+        label: course.name || course.code,
+        id: datIdByTen[normalizeTen(course.name)],
       }));
-  }, [resultsCourse]);
+  }, [dataKhoaLotus, resultsCourse]);
 
   useEffect(() => {
     if (khoaHocOptions.length > 0 && !hasInitializedCourse.current) {
@@ -418,6 +437,11 @@ export default function DongBoHocVienVaoXe() {
 
     if (hasStudents && !selectedKhoaHoc) {
       message.error("Vui lòng chọn khóa học của học viên!", 3);
+      return;
+    }
+
+    if (hasStudents && !khoaHocOptions.find((k) => k.value === selectedKhoaHoc)?.id) {
+      message.error("Khóa học này chưa có trên hệ thống DAT, chưa thể đồng bộ vào xe!", 4);
       return;
     }
 
