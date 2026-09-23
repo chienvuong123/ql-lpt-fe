@@ -14,6 +14,10 @@ import {
 import KiemTraDongBoModal from "./KiemTraDongBoModal";
 import { usePermission } from "../../util/permission";
 
+// Khóa mốc bắt đầu tính khóa mới (đổi tên) — dự phòng ngày bắt đầu nếu API không trả khóa này
+const MOC_KHOA_MOI = "K260001B";
+const MOC_NGAY_KHOA_MOI = new Date("2026-07-10T00:00:00").getTime();
+
 message.config({
   top: 100,
   duration: 3,
@@ -118,10 +122,16 @@ export default function DongBoHocVienVaoXe() {
       ? resultsCourse.data.Data
       : [];
 
-    // Chỉ lấy khóa mới, bắt đầu từ K260001B: tên dạng K + 6 chữ số (K260001B, K260008B01...),
-    // loại các khóa tên cũ như K26B0118, K26C1007
+    // Chỉ lấy khóa mới: ngày bắt đầu từ ngày bắt đầu của khóa K260001B trở đi
+    const getStart = (course) => new Date(course.NgayBatDau).getTime() || 0;
+    const mocKhoa = courses.find(
+      (course) => String(course.Ten || "").trim().toUpperCase() === MOC_KHOA_MOI,
+    );
+    const mocNgay = mocKhoa ? getStart(mocKhoa) : MOC_NGAY_KHOA_MOI;
+
     return courses
-      .filter((course) => /^K\d{6}/i.test(String(course.Ten || "").trim()))
+      .filter((course) => getStart(course) >= mocNgay)
+      .sort((a, b) => getStart(b) - getStart(a))
       .map((course) => ({
         value: course.MaKhoaHoc,
         label: course.Ten,
