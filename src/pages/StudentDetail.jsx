@@ -199,9 +199,26 @@ const StudentDetail = ({ data }) => {
     keepPreviousData: true,
   });
 
+  // Tìm đăng ký xe-GV theo mã ĐK; nếu không thấy (mã 30004 cũ vs 31011 mới) thì tìm theo CCCD
   const { data: xeGiaoVienDangKyRes } = useQuery({
-    queryKey: ["xeGiaoVienDangKy", data?.MaDK],
-    queryFn: () => danhSachXeGiaoVien({ search: data?.MaDK }),
+    queryKey: ["xeGiaoVienDangKy", data?.MaDK, data?.SoCMT],
+    queryFn: async () => {
+      const maDK = String(data?.MaDK || "").trim();
+      // Bỏ số 0 đầu vì CCCD import từ Excel hay bị mất số 0
+      const normCccd = (v) => String(v || "").trim().replace(/^0+/, "");
+      const cccd = normCccd(data?.SoCMT);
+      const res = await danhSachXeGiaoVien({ search: maDK });
+      const byMaDK = (res?.data || []).find(
+        (r) => String(r.ma_dk || "").trim() === maDK,
+      );
+      if (byMaDK || !cccd) return { ...res, data: byMaDK ? [byMaDK] : [] };
+
+      const resCccd = await danhSachXeGiaoVien({ search: cccd });
+      const byCccd = (resCccd?.data || []).find(
+        (r) => normCccd(r.cccd) === cccd,
+      );
+      return { ...resCccd, data: byCccd ? [byCccd] : [] };
+    },
     enabled: !!data?.MaDK,
     staleTime: 1000 * 60 * 5,
   });
@@ -414,6 +431,7 @@ const StudentDetail = ({ data }) => {
         data?.giao_vien_theo_xe?.giao_vien ||
         "",
       xeB1:
+        regInfo.xe_b1 ||
         regInfo.xeB1 ||
         baseInfo.xeB1 ||
         baseInfo.xe_b1 ||
@@ -421,6 +439,7 @@ const StudentDetail = ({ data }) => {
         data?.xe_b1 ||
         "",
       xeB2:
+        regInfo.xe_b2 ||
         regInfo.xeB2 ||
         baseInfo.xeB2 ||
         baseInfo.xe_b2 ||
@@ -436,12 +455,13 @@ const StudentDetail = ({ data }) => {
     };
   }, [studentMap, admissionCode, data, xeGiaoVienDangKyRes]);
 
+  // Ưu tiên GV đăng ký (Đăng ký xe, giáo viên), sau đó mới tới GV từ DAT
   const teacherName = useMemo(() => {
-    if (hocVienCheckData?.data?.gv_dat) {
-      return hocVienCheckData.data.gv_dat;
-    }
     if (annualStudentInfo?.giaoVien) {
       return annualStudentInfo.giaoVien;
+    }
+    if (hocVienCheckData?.data?.gv_dat) {
+      return hocVienCheckData.data.gv_dat;
     }
     if (data?.gv_dat) {
       return data.gv_dat;
