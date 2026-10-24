@@ -37,6 +37,7 @@ const RULE_NAMES = {
     checkSaiXe: "Kiểm tra sai biển số xe",
     checkDungNghi: "Kiểm tra dừng nghỉ xe quá 10 phút",
     checkPhienNgan: "Kiểm tra phiên học quá ngắn",
+    checkNhanDien: "Kiểm tra tỷ lệ nhận diện khuôn mặt",
 };
 
 export default function CaiDatHeThong() {
@@ -191,7 +192,7 @@ export default function CaiDatHeThong() {
             key: "value",
             width: "15%",
             render: (_, record) => {
-                const allowedKeys = ["checkPhienNgan", "checkDungNghi", "checkTocDo", "checkNghiGiuaPhien"];
+                const allowedKeys = ["checkPhienNgan", "checkDungNghi", "checkTocDo", "checkNghiGiuaPhien", "checkNhanDien"];
                 if (!allowedKeys.includes(record.key)) {
                     return <Text type="secondary">-</Text>;
                 }

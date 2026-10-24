@@ -80,6 +80,7 @@ export function getSystemConfig() {
     checkDungNghi: { enabled: true, startDate: "" },
     checkPhienNgan: { enabled: true, startDate: "" },
     checkKhuVucCam: { enabled: true, startDate: "" },
+    checkNhanDien: { enabled: true, startDate: "", value: 75 },
   };
 
   try {
@@ -575,8 +576,24 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
  */
 // ─── Đánh dấu phiên lỗi ──────────────────────────────────────────────────────
 
-// Ngưỡng tỷ lệ nhận diện khuôn mặt tối thiểu (%) để phiên học được tính
-const MIN_RECOGNITION_RATE = 75;
+// Ngưỡng tỷ lệ nhận diện khuôn mặt tối thiểu (%) — lấy từ cấu hình checkNhanDien, mặc định 75%
+function getMinRecognitionRate() {
+  const rule = getSystemConfig().checkNhanDien;
+  const parsed = parseFloat(rule?.value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 75;
+}
+
+/**
+ * Kiểm tra tỷ lệ nhận diện (Tile, %) của phiên. Trả về lý do nếu dưới ngưỡng, ngược lại null.
+ */
+export function getLowRecognitionReason(phien) {
+  if (!isRuleApplicable("checkNhanDien", phien?.ThoiDiemDangNhap)) return null;
+  if (phien?.Tile === null || phien?.Tile === undefined || phien?.Tile === "") return null;
+  const tile = Number(phien.Tile);
+  const minRate = getMinRecognitionRate();
+  if (!Number.isFinite(tile) || tile >= minRate) return null;
+  return `Tỷ lệ nhận diện ${Math.floor(tile * 10) / 10}% < ${minRate}%`;
+}
 
 export function getInvalidSessionIndexes(
   dataSource,
@@ -651,13 +668,10 @@ export function getInvalidSessionIndexes(
     }
   });
 
-  // 1b. Tỷ lệ nhận diện khuôn mặt (Tile, %) < 75%
+  // 1b. Tỷ lệ nhận diện khuôn mặt (Tile, %) < ngưỡng cấu hình
   dataSource.forEach((phien, idx) => {
-    if (phien.Tile === null || phien.Tile === undefined || phien.Tile === "") return;
-    const tile = Number(phien.Tile);
-    if (Number.isFinite(tile) && tile < MIN_RECOGNITION_RATE) {
-      addReason(idx, `Tỷ lệ nhận diện ${Math.floor(tile * 10) / 10}% < ${MIN_RECOGNITION_RATE}%`);
-    }
+    const reason = getLowRecognitionReason(phien);
+    if (reason) addReason(idx, reason);
   });
 
   // 2. Xe tự động bắt đầu ngoài khung giờ hợp lệ

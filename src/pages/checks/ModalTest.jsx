@@ -5,14 +5,12 @@ import {
   HANG_DAO_TAO_CONFIG,
   getInvalidSessionIndexes,
   getBienSoTuDong,
+  getLowRecognitionReason,
 } from "./DieuKienKiemTra";
 import { getHocVienDuyetPublic, getLichSuDuyetPhienHocPublic, LoTringOnlinePublic } from "../../apis/apiDeploy";
 import { getPhienHocThucHanhCsdtByMaPhienHocList } from "../../apis/apiPhienHocThucHanhCsdt";
 
 const { Text } = Typography;
-
-// Ngưỡng tỷ lệ nhận diện khuôn mặt tối thiểu (%) để phiên học được tính
-const MIN_RECOGNITION_RATE = 75;
 
 const toNumber = (value) => {
   const num = Number(value);
@@ -502,11 +500,8 @@ const ModalTest = ({
       const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
       const _isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
 
-      // Tỷ lệ nhận diện khuôn mặt (Tile, đơn vị %) dưới 75% → luôn loại khỏi tổng & báo đỏ
-      const hasTile =
-        item?.Tile !== null && item?.Tile !== undefined && item?.Tile !== "";
-      const _isLowRecognition =
-        hasTile && toNumber(item.Tile) < MIN_RECOGNITION_RATE;
+      // Tỷ lệ nhận diện khuôn mặt (Tile, %) dưới ngưỡng cấu hình → luôn loại khỏi tổng & báo đỏ
+      const _isLowRecognition = !!getLowRecognitionReason(item);
 
       const persistedStatus = getMappedStatus(item, statusMap);
 
