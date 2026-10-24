@@ -107,8 +107,9 @@ export const DanhSachHocVienDeploy = async (params) => {
   });
 };
 
-export const LoTringOnlinePublic = async (params) => {
-  return api({
+export const LoTringOnlinePublic = async (params, isNewCourse = false) => {
+  const client = isNewCourse ? apiNew : api;
+  return client({
     method: "get",
     url: "/xeOnline",
     params,

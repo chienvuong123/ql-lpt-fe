@@ -340,6 +340,7 @@ const ModalTest = ({
   rows = [],
   bat_dau_dat = null,
   ket_thuc_dat = null,
+  isNewCourse = false,
 }) => {
 
   const [statusMap, setStatusMap] = useState({});
@@ -376,7 +377,7 @@ const ModalTest = ({
         ngaybatdau: "2022-01-01T00:00:00",
         ngayketthuc: `${todayStr}T23:59:00`,
         madk: maDk,
-      });
+      }, isNewCourse);
       const list = res?.data ?? res?.Data ?? res ?? [];
       setLoTrinhResults(Array.isArray(list) ? list : []);
     } catch {
@@ -384,7 +385,7 @@ const ModalTest = ({
     } finally {
       setLoadingLoTrinh(false);
     }
-  }, [maDk]);
+  }, [maDk, isNewCourse]);
 
   const fetchSessionStatuses = useCallback(async () => {
     if (!maDk) return;

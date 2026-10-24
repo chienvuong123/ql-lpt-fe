@@ -1206,6 +1206,7 @@ const KiemTraPublic = () => {
         rows={datJourneyList}
         bat_dau_dat={progressData?.bat_dau_dat}
         ket_thuc_dat={progressData?.ket_thuc_dat}
+        isNewCourse={isK26B014OrLater}
       />
 
       <CabinModal
