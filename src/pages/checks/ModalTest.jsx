@@ -11,6 +11,9 @@ import { getPhienHocThucHanhCsdtByMaPhienHocList } from "../../apis/apiPhienHocT
 
 const { Text } = Typography;
 
+// Ngưỡng tỷ lệ nhận diện khuôn mặt tối thiểu (%) để phiên học được tính
+const MIN_RECOGNITION_RATE = 75;
+
 const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
@@ -498,12 +501,19 @@ const ModalTest = ({
       const thoiGianPhut = toNumber(item?.TongThoiGian) / 60;
       const _isTooShort = thoiGianPhut > 0 && thoiGianPhut < 5;
 
+      // Tỷ lệ nhận diện khuôn mặt (Tile, đơn vị %) dưới 75% → luôn loại khỏi tổng & báo đỏ
+      const hasTile =
+        item?.Tile !== null && item?.Tile !== undefined && item?.Tile !== "";
+      const _isLowRecognition =
+        hasTile && toNumber(item.Tile) < MIN_RECOGNITION_RATE;
+
       const persistedStatus = getMappedStatus(item, statusMap);
 
       // Phiên học được coi là không hợp lệ (báo đỏ & trừ tổng) nếu có bất kỳ lỗi vi phạm nào
       const derivedInvalid = invalidIndexes.has(index) || _isTooShort || _hasStopViolation;
-      const effectiveStatus =
-        persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
+      const effectiveStatus = _isLowRecognition
+        ? "HUY"
+        : persistedStatus || (derivedInvalid ? "HUY" : "DUYET");
 
       return {
         ...item,
@@ -514,6 +524,7 @@ const ModalTest = ({
         _isTuDongInvalid,
         _isTooShort,
         _hasStopViolation,
+        _isLowRecognition,
         _stopReason: stopReason,
         _status: effectiveStatus,
         _isInvalid: effectiveStatus === "HUY",
@@ -735,6 +746,11 @@ const ModalTest = ({
                               <span>
                                 {start ? dayjs(start).format("HH:mm") : "--"} -{" "}
                                 {end ? dayjs(end).format("HH:mm") : "--"}
+                                {item?._isLowRecognition && (
+                                  <span className="!ml-2 !font-semibold !text-[#cf1322]">
+                                    ND {Math.floor(toNumber(item.Tile) * 10) / 10}% &lt; {MIN_RECOGNITION_RATE}%
+                                  </span>
+                                )}
                               </span>
                               <span className="!text-gray-600 text-[13px] font-bold">
                                 {formatDurationFromSeconds(item?.TongThoiGian)} ·{" "}
