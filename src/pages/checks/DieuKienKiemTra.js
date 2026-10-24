@@ -1089,6 +1089,21 @@ export function evaluateTocDoPhien(dataSource) {
   }, []);
 }
 
+export function evaluateNhanDienPhien(dataSource) {
+  if (!dataSource || dataSource.length === 0) return [];
+  return dataSource.reduce((acc, phien, idx) => {
+    const reason = getLowRecognitionReason(phien);
+    if (reason) {
+      acc.push({
+        type: "warning",
+        label: "Tỷ lệ nhận diện",
+        message: `Phiên ${idx + 1} (${fmtDateStr(phien.ThoiDiemDangNhap)}): ${reason.charAt(0).toLowerCase()}${reason.slice(1)}.`,
+      });
+    }
+    return acc;
+  }, []);
+}
+
 export function evaluateTuDongSau17h(dataSource) {
   if (!dataSource || dataSource.length === 0) return [];
 
@@ -1667,6 +1682,7 @@ export function evaluate(
   // Các phiên vi phạm đã bị loại khỏi tổng → chỉ cảnh báo, không ảnh hưởng status
   warnings.push(...evaluateNghiGiuaPhien(dataSource));
   warnings.push(...evaluateTocDoPhien(dataSource));
+  warnings.push(...evaluateNhanDienPhien(dataSource));
   warnings.push(...evaluateTuDongSau17h(dataSource));
   warnings.push(...evaluatePhienDuoi5Phut(dataSource));
   if (!studentInfo || !(studentInfo.giaoVien || studentInfo.giao_vien)) {
