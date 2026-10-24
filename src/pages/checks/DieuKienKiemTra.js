@@ -575,6 +575,9 @@ export function getBienSoTuDong(dataSource, studentInfo = null) {
  */
 // ─── Đánh dấu phiên lỗi ──────────────────────────────────────────────────────
 
+// Ngưỡng tỷ lệ nhận diện khuôn mặt tối thiểu (%) để phiên học được tính
+const MIN_RECOGNITION_RATE = 75;
+
 export function getInvalidSessionIndexes(
   dataSource,
   studentInfo = null,
@@ -645,6 +648,15 @@ export function getInvalidSessionIndexes(
     const tocDo = km / (giay / 3600);
     if (tocDo < MIN_SPEED) {
       addReason(idx, `Tốc độ TB ${tocDo.toFixed(1)} km/h < ${MIN_SPEED} km/h`);
+    }
+  });
+
+  // 1b. Tỷ lệ nhận diện khuôn mặt (Tile, %) < 75%
+  dataSource.forEach((phien, idx) => {
+    if (phien.Tile === null || phien.Tile === undefined || phien.Tile === "") return;
+    const tile = Number(phien.Tile);
+    if (Number.isFinite(tile) && tile < MIN_RECOGNITION_RATE) {
+      addReason(idx, `Tỷ lệ nhận diện ${Math.floor(tile * 10) / 10}% < ${MIN_RECOGNITION_RATE}%`);
     }
   });
 
