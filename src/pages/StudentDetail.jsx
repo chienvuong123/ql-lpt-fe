@@ -875,6 +875,25 @@ const StudentDetail = ({ data }) => {
       csdtMap,
     ]);
 
+  const lowRecognitionSessions = useMemo(() => {
+    const list = [];
+    invalidIndexes.forEach((index) => {
+      const reason = (invalidReasons.get(index) || []).find((r) =>
+        r.startsWith("Tỷ lệ nhận diện"),
+      );
+      const record = dataSource[index];
+      if (!reason || !record) return;
+      list.push({
+        index,
+        reason,
+        thoiDiem: dayjs(record.ThoiDiemDangNhap).format("HH:mm DD/MM/YYYY"),
+        gio: Number(record.TongThoiGian || 0) / 3600,
+        km: Number(record.TongQuangDuong || record.TongQD || 0),
+      });
+    });
+    return list.sort((a, b) => a.index - b.index);
+  }, [dataSource, invalidIndexes, invalidReasons]);
+
   const totalAchievedImagesCount = useMemo(() => {
     let count = 0;
     dataSource.forEach((record, index) => {
@@ -1362,6 +1381,14 @@ const StudentDetail = ({ data }) => {
                               {summaryData.tongQuangDuongLoi.toFixed(2)} km
                             </Text>
                           )}
+
+                          {/* Chi tiết phiên bị loại do tỷ lệ nhận diện < 75% */}
+                          {lowRecognitionSessions.map((s) => (
+                            <Text key={s.index} className="!text-red-500 !pl-4">
+                              • Phiên {s.index + 1} ({s.thoiDiem}): {s.reason} -{" "}
+                              {fmtGio(s.gio)} - {s.km.toFixed(2)} km
+                            </Text>
+                          ))}
                         </Space>
                       </Space>
                     </Card>
