@@ -878,8 +878,8 @@ const StudentDetail = ({ data }) => {
   const lowRecognitionSessions = useMemo(() => {
     const list = [];
     invalidIndexes.forEach((index) => {
-      const reason = (invalidReasons.get(index) || []).find(
-        (r) => r.startsWith("Tỷ lệ nhận diện") || r.startsWith("Dừng nghỉ"),
+      const reason = (invalidReasons.get(index) || []).find((r) =>
+        r.startsWith("Tỷ lệ nhận diện"),
       );
       const record = dataSource[index];
       if (!reason || !record) return;
