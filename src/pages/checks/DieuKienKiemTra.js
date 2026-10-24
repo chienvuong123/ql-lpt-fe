@@ -957,7 +957,7 @@ export function getInvalidSessionIndexes(
     });
   }
 
-  // 8. Dừng nghỉ sai quy định (nghỉ quá 10 phút) — chỉ lưu vào invalidReasons để TruyVetModal hiển thị cảnh báo, không thêm vào invalidIndexes để không bị trừ km/giờ
+  // 8. Dừng nghỉ sai quy định (nghỉ quá 10 phút) → phiên bị loại (báo đỏ, trừ km/giờ)
   if (Array.isArray(loTrinh) && loTrinh.length > 0) {
     dataSource.forEach((phien, idx) => {
       if (!isRuleApplicable("checkDungNghi", phien.ThoiDiemDangNhap)) return;
@@ -975,13 +975,8 @@ export function getInvalidSessionIndexes(
       if (matchingLt && Array.isArray(matchingLt.ListCoordinate)) {
         const stopCheck = getStopViolationDetails(matchingLt.ListCoordinate);
         if (stopCheck !== null) {
-          if (!invalidReasons.has(idx)) invalidReasons.set(idx, []);
-          const reasons = invalidReasons.get(idx);
           const km = phien.TongQuangDuong || phien.TongQD || phien.TongQD_raw || 0;
-          const msg = `Dừng nghỉ sai quy định: ${stopCheck.reason}, tổng quãng đường ${km.toFixed(1)} km`;
-          if (!reasons.includes(msg)) {
-            reasons.push(msg);
-          }
+          addReason(idx, `Dừng nghỉ sai quy định: ${stopCheck.reason}, tổng quãng đường ${km.toFixed(1)} km`);
         }
       }
     });
