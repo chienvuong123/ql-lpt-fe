@@ -1,0 +1,16 @@
+/* Bảng kết quả sát hạch: dòng gọn để vừa nhiều thí sinh trong 1 màn hình */
+.sat-hach-table .ant-table-thead > tr > th {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    background: #fff;
+    font-weight: 600;
+}
+
+.sat-hach-table .ant-table-tbody > tr > td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.sat-hach-table .ant-table-tbody > tr.sat-hach-row-active > td {
+    background: #eaf2ff !important;
+}

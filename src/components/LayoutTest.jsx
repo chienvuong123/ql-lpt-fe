@@ -15,6 +15,7 @@ import {
   FileOutlined,
   DollarOutlined,
   MailOutlined,
+  TrophyOutlined,
 } from "@ant-design/icons";
 import { BsCalendar3 } from "react-icons/bs";
 import {
@@ -78,6 +79,7 @@ const menuPathMap = {
   "danh-sach-ky-nhan-ho-so-gplx": "/danh-sach-ky-nhan-ho-so-gplx",
   "gplx-hoan": "/gplx-hoan",
   "ke-toan": "/ke-toan",
+  "ket-qua-sat-hach": "/ket-qua-sat-hach",
 };
 
 const LayoutTest = () => {
@@ -250,6 +252,14 @@ const LayoutTest = () => {
       children: [
         { key: "danh-sach-ky-nhan-ho-so-gplx", label: "DS ký nhận hồ sơ GPLX" },
         { key: "gplx-hoan", icon: <MailOutlined />, label: "GPLX hoàn trả bưu điện" },
+      ],
+    },
+    {
+      key: "sat-hach",
+      icon: <TrophyOutlined />,
+      label: "Sát hạch",
+      children: [
+        { key: "ket-qua-sat-hach", label: "Kết quả sát hạch" },
       ],
     },
     {

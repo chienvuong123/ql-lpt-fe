@@ -54,6 +54,7 @@ import UyQuyen from "./pages/add-data/UyQuyen";
 import DSKyNhanHoSoVaGPLX from "./pages/orther/DSKyNhanHoSoVaGPLX";
 import GplxHoan from "./pages/orther/GplxHoan";
 import KeToan from "./pages/ke-toan/KeToan";
+import KetQuaSatHach from "./pages/sat-hach/KetQuaSatHach";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -380,6 +381,10 @@ function App() {
               <Route
                 path="ke-toan"
                 element={<GuardedRoute path="/ke-toan" element={<KeToan />} />}
+              />
+              <Route
+                path="ket-qua-sat-hach"
+                element={<GuardedRoute path="/ket-qua-sat-hach" element={<KetQuaSatHach />} />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />

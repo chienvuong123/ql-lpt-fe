@@ -113,6 +113,13 @@ export const PERMISSION_TREE_TEMPLATE = [
     ],
   },
   {
+    key: "sat-hach",
+    name: "Sát hạch",
+    children: [
+      { key: "ket-qua-sat-hach", name: "Kết quả sát hạch", route: "/ket-qua-sat-hach" },
+    ],
+  },
+  {
     key: "ke-toan",
     name: "Quản lý kế toán",
     route: "/ke-toan",
