@@ -13,7 +13,11 @@ export const TRANG_THAI_PHAN = {
     CHUA_THI: { label: "Chưa thi", color: "warning" },
     DUNG_THI: { label: "Dừng thi", color: "default" },
     KHONG_THI: { label: "Không thi", color: "default" },
+    BAO_LUU: { label: "Bảo lưu", color: "processing" },
 };
+
+// Định danh học viên: CCCD (mã đăng ký nếu không có CCCD)
+export const idThiSinh = (r) => r?.so_cmt || r?.ma_dk;
 
 export const KET_QUA = {
     DAT: { label: "Đạt", color: "#16a34a", tag: "success" },

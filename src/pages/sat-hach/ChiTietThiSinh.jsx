@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { Button, Empty, Image, Tooltip } from "antd";
 import { ExportOutlined, UserOutlined } from "@ant-design/icons";
 import { getAnhSatHachUrl } from "../../apis/apiSatHach";
-import { KET_QUA, PHAN_THI, formatDate, formatSbd } from "./satHach.constants";
+import { KET_QUA, PHAN_THI, formatDate, formatSbd, idThiSinh } from "./satHach.constants";
 import { PhanThiTag } from "./SatHachTags";
 import LichSuThiModal from "./LichSuThiModal";
 
 const GIOI_TINH = { M: "Nam", F: "Nữ" };
 
-const AnhThiSinh = ({ maKySh, maDk, coAnh }) => {
+const AnhThiSinh = ({ maKySh, id, coAnh }) => {
     const [loi, setLoi] = useState(false);
     if (!coAnh || loi) {
         return (
@@ -22,7 +22,7 @@ const AnhThiSinh = ({ maKySh, maDk, coAnh }) => {
             width={100}
             height={128}
             style={{ objectFit: "cover", borderRadius: 8 }}
-            src={getAnhSatHachUrl(maKySh, maDk)}
+            src={getAnhSatHachUrl(maKySh, id)}
             onError={() => setLoi(true)}
         />
     );
@@ -56,11 +56,11 @@ const ChiTietThiSinh = ({ thiSinh }) => {
                 </div>
             ) : (
                 <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-                    <div className="relative flex gap-3">
+                    <div className="flex gap-3">
                         <AnhThiSinh
-                            key={`${thiSinh.ma_ky_sh}-${thiSinh.ma_dk}`}
+                            key={`${thiSinh.ma_ky_sh}-${idThiSinh(thiSinh)}`}
                             maKySh={thiSinh.ma_ky_sh}
-                            maDk={thiSinh.ma_dk}
+                            id={idThiSinh(thiSinh)}
                             coAnh={thiSinh.co_anh}
                         />
                         <div className="min-w-0 flex-1 text-[13px] leading-6 text-gray-600">
@@ -72,21 +72,32 @@ const ChiTietThiSinh = ({ thiSinh }) => {
                             <div>Ngày sinh: {formatDate(thiSinh.ngay_sinh)}</div>
                             <div>Hạng GPLX: <b className="text-gray-800">{thiSinh.hang_gplx}</b></div>
                         </div>
-                        <div
-                            className="pointer-events-none absolute right-0 top-9 -rotate-12 rounded-md border-[3px] px-2 text-lg font-extrabold uppercase"
-                            style={{ color: kq.color, borderColor: kq.color, opacity: 0.9 }}
-                        >
-                            {kq.label}
-                        </div>
                     </div>
 
-                    <div className="mt-3 mb-1.5 text-[14px] font-semibold">Kết quả từng phần thi</div>
+                    {/* Dấu kết quả nổi ở góc phải dòng tiêu đề — vùng trống giữa thông tin và bảng phần thi, không che chữ */}
+                    <div className="relative mt-3 mb-1.5 text-[14px] font-semibold">
+                        Kết quả từng phần thi
+                        <span
+                            className="pointer-events-none absolute right-1 bottom-3 -rotate-6 whitespace-nowrap rounded-md border-[3px] bg-white/85 px-2.5 py-0.5 text-[15px] font-extrabold uppercase leading-6"
+                            style={{ color: kq.color, borderColor: kq.color }}
+                        >
+                            {kq.label}
+                        </span>
+                    </div>
                     <div className="divide-y divide-gray-100 rounded-lg border border-gray-100">
                         {PHAN_THI.map((p) => (
                             <div key={p.key} className="flex items-center justify-between px-3 py-1.5 text-[13px]">
                                 <span className="flex items-center gap-2">
                                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
-                                    {p.label}
+                                    <span>
+                                        {p.label}
+                                        {thiSinh[p.key]?.dat_truoc && (
+                                            <span className="block text-xs leading-4 text-gray-400">
+                                                Đạt kỳ {thiSinh[p.key].dat_truoc.ten_ky_sh || thiSinh[p.key].dat_truoc.ma_ky_sh}
+                                                {" "}({formatDate(thiSinh[p.key].dat_truoc.ngay_sh)})
+                                            </span>
+                                        )}
+                                    </span>
                                 </span>
                                 <PhanThiTag phanKey={p.key} phan={thiSinh[p.key]} />
                             </div>

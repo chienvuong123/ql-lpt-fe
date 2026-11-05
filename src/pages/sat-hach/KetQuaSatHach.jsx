@@ -18,16 +18,25 @@ import { getKetQuaKySatHach, getKySatHachList, getThongKeCacKySatHach } from "..
 import { usePermission } from "../../util/permission";
 import ImportSatHachModal from "./ImportSatHachModal";
 import ChiTietThiSinh from "./ChiTietThiSinh";
-import { KET_QUA, PHAN_THI, TRANG_THAI_PHAN, boDau, diemText, formatDate, formatSbd } from "./satHach.constants";
+import { KET_QUA, PHAN_THI, TRANG_THAI_PHAN, boDau, diemText, formatDate, formatSbd, idThiSinh } from "./satHach.constants";
 import { KetQuaTag, PhanThiTag } from "./SatHachTags";
 import "./satHach.css";
 
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
 
 // Header layout 64px + padding Content 2×16px
-const CHIEU_CAO_TRANG = "calc(100vh - 96px)";
-
 const BOX = "rounded-xl border border-gray-100 bg-white shadow-sm";
+
+// Nhãn trục X 2 dòng: khóa (tên kỳ) đậm + ngày thi
+const KyTick = ({ x, y, payload }) => {
+    const [ten, ngay] = String(payload.value).split("\n");
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text dy={11} textAnchor="middle" fill="#374151" fontSize={11} fontWeight={600}>{ten}</text>
+            <text dy={24} textAnchor="middle" fill="#6b7280" fontSize={11}>{ngay}</text>
+        </g>
+    );
+};
 
 const StatCard = ({ title, value, percent, sub, icon, gradient }) => (
     <div className="flex items-center gap-4 rounded-xl px-5 py-2.5 text-white shadow-sm" style={{ background: gradient }}>
@@ -83,7 +92,7 @@ const KetQuaSatHach = () => {
     const [hang, setHang] = useState("ALL");
     const [keyword, setKeyword] = useState("");
     const [tab, setTab] = useState("ALL");
-    const [selected, setSelected] = useState(null);
+    const [selectedId, setSelectedId] = useState(null);
     const [openImport, setOpenImport] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -117,7 +126,7 @@ const KetQuaSatHach = () => {
 
     const chonKy = (ma) => {
         setKyDaChon(ma);
-        setSelected(null);
+        setSelectedId(null);
         setPage(1);
     };
 
@@ -172,6 +181,8 @@ const KetQuaSatHach = () => {
     const soTrang = Math.max(1, Math.ceil(rowsHienThi.length / pageSize));
     const trang = Math.min(page, soTrang);
     const rowsTrang = rowsHienThi.slice((trang - 1) * pageSize, trang * pageSize);
+    // Chưa chọn (hoặc thí sinh đã chọn bị lọc mất) → hiện thí sinh đầu tiên của trang
+    const selected = rowsHienThi.find((r) => idThiSinh(r) === selectedId) ?? rowsTrang[0] ?? null;
 
     const doiBoLoc = (fn) => (v) => {
         fn(v);
@@ -185,7 +196,7 @@ const KetQuaSatHach = () => {
     }));
 
     const chartData = thongKeCacKy.map((k) => ({
-        name: `${k.ten_ky_sh || k.ma_ky_sh} (${formatDate(k.ngay_sh)})`,
+        name: `${k.ten_ky_sh || k.ma_ky_sh}\n${formatDate(k.ngay_sh)}`,
         ly_thuyet: k.ly_thuyet,
         sa_hinh: k.sa_hinh,
         duong_truong: k.duong_truong,
@@ -274,210 +285,217 @@ const KetQuaSatHach = () => {
     const chuaCoDuLieu = !loadingKy && kyList.length === 0;
 
     return (
-        <div className="flex flex-col gap-3" style={{ height: CHIEU_CAO_TRANG, minHeight: 640 }}>
-            {/* Tiêu đề + nút */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                    <CarOutlined style={{ fontSize: 30, color: "#1a56db" }} />
-                    <div>
-                        <div className="text-2xl font-bold leading-tight text-[#1a3fa8]">Quản lý kết quả sát hạch</div>
-                        <div className="text-[13px] text-gray-500">Theo dõi kết quả và thống kê chi tiết từng kỳ thi</div>
+        // Bố cục theo độ rộng vùng nội dung (container query) chứ không theo cửa sổ, để màn hình scale 125–200% không bị vỡ.
+        // Đủ rộng: cố định 1 màn hình, bảng cuộn bên trong. Hẹp: xếp chồng, cho cuộn trang.
+        <div className="@container">
+            <div className="flex flex-col gap-3 @4xl:h-[calc(100vh-96px)] @4xl:min-h-[640px]">
+                {/* Tiêu đề + nút */}
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <CarOutlined style={{ fontSize: 30, color: "#1a56db" }} />
+                        <div>
+                            <div className="text-2xl font-bold leading-tight text-[#1a3fa8]">Quản lý kết quả sát hạch</div>
+                            <div className="text-[13px] text-gray-500">Theo dõi kết quả và thống kê chi tiết từng kỳ thi</div>
+                        </div>
                     </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {canEdit && (
-                        <Button type="primary" size="large" icon={<UploadOutlined />} onClick={() => setOpenImport(true)}>
-                            Import XML ngày thi
+                    <div className="flex flex-wrap gap-2">
+                        {canEdit && (
+                            <Button type="primary" size="large" icon={<UploadOutlined />} onClick={() => setOpenImport(true)}>
+                                Import XML ngày thi
+                            </Button>
+                        )}
+                        <Button size="large" icon={<DownloadOutlined />} onClick={handleExport} disabled={rowsHienThi.length === 0}>
+                            Xuất Excel
                         </Button>
-                    )}
-                    <Button size="large" icon={<DownloadOutlined />} onClick={handleExport} disabled={rowsHienThi.length === 0}>
-                        Xuất Excel
-                    </Button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Bộ lọc */}
-            <div className={`${BOX} flex shrink-0 flex-wrap items-center gap-3 px-4 py-2`}>
-                <div className="flex items-center gap-2">
-                    <span>Kỳ sát hạch:</span>
-                    <Select
-                        style={{ minWidth: 300 }}
-                        loading={loadingKy}
-                        value={maKySh}
-                        onChange={chonKy}
-                        options={kyOptions}
-                        placeholder="Chưa có kỳ sát hạch — hãy import file XML"
-                        showSearch
-                        optionFilterProp="label"
+                {/* Bộ lọc */}
+                <div className={`${BOX} flex shrink-0 flex-wrap items-center gap-3 px-4 py-2`}>
+                    <div className="flex items-center gap-2">
+                        <span>Kỳ sát hạch:</span>
+                        <Select
+                            style={{ minWidth: 300 }}
+                            loading={loadingKy}
+                            value={maKySh}
+                            onChange={chonKy}
+                            options={kyOptions}
+                            placeholder="Chưa có kỳ sát hạch — hãy import file XML"
+                            showSearch
+                            optionFilterProp="label"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span>Hạng GPLX:</span>
+                        <Select style={{ width: 130 }} value={hang} onChange={doiBoLoc(setHang)} options={hangOptions} />
+                    </div>
+                    <Input
+                        allowClear
+                        prefix={<SearchOutlined />}
+                        placeholder="Tìm theo tên, SBD, CCCD, mã đăng ký..."
+                        style={{ maxWidth: 320 }}
+                        value={keyword}
+                        onChange={(e) => doiBoLoc(setKeyword)(e.target.value)}
                     />
+                    {kyHienTai && (
+                        <span className="ml-auto text-[13px] font-medium text-[#1a3fa8]">
+                            {kyHienTai.so_qd && `QĐ ${kyHienTai.so_qd}`}
+                            {kyHienTai.so_qd && kyHienTai.chu_tich_hdsh && " · "}
+                            {kyHienTai.chu_tich_hdsh && `Chủ tịch HĐSH: ${kyHienTai.chu_tich_hdsh}`}
+                        </span>
+                    )}
                 </div>
-                <div className="flex items-center gap-2">
-                    <span>Hạng GPLX:</span>
-                    <Select style={{ width: 130 }} value={hang} onChange={doiBoLoc(setHang)} options={hangOptions} />
-                </div>
-                <Input
-                    allowClear
-                    prefix={<SearchOutlined />}
-                    placeholder="Tìm theo tên, SBD, CCCD, mã đăng ký..."
-                    style={{ maxWidth: 320 }}
-                    value={keyword}
-                    onChange={(e) => doiBoLoc(setKeyword)(e.target.value)}
-                />
-                {kyHienTai && (
-                    <span className="ml-auto text-[13px] font-medium text-[#1a3fa8]">
-                        {kyHienTai.so_qd && `QĐ ${kyHienTai.so_qd}`}
-                        {kyHienTai.so_qd && kyHienTai.chu_tich_hdsh && " · "}
-                        {kyHienTai.chu_tich_hdsh && `Chủ tịch HĐSH: ${kyHienTai.chu_tich_hdsh}`}
-                    </span>
-                )}
-            </div>
 
-            {chuaCoDuLieu ? (
-                <div className={`${BOX} flex flex-1 items-center justify-center`}>
-                    <Empty description="Chưa có dữ liệu sát hạch. Bấm 'Import XML ngày thi' để thêm dữ liệu." />
-                </div>
-            ) : (
-                <>
-                    {/* Thẻ tổng quan */}
-                    <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
-                        <StatCard
-                            title="Tổng thí sinh"
-                            value={tong}
-                            icon={<TeamOutlined />}
-                            sub={kyHienTai ? `Kỳ ${kyHienTai.ten_ky_sh || kyHienTai.ma_ky_sh}` : ""}
-                            gradient="linear-gradient(135deg,#2f6fed,#1a3fa8)"
-                        />
-                        <StatCard
-                            title="Đạt"
-                            value={thongKe?.dat ?? 0}
-                            percent={pct(thongKe?.dat, tong)}
-                            icon={<CheckCircleFilled />}
-                            sub="Đạt tất cả phần phải thi"
-                            gradient="linear-gradient(135deg,#22c55e,#15803d)"
-                        />
-                        <StatCard
-                            title="Trượt ít nhất 1 phần"
-                            value={thongKe?.truot ?? 0}
-                            percent={pct(thongKe?.truot, tong)}
-                            icon={<CloseCircleFilled />}
-                            gradient="linear-gradient(135deg,#f87171,#dc2626)"
-                        />
-                        <StatCard
-                            title="Chưa hoàn thành"
-                            value={thongKe?.chua_hoan_thanh ?? 0}
-                            percent={pct(thongKe?.chua_hoan_thanh, tong)}
-                            icon={<HourglassOutlined />}
-                            sub="Vắng / chưa thi đủ các phần"
-                            gradient="linear-gradient(135deg,#fbbf24,#f97316)"
-                        />
+                {chuaCoDuLieu ? (
+                    <div className={`${BOX} flex flex-1 items-center justify-center`}>
+                        <Empty description="Chưa có dữ liệu sát hạch. Bấm 'Import XML ngày thi' để thêm dữ liệu." />
                     </div>
-
-                    {/* Thống kê phần thi + biểu đồ */}
-                    <div className="grid shrink-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                        <div className={`${BOX} px-4 py-2.5`}>
-                            <div className="mb-2 text-[15px] font-semibold">Thống kê kết quả từng phần thi</div>
-                            <div className="grid grid-cols-3 gap-2">
-                                {PHAN_THI.map((p) => (
-                                    <PhanThiStat key={p.key} phan={p} stat={thongKe?.phan?.[p.key]} />
-                                ))}
-                            </div>
+                ) : (
+                    <>
+                        {/* Thẻ tổng quan */}
+                        <div className="grid shrink-0 grid-cols-2 gap-3 @3xl:grid-cols-4">
+                            <StatCard
+                                title="Tổng thí sinh"
+                                value={tong}
+                                icon={<TeamOutlined />}
+                                sub={kyHienTai ? `Kỳ ${kyHienTai.ten_ky_sh || kyHienTai.ma_ky_sh}` : ""}
+                                gradient="linear-gradient(135deg,#2f6fed,#1a3fa8)"
+                            />
+                            <StatCard
+                                title="Đạt"
+                                value={thongKe?.dat ?? 0}
+                                percent={pct(thongKe?.dat, tong)}
+                                icon={<CheckCircleFilled />}
+                                sub="Đạt tất cả phần phải thi"
+                                gradient="linear-gradient(135deg,#22c55e,#15803d)"
+                            />
+                            <StatCard
+                                title="Trượt ít nhất 1 phần"
+                                value={thongKe?.truot ?? 0}
+                                percent={pct(thongKe?.truot, tong)}
+                                icon={<CloseCircleFilled />}
+                                gradient="linear-gradient(135deg,#f87171,#dc2626)"
+                            />
+                            <StatCard
+                                title="Chưa hoàn thành"
+                                value={thongKe?.chua_hoan_thanh ?? 0}
+                                percent={pct(thongKe?.chua_hoan_thanh, tong)}
+                                icon={<HourglassOutlined />}
+                                sub="Vắng / chưa thi đủ các phần"
+                                gradient="linear-gradient(135deg,#fbbf24,#f97316)"
+                            />
                         </div>
-                        <div className={`${BOX} px-4 py-2.5`}>
-                            <div className="text-[15px] font-semibold">Tỷ lệ đạt qua các kỳ (%)</div>
-                            {chartData.length === 0 ? (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                            ) : (
-                                <ResponsiveContainer width="100%" height={126}>
-                                    <BarChart data={chartData} margin={{ top: 16, right: 0, left: -18, bottom: 0 }} barCategoryGap="25%">
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="name" tick={false} height={4} />
-                                        <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
-                                        <Tooltip formatter={(v) => (v == null ? "—" : `${v}%`)} />
-                                        <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 13 }} />
-                                        {PHAN_THI.map((p) => (
-                                            <Bar key={p.key} dataKey={p.key} name={p.label} fill={p.color} maxBarSize={60}>
-                                                <LabelList dataKey={p.key} position="top" fontSize={11} formatter={(v) => (v == null ? "" : `${v}%`)} />
-                                            </Bar>
-                                        ))}
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Danh sách + chi tiết: chiếm phần còn lại của màn hình */}
-                    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
-                        <div className={`${BOX} flex min-h-0 flex-col px-4 py-2.5`}>
-                            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 pb-1">
-                                <div className="text-[15px] font-semibold">Danh sách thí sinh</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {TABS.map((t) => (
-                                        <button
-                                            key={t.value}
-                                            type="button"
-                                            onClick={() => doiBoLoc(setTab)(t.value)}
-                                            className={`cursor-pointer rounded-md border px-3 py-0.5 text-[13px] transition-colors ${tab === t.value
-                                                ? "border-[#1a56db] bg-[#eaf2ff] text-[#1a56db]"
-                                                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                                                }`}
-                                        >
-                                            {t.label} ({demTab[t.value] ?? 0})
-                                        </button>
+                        {/* Thống kê phần thi + biểu đồ */}
+                        <div className="grid shrink-0 grid-cols-1 gap-3 @4xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                            <div className={`${BOX} px-4 py-2.5`}>
+                                <div className="mb-2 text-[15px] font-semibold">Thống kê kết quả từng phần thi</div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {PHAN_THI.map((p) => (
+                                        <PhanThiStat key={p.key} phan={p} stat={thongKe?.phan?.[p.key]} />
                                     ))}
                                 </div>
                             </div>
-
-                            <div ref={tableBoxRef} className="min-h-0 flex-1 overflow-hidden">
-                                <Table
-                                    className="sat-hach-table"
-                                    rowKey="ma_dk"
-                                    size="small"
-                                    loading={loadingKetQua}
-                                    columns={columns}
-                                    dataSource={rowsTrang}
-                                    pagination={false}
-                                    scroll={{ x: 1000, y: khung.bodyHeight }}
-                                    onChange={(_, __, sorter) => setSortSbd(sorter?.order || null)}
-                                    onRow={(r) => ({
-                                        onClick: () => setSelected(r),
-                                        style: { cursor: "pointer" },
-                                    })}
-                                    rowClassName={(r) => (selected?.ma_dk === r.ma_dk ? "sat-hach-row-active" : "")}
-                                />
-                            </div>
-
-                            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-                                <span className="text-[13px] text-gray-500">
-                                    {/* SYSDATETIME() là giờ máy chủ nhưng driver mssql gắn hậu tố Z → bỏ Z để không bị cộng múi giờ */}
-                                    {capNhat && `Cập nhật lần cuối: ${dayjs(String(capNhat).replace(/Z$/, "")).format("HH:mm DD/MM/YYYY")}`}
-                                </span>
-                                <Pagination
-                                    size="small"
-                                    current={trang}
-                                    pageSize={pageSize}
-                                    total={rowsHienThi.length}
-                                    showSizeChanger
-                                    pageSizeOptions={[10, 20, 50, 100]}
-                                    showTotal={(t) => `${t} thí sinh`}
-                                    onChange={(p, size) => {
-                                        if (size !== pageSize) {
-                                            setPageSize(size);
-                                            setPage(1);
-                                        } else {
-                                            setPage(p);
-                                        }
-                                    }}
-                                />
+                            <div className={`${BOX} px-4 py-2.5`}>
+                                <div className="text-[15px] font-semibold">Tỷ lệ đạt qua các kỳ (%)</div>
+                                {chartData.length === 0 ? (
+                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                                ) : (
+                                    <ResponsiveContainer width="100%" height={150}>
+                                        <BarChart data={chartData} margin={{ top: 16, right: 0, left: -18, bottom: 4 }} barCategoryGap="25%">
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                            <XAxis dataKey="name" tick={<KyTick />} interval={0} height={32} />
+                                            <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+                                            <Tooltip
+                                                labelFormatter={(v) => String(v).replace("\n", " — ")}
+                                                formatter={(v) => (v == null ? "—" : `${v}%`)}
+                                            />
+                                            <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 13 }} />
+                                            {PHAN_THI.map((p) => (
+                                                <Bar key={p.key} dataKey={p.key} name={p.label} fill={p.color} maxBarSize={60}>
+                                                    <LabelList dataKey={p.key} position="top" fontSize={11} formatter={(v) => (v == null ? "" : `${v}%`)} />
+                                                </Bar>
+                                            ))}
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                )}
                             </div>
                         </div>
 
-                        <ChiTietThiSinh thiSinh={selected} />
-                    </div>
-                </>
-            )}
+                        {/* Danh sách + chi tiết: chiếm phần còn lại của màn hình */}
+                        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 @4xl:grid-cols-[minmax(0,1fr)_340px] @7xl:grid-cols-[minmax(0,1fr)_380px]">
+                            <div className={`${BOX} flex min-h-0 flex-col px-4 py-2.5`}>
+                                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 pb-1">
+                                    <div className="text-[15px] font-semibold">Danh sách thí sinh</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TABS.map((t) => (
+                                            <button
+                                                key={t.value}
+                                                type="button"
+                                                onClick={() => doiBoLoc(setTab)(t.value)}
+                                                className={`cursor-pointer rounded-md border px-3 py-0.5 text-[13px] transition-colors ${tab === t.value
+                                                    ? "border-[#1a56db] bg-[#eaf2ff] text-[#1a56db]"
+                                                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                                    }`}
+                                            >
+                                                {t.label} ({demTab[t.value] ?? 0})
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-            <ImportSatHachModal open={openImport} onClose={() => setOpenImport(false)} onImported={handleImported} />
-            {loadingKetQua && !ketQua && <Spin fullscreen />}
+                                <div ref={tableBoxRef} className="min-h-[420px] flex-1 overflow-hidden @4xl:min-h-0">
+                                    <Table
+                                        className="sat-hach-table"
+                                        rowKey={idThiSinh}
+                                        size="small"
+                                        loading={loadingKetQua}
+                                        columns={columns}
+                                        dataSource={rowsTrang}
+                                        pagination={false}
+                                        scroll={{ x: 1000, y: khung.bodyHeight }}
+                                        onChange={(_, __, sorter) => setSortSbd(sorter?.order || null)}
+                                        onRow={(r) => ({
+                                            onClick: () => setSelectedId(idThiSinh(r)),
+                                            style: { cursor: "pointer" },
+                                        })}
+                                        rowClassName={(r) => (selected && idThiSinh(selected) === idThiSinh(r) ? "sat-hach-row-active" : "")}
+                                    />
+                                </div>
+
+                                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
+                                    <span className="text-[13px] text-gray-500">
+                                        {/* SYSDATETIME() là giờ máy chủ nhưng driver mssql gắn hậu tố Z → bỏ Z để không bị cộng múi giờ */}
+                                        {capNhat && `Cập nhật lần cuối: ${dayjs(String(capNhat).replace(/Z$/, "")).format("HH:mm DD/MM/YYYY")}`}
+                                    </span>
+                                    <Pagination
+                                        size="small"
+                                        current={trang}
+                                        pageSize={pageSize}
+                                        total={rowsHienThi.length}
+                                        showSizeChanger
+                                        pageSizeOptions={[10, 20, 50, 100]}
+                                        showTotal={(t) => `${t} thí sinh`}
+                                        onChange={(p, size) => {
+                                            if (size !== pageSize) {
+                                                setPageSize(size);
+                                                setPage(1);
+                                            } else {
+                                                setPage(p);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <ChiTietThiSinh thiSinh={selected} />
+                        </div>
+                    </>
+                )}
+
+                <ImportSatHachModal open={openImport} onClose={() => setOpenImport(false)} onImported={handleImported} />
+                {loadingKetQua && !ketQua && <Spin fullscreen />}
+            </div>
         </div>
     );
 };

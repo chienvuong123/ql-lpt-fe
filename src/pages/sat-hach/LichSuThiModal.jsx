@@ -2,12 +2,12 @@ import React from "react";
 import { Modal, Table } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { getLichSuSatHach } from "../../apis/apiSatHach";
-import { PHAN_THI, formatDate, formatSbd } from "./satHach.constants";
+import { PHAN_THI, formatDate, formatSbd, idThiSinh } from "./satHach.constants";
 import { KetQuaTag, PhanThiTag } from "./SatHachTags";
 
 const LichSuThiModal = ({ open, onClose, thiSinh }) => {
     const { data = [], isLoading } = useQuery({
-        queryKey: ["lichSuSatHach", thiSinh?.so_cmt, thiSinh?.ma_dk],
+        queryKey: ["lichSuSatHach", idThiSinh(thiSinh)],
         queryFn: () => getLichSuSatHach({ soCmt: thiSinh?.so_cmt, maDk: thiSinh?.ma_dk }),
         enabled: open && !!thiSinh,
     });
@@ -44,7 +44,7 @@ const LichSuThiModal = ({ open, onClose, thiSinh }) => {
             width={1000}
         >
             <Table
-                rowKey={(r) => `${r.ma_ky_sh}-${r.ma_dk}`}
+                rowKey="ma_ky_sh"
                 size="small"
                 loading={isLoading}
                 columns={columns}

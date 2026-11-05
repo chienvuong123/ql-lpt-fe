@@ -6,9 +6,10 @@ import {
     ClockCircleFilled,
     ClockCircleOutlined,
     MinusCircleOutlined,
+    SafetyCertificateOutlined,
     StopOutlined,
 } from "@ant-design/icons";
-import { KET_QUA, TRANG_THAI_PHAN, diemText } from "./satHach.constants";
+import { KET_QUA, TRANG_THAI_PHAN, diemText, formatDate } from "./satHach.constants";
 
 // Màu theo mẫu thiết kế: Đạt chữ xanh lá không nền, Trượt chữ đỏ trên nền đỏ nhạt, Chưa thi chữ xám
 const PHAN_STYLE = {
@@ -17,6 +18,7 @@ const PHAN_STYLE = {
     CHUA_THI: { color: "#6b7280", background: "transparent", icon: <ClockCircleOutlined /> },
     DUNG_THI: { color: "#9ca3af", background: "transparent", icon: <StopOutlined /> },
     KHONG_THI: { color: "#d1d5db", background: "transparent", icon: <MinusCircleOutlined /> },
+    BAO_LUU: { color: "#2563eb", background: "#eff6ff", icon: <SafetyCertificateOutlined /> },
 };
 
 // Kết quả chung: viên thuốc nền đặc, chữ trắng
@@ -32,9 +34,12 @@ export const PhanThiTag = ({ phanKey, phan }) => {
     const st = TRANG_THAI_PHAN[trangThai];
     const style = PHAN_STYLE[trangThai];
     const diem = diemText(phanKey, phan);
-    const tip = phan?.diem != null
-        ? `Điểm: ${diem}${phan.diem_dat != null ? ` — điểm đạt: ${phan.diem_dat}` : ""}`
-        : st.label;
+    const truoc = phan?.dat_truoc;
+    const tip = truoc
+        ? `Đã đạt ở kỳ ${truoc.ten_ky_sh || truoc.ma_ky_sh} (${formatDate(truoc.ngay_sh)})${truoc.diem != null ? ` — điểm ${diemText(phanKey, truoc)}` : ""}`
+        : phan?.diem != null
+            ? `Điểm: ${diem}${phan.diem_dat != null ? ` — điểm đạt: ${phan.diem_dat}` : ""}`
+            : st.label;
     return (
         <Tooltip title={tip}>
             <span

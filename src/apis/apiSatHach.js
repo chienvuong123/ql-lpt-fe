@@ -41,5 +41,6 @@ export const getLichSuSatHach = async ({ soCmt, maDk }) => {
     return response.data?.data || [];
 };
 
-export const getAnhSatHachUrl = (maKySh, maDk) =>
-    `${baseURL}/sat-hach/anh/${encodeURIComponent(maKySh)}/${encodeURIComponent(maDk)}`;
+// id: CCCD của học viên (mã đăng ký nếu không có CCCD)
+export const getAnhSatHachUrl = (maKySh, id) =>
+    `${baseURL}/sat-hach/anh/${encodeURIComponent(maKySh)}/${encodeURIComponent(id)}`;
