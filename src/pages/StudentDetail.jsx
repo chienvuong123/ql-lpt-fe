@@ -110,6 +110,14 @@ const toStatusMap = (response) => {
   }, {});
 };
 
+// Gửi đúng ngày đang hiển thị (YYYY-MM-DD), không gửi chuỗi kèm giờ/múi giờ
+// để backend không đổi qua UTC rồi lưu lùi 1 ngày.
+const toNgaySinhPayload = (value) => {
+  if (!value) return null;
+  const d = dayjs(value);
+  return d.isValid() ? d.format("YYYY-MM-DD") : null;
+};
+
 const StudentDetail = ({ data }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImagesModalOpen, setIsImagesModalOpen] = useState(false);
@@ -931,7 +939,7 @@ const StudentDetail = ({ data }) => {
     mutate(
       {
         ten_hoc_vien: data?.HoTen ?? null,
-        ngay_sinh: data?.NgaySinh ?? null,
+        ngay_sinh: toNgaySinhPayload(data?.NgaySinh),
         khoa_hoc: data?.TenKhoaHoc || null,
         ma_khoa: data?.ma_khoa || data?.MaKhoaHoc || null,
         hang_dao_tao: data?.HangDaoTao ?? null,
@@ -956,7 +964,7 @@ const StudentDetail = ({ data }) => {
       ghi_chu_2: values.ghi_chu_2 ?? "",
       trang_thai: form.getFieldValue("trang_thai") ? "da_ky" : "chua_ky",
       ten_hoc_vien: data?.HoTen ?? null,
-      ngay_sinh: data?.NgaySinh ?? null,
+      ngay_sinh: toNgaySinhPayload(data?.NgaySinh),
       khoa_hoc: data?.TenKhoaHoc || null,
       ma_khoa: data?.ma_khoa || data?.MaKhoaHoc || null,
       hang_dao_tao: data?.HangDaoTao ?? null,
