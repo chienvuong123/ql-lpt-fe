@@ -83,11 +83,17 @@ const HocVienKyDAT = () => {
   }, [hocVienKyDatData, dataSource.length]);
 
   const handleFilter = () => {
+    // Gửi kèm tên khoá: ky_dat.ma_khoa có thể lưu theo mã đầy đủ, theo tên khoá
+    // hoặc rỗng, backend so khớp cả hai để không sót học viên đã ký.
+    const tenKhoa = selectedCourse
+      ? khoaHocOptions.find((o) => o.value === selectedCourse)?.label
+      : undefined;
     setFilters((prev) => ({
       ...prev,
       page: 1,
       keyword: searchName.trim(),
       maKhoa: selectedCourse || undefined,
+      tenKhoa: tenKhoa || undefined,
     }));
   };
 
@@ -112,6 +118,7 @@ const HocVienKyDAT = () => {
 
       const blob = await exportDanhSachHocVienKyDAT({
         ma_khoa: exportCourse,
+        ten_khoa: filters.tenKhoa || "",
         ten_hoc_vien: exportStudentName,
       });
 

@@ -932,8 +932,8 @@ const StudentDetail = ({ data }) => {
       {
         ten_hoc_vien: data?.HoTen ?? null,
         ngay_sinh: data?.NgaySinh ?? null,
-        khoa_hoc: data?.TenKhoaHoc ?? null,
-        ma_khoa: data?.ma_khoa ?? null,
+        khoa_hoc: data?.TenKhoaHoc || null,
+        ma_khoa: data?.ma_khoa || data?.MaKhoaHoc || null,
         hang_dao_tao: data?.HangDaoTao ?? null,
         gv_dat: dataSource?.[0]?.HoTenGV ?? null,
         anh: data?.srcAvatar,
@@ -957,8 +957,8 @@ const StudentDetail = ({ data }) => {
       trang_thai: form.getFieldValue("trang_thai") ? "da_ky" : "chua_ky",
       ten_hoc_vien: data?.HoTen ?? null,
       ngay_sinh: data?.NgaySinh ?? null,
-      khoa_hoc: data?.TenKhoaHoc ?? null,
-      ma_khoa: data?.MaKhoaHoc ?? null,
+      khoa_hoc: data?.TenKhoaHoc || null,
+      ma_khoa: data?.ma_khoa || data?.MaKhoaHoc || null,
       hang_dao_tao: data?.HangDaoTao ?? null,
       gv_dat: dataSource?.[0]?.HoTenGV ?? null,
     });
