@@ -34,6 +34,15 @@ export const kiemTraTrungThoiGian = async (body = {}) => {
 };
 
 export const kiemTraToanKhoa = async (params = {}, config = {}) => {
-  const response = await api.post("/toan-khoa", params, config);
+  // Gửi token hành trình của người đang đăng nhập để backend thấy đúng
+  // học viên thuộc cơ sở của tài khoản này (giống màn chi tiết học viên)
+  const hanhTrinhToken = sessionStorage.getItem("token");
+  const response = await api.post("/toan-khoa", params, {
+    ...config,
+    headers: {
+      ...(config.headers || {}),
+      ...(hanhTrinhToken ? { "X-HanhTrinh-Token": hanhTrinhToken } : {}),
+    },
+  });
   return response.data;
 };
