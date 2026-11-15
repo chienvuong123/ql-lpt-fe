@@ -15,7 +15,8 @@ import {
     Tag,
     message,
     Select,
-    Popconfirm
+    Popconfirm,
+    Checkbox
 } from 'antd';
 import {
     PlusOutlined,
@@ -46,27 +47,25 @@ const TienDoDaoTao = () => {
         setIsDetailModalOpen(true);
     };
     const keywordInputRef = useRef(null);
-    const [paramsB1, setParamsB1] = useState({
+    const HANG_OPTIONS = [
+        { label: 'B1', value: 'B1' },
+        { label: 'B2', value: 'B2' },
+        { label: 'C1', value: 'C1' },
+    ];
+    const HANG_LABEL = { B1: 'B tự động', B2: 'B số sàn', C1: 'C1' };
+
+    // Lấy toàn bộ dữ liệu của từng hạng rồi gộp + phân trang ở client
+    const defaultParams = {
         page: 1,
-        limit: 10,
+        limit: 1000,
         text: "",
         search_ngay_tn: null,
         khoa_iid: undefined,
-    });
-    const [paramsB2, setParamsB2] = useState({
-        page: 1,
-        limit: 10,
-        text: "",
-        search_ngay_tn: null,
-        khoa_iid: undefined,
-    });
-    const [paramsC1, setParamsC1] = useState({
-        page: 1,
-        limit: 10,
-        text: "",
-        search_ngay_tn: null,
-        khoa_iid: undefined,
-    });
+    };
+    const [params, setParams] = useState(defaultParams);
+    const [selectedHang, setSelectedHang] = useState([]);
+    const [pagination, setPagination] = useState({ page: 1, pageSize: 10 });
+    const resetPage = () => setPagination(prev => ({ ...prev, page: 1 }));
 
     const { data: dataKhoaHoc, isLoading: isLoadingKhoaHoc } = useQuery({
         queryKey: ["optionLopLyThuyet"],
@@ -105,20 +104,20 @@ const TienDoDaoTao = () => {
     }, [dataKhoaHoc]);
 
     const { data: tienDoDataB1, isLoading: isLoadingTienDoB1 } = useQuery({
-        queryKey: ["getTienDoB1", paramsB1],
-        queryFn: () => getTienDoB1Sql(paramsB1),
+        queryKey: ["getTienDoB1", params],
+        queryFn: () => getTienDoB1Sql(params),
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: tienDoDataB2, isLoading: isLoadingTienDoB2 } = useQuery({
-        queryKey: ["getTienDoB2", paramsB2],
-        queryFn: () => getTienDoB2Sql(paramsB2),
+        queryKey: ["getTienDoB2", params],
+        queryFn: () => getTienDoB2Sql(params),
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: tienDoDataC1, isLoading: isLoadingTienDoC1 } = useQuery({
-        queryKey: ["getTienDoC1", paramsC1],
-        queryFn: () => getTienDoC1Sql(paramsC1),
+        queryKey: ["getTienDoC1", params],
+        queryFn: () => getTienDoC1Sql(params),
         staleTime: 1000 * 60 * 5,
     });
 
@@ -126,20 +125,34 @@ const TienDoDaoTao = () => {
         return [...list].sort((a, b) => {
             const timeA = a.ngay_khai_giang ? new Date(a.ngay_khai_giang).getTime() : null;
             const timeB = b.ngay_khai_giang ? new Date(b.ngay_khai_giang).getTime() : null;
-            if (timeA === null && timeB === null) return 0;
-            if (timeA === null) return 1;
-            if (timeB === null) return -1;
-            return timeB - timeA;
+            if (timeA !== timeB) {
+                if (timeA === null) return 1;
+                if (timeB === null) return -1;
+                return timeB - timeA;
+            }
+            // Cùng ngày khai giảng: xếp theo tên/mã khóa giảm dần (K260030 trước K260029)
+            const nameA = String(a.ten_khoa || a.ma_khoa || '');
+            const nameB = String(b.ten_khoa || b.ma_khoa || '');
+            return nameB.localeCompare(nameA, undefined, { numeric: true });
         });
     };
 
-    const dataSourceB1 = useMemo(() => sortByNgayKhaiGiang(normalizeApiList(tienDoDataB1)), [tienDoDataB1]);
-    const dataSourceB2 = useMemo(() => sortByNgayKhaiGiang(normalizeApiList(tienDoDataB2)), [tienDoDataB2]);
-    const dataSourceC1 = useMemo(() => sortByNgayKhaiGiang(normalizeApiList(tienDoDataC1)), [tienDoDataC1]);
+    const withHang = (list, hang) => list.map((item) => ({ ...item, _hang: hang }));
+    const dataSourceB1 = useMemo(() => withHang(normalizeApiList(tienDoDataB1), 'B1'), [tienDoDataB1]);
+    const dataSourceB2 = useMemo(() => withHang(normalizeApiList(tienDoDataB2), 'B2'), [tienDoDataB2]);
+    const dataSourceC1 = useMemo(() => withHang(normalizeApiList(tienDoDataC1), 'C1'), [tienDoDataC1]);
 
-    const totalRecordsB1 = tienDoDataB1?.total || dataSourceB1.length || 0;
-    const totalRecordsB2 = tienDoDataB2?.total || dataSourceB2.length || 0;
-    const totalRecordsC1 = tienDoDataC1?.total || dataSourceC1.length || 0;
+    // Không tick hạng nào = hiển thị tất cả
+    const dataSourceMerged = useMemo(() => {
+        const showAll = selectedHang.length === 0;
+        const all = [];
+        if (showAll || selectedHang.includes('B1')) all.push(...dataSourceB1);
+        if (showAll || selectedHang.includes('B2')) all.push(...dataSourceB2);
+        if (showAll || selectedHang.includes('C1')) all.push(...dataSourceC1);
+        return sortByNgayKhaiGiang(all);
+    }, [dataSourceB1, dataSourceB2, dataSourceC1, selectedHang]);
+
+    const isLoadingTienDo = isLoadingTienDoB1 || isLoadingTienDoB2 || isLoadingTienDoC1;
 
     const luuLuongB1 = useMemo(() => {
         return dataSourceB1.reduce((sum, item) => {
@@ -209,13 +222,8 @@ const TienDoDaoTao = () => {
         mutateDeleteTienDo({ ma_khoa: record.ma_khoa, loai: record.loai });
     };
 
-    const getColumns = (classType) => {
-        const isC1 = classType === 'C1';
-        const headerBg = isC1
-            ? '!bg-[#9ccb9c]'
-            : classType === 'B1'
-                ? '!bg-[#FFCC99]'
-                : '!bg-[#ffe3b3]';
+    const getColumns = () => {
+        const headerBg = '!bg-[#FFCC99]';
 
         // Define common Cell class
         const bodyCellClass = '!bg-[#cdece1] !text-black border border-black text-sm font-semibold text-center';
@@ -306,7 +314,7 @@ const TienDoDaoTao = () => {
             }
         ];
 
-        const middleSection = isC1 ? cabinAndDatCols : [
+        const middleSection = [
             {
                 title: 'THỰC HÀNH',
                 onHeaderCell: redHeaderCell(),
@@ -323,10 +331,10 @@ const TienDoDaoTao = () => {
                 align: 'center',
                 onHeaderCell: headerCell(),
                 onCell: defaultCell,
-                render: (_, __, index) => <span className="font-bold">{index + 1}</span>,
+                render: (_, __, index) => <span className="font-bold">{(pagination.page - 1) * pagination.pageSize + index + 1}</span>,
             },
             {
-                title: isC1 ? 'KHÓA HỌC' : 'KHÓA',
+                title: 'KHÓA',
                 dataIndex: 'ten_khoa',
                 key: 'ten_khoa',
                 width: 80,
@@ -551,17 +559,10 @@ const TienDoDaoTao = () => {
             },
         ];
 
-        const mainTitle = classType === 'B1'
-            ? 'Hạng B số tự động'
-            : classType === 'B2'
-                ? 'Hạng B số sàn'
-                : 'Hạng C1';
-
-        const mainTitleBg = classType === 'C1'
-            ? '!bg-[#8fbe8f]'
-            : classType === 'B1'
-                ? '!bg-[#FFCC99]'
-                : '!bg-[#ffe3b3]';
+        const mainTitle = selectedHang.length === 0 || selectedHang.length === HANG_OPTIONS.length
+            ? 'Tiến độ đào tạo - Tất cả hạng'
+            : `Tiến độ đào tạo - Hạng ${selectedHang.map((h) => HANG_LABEL[h]).join(', ')}`;
+        const mainTitleBg = '!bg-[#FFCC99]';
 
         return [
             {
@@ -605,30 +606,17 @@ const TienDoDaoTao = () => {
 
     const handleFilter = () => {
         const text = keywordInputRef.current?.input?.value?.trim() || "";
-        const updateFn = prev => ({
-            ...prev,
-            page: 1,
-            text,
-        });
-        setParamsB1(updateFn);
-        setParamsB2(updateFn);
-        setParamsC1(updateFn);
+        setParams(prev => ({ ...prev, text }));
+        resetPage();
     };
 
     const handleReset = () => {
         if (keywordInputRef.current?.input) {
             keywordInputRef.current.input.value = "";
         }
-        const resetVal = {
-            page: 1,
-            limit: 10,
-            text: "",
-            search_ngay_tn: null,
-            khoa_iid: undefined,
-        };
-        setParamsB1(resetVal);
-        setParamsB2(resetVal);
-        setParamsC1(resetVal);
+        setParams(defaultParams);
+        setSelectedHang([]);
+        resetPage();
     };
 
     return (
@@ -661,12 +649,10 @@ const TienDoDaoTao = () => {
                         <Select
                             className="w-full"
                             placeholder="--Chọn khóa--"
-                            value={paramsB1.khoa_iid}
+                            value={params.khoa_iid}
                             onChange={(value) => {
-                                const updateFn = prev => ({ ...prev, khoa_iid: value, page: 1 });
-                                setParamsB1(updateFn);
-                                setParamsB2(updateFn);
-                                setParamsC1(updateFn);
+                                setParams(prev => ({ ...prev, khoa_iid: value }));
+                                resetPage();
                             }}
                             options={classOptions}
                             loading={isLoadingKhoaHoc}
@@ -694,12 +680,10 @@ const TienDoDaoTao = () => {
                             placeholder="Chọn ngày tốt nghiệp"
                             className="w-full"
                             format="DD/MM/YYYY"
-                            value={paramsB1.search_ngay_tn ? dayjs(paramsB1.search_ngay_tn, 'DD/MM/YYYY') : null}
+                            value={params.search_ngay_tn ? dayjs(params.search_ngay_tn, 'DD/MM/YYYY') : null}
                             onChange={(date, dateString) => {
-                                const updateFn = prev => ({ ...prev, search_ngay_tn: dateString || null, page: 1 });
-                                setParamsB1(updateFn);
-                                setParamsB2(updateFn);
-                                setParamsC1(updateFn);
+                                setParams(prev => ({ ...prev, search_ngay_tn: dateString || null }));
+                                resetPage();
                             }}
                         />
                     </Col>
@@ -720,8 +704,8 @@ const TienDoDaoTao = () => {
                         </Space>
                     </Col>
                 </Row>
-                <Row gutter={[16, 16]} className="!mt-8 !ml-1">
-                    <div className='flex gap-6'>
+                <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 mt-8 ml-1">
+                    <div className='flex flex-wrap gap-6'>
                         <div className="text-sm">
                             Tổng Lưu Lượng: <Text strong>{tongLuuLuong}</Text>
                         </div>
@@ -735,83 +719,37 @@ const TienDoDaoTao = () => {
                             Lưu lượng C1: <Text strong>{luuLuongC1}</Text>
                         </div>
                     </div>
-                </Row>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-xs text-gray-500 uppercase">Hạng:</span>
+                        <Checkbox.Group
+                            options={HANG_OPTIONS}
+                            value={selectedHang}
+                            onChange={(values) => {
+                                setSelectedHang(values);
+                                resetPage();
+                            }}
+                        />                    </div>
+                </div>
             </Card>
 
 
-            {/* Tiến Độ Hạng B1 */}
             <div className="mb-8">
                 <Table
                     className="custom-schedule-table"
-                    dataSource={dataSourceB1}
-                    columns={getColumns('B1')}
+                    rowKey={(record) => `${record._hang}-${record.ma_khoa}-${record.loai ?? ''}`}
+                    dataSource={dataSourceMerged}
+                    columns={getColumns()}
                     bordered
                     size="small"
-                    loading={isLoadingTienDoB1}
+                    loading={isLoadingTienDo}
                     scroll={{ x: 2200 }}
                     pagination={{
-                        current: paramsB1.page,
-                        pageSize: paramsB1.limit,
-                        total: totalRecordsB1,
-                        onChange: (page, pageSize) => {
-                            setParamsB1((prev) => ({
-                                ...prev,
-                                page,
-                                limit: pageSize,
-                            }));
-                        },
-                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
-                    }}
-                />
-            </div>
-
-            {/* Tiến Độ Hạng B2 */}
-            <div className="mb-8">
-                <Table
-                    className="custom-schedule-table"
-                    dataSource={dataSourceB2}
-                    columns={getColumns('B2')}
-                    bordered
-                    size="small"
-                    loading={isLoadingTienDoB2}
-                    scroll={{ x: 2200 }}
-                    pagination={{
-                        current: paramsB2.page,
-                        pageSize: paramsB2.limit,
-                        total: totalRecordsB2,
-                        onChange: (page, pageSize) => {
-                            setParamsB2((prev) => ({
-                                ...prev,
-                                page,
-                                limit: pageSize,
-                            }));
-                        },
-                        showTotal: (total) => `Tổng cộng ${total} bản ghi`,
-                    }}
-                />
-            </div>
-
-            {/* Tiến Độ Hạng C1 */}
-            <div className="mb-8">
-                <Table
-                    className="custom-schedule-table"
-                    dataSource={dataSourceC1}
-                    columns={getColumns('C1')}
-                    bordered
-                    size="small"
-                    loading={isLoadingTienDoC1}
-                    scroll={{ x: 2200 }}
-                    pagination={{
-                        current: paramsC1.page,
-                        pageSize: paramsC1.limit,
-                        total: totalRecordsC1,
-                        onChange: (page, pageSize) => {
-                            setParamsC1((prev) => ({
-                                ...prev,
-                                page,
-                                limit: pageSize,
-                            }));
-                        },
+                        current: pagination.page,
+                        pageSize: pagination.pageSize,
+                        total: dataSourceMerged.length,
+                        showSizeChanger: true,
+                        pageSizeOptions: [10, 20, 50, 100],
+                        onChange: (page, pageSize) => setPagination({ page, pageSize }),
                         showTotal: (total) => `Tổng cộng ${total} bản ghi`,
                     }}
                 />
