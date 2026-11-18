@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, DatePicker, Dropdown, Empty, Input, Modal, Popover, Select, Spin, Table, Tooltip, message, notification } from "antd";
 import {
   EyeOutlined, CheckOutlined, PrinterOutlined, MoreOutlined, ClockCircleOutlined, SearchOutlined,
@@ -358,7 +358,7 @@ export default function TongQuanTiepSinh() {
     return () => document.removeEventListener("fullscreenchange", h);
   }, []);
 
-  const { data: tkRes, isFetching: tkLoading } = useQuery({
+  const { data: tkRes, isLoading: tkLoading } = useQuery({
     queryKey: ["tiep-sinh-thong-ke", soNgay],
     queryFn: () => getThongKeTiepSinh({ so_ngay: soNgay }),
     refetchInterval: 10000,
@@ -377,12 +377,15 @@ export default function TongQuanTiepSinh() {
     }),
     [filters, page],
   );
-  const { data: listRes, isFetching: listLoading } = useQuery({
+  // Tự làm mới chạy ngầm (không hiện vòng quay); chỉ báo đang tải lần đầu / khi đổi bộ lọc
+  const { data: listRes, isLoading: listFirstLoad, isFetching: listFetching, isPlaceholderData: listPlaceholder } = useQuery({
     queryKey: ["tiep-sinh-list", listParams],
     queryFn: () => getDanhSachHoSo(listParams),
     refetchInterval: 10000,
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
+  const listLoading = listFirstLoad || (listFetching && listPlaceholder);
   const rows = useMemo(() => listRes?.data || [], [listRes]);
 
   useEffect(() => {
