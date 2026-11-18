@@ -55,6 +55,8 @@ import DSKyNhanHoSoVaGPLX from "./pages/orther/DSKyNhanHoSoVaGPLX";
 import GplxHoan from "./pages/orther/GplxHoan";
 import KeToan from "./pages/ke-toan/KeToan";
 import KetQuaSatHach from "./pages/sat-hach/KetQuaSatHach";
+import TongQuanTiepSinh from "./pages/tiep-sinh/TongQuanTiepSinh";
+import TiepNhanHoSo from "./pages/tiep-sinh/TiepNhanHoSo";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -385,6 +387,14 @@ function App() {
               <Route
                 path="ket-qua-sat-hach"
                 element={<GuardedRoute path="/ket-qua-sat-hach" element={<KetQuaSatHach />} />}
+              />
+              <Route
+                path="tiep-sinh"
+                element={<GuardedRoute path="/tiep-sinh" element={<TongQuanTiepSinh />} />}
+              />
+              <Route
+                path="tiep-nhan-ho-so"
+                element={<GuardedRoute path="/tiep-nhan-ho-so" element={<TiepNhanHoSo />} />}
               />
             </Route>
             <Route path="kiem-tra-hoc-vien" element={<KiemTraPublic />} />

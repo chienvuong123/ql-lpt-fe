@@ -16,6 +16,7 @@ import {
   DollarOutlined,
   MailOutlined,
   TrophyOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { BsCalendar3 } from "react-icons/bs";
 import {
@@ -80,6 +81,8 @@ const menuPathMap = {
   "gplx-hoan": "/gplx-hoan",
   "ke-toan": "/ke-toan",
   "ket-qua-sat-hach": "/ket-qua-sat-hach",
+  "tiep-sinh": "/tiep-sinh",
+  "tiep-nhan-ho-so": "/tiep-nhan-ho-so",
 };
 
 const LayoutTest = () => {
@@ -133,6 +136,15 @@ const LayoutTest = () => {
       key: "dashboard",
       icon: <DashboardOutlined />,
       label: "Dashboard",
+    },
+    {
+      key: "to-tiep-sinh",
+      icon: <TeamOutlined />,
+      label: "Tổ tiếp sinh",
+      children: [
+        { key: "tiep-sinh", label: "Tổng quan tiếp sinh" },
+        { key: "tiep-nhan-ho-so", label: "Tiếp nhận hồ sơ" },
+      ],
     },
     {
       key: "tien-do-dao-tao",

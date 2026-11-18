@@ -120,6 +120,14 @@ export const PERMISSION_TREE_TEMPLATE = [
     ],
   },
   {
+    key: "to-tiep-sinh",
+    name: "Tổ tiếp sinh",
+    children: [
+      { key: "tiep-sinh", name: "Tổng quan tiếp sinh", route: "/tiep-sinh" },
+      { key: "tiep-nhan-ho-so", name: "Tiếp nhận hồ sơ", route: "/tiep-nhan-ho-so" },
+    ],
+  },
+  {
     key: "ke-toan",
     name: "Quản lý kế toán",
     route: "/ke-toan",
