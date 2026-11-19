@@ -1,17 +1,29 @@
-// In các mẫu đơn tiếp sinh (bố cục theo file Word của trung tâm) + tải file Word đã điền
+// Bộ hồ sơ in cho học viên (4 phiếu). Máy chủ điền thông tin vào đúng file Word mẫu của trung tâm;
+// trình duyệt hiển thị / in chính file Word đó (docx-preview).
+// Riêng Đơn đề nghị (có khung dán ảnh + ô "có/không" là hình vẽ nổi mà docx-preview không vẽ được)
+// dùng bản HTML dựng theo đúng bố cục mẫu Word.
 import axios from "axios";
 import dayjs from "dayjs";
 import { baseURL } from "../../constants/base";
 
+// Mã chung — máy chủ tự chọn file mẫu hạng A hoặc A1 theo hồ sơ
 export const MAU_DON = [
+  { key: "phieu_xac_nhan", ten: "Phiếu xác nhận học viên" },
   { key: "don_de_nghi", ten: "Đơn đề nghị học lái xe" },
-  { key: "tu_hoc_a1", ten: "Đơn đăng ký tự học lý thuyết hạng A1" },
-  { key: "tu_hoc_a", ten: "Đơn đăng ký tự học lý thuyết hạng A (TT14)" },
+  { key: "tu_hoc", ten: "Đơn đăng ký tự học các môn lý thuyết" },
+  { key: "hop_dong", ten: "Hợp đồng đào tạo lái xe" },
 ];
 
-/** Mặc định: đơn đề nghị + đơn tự học đúng hạng */
-export const mauTheoHang = (hang) => ["don_de_nghi", String(hang || "").toUpperCase() === "A" ? "tu_hoc_a" : "tu_hoc_a1"];
+/** Mặc định in đủ 4 phiếu (đúng thứ tự) */
+export const mauTheoHang = () => MAU_DON.map((m) => m.key);
 
+const sapXep = (keys) => MAU_DON.map((m) => m.key).filter((k) => keys.includes(k));
+
+function taiDocx(id, key) {
+  return axios.get(`${baseURL}/tiep-sinh/ho-so/${id}/mau-don/${key}`, { responseType: "blob" });
+}
+
+// ─── Đơn đề nghị (HTML) ─────────────────────────────
 const esc = (v) =>
   String(v ?? "")
     .replace(/&/g, "&amp;")
@@ -20,25 +32,16 @@ const esc = (v) =>
     .replace(/"/g, "&quot;");
 const d = (v) => (v ? dayjs(v).format("DD/MM/YYYY") : "");
 const val = (v, dots = "...............................") => (v ? `<b>${esc(v)}</b>` : dots);
+// khung dán ảnh 3x4 để trống (không in ảnh chân dung lên đơn)
+const PHOTO = `<div class="photo">Ảnh màu<br/>3 cm x 4 cm<br/>chụp không quá 06 tháng</div>`;
 
-const QUOC_HIEU = `<div class="qh"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br/><b class="u">Độc lập - Tự do - Hạnh phúc</b></div>`;
-
-function ngayLam() {
-  const n = dayjs();
-  return `Hải Phòng, ngày ${n.format("DD")} tháng ${n.format("MM")} năm ${n.format("YYYY")}`;
-}
-
-function photoBox(hs) {
-  return `<div class="photo">${hs.anh_chan_dung ? `<img alt="Ảnh học viên" src="${hs.anh_chan_dung}"/>` : "Ảnh màu<br/>3 cm x 4 cm<br/>chụp không quá 06 tháng"}</div>`;
-}
-
-function donDeNghi(hs) {
-  return `<section class="page">
-    ${QUOC_HIEU}
-    <div class="photos">${photoBox(hs)}${photoBox(hs)}</div>
+function donDeNghiHtml(hs) {
+  return `<section class="docx mau-page">
+    <div class="qh"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br/><b class="u">Độc lập - Tự do - Hạnh phúc</b></div>
+    <div class="photos">${PHOTO}${PHOTO}</div>
     <h1>ĐƠN ĐỀ NGHỊ HỌC LÁI XE</h1>
     <p class="center">Kính gửi: Trung tâm GDNN &amp; SHLX Lập Phương Thành</p>
-    <div class="body lh">
+    <div class="lh">
       <p>Tôi là: ${val((hs.ho_ten || "").toUpperCase())} &nbsp;&nbsp;&nbsp; Ngày, tháng, năm sinh: ${val(d(hs.ngay_sinh))}</p>
       <p>Số Căn cước công dân hoặc Căn cước: ${val(hs.cccd)}</p>
       <p>Ngày cấp: ${val(d(hs.ngay_cap_cccd))} &nbsp;&nbsp;&nbsp; nơi cấp: ${val(hs.noi_cap || "Cục Cảnh sát QLHC về TTXH")}</p>
@@ -48,106 +51,126 @@ function donDeNghi(hs) {
       <p class="justify">Vi phạm hành chính trong lĩnh vực giao thông đường bộ với hình thức tước quyền sử dụng giấy phép lái xe: &nbsp;<span class="box"></span> có &nbsp;&nbsp;<span class="box"></span> không</p>
       <p class="justify">Tôi xin cam đoan những điều ghi trên là đúng sự thật, nếu sai tôi xin hoàn toàn chịu trách nhiệm.</p>
     </div>
-    <div class="sign"><i>${ngayLam()}</i><br/><b>NGƯỜI LÀM ĐƠN</b><br/><i>(Ký và ghi rõ họ, tên)</i><div class="space"></div><b>${esc(hs.ho_ten)}</b></div>
+    <div class="sign"><i>Hải Phòng, ngày ........ tháng ........ năm ..............</i><br/><b>NGƯỜI LÀM ĐƠN</b><br/><i>(Ký và ghi rõ họ, tên)</i><div class="space"></div><b>${esc(hs.ho_ten)}</b></div>
   </section>`;
 }
 
-function donTuHoc(hs, hang) {
-  const isA = hang === "A";
-  const canCu = isA
-    ? "Căn cứ quy định tại điểm a khoản 1 Điều 4 Thông tư số 14/2025/TT-BXD ngày 30/06/2025 của Bộ Xây dựng: “Người có nhu cầu được đào tạo để cấp giấy phép lái xe mô tô hạng A1, A, B1 đối với nội dung học lý thuyết phải học đủ chương trình đào tạo theo quy định tại Thông tư 14/2025/TT-BXD và được lựa chọn một trong các hình thức đào tạo: tự học các môn lý thuyết theo quy định của Chính phủ về hoạt động đào tạo lái xe hoặc học tập trung tại cơ sở đào tạo lái xe”."
-    : "Căn cứ quy định tại điểm a khoản 1 Điều 5 Thông tư số 35/2024/TT-BGTVT ngày 15/11/2024 của Bộ Giao thông vận tải: “Người có nhu cầu cấp giấy phép lái xe mô tô hạng A1, A, B1 đối với nội dung học lý thuyết phải học đủ chương trình đào tạo theo quy định và được lựa chọn một trong các hình thức đào tạo: tự học các môn lý thuyết theo quy định của pháp luật về hoạt động đào tạo và sát hạch lái xe hoặc học tập trung tại cơ sở đào tạo lái xe”.";
-  const gio = isA ? [16, 4] : [8, 2];
-  return `<section class="page">
-    <table class="head"><tr>
-      <td><b>TRUNG TÂM GDNN&amp;SHLX</b><br/><b class="u">LẬP PHƯƠNG THÀNH</b></td>
-      <td>${QUOC_HIEU}</td>
-    </tr></table>
-    <h1>ĐƠN ĐĂNG KÝ TỰ HỌC CÁC MÔN LÝ THUYẾT HẠNG ${isA ? "A" : "A1"}</h1>
-    <div class="body">
-      <p>Họ và tên: ${val((hs.ho_ten || "").toUpperCase(), "…………………………………")} &nbsp;&nbsp;&nbsp; Ngày sinh: ${val(d(hs.ngay_sinh), "……………………")}</p>
-      <p>Khóa học: ${val(hs.khoa_hoc, "……………………………………")}</p>
-      <p class="justify indent">${canCu}</p>
-      <p class="justify indent">Do điều kiện công việc không thể sắp xếp đến học lý thuyết tại Trung tâm, nên tôi xin được đăng ký tự học các môn Lý thuyết trong nội dung chương trình đào tạo như sau:</p>
-      <table class="grid">
-        <tr><th style="width:8%">TT</th><th>Môn học</th><th style="width:24%">Thời gian học (giờ)</th><th style="width:18%">Ghi chú</th></tr>
-        <tr><td class="c">1</td><td>Pháp luật về giao thông đường bộ</td><td class="c">${gio[0]}</td><td></td></tr>
-        <tr><td class="c">2</td><td>Kỹ thuật lái xe</td><td class="c">${gio[1]}</td><td></td></tr>
-      </table>
-      <p class="justify indent">Tôi đã được Trung tâm hướng dẫn và cung cấp tài liệu các môn lý thuyết để tự học tại website của trung tâm: lapphuongthanh.vn</p>
-      <p class="indent">Nếu được tự học các môn lý thuyết nêu trên tôi xin cam kết:</p>
-      <p class="justify indent">1. Tự học và hoàn thiện đầy đủ nội dung các môn học theo đúng các quy định của Trung tâm và các quy định hiện hành của pháp luật; Nếu vi phạm tôi xin hoàn toàn chịu trách nhiệm về việc xử lý theo quy định của Trung tâm và các cơ quan liên quan.</p>
-      <p class="justify indent">2. Chấp hành đầy đủ các nội quy, quy định học tập của Trung tâm, tham gia đầy đủ các buổi khai giảng, hướng dẫn … theo kế hoạch mà Trung tâm đã bố trí./.</p>
-      <p class="justify indent">3. Tôi cam đoan viết đơn này hoàn toàn trong tình trạng tỉnh táo không bị ép buộc.</p>
-      <p class="indent">Trân trọng cảm ơn!</p>
-    </div>
-    <div class="sign"><i>${ngayLam()}</i><br/><b>Người làm đơn</b><br/><i>(Ký ghi rõ họ và tên)</i><div class="space"></div><b>${esc(hs.ho_ten)}</b></div>
-  </section>`;
+const MAU_HTML = { don_de_nghi: donDeNghiHtml };
+
+// CSS dùng chung cho xem trước và bản in
+const MAU_CSS = `
+  .mau-don img { max-width: none !important; } /* Tailwind preflight bóp ảnh nổi (logo) về 0 */
+  .mau-don section.docx { color: #000; }
+  /* index.css ép "* { font-family: Inter !important }" -> mẫu đơn dùng lại Times New Roman như file Word */
+  .mau-don section.docx, .mau-don section.docx * { font-family: "Times New Roman", Times, serif !important; }
+  .mau-don .mau-html { background: gray; padding: 30px 30px 0; display: flex; flex-direction: column; align-items: center; }
+  .mau-don .mau-page { box-sizing: border-box; background: #fff; width: 210mm; min-height: 297mm; padding: 15mm 18mm 15mm 25mm;
+    margin-bottom: 30px; box-shadow: 0 0 10px rgba(0,0,0,.5); font-size: 13.5pt; line-height: 1.3; }
+  .mau-page .qh { text-align: center; font-size: 13pt; }
+  .mau-page .u { text-decoration: underline; }
+  .mau-page .photos { display: flex; justify-content: space-between; margin: 14px 10px 0; }
+  .mau-page .photo { width: 30mm; height: 40mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 9.5pt; }
+  .mau-page h1 { text-align: center; font-size: 15pt; font-weight: bold; margin: 18px 0 6px; }
+  .mau-page .center { text-align: center; margin: 0 0 14px; }
+  .mau-page .lh p { line-height: 1.75; margin: 0; }
+  .mau-page .justify { text-align: justify; }
+  .mau-page .box { display: inline-block; width: 14px; height: 12px; border: 1px solid #000; vertical-align: middle; }
+  .mau-page .sign { margin-left: 50%; text-align: center; margin-top: 10px; }
+  .mau-page .sign .space { height: 70px; }
+`;
+
+function ganCss(doc) {
+  if (doc.getElementById("mau-don-css")) return;
+  const st = doc.createElement("style");
+  st.id = "mau-don-css";
+  st.textContent = MAU_CSS;
+  doc.head.appendChild(st);
 }
 
-export function buildFormsHtml(hs, keys) {
-  const pages = keys
-    .map((k) => (k === "don_de_nghi" ? donDeNghi(hs) : k === "tu_hoc_a" ? donTuHoc(hs, "A") : k === "tu_hoc_a1" ? donTuHoc(hs, "A1") : ""))
-    .join("");
-  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${esc(hs.ma_ho_so)} - ${esc(hs.ho_ten)}</title>
-<style>
-  @page { size: A4; margin: 15mm 18mm 15mm 25mm; }
-  * { box-sizing: border-box; }
-  body { font-family: "Times New Roman", serif; font-size: 13.5pt; color: #000; margin: 0; }
-  .page { page-break-after: always; }
-  .page:last-child { page-break-after: auto; }
-  .qh { text-align: center; font-size: 13pt; }
-  .u { text-decoration: underline; }
-  .head { width: 100%; border-collapse: collapse; text-align: center; font-size: 12.5pt; }
-  .head td { vertical-align: top; width: 50%; }
-  .photos { display: flex; justify-content: space-between; margin: 14px 10px 0; }
-  .photo { width: 30mm; height: 40mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center;
-           text-align: center; font-size: 9.5pt; overflow: hidden; }
-  .photo img { width: 100%; height: 100%; object-fit: cover; }
-  h1 { text-align: center; font-size: 15pt; margin: 18px 0 6px; }
-  .center { text-align: center; margin: 0 0 14px; }
-  .body p { margin: 6px 0; }
-  .lh p { line-height: 1.75; margin: 0; }
-  .justify { text-align: justify; }
-  .indent { text-indent: 1cm; }
-  .box { display: inline-block; width: 14px; height: 12px; border: 1px solid #000; vertical-align: middle; }
-  .grid { width: 100%; border-collapse: collapse; margin: 8px 0; }
-  .grid th, .grid td { border: 1px solid #000; padding: 4px 6px; }
-  .grid .c { text-align: center; }
-  .sign { margin-left: 50%; text-align: center; margin-top: 10px; }
-  .sign .space { height: 70px; }
-  @media screen {
-    body { background: #e5e7eb; }
-    .page { background: #fff; width: 210mm; min-height: 297mm; padding: 15mm 18mm 15mm 25mm; margin: 0 auto 10px; }
+const RENDER_OPTS = {
+  className: "docx",
+  inWrapper: true,
+  ignoreWidth: false,
+  ignoreHeight: false,
+  ignoreLastRenderedPageBreak: true,
+  breakPages: true,
+  renderHeaders: true,
+  renderFooters: true,
+  experimental: true,
+  useBase64URL: true, // ảnh (logo) nhúng base64 để in trong iframe không bị mất
+};
+
+/**
+ * Hiển thị các mẫu đã điền vào container (xem trước / bản in).
+ * Trả về false nếu bị huỷ (isCancelled) giữa chừng.
+ */
+export async function renderForms(container, hs, keys, { isCancelled } = {}) {
+  const { renderAsync } = await import("docx-preview");
+  const list = sapXep(keys);
+  const blobs = await Promise.all(list.map((k) => (MAU_HTML[k] ? null : taiDocx(hs.id, k).then((r) => r.data))));
+  if (isCancelled?.()) return false;
+  const doc = container.ownerDocument;
+  container.classList.add("mau-don");
+  container.innerHTML = "";
+  for (let i = 0; i < list.length; i++) {
+    const box = doc.createElement("div");
+    container.appendChild(box);
+    if (MAU_HTML[list[i]]) {
+      box.className = "docx-wrapper mau-html";
+      box.innerHTML = MAU_HTML[list[i]](hs);
+    } else {
+      // Mỗi file Word: tiền tố class riêng + CSS đặt ngay trong box (docx-preview xoá sạch styleContainer
+      // mỗi lần gọi, và các file trùng tên style -> dùng chung sẽ đè định dạng của nhau)
+      const cls = `docx-m${i}`;
+      await renderAsync(blobs[i], box, box, { ...RENDER_OPTS, className: cls });
+      box.querySelectorAll(`.${cls}-wrapper`).forEach((w) => w.classList.add("docx-wrapper"));
+      box.querySelectorAll(`section.${cls}`).forEach((s) => s.classList.add("docx"));
+    }
+    if (isCancelled?.()) return false;
   }
-</style></head><body>${pages}</body></html>`;
+  ganCss(doc); // sau cùng: không bị docx-preview xoá
+  return true;
 }
 
-/** In bằng iframe ẩn (không bị chặn popup) */
-export function printForms(hs, keys) {
+// Lề trên/dưới do @page đảm nhận -> mẫu dài nhiều trang (hợp đồng) trang nào cũng có lề;
+// lề trái/phải giữ theo file Word (padding của section)
+export const PRINT_CSS = `
+  @page { size: A4; margin: 15mm 0 15mm 0; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  .mau-don .docx-wrapper { background: #fff !important; padding: 0 !important; display: block !important; }
+  .mau-don .docx-wrapper > section.docx { box-shadow: none !important; margin: 0 auto !important; padding-top: 0 !important;
+    padding-bottom: 0 !important; min-height: 0 !important; page-break-after: always; break-after: page; }
+  .mau-don > div:last-child > .docx-wrapper > section.docx:last-child,
+  .mau-don > div.mau-html:last-child > section.docx:last-child { page-break-after: auto; break-after: auto; }
+`;
+
+/** In các mẫu đã điền bằng iframe ẩn (không bị chặn popup) */
+export async function printForms(hs, keys) {
   const iframe = document.createElement("iframe");
   iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
   document.body.appendChild(iframe);
   const doc = iframe.contentWindow.document;
   doc.open();
-  doc.write(buildFormsHtml(hs, keys));
+  doc.write(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${esc(hs.ma_ho_so || "Ho so")}</title></head><body></body></html>`);
   doc.close();
-  const go = () => {
+  try {
+    await renderForms(doc.body, hs, keys);
+    const st = doc.createElement("style");
+    st.textContent = PRINT_CSS; // sau CSS của docx-preview để ghi đè nền xám / bóng đổ
+    doc.head.appendChild(st);
+    await doc.fonts?.ready;
+    await new Promise((r) => setTimeout(r, 200));
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
+  } finally {
     setTimeout(() => iframe.remove(), 1500);
-  };
-  const imgs = [...doc.images].filter((i) => !i.complete);
-  if (!imgs.length) setTimeout(go, 150);
-  else {
-    let left = imgs.length;
-    imgs.forEach((i) => (i.onload = i.onerror = () => --left === 0 && go()));
   }
 }
 
 /** Tải file Word đã điền sẵn thông tin */
 export async function downloadWord(id, key) {
-  const res = await axios.get(`${baseURL}/tiep-sinh/ho-so/${id}/mau-don/${key}`, { responseType: "blob" });
+  const res = await taiDocx(id, key);
   const cd = res.headers["content-disposition"] || "";
   const m = cd.match(/filename\*=UTF-8''([^;]+)/);
   const name = m ? decodeURIComponent(m[1]) : `${key}.docx`;

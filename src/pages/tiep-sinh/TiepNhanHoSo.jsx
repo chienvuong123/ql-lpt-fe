@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Button, Checkbox, DatePicker, Dropdown, Empty, Form, Image, Input, Modal, Radio, Select, Spin, Tooltip, message,
+  Button, Checkbox, DatePicker, Dropdown, Empty, Form, Image, Input, Modal, Select, Spin, Tooltip, message,
 } from "antd";
 import {
   CheckOutlined, CameraFilled, ReloadOutlined, PictureOutlined, SearchOutlined, ScanOutlined,
@@ -12,22 +12,22 @@ import {
   SyncOutlined, QrcodeOutlined, SettingOutlined, CloseOutlined, FileWordOutlined, LeftOutlined, DownOutlined,
 } from "@ant-design/icons";
 import {
-  FaUser, FaRegCalendarAlt, FaRegIdCard, FaVenusMars, FaPhoneAlt, FaHome, FaGraduationCap, FaCar,
-  FaMapMarkerAlt, FaPrint, FaCamera, FaCheck, FaClipboardCheck,
+  FaUser, FaRegCalendarAlt, FaRegIdCard, FaPhoneAlt, FaHome, FaGraduationCap, FaCar,
+  FaPrint, FaCamera, FaCheck, FaClipboardCheck, FaMoneyBillWave, FaHeartbeat,
 } from "react-icons/fa";
 import dayjs from "dayjs";
 import {
   getChiTietHoSo, taoHoSo, capNhatHoSo, capNhatAnhHoSo, duyetHoSo, traBoSungHoSo, moLaiHoSo,
-  ghiNhanInHoSo, getDanhSachHoSo, getThongKeTiepSinh, errMsg,
+  ghiNhanInHoSo, getDanhSachHoSo, getThongKeTiepSinh, getCauHinhTiepSinh, errMsg,
 } from "../../apis/apiTiepSinh";
 import {
-  BLUE, BLUE_DARK, HANG_OPTIONS, NGUON_META, TRANG_THAI_META, WEEKDAYS, useNow, StatusTag, CccdScanModal,
+  BLUE, BLUE_DARK, LOAI_HINH_OPTIONS, KHAM_SK_OPTIONS, tinhPhaiThu, fmtTien, hangTuLoaiHinh, NGUON_META, TRANG_THAI_META, WEEKDAYS, useNow, StatusTag, CccdScanModal,
   HoSoDetailModal, TraBoSungModal, fmtDate, fmtDateTime, toPortraitDataUrl, fileToPortraitDataUrl,
 
 } from "./tiepSinhShared";
 import { CauHinhModal, DongBoModal, QrKhaiModal } from "./tiepSinhModals";
 import OcrCccdModal from "./OcrCccdModal";
-import { MAU_DON, mauTheoHang, buildFormsHtml, printForms, downloadWord } from "./mauDon";
+import { MAU_DON, mauTheoHang, renderForms, printForms, downloadWord } from "./mauDon";
 
 const STEPS = [
   { title: "Thông tin học viên", icon: <FaUser /> },
@@ -40,7 +40,40 @@ const STEPS = [
 function suggestStep(hs) {
   if (!hs) return 0;
   if (hs.trang_thai === "da_duyet" || hs.trang_thai === "da_in") return 3;
-  return hs.co_anh ? 2 : 1;
+  // hồ sơ chờ duyệt / cần bổ sung: mở ở bước Thông tin học viên để NV kiểm tra trước
+  return 0;
+}
+
+// Bảng giá trong cấu hình (dùng chung cache với modal Cấu hình)
+function useBangGia() {
+  const { data } = useQuery({ queryKey: ["tiep-sinh-cau-hinh"], queryFn: getCauHinhTiepSinh, staleTime: 60000 });
+  return data?.data || {};
+}
+
+/** Khung "Số tiền phải thu" */
+function PhaiThuBox({ hs, compact = false }) {
+  const cfg = useBangGia();
+  const t = tinhPhaiThu(hs, cfg);
+  if (!t) return null;
+  const chiTiet = [
+    t.hocPhi !== null && t.hocPhi !== undefined ? `Học phí ${fmtTien(t.hocPhi)}` : null,
+    t.phiKham ? `Khám SK ${fmtTien(t.phiKham)}` : null,
+  ].filter(Boolean).join(" + ");
+  return (
+    <div className={`flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 ${compact ? "px-3 py-2" : "px-4 py-2.5"}`}>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-sm font-semibold text-orange-700"><FaMoneyBillWave /> Số tiền phải thu</div>
+        {(chiTiet || t.nhapTay) && <div className="truncate text-xs text-slate-500">{t.nhapTay ? "Theo cột Tổng thu" : chiTiet}</div>}
+      </div>
+      <div className={`shrink-0 font-extrabold text-orange-600 ${compact ? "text-xl" : "text-2xl"}`}>
+        {t.tong !== null ? fmtTien(t.tong) : (
+          <span className="text-sm font-semibold italic text-red-500">
+            {!hs.loai_hinh ? "Chưa chọn loại hình" : "Chưa cài bảng giá (Cấu hình)"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Khung có tiêu đề nền xanh (như ảnh mẫu) ─────────────────────
@@ -206,35 +239,35 @@ function StudentCard({ hs }) {
           <InfoRow icon={<FaUser />} label="Họ và tên" value={hs.ho_ten} />
           <InfoRow icon={<FaRegCalendarAlt />} label="Ngày sinh" value={fmtDate(hs.ngay_sinh)} />
           <InfoRow icon={<FaRegIdCard />} label="CCCD" value={hs.cccd} />
-          <InfoRow
-            icon={<FaVenusMars />}
-            label="Giới tính"
-            value={hs.gioi_tinh}
-            extra={
-              hs.gioi_tinh && (
-                <span className={`ml-1 rounded-full px-1.5 text-xs ${hs.gioi_tinh === "Nữ" ? "bg-pink-50 text-pink-500" : "bg-blue-50 text-blue-500"}`}>
-                  {hs.gioi_tinh === "Nữ" ? "♀" : "♂"}
-                </span>
-              )
-            }
-          />
           <InfoRow icon={<FaPhoneAlt />} label="SĐT" value={hs.dien_thoai} />
           <InfoRow icon={<FaHome />} label="Địa chỉ" value={hs.dia_chi} />
           <div className="my-1 border-t border-slate-100" />
           <InfoRow icon={<FaGraduationCap />} label="Khóa học" value={hs.khoa_hoc && chip(hs.khoa_hoc)} />
-          <InfoRow icon={<FaCar />} label="Hạng đăng ký" value={hs.hang && chip(hs.hang)} />
-          <InfoRow icon={<FaMapMarkerAlt />} label="Địa điểm học" value={hs.dia_diem_hoc} />
+          <InfoRow icon={<FaCar />} label="Hạng đăng ký" value={(hs.loai_hinh || hs.hang) && chip(hs.loai_hinh || `Hạng ${hs.hang}`)} />
+          <InfoRow icon={<FaHeartbeat />} label="Khám sức khoẻ" value={hs.kham_suc_khoe && chip(hs.kham_suc_khoe)} />
         </div>
+      </div>
+      <div className="mt-3">
+        <PhaiThuBox hs={hs} />
       </div>
     </BluePanel>
   );
 }
 
+// Số tiền phải thu cập nhật ngay khi NV đổi loại hình / khám SK trên form
+function PhaiThuForm({ form, hs }) {
+  const loai_hinh = Form.useWatch("loai_hinh", form);
+  const kham_suc_khoe = Form.useWatch("kham_suc_khoe", form);
+  return <PhaiThuBox compact hs={{ loai_hinh, kham_suc_khoe, tong_thu: hs?.tong_thu }} />;
+}
+
 // ─── Bước 1: nhập / bổ sung thông tin ─────────────────────────────
 function toFormValues(hs) {
-  if (!hs) return { hang: "A1", khoa_hoc: "Đào tạo lái xe mô tô", quoc_tich: "Việt Nam" };
+  if (!hs) return { khoa_hoc: "Đào tạo lái xe mô tô", quoc_tich: "Việt Nam" };
   return {
     ...hs,
+    // hồ sơ cũ chưa có loại hình: hạng A1 chỉ có 1 lựa chọn
+    loai_hinh: hs.loai_hinh || (hs.hang === "A1" ? "Hạng A1" : undefined),
     ngay_sinh: hs.ngay_sinh ? dayjs(hs.ngay_sinh) : null,
     ngay_cap_cccd: hs.ngay_cap_cccd ? dayjs(hs.ngay_cap_cccd) : null,
   };
@@ -243,6 +276,7 @@ function toFormValues(hs) {
 function fromFormValues(v) {
   return {
     ...v,
+    hang: hangTuLoaiHinh(v.loai_hinh) || undefined,
     ngay_sinh: v.ngay_sinh ? v.ngay_sinh.format("YYYY-MM-DD") : null,
     ngay_cap_cccd: v.ngay_cap_cccd ? v.ngay_cap_cccd.format("YYYY-MM-DD") : null,
   };
@@ -446,7 +480,7 @@ function DuyetStep({ hs }) {
   const thieu = (hs.thieu_truong || []).filter((t) => t !== "Ảnh chân dung");
   return (
     <div className="flex flex-col gap-3">
-      <CheckItem ok={!thieu.length} title="Thông tin bắt buộc" desc={thieu.length ? `Còn thiếu: ${thieu.join(", ")}` : "Đầy đủ họ tên, ngày sinh, giới tính, CCCD, ngày cấp, SĐT, địa chỉ, hạng"} />
+      <CheckItem ok={!thieu.length} title="Thông tin bắt buộc" desc={thieu.length ? `Còn thiếu: ${thieu.join(", ")}` : "Đầy đủ họ tên, ngày sinh, CCCD, ngày cấp, địa chỉ, hạng"} />
       <CheckItem ok={!!hs.co_anh} title="Ảnh chân dung" desc={hs.co_anh ? "Đã có ảnh 3x4" : "Chưa chụp ảnh — quay lại bước Chụp ảnh"} />
       <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm sm:grid-cols-2">
         <div><span className="text-slate-500">Nguồn hồ sơ: </span><b>{NGUON_META[hs.nguon]?.label || hs.nguon}</b></div>
@@ -464,8 +498,39 @@ function DuyetStep({ hs }) {
 }
 
 // ─── Bước 4: in ─────────────────────────────
+// Xem trước đúng file Word đã điền (cùng nguồn với bản in)
+function XemTruocMau({ hs, forms }) {
+  const ref = useRef(null);
+  const formsKey = forms.join(",");
+  const key = `${hs.id}|${hs.updated_at}|${formsKey}`;
+  const [done, setDone] = useState({ key: null, err: null }); // lần hiển thị gần nhất
+  const loading = done.key !== key;
+  const err = done.key === key ? done.err : null;
+  const renderedKey = useRef(null);
+  useEffect(() => {
+    // hs đổi object mỗi lần tải lại nhưng nội dung không đổi -> không vẽ lại
+    if (!formsKey || !ref.current || renderedKey.current === key) return undefined;
+    let cancelled = false;
+    renderForms(ref.current, hs, formsKey.split(","), { isCancelled: () => cancelled })
+      .then(() => {
+        if (cancelled) return;
+        renderedKey.current = key;
+        setDone({ key, err: null });
+      })
+      .catch((e) => !cancelled && setDone({ key, err: errMsg(e, "Không tải được mẫu đơn") }));
+    return () => {
+      cancelled = true;
+    };
+  }, [hs, key, formsKey]);
+  return (
+    <Spin spinning={loading} tip="Đang tạo mẫu đơn...">
+      {err && <div className="py-6 text-center text-red-500">{err}</div>}
+      <div ref={ref} className="tiep-sinh-docx mx-auto" style={{ zoom: 0.6 }} />
+    </Spin>
+  );
+}
+
 function InStep({ hs, forms, setForms }) {
-  const html = useMemo(() => buildFormsHtml(hs, forms), [hs, forms]);
   const [loadingKey, setLoadingKey] = useState(null);
   const daDuyet = hs.trang_thai === "da_duyet" || hs.trang_thai === "da_in";
   const taiWord = async (key) => {
@@ -485,7 +550,7 @@ function InStep({ hs, forms, setForms }) {
         {hs.so_lan_in > 0 && <span className="text-slate-500">Đã in {hs.so_lan_in} lần · lần đầu {fmtDateTime(hs.in_at)}</span>}
         {!daDuyet && <span className="text-red-500">Hồ sơ cần được duyệt trước khi in</span>}
       </div>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
         {MAU_DON.map((m) => {
           const on = forms.includes(m.key);
           return (
@@ -502,7 +567,7 @@ function InStep({ hs, forms, setForms }) {
       </div>
       <div className="relative min-h-[260px] flex-1 overflow-auto rounded-xl border border-slate-200 bg-slate-100 p-3">
         {forms.length ? (
-          <iframe title="Xem trước mẫu đơn" srcDoc={html} className="mx-auto block rounded bg-white shadow" style={{ width: 800, height: 1135 * forms.length, border: 0, zoom: 0.55 }} />
+          <XemTruocMau hs={hs} forms={forms} />
         ) : (
           <Empty description="Chọn ít nhất 1 mẫu đơn để in" className="py-16" />
         )}
@@ -661,7 +726,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     }
     const row = await run(() => ghiNhanInHoSo(base.id));
     if (row) {
-      printForms({ ...base, ...row, anh_chan_dung: row.anh_chan_dung || base.anh_chan_dung }, forms);
+      await printForms({ ...base, ...row }, forms).catch((e) => message.error(errMsg(e, "Không tạo được bản in")));
       message.success(`Đang in ${forms.length} mẫu đơn`);
     }
   };
@@ -776,14 +841,9 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       <Form.Item name="ho_ten" label="Họ và tên" rules={[{ required: true, message: "Nhập họ tên" }]}>
                         <Input placeholder="VD: Phạm Thị Lan Anh" />
                       </Form.Item>
-                      <div className="grid grid-cols-2 gap-x-3">
-                        <Form.Item name="ngay_sinh" label="Ngày sinh">
-                          <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy" />
-                        </Form.Item>
-                        <Form.Item name="gioi_tinh" label="Giới tính">
-                          <Radio.Group options={["Nam", "Nữ"]} optionType="button" buttonStyle="solid" />
-                        </Form.Item>
-                      </div>
+                      <Form.Item name="ngay_sinh" label="Ngày sinh">
+                        <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy" />
+                      </Form.Item>
                       <Form.Item name="cccd" label="Số CCCD" rules={[{ pattern: /^\d{12}$/, message: "CCCD gồm 12 chữ số" }]}>
                         <Input maxLength={12} placeholder="12 chữ số" />
                       </Form.Item>
@@ -804,14 +864,17 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       <Form.Item name="email" label="Email">
                         <Input />
                       </Form.Item>
-                      <Form.Item name="hang" label="Hạng đăng ký" rules={[{ required: true, message: "Chọn hạng" }]}>
-                        <Select options={HANG_OPTIONS} />
+                      <Form.Item name="loai_hinh" label="Hạng đăng ký (loại hình học)" rules={[{ required: true, message: "Chọn loại hình học" }]}>
+                        <Select options={LOAI_HINH_OPTIONS} placeholder="Chọn theo đăng ký của học viên" />
                       </Form.Item>
+                      <Form.Item name="kham_suc_khoe" label="Khám sức khoẻ">
+                        <Select options={KHAM_SK_OPTIONS} placeholder="Chọn hình thức khám" allowClear />
+                      </Form.Item>
+                      <div className="sm:col-span-2 mb-3">
+                        <PhaiThuForm form={form} hs={hs} />
+                      </div>
                       <Form.Item name="khoa_hoc" label="Khóa học">
                         <Input />
-                      </Form.Item>
-                      <Form.Item name="dia_diem_hoc" label="Địa điểm học">
-                        <Input placeholder="VD: Sân Lập Phương Thành" />
                       </Form.Item>
                       <Form.Item name="dau_moi" label="Đầu mối tuyển sinh">
                         <Input />

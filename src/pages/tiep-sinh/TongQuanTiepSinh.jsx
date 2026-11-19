@@ -18,11 +18,11 @@ import {
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import {
-  getThongKeTiepSinh, getDanhSachHoSo, getChiTietHoSo, ghiNhanInHoSo, traBoSungHoSo, moLaiHoSo, xoaHoSo, errMsg,
+  getThongKeTiepSinh, getDanhSachHoSo, getChiTietHoSo, getCauHinhTiepSinh, ghiNhanInHoSo, traBoSungHoSo, moLaiHoSo, xoaHoSo, errMsg,
 } from "../../apis/apiTiepSinh";
 import {
   NGUON_META, TRANG_THAI_META, HANG_OPTIONS, WEEKDAYS, HoSoDetailModal, TraBoSungModal,
-  fmtDate, fmtDateTime, fmtWait, useNow,
+  fmtDate, fmtDateTime, fmtWait, useNow, tinhPhaiThu, fmtTien,
 } from "./tiepSinhShared";
 import { printForms, mauTheoHang } from "./mauDon";
 import { TiepNhanView } from "./TiepNhanHoSo";
@@ -399,6 +399,8 @@ export default function TongQuanTiepSinh() {
     staleTime: 15000,
   });
   const sel = selRes?.data;
+  const { data: cauHinhRes } = useQuery({ queryKey: ["tiep-sinh-cau-hinh"], queryFn: getCauHinhTiepSinh, staleTime: 60000 });
+  const cauHinh = cauHinhRes?.data || {};
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["tiep-sinh-thong-ke"] });
@@ -423,7 +425,7 @@ export default function TongQuanTiepSinh() {
 
   const inHoSo = async (id) => {
     const row = await act(() => ghiNhanInHoSo(id));
-    if (row) printForms(row, mauTheoHang(row.hang));
+    if (row) await printForms(row, mauTheoHang(row.hang)).catch((e) => message.error(errMsg(e, "Không tạo được bản in")));
   };
 
   const xoa = (r) =>
@@ -828,7 +830,9 @@ export default function TongQuanTiepSinh() {
                     <InfoLine icon={<FaRegCalendarAlt />} label="Ngày sinh" value={fmtDate(sel.ngay_sinh)} />
                     <InfoLine icon={<FaRegIdCard />} label="CCCD" value={sel.cccd} />
                     <InfoLine icon={<FaEnvelope />} label="Địa chỉ" value={sel.dia_chi} />
-                    <InfoLine icon={<FaGraduationCap />} label="Hạng đăng ký" value={sel.hang} />
+                    <InfoLine icon={<FaGraduationCap />} label="Hạng đăng ký" value={sel.loai_hinh || sel.hang} />
+                    <InfoLine icon={<FaRegCheckCircle />} label="Khám SK" value={sel.kham_suc_khoe} />
+                    <InfoLine icon={<FaRegCheckCircle />} label="Phải thu" value={fmtTien(tinhPhaiThu(sel, cauHinh)?.tong) || "Chưa có giá"} />
                   </div>
                   <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
                     <Button type="primary" icon={<EyeOutlined />} onClick={() => setDetailId(sel.id)} style={{ background: "#1f6ae0" }}>Xem chi tiết</Button>

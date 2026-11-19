@@ -113,7 +113,7 @@ export default function OcrCccdModal({ open, onClose, onResult }) {
         message.error("Không đọc được thông tin — hãy chụp rõ, thẳng, đủ sáng");
         return;
       }
-      setResult({ data, nguon: "ocr", tinCay: res?.data?.do_tin_cay });
+      setResult({ data, nguon: res?.data?.nguon === "qr" ? "qr" : "ocr", tinCay: res?.data?.do_tin_cay });
     } catch (e) {
       message.error(errMsg(e, "Đọc ảnh thất bại"));
     } finally {

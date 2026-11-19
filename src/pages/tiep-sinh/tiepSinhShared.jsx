@@ -38,7 +38,44 @@ export const HANG_OPTIONS = [
   { value: "A", label: "A - Mô tô trên 125 cm³" },
 ];
 
-export const WEEKDAYS = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+// Theo đúng lựa chọn trên Google Form "Lựa chọn loại hình học"
+export const LOAI_HINH_OPTIONS = [
+  { value: "Hạng A1", label: "Hạng A1", hang: "A1", giaKey: "gia_a1" },
+  { value: "Hạng A - Xe côn tay (A)", label: "Hạng A - Xe côn tay (A)", hang: "A", giaKey: "gia_a_con_tay" },
+  { value: "Hạng A - Xe tay ga (A.02)", label: "Hạng A - Xe tay ga (A.02)", hang: "A", giaKey: "gia_a_tay_ga" },
+];
+// Theo Google Form "Khám sức khoẻ"
+export const KHAM_SK_TRUNG_TAM = "Khám theo lịch trung tâm";
+export const KHAM_SK_OPTIONS = [
+  { value: KHAM_SK_TRUNG_TAM, label: KHAM_SK_TRUNG_TAM },
+  { value: "Tự khám - tự nộp", label: "Tự khám - tự nộp" },
+];
+
+export const loaiHinhMeta = (v) => LOAI_HINH_OPTIONS.find((o) => o.value === v) || null;
+export const hangTuLoaiHinh = (v) => loaiHinhMeta(v)?.hang || (/^hạng\s*a1/i.test(v || "") ? "A1" : v ? "A" : null);
+export const fmtTien = (n) => (n === null || n === undefined || n === "" ? "" : `${Number(n).toLocaleString("vi-VN")} đ`);
+const soTien = (v) => {
+  const s = String(v ?? "").replace(/[^\d]/g, "");
+  return s ? Number(s) : null;
+};
+
+/**
+ * Số tiền phải thu = học phí theo loại hình + phí khám sức khoẻ (nếu khám theo lịch trung tâm).
+ * hs.tong_thu (nhập tay / cột "Tổng thu" trên Sheet) được ưu tiên.
+ * -> { tong, hocPhi, phiKham, thieuGia }
+ */
+export function tinhPhaiThu(hs, cfg = {}) {
+  if (!hs) return null;
+  const meta = loaiHinhMeta(hs.loai_hinh);
+  const hocPhi = meta ? soTien(cfg[meta.giaKey]) : null;
+  const phiKham = hs.kham_suc_khoe === KHAM_SK_TRUNG_TAM ? soTien(cfg.phi_kham_suc_khoe) : 0;
+  const nhapTay = soTien(hs.tong_thu);
+  if (nhapTay !== null) return { tong: nhapTay, hocPhi, phiKham, nhapTay: true };
+  const thieuGia = hocPhi === null || phiKham === null;
+  return { tong: thieuGia ? null : hocPhi + phiKham, hocPhi, phiKham, thieuGia };
+}
+
+export const WEEKDAYS =["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 
 export const fmtDate = (v) => (v ? dayjs(v).format("DD/MM/YYYY") : "");
 export const fmtDateTime = (v) => (v ? dayjs(v).format("HH:mm - DD/MM/YYYY") : "");

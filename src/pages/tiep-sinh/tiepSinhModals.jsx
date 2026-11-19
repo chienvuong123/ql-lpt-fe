@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, DatePicker, Empty, Form, Input, Modal, QRCode, Spin, Tabs, Upload, message } from "antd";
+import { Button, DatePicker, Empty, Form, Input, InputNumber, Modal, QRCode, Spin, Tabs, Upload, message } from "antd";
 import { SyncOutlined, SettingOutlined, DownloadOutlined, InboxOutlined } from "@ant-design/icons";
 import { FaDesktop } from "react-icons/fa";
 import dayjs from "dayjs";
 import {
   getCauHinhTiepSinh, luuCauHinhTiepSinh, dongBoGoogleSheetTiepSinh, importExcelTiepSinh, errMsg,
 } from "../../apis/apiTiepSinh";
-import { BLUE, BLUE_DARK } from "./tiepSinhShared";
+import { BLUE, BLUE_DARK, LOAI_HINH_OPTIONS } from "./tiepSinhShared";
+
+const MONEY = {
+  className: "!w-full",
+  min: 0,
+  step: 100000,
+  addonAfter: "đ",
+  placeholder: "VD: 2.500.000",
+  formatter: (v) => (v === undefined || v === null || v === "" ? "" : String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ".")),
+  parser: (v) => String(v || "").replace(/[^\d]/g, ""),
+};
 
 // ─── Modal cấu hình / đồng bộ / QR ─────────────────────────────
 export function CauHinhModal({ open, onClose }) {
@@ -49,9 +59,17 @@ export function CauHinhModal({ open, onClose }) {
         <Form.Item name="apps_script_key" label="Mã bí mật Apps Script (giống KEY trong script)">
           <Input.Password placeholder="KEY" />
         </Form.Item>
-        <Form.Item name="dia_diem_hoc_mac_dinh" label="Địa điểm học mặc định">
-          <Input placeholder="Sân Lập Phương Thành" />
-        </Form.Item>
+        <div className="mb-2 mt-1 font-semibold" style={{ color: BLUE_DARK }}>Bảng giá — số tiền phải thu (VNĐ)</div>
+        <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+          {LOAI_HINH_OPTIONS.map((o) => (
+            <Form.Item key={o.giaKey} name={o.giaKey} label={o.label}>
+              <InputNumber {...MONEY} />
+            </Form.Item>
+          ))}
+          <Form.Item name="phi_kham_suc_khoe" label="Phí khám sức khoẻ (khám theo lịch trung tâm)">
+            <InputNumber {...MONEY} />
+          </Form.Item>
+        </div>
       </Form>
     </Modal>
   );
