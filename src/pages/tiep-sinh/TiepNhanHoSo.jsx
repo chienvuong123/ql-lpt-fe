@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Button, Checkbox, DatePicker, Dropdown, Empty, Form, Image, Input, Modal, Select, Spin, Tooltip, message,
+  AutoComplete, Button, Checkbox, DatePicker, Dropdown, Empty, Form, Image, Input, Modal, Select, Spin, Tooltip, message,
 } from "antd";
 import {
   CheckOutlined, CameraFilled, ReloadOutlined, PictureOutlined, SearchOutlined, ScanOutlined,
@@ -10,6 +10,7 @@ import {
   PrinterOutlined, PlusOutlined, IdcardOutlined, UserOutlined, ExclamationCircleFilled,
   SafetyCertificateFilled, ArrowLeftOutlined, ThunderboltFilled, UndoOutlined,
   SyncOutlined, QrcodeOutlined, SettingOutlined, CloseOutlined, FileWordOutlined, LeftOutlined, DownOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import {
   FaUser, FaRegCalendarAlt, FaRegIdCard, FaPhoneAlt, FaHome, FaGraduationCap, FaCar,
@@ -18,15 +19,16 @@ import {
 import dayjs from "dayjs";
 import {
   getChiTietHoSo, taoHoSo, capNhatHoSo, capNhatAnhHoSo, duyetHoSo, traBoSungHoSo, moLaiHoSo,
-  ghiNhanInHoSo, getDanhSachHoSo, getThongKeTiepSinh, getCauHinhTiepSinh, errMsg,
+  ghiNhanInHoSo, getDanhSachHoSo, getThongKeTiepSinh, getCauHinhTiepSinh, getDauMoiTiepSinh, errMsg,
 } from "../../apis/apiTiepSinh";
 import {
   BLUE, BLUE_DARK, LOAI_HINH_OPTIONS, KHAM_SK_OPTIONS, tinhPhaiThu, fmtTien, hangTuLoaiHinh, NGUON_META, TRANG_THAI_META, WEEKDAYS, useNow, StatusTag, CccdScanModal,
-  HoSoDetailModal, TraBoSungModal, fmtDate, fmtDateTime, toPortraitDataUrl, fileToPortraitDataUrl,
-
+  HoSoDetailModal, TraBoSungModal, fmtDate, fmtDateTime, toPortraitDataUrl, fileToPortraitDataUrl, taiAnhHoSo,
+  DAU_MOI_MAC_DINH, boDau, goiYDauMoi, kiemTraSo,
 } from "./tiepSinhShared";
 import { CauHinhModal, DongBoModal, QrKhaiModal } from "./tiepSinhModals";
 import OcrCccdModal from "./OcrCccdModal";
+import { NghiepVuButtons, coNghiepVu } from "./NghiepVuHoSo";
 import { MAU_DON, mauTheoHang, renderForms, printForms, downloadWord } from "./mauDon";
 
 const STEPS = [
@@ -50,6 +52,43 @@ function useBangGia() {
   return data?.data || {};
 }
 
+/** Danh sách đầu mối chuẩn (NV đã nhập trước đây) */
+function useDauMoi() {
+  const { data } = useQuery({ queryKey: ["tiep-sinh-dau-moi"], queryFn: getDauMoiTiepSinh, staleTime: 60000 });
+  return data?.data || [];
+}
+
+/**
+ * Ô "Đầu mối tuyển sinh": gõ để chọn tên chuẩn đã ghi nhớ. Để trống = TT.
+ * HV tự ghi tên ngắn ("Hiếu") -> hiện gợi ý tên chuẩn để NV bấm chọn.
+ */
+function DauMoiInput({ value, onChange }) {
+  const list = useDauMoi();
+  const q = boDau(value);
+  const options = list
+    .filter((d) => !q || boDau(d.ten).includes(q))
+    .slice(0, 12)
+    .map((d) => ({ value: d.ten, label: <span className="flex justify-between gap-2"><span>{d.ten}</span>{d.so_lan ? <span className="text-xs text-slate-400">{d.so_lan} lần</span> : null}</span> }));
+  const goiY = goiYDauMoi(value, list);
+  return (
+    <div>
+      <AutoComplete value={value} onChange={onChange} options={options} allowClear className="w-full"
+        placeholder={`Để trống = ${DAU_MOI_MAC_DINH} (trung tâm)`} />
+      {goiY.length > 0 && (
+        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-orange-600">
+          HV ghi “{value}” — chọn tên chuẩn:
+          {goiY.map((t) => (
+            <button key={t} type="button" onClick={() => onChange(t)}
+              className="rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 font-medium text-blue-700 hover:bg-blue-100">
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Khung "Số tiền phải thu" */
 function PhaiThuBox({ hs, compact = false }) {
   const cfg = useBangGia();
@@ -58,15 +97,19 @@ function PhaiThuBox({ hs, compact = false }) {
   const chiTiet = [
     t.hocPhi !== null && t.hocPhi !== undefined ? `Học phí ${fmtTien(t.hocPhi)}` : null,
     t.phiKham ? `Khám SK ${fmtTien(t.phiKham)}` : null,
-  ].filter(Boolean).join(" + ");
+  ].filter(Boolean).join(" + ") + (t.duocChuyen ? ` − được chuyển ${fmtTien(t.duocChuyen)}` : "");
   return (
     <div className={`flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 ${compact ? "px-3 py-2" : "px-4 py-2.5"}`}>
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-sm font-semibold text-orange-700"><FaMoneyBillWave /> Số tiền phải thu</div>
-        {(chiTiet || t.nhapTay) && <div className="truncate text-xs text-slate-500">{t.nhapTay ? "Theo cột Tổng thu" : chiTiet}</div>}
+        {(chiTiet || t.nhapTay) && (
+          <div className="truncate text-xs text-slate-500">
+            {t.nhapTay ? `Theo cột Tổng thu${t.duocChuyen ? ` − được chuyển ${fmtTien(t.duocChuyen)}` : ""}` : chiTiet}
+          </div>
+        )}
       </div>
       <div className={`shrink-0 font-extrabold text-orange-600 ${compact ? "text-xl" : "text-2xl"}`}>
-        {t.tong !== null ? fmtTien(t.tong) : (
+        {t.tong !== null ? (t.conLai < 0 ? <span className="text-green-600">Dư {fmtTien(-t.conLai)}</span> : fmtTien(t.conLai)) : (
           <span className="text-sm font-semibold italic text-red-500">
             {!hs.loai_hinh ? "Chưa chọn loại hình" : "Chưa cài bảng giá (Cấu hình)"}
           </span>
@@ -277,6 +320,8 @@ function fromFormValues(v) {
   return {
     ...v,
     hang: hangTuLoaiHinh(v.loai_hinh) || undefined,
+    // để trống = TT (trung tâm)
+    dau_moi: String(v.dau_moi || "").trim() || DAU_MOI_MAC_DINH,
     ngay_sinh: v.ngay_sinh ? v.ngay_sinh.format("YYYY-MM-DD") : null,
     ngay_cap_cccd: v.ngay_cap_cccd ? v.ngay_cap_cccd.format("YYYY-MM-DD") : null,
   };
@@ -451,6 +496,11 @@ function ChupAnhStep({ hs, onSaved }) {
         <Button icon={<SearchOutlined />} disabled={!hs.anh_chan_dung} onClick={() => setPreview(true)} style={{ color: BLUE }}>
           Xem lớn
         </Button>
+        <Tooltip title={hs.ma_ho_so ? `Lưu ảnh với tên ${hs.ma_ho_so}` : undefined}>
+          <Button icon={<DownloadOutlined />} disabled={!hs.anh_chan_dung} onClick={() => taiAnhHoSo(hs)} style={{ color: BLUE }}>
+            Tải ảnh
+          </Button>
+        </Tooltip>
         {hs.anh_chan_dung && (
           <Image
             src={hs.anh_chan_dung}
@@ -464,12 +514,19 @@ function ChupAnhStep({ hs, onSaved }) {
 }
 
 // ─── Bước 3: duyệt ─────────────────────────────
-function CheckItem({ ok, title, desc }) {
+function CheckItem({ ok, warn = false, title, desc }) {
+  // warn: chỉ cảnh báo (vàng), không chặn duyệt
+  const tone = ok ? "green" : warn ? "amber" : "red";
+  const cls = {
+    green: ["border-green-200 bg-green-50/60", "text-green-700", <CheckCircleFilled key="i" className="mt-0.5 text-xl text-green-500" />],
+    amber: ["border-amber-300 bg-amber-50", "text-amber-700", <ExclamationCircleFilled key="i" className="mt-0.5 text-xl text-amber-500" />],
+    red: ["border-red-200 bg-red-50/60", "text-red-600", <CloseCircleFilled key="i" className="mt-0.5 text-xl text-red-500" />],
+  }[tone];
   return (
-    <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${ok ? "border-green-200 bg-green-50/60" : "border-red-200 bg-red-50/60"}`}>
-      {ok ? <CheckCircleFilled className="mt-0.5 text-xl text-green-500" /> : <CloseCircleFilled className="mt-0.5 text-xl text-red-500" />}
+    <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${cls[0]}`}>
+      {cls[2]}
       <div>
-        <div className={`font-semibold ${ok ? "text-green-700" : "text-red-600"}`}>{title}</div>
+        <div className={`font-semibold ${cls[1]}`}>{title}</div>
         {desc && <div className="text-sm text-slate-600">{desc}</div>}
       </div>
     </div>
@@ -477,11 +534,35 @@ function CheckItem({ ok, title, desc }) {
 }
 
 function DuyetStep({ hs }) {
+  const dauMoiList = useDauMoi();
   const thieu = (hs.thieu_truong || []).filter((t) => t !== "Ảnh chân dung");
+  const tuoi = hs.ngay_sinh ? dayjs().diff(dayjs(hs.ngay_sinh), "year") : null;
+  const cccd = kiemTraSo(hs.cccd, "cccd");
+  const sdt = kiemTraSo(hs.dien_thoai, "sdt");
+  const goiY = goiYDauMoi(hs.dau_moi, dauMoiList);
+  const dauMoiChuan = !hs.dau_moi || dauMoiList.some((d) => d.ten === hs.dau_moi);
+  // Cảnh báo (không chặn duyệt) — NV kiểm tra lại với học viên
+  const canhBao = [
+    tuoi !== null && tuoi < 18 && {
+      key: "tuoi", title: `Chưa đủ 18 tuổi (hiện ${tuoi} tuổi)`,
+      desc: `Sinh ngày ${fmtDate(hs.ngay_sinh)} — đủ 18 tuổi vào ${dayjs(hs.ngay_sinh).add(18, "year").format("DD/MM/YYYY")}`,
+    },
+    hs.cccd && !cccd.ok && { key: "cccd", title: "Số CCCD không đúng", desc: cccd.msg },
+    hs.dien_thoai && !sdt.ok && { key: "sdt", title: "Số điện thoại không đúng", desc: sdt.msg },
+    !dauMoiChuan && {
+      key: "dm", title: `Đầu mối “${hs.dau_moi}” chưa có trong danh sách chuẩn`,
+      desc: goiY.length ? `Có phải: ${goiY.join(" / ")}? — sửa ở bước Thông tin học viên` : "Kiểm tra lại tên đầu mối ở bước Thông tin học viên",
+    },
+  ].filter(Boolean);
   return (
     <div className="flex flex-col gap-3">
       <CheckItem ok={!thieu.length} title="Thông tin bắt buộc" desc={thieu.length ? `Còn thiếu: ${thieu.join(", ")}` : "Đầy đủ họ tên, ngày sinh, CCCD, ngày cấp, địa chỉ, hạng"} />
       <CheckItem ok={!!hs.co_anh} title="Ảnh chân dung" desc={hs.co_anh ? "Đã có ảnh 3x4" : "Chưa chụp ảnh — quay lại bước Chụp ảnh"} />
+      {canhBao.length ? (
+        canhBao.map((c) => <CheckItem key={c.key} ok={false} warn title={c.title} desc={c.desc} />)
+      ) : (
+        <CheckItem ok title="Tuổi, CCCD, điện thoại, đầu mối" desc="Đủ 18 tuổi · CCCD 12 số · SĐT 10 số · đầu mối chuẩn" />
+      )}
       <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm sm:grid-cols-2">
         <div><span className="text-slate-500">Nguồn hồ sơ: </span><b>{NGUON_META[hs.nguon]?.label || hs.nguon}</b></div>
         <div><span className="text-slate-500">Thời gian khai: </span><b>{fmtDateTime(hs.thoi_gian_khai)}</b></div>
@@ -642,6 +723,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     qc.setQueryData(["tiep-sinh-ho-so", String(row.id)], (old) => ({ ...(old || {}), data: { ...(old?.data || {}), ...row } }));
     qc.invalidateQueries({ queryKey: ["tiep-sinh-thong-ke"] });
     qc.invalidateQueries({ queryKey: ["tiep-sinh-list"] });
+    qc.invalidateQueries({ queryKey: ["tiep-sinh-dau-moi"] });
   };
 
   const run = async (fn, okMsg) => {
@@ -753,12 +835,13 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
   };
 
   const daDuyet = hs?.trang_thai === "da_duyet" || hs?.trang_thai === "da_in";
-  const maxStep = !hs ? 0 : daDuyet ? 3 : 2;
+  const boHoc = hs?.trang_thai === "bo_hoc";
+  const maxStep = !hs ? 0 : daDuyet ? 3 : boHoc ? 1 : 2;
 
   // Nút chính theo bước — bước Chụp ảnh/Duyệt đều là "Duyệt hồ sơ" (như ảnh mẫu)
   const primary = (() => {
     if (step === 0) return { label: hs ? "Lưu & tiếp tục" : "Tiếp nhận hồ sơ", onClick: saveInfo };
-    if (!hs) return null;
+    if (!hs || boHoc) return null;
     if (step === 1 || step === 2) {
       if (daDuyet) return { label: "Sang bước in", onClick: () => setStep(3) };
       return { label: "Duyệt hồ sơ", onClick: doDuyet, disabled: hs.thieu_truong?.length > 0 };
@@ -779,6 +862,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     if (t === "da_duyet") return { label: "Đã duyệt", color: "#16a34a", bg: "#e9f9ee", icon: <CheckOutlined /> };
     if (t === "da_in") return { label: "Đã in hồ sơ", color: "#7c3aed", bg: "#f2ecff", icon: <PrinterOutlined /> };
     if (t === "can_bo_sung") return { label: "Cần bổ sung", color: "#ea580c", bg: "#fff3e6", icon: <ExclamationCircleFilled /> };
+    if (t === "bo_hoc") return { label: "Đã bỏ học", color: "#64748b", bg: "#eef1f5", icon: <CloseOutlined /> };
     return { label: "", color: "#64748b", bg: "#f1f5f9", icon: null };
   })();
 
@@ -876,8 +960,8 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       <Form.Item name="khoa_hoc" label="Khóa học">
                         <Input />
                       </Form.Item>
-                      <Form.Item name="dau_moi" label="Đầu mối tuyển sinh">
-                        <Input />
+                      <Form.Item name="dau_moi" label="Đầu mối tuyển sinh" className="!mb-1">
+                        <DauMoiInput />
                       </Form.Item>
                       <Form.Item name="ghi_chu" label="Ghi chú" className="sm:col-span-2">
                         <Input.TextArea rows={2} />
@@ -892,7 +976,9 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
             </div>
 
             {/* Thanh dưới: trạng thái + thao tác nhanh + nút chính */}
-            <div className="grid shrink-0 items-stretch gap-4 lg:grid-cols-[minmax(0,4fr)_minmax(0,5fr)_minmax(0,4fr)]">
+            <div className={`grid shrink-0 items-stretch gap-4 ${coNghiepVu(hs)
+              ? "lg:grid-cols-2 2xl:grid-cols-[minmax(0,3.6fr)_minmax(0,3.8fr)_minmax(0,5.6fr)_minmax(0,3.4fr)]"
+              : "lg:grid-cols-[minmax(0,4fr)_minmax(0,5fr)_minmax(0,4fr)]"}`}>
               <div className="rounded-2xl bg-white/80 px-4 py-2.5 shadow-sm backdrop-blur">
                 <div className="mb-1.5 flex items-center gap-2 text-[14px] font-bold" style={{ color: BLUE_DARK }}>
                   <FileTextOutlined style={{ color: BLUE }} /> Trạng thái hồ sơ
@@ -908,6 +994,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                         {st.label}
                       </div>
                       <div className="text-[12px] text-slate-700">Thời gian khai: {fmtDateTime(hs.thoi_gian_khai)}</div>
+                      {boHoc && hs.ly_do_bo_hoc && <div className="truncate text-[13px] text-slate-600">Lý do: {hs.ly_do_bo_hoc}</div>}
                       {hs.ly_do_bo_sung && hs.trang_thai === "can_bo_sung" && (
                         <div className="truncate text-[13px] text-orange-600">Bổ sung: {hs.ly_do_bo_sung}</div>
                       )}
@@ -932,13 +1019,14 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       <UndoOutlined className="text-lg" /> Đã bổ sung xong
                     </button>
                   ) : (
-                    <button type="button" disabled={!hs || hs.trang_thai === "da_in"} onClick={() => setTraOpen(true)}
+                    <button type="button" disabled={!hs || hs.trang_thai === "da_in" || boHoc} onClick={() => setTraOpen(true)}
                       className="flex h-10 items-center justify-center gap-2 rounded-lg border-2 border-red-300 bg-red-50 font-semibold transition hover:brightness-95 disabled:opacity-40" style={{ color: "#ef4444", fontSize: 15 }}>
                       <RollbackOutlined className="text-lg" /> Trả hồ sơ bổ sung
                     </button>
                   )}
                 </div>
               </div>
+              {coNghiepVu(hs) && <NghiepVuButtons hs={hs} className="self-stretch" />}
               {primary && (
                 <Tooltip title={primary.disabled && hs?.thieu_truong?.length ? `Còn thiếu: ${hs.thieu_truong.join(", ")}` : null}>
                   <button

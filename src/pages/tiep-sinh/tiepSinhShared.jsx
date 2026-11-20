@@ -8,6 +8,7 @@ import {
   PrinterFilled,
   ScanOutlined,
   CameraOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import { MdOutlineAccessTime } from "react-icons/md";
@@ -25,6 +26,7 @@ export const TRANG_THAI_META = {
   can_bo_sung: { label: "Cần bổ sung", color: "#e8780c", bg: "#fff3e6", icon: <ExclamationCircleFilled /> },
   da_duyet: { label: "Đã duyệt", color: "#16a34a", bg: "#e8f8ee", icon: <CheckCircleFilled /> },
   da_in: { label: "Đã in", color: "#7c3aed", bg: "#f2ecff", icon: <PrinterFilled /> },
+  bo_hoc: { label: "Bỏ học", color: "#64748b", bg: "#eef1f5", icon: <StopOutlined /> },
 };
 
 export const NGUON_META = {
@@ -70,9 +72,75 @@ export function tinhPhaiThu(hs, cfg = {}) {
   const hocPhi = meta ? soTien(cfg[meta.giaKey]) : null;
   const phiKham = hs.kham_suc_khoe === KHAM_SK_TRUNG_TAM ? soTien(cfg.phi_kham_suc_khoe) : 0;
   const nhapTay = soTien(hs.tong_thu);
-  if (nhapTay !== null) return { tong: nhapTay, hocPhi, phiKham, nhapTay: true };
+  // Tiền HV khác chuyển sang (chuyển học phí / phí khám) -> trừ vào số còn phải thu
+  const duocChuyen = Number(hs.tien_duoc_chuyen) || 0;
+  const conLai = (tong) => (tong === null ? null : tong - duocChuyen);
+  if (nhapTay !== null) return { tong: nhapTay, hocPhi, phiKham, nhapTay: true, duocChuyen, conLai: conLai(nhapTay) };
   const thieuGia = hocPhi === null || phiKham === null;
-  return { tong: thieuGia ? null : hocPhi + phiKham, hocPhi, phiKham, thieuGia };
+  const tong = thieuGia ? null : hocPhi + phiKham;
+  return { tong, hocPhi, phiKham, thieuGia, duocChuyen, conLai: conLai(tong) };
+}
+
+/** Số tiền còn phải thu (đã trừ tiền được chuyển sang) */
+export const conPhaiThu = (hs, cfg) => {
+  const t = tinhPhaiThu(hs, cfg);
+  return t ? t.conLai : null;
+};
+
+// ─── Đầu mối tuyển sinh ─────────────────────────────
+export const DAU_MOI_MAC_DINH = "TT";
+export const boDau = (s) =>
+  String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Gợi ý đầu mối chuẩn cho tên HV tự ghi (vd "Hiếu" -> "Nguyễn Minh Hiếu").
+ * Khớp khi mọi từ HV ghi đều có trong tên chuẩn (không phân biệt dấu). Trả [] nếu đã là tên chuẩn.
+ */
+export function goiYDauMoi(raw, list = []) {
+  const q = boDau(raw);
+  if (!q) return [];
+  if (list.some((d) => d.ten === String(raw).trim())) return [];
+  const tu = q.split(" ");
+  return list
+    .filter((d) => {
+      const ten = boDau(d.ten).split(" ");
+      return tu.every((t) => ten.includes(t));
+    })
+    .slice(0, 5)
+    .map((d) => d.ten);
+}
+
+/** Kiểm tra số: { ok, msg } — CCCD 12 số, SĐT di động 10 số (chấp nhận +84) */
+export function kiemTraSo(v, loai) {
+  const raw = String(v || "").trim();
+  if (!raw) return { ok: false, msg: "Chưa nhập" };
+  let so = raw.replace(/[^\d]/g, "");
+  if (loai === "sdt" && so.startsWith("84") && so.length === 11) so = `0${so.slice(2)}`;
+  const can = loai === "sdt" ? 10 : 12;
+  const ten = loai === "sdt" ? "SĐT" : "CCCD";
+  if (/[^\d\s.+]/.test(raw)) return { ok: false, msg: `${ten} có ký tự không phải số: "${raw}"` };
+  if (so.length > can) return { ok: false, msg: `${ten} "${raw}" thừa ${so.length - can} số (cần ${can} số)` };
+  if (so.length < can) return { ok: false, msg: `${ten} "${raw}" thiếu ${can - so.length} số (cần ${can} số)` };
+  if (loai === "sdt" && !so.startsWith("0")) return { ok: false, msg: `SĐT "${raw}" phải bắt đầu bằng 0` };
+  return { ok: true, msg: so };
+}
+
+/** Tải ảnh chân dung, tên file = mã hồ sơ (vd 2611200001.jpg) */
+export function taiAnhHoSo(hs) {
+  if (!hs?.anh_chan_dung) return;
+  const m = /^data:image\/(\w+)/.exec(hs.anh_chan_dung);
+  const ext = m ? (m[1] === "jpeg" ? "jpg" : m[1]) : "jpg";
+  const a = document.createElement("a");
+  a.href = hs.anh_chan_dung;
+  a.download = `${hs.ma_ho_so || hs.id}.${ext}`;
+  a.click();
 }
 
 export const WEEKDAYS =["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
@@ -480,8 +548,19 @@ const LOG_LABEL = {
   tra_bo_sung: "Trả bổ sung",
   mo_lai: "Mở lại",
   in: "In hồ sơ",
+  chuyen_hoc_phi_di: "Chuyển học phí đi",
+  chuyen_hoc_phi_den: "Nhận học phí chuyển đến",
+  chuyen_hang: "Chuyển hạng",
+  chuyen_phi_kham_di: "Chuyển phí khám đi",
+  chuyen_phi_kham_den: "Nhận phí khám chuyển đến",
+  hoan_phi_kham: "Hoàn phí khám",
+  bo_hoc: "Bỏ học",
 };
-const LOG_COLOR = { duyet: "green", tra_bo_sung: "orange", in: "purple", tao_moi: "blue" };
+const LOG_COLOR = {
+  duyet: "green", tra_bo_sung: "orange", in: "purple", tao_moi: "blue",
+  chuyen_hoc_phi_di: "red", chuyen_hoc_phi_den: "green", chuyen_hang: "blue",
+  chuyen_phi_kham_di: "red", chuyen_phi_kham_den: "green", hoan_phi_kham: "orange", bo_hoc: "gray",
+};
 
 export function HoSoDetailModal({ id, open, onClose, footer }) {
   const { data, isLoading } = useQuery({
@@ -518,7 +597,11 @@ export function HoSoDetailModal({ id, open, onClose, footer }) {
                 { label: "Ngày cấp", children: fmtDate(hs.ngay_cap_cccd) },
                 { label: "SĐT", children: hs.dien_thoai },
                 { label: "Địa chỉ", children: hs.dia_chi, span: 2 },
-                { label: "Hạng", children: hs.hang },
+                { label: "Loại hình", children: hs.loai_hinh || hs.hang },
+                { label: "Khám SK", children: hs.kham_suc_khoe },
+                ...(hs.tien_duoc_chuyen ? [{ label: "Được chuyển", children: <span className="font-semibold text-green-600">{fmtTien(hs.tien_duoc_chuyen)}</span> }] : []),
+                ...(hs.khoa_da_vao ? [{ label: "Đã vào khoá", children: hs.khoa_da_vao }] : []),
+                ...(hs.trang_thai === "bo_hoc" ? [{ label: "Bỏ học", children: `${fmtDateTime(hs.bo_hoc_at)} — ${hs.ly_do_bo_hoc || ""}`, span: 2 }] : []),
                 { label: "Nguồn", children: <Tag color={NGUON_META[hs.nguon]?.color}>{NGUON_META[hs.nguon]?.label || hs.nguon}</Tag> },
                 { label: "Đầu mối", children: hs.dau_moi },
                 { label: "Đối chiếu CCCD", children: hs.da_doi_chieu_cccd ? <Tag color="green">Đã đối chiếu</Tag> : <Tag>Chưa</Tag> },
@@ -536,6 +619,11 @@ export function HoSoDetailModal({ id, open, onClose, footer }) {
                   <div className="text-sm">
                     <b>{LOG_LABEL[l.hanh_dong] || l.hanh_dong}</b>
                     <span className="text-slate-500"> · {fmtDateTime(l.created_at)}{l.nguoi ? ` · ${l.nguoi}` : ""}</span>
+                    {l.so_tien ? (
+                      <span className={`ml-2 font-semibold ${l.so_tien > 0 ? "text-green-600" : "text-red-500"}`}>
+                        {l.so_tien > 0 ? "+" : "−"}{fmtTien(Math.abs(l.so_tien))}
+                      </span>
+                    ) : null}
                     {l.noi_dung && <div className="text-slate-600">{l.noi_dung}</div>}
                   </div>
                 ),

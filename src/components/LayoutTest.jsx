@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -29,6 +29,7 @@ import {
   Menu,
   Space,
   theme,
+  Spin,
 } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { FaCarRear, FaBook } from "react-icons/fa6";
@@ -402,7 +403,7 @@ const LayoutTest = () => {
             minHeight: "calc(100vh - 112px)",
           }}
         >
-          <Outlet />
+          <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin size="large" /></div>}><Outlet /></Suspense>
         </Content>
       </Layout>
     </Layout>

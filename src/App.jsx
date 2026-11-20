@@ -1,62 +1,63 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, Spin } from "antd";
 import viVN from "antd/locale/vi_VN";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import SearchStudents from "./pages/SearchStudents";
-import StudentDetail from "./pages/StudentDetail";
-import Login from "./pages/auth/LoginAntd";
+const SearchStudents = lazy(() => import("./pages/SearchStudents"));
+const StudentDetail = lazy(() => import("./pages/StudentDetail"));
+const Login = lazy(() => import("./pages/auth/LoginAntd"));
 import LayoutApp from "./components/LayoutApp";
-import Dashboard from "./pages/dashboard";
-import DongBoGiaoVienVaoXe from "./pages/synchronous/DongBoGiaoVienVaoXe";
-import DongBoHocVienVaoXe from "./pages/synchronous/DongBoHocVienVaoXe";
-import TrackingPage from "./pages/map/TrackingPage";
-import AccountManagement from "./pages/user/AccountManagement";
-import Member from "./pages/class/Member";
-import KiemTraToanKhoa from "./pages/checks/KiemTraToanKhoa";
-import KiemTraHangNam from "./pages/checks/KiemTraHangNam";
+const Dashboard = lazy(() => import("./pages/dashboard"));
+const DongBoGiaoVienVaoXe = lazy(() => import("./pages/synchronous/DongBoGiaoVienVaoXe"));
+const DongBoHocVienVaoXe = lazy(() => import("./pages/synchronous/DongBoHocVienVaoXe"));
+const TrackingPage = lazy(() => import("./pages/map/TrackingPage"));
+const AccountManagement = lazy(() => import("./pages/user/AccountManagement"));
+const Member = lazy(() => import("./pages/class/Member"));
+const KiemTraToanKhoa = lazy(() => import("./pages/checks/KiemTraToanKhoa"));
+const KiemTraHangNam = lazy(() => import("./pages/checks/KiemTraHangNam"));
 import LayoutTest from "./components/LayoutTest";
-import DangNhapLopLyThuyet from "./pages/auth/DangNhapLopLyThuyet";
-import DanhSachChiaCabin from "./pages/cabin/DanhSachChiaCabin";
-import HocVienKyDAT from "./pages/dat/HocVienKyDAT";
-import LichCabin from "./pages/cabin/LichCabin";
-import BuCaBin from "./pages/cabin/BuCaBin";
-import KiemTraPublic from "./pages/checks/KiemTraPublic";
-import QuanLyHocVienLyThuyet from "./pages/class/QuanLyHocVienLyThuyet";
-import TruyXuatLoi from "./pages/dat/TruyXuatLoi";
+const DangNhapLopLyThuyet = lazy(() => import("./pages/auth/DangNhapLopLyThuyet"));
+const DanhSachChiaCabin = lazy(() => import("./pages/cabin/DanhSachChiaCabin"));
+const HocVienKyDAT = lazy(() => import("./pages/dat/HocVienKyDAT"));
+const LichCabin = lazy(() => import("./pages/cabin/LichCabin"));
+const BuCaBin = lazy(() => import("./pages/cabin/BuCaBin"));
+const KiemTraPublic = lazy(() => import("./pages/checks/KiemTraPublic"));
+const QuanLyHocVienLyThuyet = lazy(() => import("./pages/class/QuanLyHocVienLyThuyet"));
+const TruyXuatLoi = lazy(() => import("./pages/dat/TruyXuatLoi"));
 import { GiaoVienGuard } from "./components/RoleGuard";
-import DashboardDAT from "./pages/dat/DashboardDAT";
-import HocVienTheoGiaoVien from "./pages/dat/HocVienTheoGiaoVien";
-import ThemDuLieuVaoHeThong from "./pages/add-data/ThemDuLieuVaoHeThong";
-import DashboardLyThuyet from "./pages/class/DashboardLYThuyet";
-import KiemTraTrungXeGiaoVien from "./pages/dat/KiemTraTrungXeGiaoVien";
-import KiemTraDuLieuTotNghiep from "./pages/checks/KiemTraDuLieuTotNghiep";
-import TienDoDaoTao from "./pages/add-data/TienDoDaoTao";
-import DashboardCabin from "./pages/cabin/DashboardCabin";
-import HocBuLyThuyet from "./pages/class/HocBuLyThuyet";
+const DashboardDAT = lazy(() => import("./pages/dat/DashboardDAT"));
+const HocVienTheoGiaoVien = lazy(() => import("./pages/dat/HocVienTheoGiaoVien"));
+const ThemDuLieuVaoHeThong = lazy(() => import("./pages/add-data/ThemDuLieuVaoHeThong"));
+const DashboardLyThuyet = lazy(() => import("./pages/class/DashboardLYThuyet"));
+const KiemTraTrungXeGiaoVien = lazy(() => import("./pages/dat/KiemTraTrungXeGiaoVien"));
+const KiemTraDuLieuTotNghiep = lazy(() => import("./pages/checks/KiemTraDuLieuTotNghiep"));
+const TienDoDaoTao = lazy(() => import("./pages/add-data/TienDoDaoTao"));
+const DashboardCabin = lazy(() => import("./pages/cabin/DashboardCabin"));
+const HocBuLyThuyet = lazy(() => import("./pages/class/HocBuLyThuyet"));
 // import HocBuDAT from "./pages/dat/HocBuDat";
-import DanhSachLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachLyThuyet";
-import TienDoHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/TienDoHocBuLyThuyet";
+const DanhSachLyThuyet = lazy(() => import("./pages/make-up-lessons/ly-thuyet/DanhSachLyThuyet"));
+const TienDoHocBuLyThuyet = lazy(() => import("./pages/make-up-lessons/ly-thuyet/TienDoHocBuLyThuyet"));
 
-import DanhSachThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachThucHanh";
-import TienDoHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/TienDoHocBuThucHanh";
-import HocBu from "./pages/make-up-lessons/HocBu";
-import DanhSachHocVienBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachHocVienBuThucHanh";
-import HocBuDAT from "./pages/dat/hoc-bu/HocBuDAT";
-import DanhSachChoXepLopThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachChoXepLopThucHanh";
-import DanhSachDangHocBuThucHanh from "./pages/make-up-lessons/thuc-hanh/DanhSachDangHocBuThucHanh";
-import DanhSachChoXepLopLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachChoXepLopLyThuyet";
-import DanhSachDangHocBuLyThuyet from "./pages/make-up-lessons/ly-thuyet/DanhSachDangHocBuLyThuyet";
-import CaiDatHeThong from "./pages/setting/CaiDatHeThong";
-import ForbiddenZonePage from "./pages/map/ForbiddenZonePage";
-import Xe from "./pages/add-data/Xe";
-import DangKyXeGiaoVien from "./pages/add-data/DangKyXeGiaoVien";
-import UyQuyen from "./pages/add-data/UyQuyen";
-import DSKyNhanHoSoVaGPLX from "./pages/orther/DSKyNhanHoSoVaGPLX";
-import GplxHoan from "./pages/orther/GplxHoan";
-import KeToan from "./pages/ke-toan/KeToan";
-import KetQuaSatHach from "./pages/sat-hach/KetQuaSatHach";
-import TongQuanTiepSinh from "./pages/tiep-sinh/TongQuanTiepSinh";
-import TiepNhanHoSo from "./pages/tiep-sinh/TiepNhanHoSo";
+const DanhSachThucHanh = lazy(() => import("./pages/make-up-lessons/thuc-hanh/DanhSachThucHanh"));
+const TienDoHocBuThucHanh = lazy(() => import("./pages/make-up-lessons/thuc-hanh/TienDoHocBuThucHanh"));
+const HocBu = lazy(() => import("./pages/make-up-lessons/HocBu"));
+const DanhSachHocVienBuThucHanh = lazy(() => import("./pages/make-up-lessons/thuc-hanh/DanhSachHocVienBuThucHanh"));
+const HocBuDAT = lazy(() => import("./pages/dat/hoc-bu/HocBuDAT"));
+const DanhSachChoXepLopThucHanh = lazy(() => import("./pages/make-up-lessons/thuc-hanh/DanhSachChoXepLopThucHanh"));
+const DanhSachDangHocBuThucHanh = lazy(() => import("./pages/make-up-lessons/thuc-hanh/DanhSachDangHocBuThucHanh"));
+const DanhSachChoXepLopLyThuyet = lazy(() => import("./pages/make-up-lessons/ly-thuyet/DanhSachChoXepLopLyThuyet"));
+const DanhSachDangHocBuLyThuyet = lazy(() => import("./pages/make-up-lessons/ly-thuyet/DanhSachDangHocBuLyThuyet"));
+const CaiDatHeThong = lazy(() => import("./pages/setting/CaiDatHeThong"));
+const ForbiddenZonePage = lazy(() => import("./pages/map/ForbiddenZonePage"));
+const Xe = lazy(() => import("./pages/add-data/Xe"));
+const DangKyXeGiaoVien = lazy(() => import("./pages/add-data/DangKyXeGiaoVien"));
+const UyQuyen = lazy(() => import("./pages/add-data/UyQuyen"));
+const DSKyNhanHoSoVaGPLX = lazy(() => import("./pages/orther/DSKyNhanHoSoVaGPLX"));
+const GplxHoan = lazy(() => import("./pages/orther/GplxHoan"));
+const KeToan = lazy(() => import("./pages/ke-toan/KeToan"));
+const KetQuaSatHach = lazy(() => import("./pages/sat-hach/KetQuaSatHach"));
+const TongQuanTiepSinh = lazy(() => import("./pages/tiep-sinh/TongQuanTiepSinh"));
+const TiepNhanHoSo = lazy(() => import("./pages/tiep-sinh/TiepNhanHoSo"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,6 +68,13 @@ const queryClient = new QueryClient({
   },
 });
 
+// Vòng tải khi mở trang lần đầu (code từng trang được tải riêng khi cần)
+export const PageLoading = () => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "40vh" }}>
+    <Spin size="large" />
+  </div>
+);
+
 const GuardedRoute = ({ element, path }) => (
   <GiaoVienGuard path={path}>{element}</GiaoVienGuard>
 );
@@ -76,6 +84,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ConfigProvider locale={viVN}>
         <BrowserRouter>
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/login-ly-thuyet" element={<DangNhapLopLyThuyet />} />
@@ -411,6 +420,7 @@ function App() {
               }
             />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </ConfigProvider>
     </QueryClientProvider>

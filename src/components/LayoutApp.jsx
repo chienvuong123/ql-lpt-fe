@@ -1,8 +1,8 @@
-import { Layout, Button, Space, Dropdown } from "antd";
+import { Layout, Button, Space, Dropdown, Spin } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
 import { Outlet, useNavigate } from "react-router-dom";
 import "./layoutApp.css";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 const { Header, Content } = Layout;
 
@@ -60,7 +60,7 @@ export default function LayoutApp() {
 
       <Content className="layout-app-content !bg-gradient-to-b !from-blue-50">
         <div className="max-w-5xl mx-auto">
-          <Outlet />
+          <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin size="large" /></div>}><Outlet /></Suspense>
         </div>
       </Content>
     </Layout>

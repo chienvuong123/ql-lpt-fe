@@ -23,7 +23,15 @@ export const duyetHoSo = (id) => unwrap(api.post(`/ho-so/${id}/duyet`));
 export const traBoSungHoSo = (id, ly_do) => unwrap(api.post(`/ho-so/${id}/tra-bo-sung`, { ly_do }));
 export const moLaiHoSo = (id) => unwrap(api.post(`/ho-so/${id}/mo-lai`));
 export const ghiNhanInHoSo = (id) => unwrap(api.post(`/ho-so/${id}/in`));
-export const getCauHinhTiepSinh = () => unwrap(api.get("/cau-hinh"));
+// Đầu mối tuyển sinh chuẩn (gợi ý)
+export const getDauMoiTiepSinh = () => unwrap(api.get("/dau-moi"));
+export const xoaDauMoiTiepSinh = (ten) => unwrap(api.post("/dau-moi/xoa", { ten }));
+// Nghiệp vụ sau duyệt
+export const chuyenHocPhiHoSo = (id, body) => unwrap(api.post(`/ho-so/${id}/chuyen-hoc-phi`, body));
+export const chuyenHangHoSo = (id, body) => unwrap(api.post(`/ho-so/${id}/chuyen-hang`, body));
+export const chuyenPhiKhamHoSo = (id, body) => unwrap(api.post(`/ho-so/${id}/chuyen-phi-kham`, body));
+export const boHocHoSo = (id, body) => unwrap(api.post(`/ho-so/${id}/bo-hoc`, body));
+export const getCauHinhTiepSinh =() => unwrap(api.get("/cau-hinh"));
 export const luuCauHinhTiepSinh = (body) => unwrap(api.put("/cau-hinh", body));
 export const dongBoGoogleSheetTiepSinh = (body) => unwrap(api.post("/dong-bo-google-sheet", body));
 /** OCR ảnh CCCD (tối đa 2 ảnh) -> { data, text, do_tin_cay } */

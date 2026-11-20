@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, DatePicker, Dropdown, Empty, Input, Modal, Popover, Select, Spin, Table, Tooltip, message, notification } from "antd";
+import { Button, Checkbox, DatePicker, Dropdown, Empty, Input, Modal, Popover, Select, Spin, Table, Tooltip, message, notification } from "antd";
 import {
-  EyeOutlined, CheckOutlined, PrinterOutlined, MoreOutlined, ClockCircleOutlined, SearchOutlined,
-  DownloadOutlined, RollbackOutlined, SyncOutlined, DeleteOutlined, EditOutlined, BellOutlined,
+  EyeOutlined, MoreOutlined, ClockCircleOutlined, SearchOutlined,
+  DownloadOutlined, SyncOutlined, DeleteOutlined, EditOutlined, BellOutlined,
   FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, UserOutlined, FileSearchOutlined,
-  CheckCircleFilled, ClockCircleFilled, ExclamationCircleFilled, PrinterFilled,
+  CheckCircleFilled, ClockCircleFilled, ExclamationCircleFilled, PrinterFilled, SettingOutlined, StopOutlined,
 } from "@ant-design/icons";
 import {
   FaUsers, FaRegClock, FaExclamationCircle, FaCheckCircle, FaPrint, FaRegCalendarAlt, FaPhoneAlt,
   FaRegIdCard, FaIdCard, FaUserPlus, FaEnvelope, FaGraduationCap, FaChartBar, FaShieldAlt, FaBolt, FaInfoCircle, FaFolderPlus,
-  FaRegCheckCircle,
+  FaRegCheckCircle, FaUserTie,
 } from "react-icons/fa";
 import {
   Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
@@ -22,7 +22,7 @@ import {
 } from "../../apis/apiTiepSinh";
 import {
   NGUON_META, TRANG_THAI_META, HANG_OPTIONS, WEEKDAYS, HoSoDetailModal, TraBoSungModal,
-  fmtDate, fmtDateTime, fmtWait, useNow, tinhPhaiThu, fmtTien,
+  fmtDate, fmtDateTime, fmtWait, useNow, tinhPhaiThu, fmtTien, taiAnhHoSo,
 } from "./tiepSinhShared";
 import { printForms, mauTheoHang } from "./mauDon";
 import { TiepNhanView } from "./TiepNhanHoSo";
@@ -31,6 +31,7 @@ import OcrCccdModal from "./OcrCccdModal";
 const NAVY = "#0f2d6b";
 const TABLE_HEAD = "#16357a";
 const SHORT_DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+const COT_AN_KEY = "tiep-sinh-cot-an";
 
 // Nhãn trạng thái trong bảng (nền nhạt + icon như ảnh mẫu)
 const PILL = {
@@ -38,6 +39,7 @@ const PILL = {
   can_bo_sung: { label: "Cần bổ sung", color: "#e07b00", bg: "#fff1de", icon: <ExclamationCircleFilled /> },
   da_duyet: { label: "Đã duyệt", color: "#15803d", bg: "#e3f7ea", icon: <CheckCircleFilled /> },
   da_in: { label: "Đã in", color: "#7c3aed", bg: "#efe8ff", icon: <PrinterFilled /> },
+  bo_hoc: { label: "Bỏ học", color: "#64748b", bg: "#eef1f5", icon: <StopOutlined /> },
 };
 function Pill({ value }) {
   const m = PILL[value] || { label: value, color: "#64748b", bg: "#f1f5f9" };
@@ -335,6 +337,21 @@ export default function TongQuanTiepSinh() {
   const [detailId, setDetailId] = useState(null);
   const [traId, setTraId] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Cột đang ẩn — nhớ theo trình duyệt
+  const [cotAn, setCotAn] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(COT_AN_KEY)) || [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(COT_AN_KEY, JSON.stringify(cotAn));
+    } catch {
+      /* bỏ qua */
+    }
+  }, [cotAn]);
   const [popupId, setPopupId] = useState(null);
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupPrefill, setPopupPrefill] = useState(null); // dữ liệu đọc từ ảnh CCCD
@@ -453,38 +470,71 @@ export default function TongQuanTiepSinh() {
     resetPage();
   };
 
-  // Xuất các dòng đã tick, nếu không tick thì xuất toàn bộ theo bộ lọc
+  // Cột bảng (thứ tự theo yêu cầu). xuat: giá trị ghi ra Excel
+  // còn phải thu = phải thu − tiền HV khác chuyển sang
+  const phaiThu = (r) => tinhPhaiThu(r, cauHinh)?.conLai ?? null;
+  const nowrap = (v) => <span className="whitespace-nowrap">{v}</span>;
+  const COT = [
+    { key: "stt", title: "STT", width: 46, align: "center", always: true, render: (_, __, i) => (page.page - 1) * page.limit + i + 1 },
+    { key: "duyet_at", title: "Thời gian duyệt", width: 128, render: (v) => nowrap(fmtDateTime(v)), xuat: (r) => fmtDateTime(r.duyet_at) },
+    { key: "ma_ho_so", title: "Mã hồ sơ", width: 100 },
+    { key: "ho_ten", title: "Họ và tên", width: 160, ellipsis: true, always: true },
+    { key: "ngay_sinh", title: "Năm sinh", width: 92, render: (v) => nowrap(fmtDate(v)), xuat: (r) => fmtDate(r.ngay_sinh) },
+    { key: "cccd", title: "CCCD", width: 112, render: nowrap },
+    { key: "dien_thoai", title: "Điện thoại", width: 104, render: nowrap },
+    { key: "dia_chi", title: "Địa chỉ", width: 200, ellipsis: { showTitle: true } },
+    { key: "loai_hinh", title: "Loại hình", width: 150, ellipsis: { showTitle: true } },
+    { key: "dau_moi", title: "Đầu mối", width: 120, ellipsis: { showTitle: true } },
+    { key: "hang", title: "Hạng", width: 54, align: "center" },
+    { key: "phai_thu", title: "Phải thu", width: 108, align: "right", render: (_, r) => nowrap(fmtTien(phaiThu(r))), xuat: phaiThu },
+    { key: "trang_thai", title: "Trạng thái", width: 138, render: (v) => <Pill value={v} />, xuat: (r) => TRANG_THAI_META[r.trang_thai]?.label || r.trang_thai },
+    { key: "nguoi_duyet", title: "Người duyệt", width: 120, ellipsis: { showTitle: true } },
+  ];
+
+  // Xuất Excel: dòng đã tick, nếu không tick thì toàn bộ hồ sơ theo bộ lọc hiện tại — đủ mọi cột
   const exportExcel = async () => {
+    const hide = message.loading("Đang xuất Excel...", 0);
     try {
       let list;
       if (checked.length) list = rows.filter((r) => checked.includes(r.id));
-      else list = (await getDanhSachHoSo({ ...listParams, page: 1, limit: 500 }))?.data || [];
-      const data = list.map((r, i) => ({
-        STT: i + 1,
-        "Mã hồ sơ": r.ma_ho_so,
-        "Họ tên": r.ho_ten,
-        "Ngày sinh": fmtDate(r.ngay_sinh),
-        "Giới tính": r.gioi_tinh,
-        CCCD: r.cccd,
-        "Ngày cấp": fmtDate(r.ngay_cap_cccd),
-        SĐT: r.dien_thoai,
-        "Địa chỉ": r.dia_chi,
-        Hạng: r.hang,
-        "Đầu mối": r.dau_moi,
-        Nguồn: NGUON_META[r.nguon]?.label || r.nguon,
-        "Thời gian khai": fmtDateTime(r.thoi_gian_khai),
-        "Trạng thái": TRANG_THAI_META[r.trang_thai]?.label || r.trang_thai,
-        "Còn thiếu": (r.thieu_truong || []).join(", "),
-        "Người duyệt": r.nguoi_duyet,
-        "Thời gian duyệt": fmtDateTime(r.duyet_at),
-      }));
+      else {
+        list = [];
+        for (let p = 1; ; p++) {
+          const res = await getDanhSachHoSo({ ...listParams, page: p, limit: 500 });
+          list.push(...(res?.data || []));
+          if (p >= (res?.pagination?.totalPages || 1)) break;
+        }
+      }
+      if (!list.length) {
+        message.info("Không có hồ sơ nào để xuất");
+        return;
+      }
+      const data = list.map((r, i) => {
+        const o = {};
+        for (const c of COT) o[c.title] = c.key === "stt" ? i + 1 : c.xuat ? c.xuat(r) : r[c.key] ?? "";
+        Object.assign(o, {
+          "Giới tính": r.gioi_tinh || "",
+          "Ngày cấp CCCD": fmtDate(r.ngay_cap_cccd),
+          "Khám sức khoẻ": r.kham_suc_khoe || "",
+          "Thời gian khai": fmtDateTime(r.thoi_gian_khai),
+          Nguồn: NGUON_META[r.nguon]?.label || r.nguon || "",
+          "Người tiếp nhận": r.nguoi_tiep_nhan || "",
+          "Ghi chú": r.ghi_chu || "",
+          "Còn thiếu": (r.thieu_truong || []).join(", "),
+        });
+        return o;
+      });
       const ws = XLSX.utils.json_to_sheet(data);
-      ws["!cols"] = Object.keys(data[0] || { a: 1 }).map((k) => ({ wch: Math.max(10, k.length + 2) }));
+      ws["!cols"] = Object.keys(data[0]).map((k) => ({
+        wch: Math.min(45, Math.max(k.length + 2, ...data.map((d) => String(d[k] ?? "").length + 1))),
+      }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Ho so");
       XLSX.writeFile(wb, `ho-so-tiep-sinh-${dayjs().format("YYYYMMDD-HHmm")}.xlsx`);
     } catch (e) {
       message.error(errMsg(e, "Xuất Excel thất bại"));
+    } finally {
+      hide();
     }
   };
 
@@ -505,69 +555,13 @@ export default function TongQuanTiepSinh() {
     { key: "cho_duyet", name: "Khác", value: tyLe.cho_duyet || 0, color: "#d5dbe4" },
   ];
 
-  const columns = [
-    { title: "#", width: 40, align: "center", render: (_, __, i) => (page.page - 1) * page.limit + i + 1 },
-    { title: "Mã hồ sơ", dataIndex: "ma_ho_so", width: 118 },
-    { title: "Họ và tên", dataIndex: "ho_ten", width: 150, ellipsis: true },
-    { title: "CCCD", dataIndex: "cccd", width: 112, render: (v) => <span className="whitespace-nowrap">{v}</span> },
-    { title: "Hạng", dataIndex: "hang", width: 50 },
-    { title: "Thời gian khai", dataIndex: "thoi_gian_khai", width: 125, render: (v) => <span className="whitespace-nowrap">{fmtDateTime(v)}</span> },
-    { title: "Trạng thái", dataIndex: "trang_thai", width: 138, render: (v) => <Pill value={v} /> },
-    { title: "Phụ trách", width: 112,  ellipsis: true, render: (_, r) => r.nguoi_duyet || r.nguoi_tiep_nhan || "-" },
-    {
-      title: (
-        <div className="flex justify-end">
-          <Tooltip title={checked.length ? `Xuất Excel ${checked.length} hồ sơ đã chọn` : "Xuất Excel"}>
-            <button type="button" onClick={exportExcel} className="flex items-center gap-1 whitespace-nowrap font-medium text-white hover:underline">
-              <DownloadOutlined /> Excel
-            </button>
-          </Tooltip>
-        </div>
-      ),
-      width: 112,
-      render: (_, r) => {
-        const go = () => openPopup(r.id);
-        const main = {
-          cho_duyet: { label: "Duyệt", icon: <CheckOutlined />, cls: "border-green-500 bg-green-500 text-white", onClick: go },
-          can_bo_sung: { label: "Đã bổ sung", icon: <SyncOutlined />, cls: "border-orange-300 bg-white text-orange-500", onClick: () => act(() => moLaiHoSo(r.id), "Đã chuyển về chờ duyệt") },
-          da_duyet: { label: "In", icon: <PrinterOutlined />, cls: "border-green-500 bg-green-500 text-white", onClick: () => inHoSo(r.id) },
-          da_in: { label: "In lại", icon: <PrinterOutlined />, cls: "border-blue-300 bg-white text-blue-600", onClick: () => inHoSo(r.id) },
-        }[r.trang_thai];
-        const iconBtn = "inline-flex h-7 w-7 items-center justify-center rounded-md border text-[13px] transition hover:brightness-95 disabled:opacity-50";
-        return (
-          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <Tooltip title="Xem">
-              <button type="button" aria-label="Xem" onClick={go} className={`${iconBtn} border-blue-200 bg-white text-blue-600 hover:bg-blue-50`}>
-                <EyeOutlined />
-              </button>
-            </Tooltip>
-            {main && (
-              <Tooltip title={main.label}>
-                <button type="button" aria-label={main.label} disabled={busy} onClick={main.onClick} className={`${iconBtn} ${main.cls}`}>
-                  {main.icon}
-                </button>
-              </Tooltip>
-            )}
-            <Dropdown
-              trigger={["click"]}
-              menu={{
-                items: [
-                  { key: "ct", icon: <FileSearchOutlined />, label: "Chi tiết & lịch sử", onClick: () => setDetailId(r.id) },
-                  { key: "sua", icon: <EditOutlined />, label: "Chỉnh sửa", onClick: go },
-                  ...(!["da_in", "can_bo_sung"].includes(r.trang_thai) ? [{ key: "tra", icon: <RollbackOutlined />, label: "Yêu cầu bổ sung", onClick: () => setTraId(r.id) }] : []),
-                  ...(r.trang_thai !== "da_in" ? [{ type: "divider" }, { key: "xoa", danger: true, icon: <DeleteOutlined />, label: "Xoá hồ sơ", onClick: () => xoa(r) }] : []),
-                ],
-              }}
-            >
-              <button type="button" aria-label="Thêm" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
-                <MoreOutlined />
-              </button>
-            </Dropdown>
-          </div>
-        );
-      },
-    },
-  ];
+  const columns = COT.filter((c) => c.always || !cotAn.includes(c.key)).map((c) => {
+    const col = { ...c, dataIndex: c.key === "stt" || c.key === "phai_thu" ? undefined : c.key };
+    delete col.xuat;
+    delete col.always;
+    return col;
+  });
+  const tableWidth = columns.reduce((t, c) => t + (c.width || 100), 36);
 
   const traRow = rows.find((r) => r.id === traId) || (sel?.id === traId ? sel : null);
 
@@ -771,6 +765,29 @@ export default function TongQuanTiepSinh() {
                 onPressEnter={doSearch}
               />
               <Button type="primary" icon={<SearchOutlined />} onClick={doSearch} style={{ background: "#1f6ae0" }}>Tìm kiếm</Button>
+              <Popover
+                trigger="click"
+                placement="bottomRight"
+                title="Hiển thị cột"
+                content={
+                  <div className="flex w-48 flex-col gap-1">
+                    {COT.filter((c) => !c.always).map((c) => (
+                      <Checkbox key={c.key} checked={!cotAn.includes(c.key)}
+                        onChange={(e) => setCotAn((a) => (e.target.checked ? a.filter((k) => k !== c.key) : [...a, c.key]))}>
+                        {c.title}
+                      </Checkbox>
+                    ))}
+                    <Button size="small" type="link" className="!px-0 text-left" disabled={!cotAn.length} onClick={() => setCotAn([])}>Hiện tất cả</Button>
+                  </div>
+                }
+              >
+                <Button icon={<SettingOutlined />}>Cột{cotAn.length ? ` (ẩn ${cotAn.length})` : ""}</Button>
+              </Popover>
+              <Tooltip title={checked.length ? `Xuất ${checked.length} hồ sơ đã chọn` : "Xuất toàn bộ hồ sơ theo bộ lọc"}>
+                <Button icon={<DownloadOutlined />} onClick={exportExcel} className="!border-green-600 !text-green-700">
+                  Xuất Excel{checked.length ? ` (${checked.length})` : ""}
+                </Button>
+              </Tooltip>
             </div>
             <div ref={tableBoxRef} className="relative min-h-0 flex-1">
             <div className="absolute inset-0">
@@ -780,10 +797,10 @@ export default function TongQuanTiepSinh() {
               columns={columns}
               dataSource={rows}
               loading={listLoading}
-              scroll={{ x: 960, y: Math.max(80, tableBoxH - 40 - 42) }}
+              scroll={{ x: tableWidth, y: Math.max(80, tableBoxH - 40 - 42) }}
               className="[&_.ant-table]:!text-[13px] [&_td]:!px-2 [&_th]:!px-2"
               rowSelection={{ selectedRowKeys: checked, onChange: setChecked, columnWidth: 36 }}
-              onRow={(r) => ({ onClick: () => setSelectedId(r.id), className: "cursor-pointer" })}
+              onRow={(r) => ({ onClick: () => setSelectedId(r.id), onDoubleClick: () => openPopup(r.id), className: "cursor-pointer" })}
               rowClassName={(r) => (r.id === selectedId ? "[&>td]:!bg-blue-50/70" : "")}
               pagination={{
                 current: page.page,
@@ -806,7 +823,24 @@ export default function TongQuanTiepSinh() {
           </Card>
 
           <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            <Card title="Thông tin nhanh" icon={<FaInfoCircle />} iconColor="#22a84f" className="min-h-0 flex-1" bodyClassName="overflow-auto px-4 pb-3">
+            <Card title="Thông tin nhanh" icon={<FaInfoCircle />} iconColor="#22a84f" className="min-h-0 flex-1" bodyClassName="overflow-auto px-4 pb-3"
+              extra={sel && (
+                <Dropdown
+                  trigger={["click"]}
+                  menu={{
+                    items: [
+                      { key: "ct", icon: <FileSearchOutlined />, label: "Chi tiết & lịch sử", onClick: () => setDetailId(sel.id) },
+                      { key: "anh", icon: <DownloadOutlined />, label: `Tải ảnh (${sel.ma_ho_so})`, disabled: !sel.anh_chan_dung, onClick: () => taiAnhHoSo(sel) },
+                      ...(sel.trang_thai === "can_bo_sung" ? [{ key: "mo", icon: <SyncOutlined />, label: "Đã bổ sung → chờ duyệt", onClick: () => act(() => moLaiHoSo(sel.id), "Đã chuyển về chờ duyệt") }] : []),
+                      ...(sel.trang_thai !== "da_in" ? [{ type: "divider" }, { key: "xoa", danger: true, icon: <DeleteOutlined />, label: "Xoá hồ sơ", onClick: () => xoa(sel) }] : []),
+                    ],
+                  }}
+                >
+                  <button type="button" aria-label="Thêm thao tác" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+                    <MoreOutlined />
+                  </button>
+                </Dropdown>
+              )}>
               {!sel ? (
                 <Empty description="Chọn một hồ sơ" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
@@ -832,7 +866,10 @@ export default function TongQuanTiepSinh() {
                     <InfoLine icon={<FaEnvelope />} label="Địa chỉ" value={sel.dia_chi} />
                     <InfoLine icon={<FaGraduationCap />} label="Hạng đăng ký" value={sel.loai_hinh || sel.hang} />
                     <InfoLine icon={<FaRegCheckCircle />} label="Khám SK" value={sel.kham_suc_khoe} />
-                    <InfoLine icon={<FaRegCheckCircle />} label="Phải thu" value={fmtTien(tinhPhaiThu(sel, cauHinh)?.tong) || "Chưa có giá"} />
+                    <InfoLine icon={<FaRegCheckCircle />} label="Phải thu" value={fmtTien(tinhPhaiThu(sel, cauHinh)?.conLai) || "Chưa có giá"} />
+                    <InfoLine icon={<FaUserTie />} label="Đầu mối" value={sel.dau_moi} />
+                    <InfoLine icon={<FaRegClock />} label="Thời gian khai" value={fmtDateTime(sel.thoi_gian_khai)} />
+                    <InfoLine icon={<FaRegClock />} label="Thời gian duyệt" value={fmtDateTime(sel.duyet_at)} />
                   </div>
                   <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
                     <Button type="primary" icon={<EyeOutlined />} onClick={() => setDetailId(sel.id)} style={{ background: "#1f6ae0" }}>Xem chi tiết</Button>
@@ -849,7 +886,7 @@ export default function TongQuanTiepSinh() {
                   { label: "In hồ sơ", icon: <FaPrint />, color: "#7b4fe0", bg: "#f1ebff", disabled: !sel || !["da_duyet", "da_in"].includes(sel.trang_thai), onClick: () => inHoSo(sel.id) },
                   { label: "Tiếp nhận hồ sơ mới", icon: <FaUserPlus />, color: "#0e7490", bg: "#e0f7fb", onClick: () => openPopup(null) },
                   { label: "Nhập từ ảnh CCCD (OCR)", icon: <FaIdCard />, color: "#ea580c", bg: "#fff1e6", onClick: () => setOcrOpen(true) },
-                  { label: "Yêu cầu bổ sung", icon: <FaFolderPlus />, color: "#22a84f", bg: "#e6f8ec", disabled: !sel || ["da_in", "can_bo_sung"].includes(sel.trang_thai), onClick: () => setTraId(sel.id) },
+                  { label: "Yêu cầu bổ sung", icon: <FaFolderPlus />, color: "#22a84f", bg: "#e6f8ec", disabled: !sel || ["da_in", "can_bo_sung", "bo_hoc"].includes(sel.trang_thai), onClick: () => setTraId(sel.id) },
                 ].map((b) => (
                   <Tooltip key={b.label} title={b.label}>
                     <button type="button" aria-label={b.label} disabled={b.disabled || busy} onClick={b.onClick}
