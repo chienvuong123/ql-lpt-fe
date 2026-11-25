@@ -19,11 +19,14 @@ export const taoHoSo = (body) => unwrap(api.post("/ho-so", body));
 export const capNhatHoSo = (id, body) => unwrap(api.put(`/ho-so/${id}`, body));
 export const xoaHoSo = (id) => unwrap(api.delete(`/ho-so/${id}`));
 export const capNhatAnhHoSo = (id, anh) => unwrap(api.put(`/ho-so/${id}/anh`, { anh }));
-export const duyetHoSo = (id) => unwrap(api.post(`/ho-so/${id}/duyet`));
+/** body.xac_nhan = true: duyệt có điều kiện khi hồ sơ còn thiếu/sai (vào mục "Cần bổ sung") */
+export const duyetHoSo = (id, body = {}) => unwrap(api.post(`/ho-so/${id}/duyet`, body));
 export const traBoSungHoSo = (id, ly_do) => unwrap(api.post(`/ho-so/${id}/tra-bo-sung`, { ly_do }));
 export const moLaiHoSo = (id) => unwrap(api.post(`/ho-so/${id}/mo-lai`));
 export const ghiNhanInHoSo = (id) => unwrap(api.post(`/ho-so/${id}/in`));
 // Đầu mối tuyển sinh chuẩn (gợi ý)
+/** Hồ sơ đã xoá trong ky ngày gần nhất */
+export const getDaXoaTiepSinh = (params) => unwrap(api.get("/da-xoa", { params }));
 export const getDauMoiTiepSinh = () => unwrap(api.get("/dau-moi"));
 export const xoaDauMoiTiepSinh = (ten) => unwrap(api.post("/dau-moi/xoa", { ten }));
 // Nghiệp vụ sau duyệt

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Checkbox, DatePicker, Dropdown, Empty, Input, Modal, Popover, Select, Spin, Table, Tooltip, message, notification } from "antd";
+import { Button, Checkbox, DatePicker, Segmented, Dropdown, Empty, Input, Modal, Popover, Select, Spin, Table, Tooltip, message, notification } from "antd";
 import {
   EyeOutlined, MoreOutlined, ClockCircleOutlined, SearchOutlined,
   DownloadOutlined, SyncOutlined, DeleteOutlined, EditOutlined, BellOutlined,
   FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, UserOutlined, FileSearchOutlined,
-  CheckCircleFilled, ClockCircleFilled, ExclamationCircleFilled, PrinterFilled, SettingOutlined, StopOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import {
-  FaUsers, FaRegClock, FaExclamationCircle, FaCheckCircle, FaPrint, FaRegCalendarAlt, FaPhoneAlt,
+  FaUsers, FaRegClock, FaExclamationCircle, FaCheckCircle, FaPrint, FaRegCalendarAlt, FaPhoneAlt, FaTrashAlt,
   FaRegIdCard, FaIdCard, FaUserPlus, FaEnvelope, FaGraduationCap, FaChartBar, FaShieldAlt, FaBolt, FaInfoCircle, FaFolderPlus,
   FaRegCheckCircle, FaUserTie,
 } from "react-icons/fa";
@@ -18,10 +18,10 @@ import {
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import {
-  getThongKeTiepSinh, getDanhSachHoSo, getChiTietHoSo, getCauHinhTiepSinh, ghiNhanInHoSo, traBoSungHoSo, moLaiHoSo, xoaHoSo, errMsg,
+  getThongKeTiepSinh, getDaXoaTiepSinh, getDanhSachHoSo, getChiTietHoSo, getCauHinhTiepSinh, ghiNhanInHoSo, traBoSungHoSo, moLaiHoSo, xoaHoSo, errMsg,
 } from "../../apis/apiTiepSinh";
 import {
-  NGUON_META, TRANG_THAI_META, HANG_OPTIONS, WEEKDAYS, HoSoDetailModal, TraBoSungModal,
+  NGUON_META, StatusTag, TRANG_THAI_HIEN_THI, LOC_TRANG_THAI, trangThaiHienThi, chiTietTrangThai, HANG_OPTIONS, WEEKDAYS, HoSoDetailModal, TraBoSungModal,
   fmtDate, fmtDateTime, fmtWait, useNow, tinhPhaiThu, fmtTien, taiAnhHoSo,
 } from "./tiepSinhShared";
 import { printForms, mauTheoHang } from "./mauDon";
@@ -32,24 +32,45 @@ const NAVY = "#0f2d6b";
 const TABLE_HEAD = "#16357a";
 const SHORT_DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const COT_AN_KEY = "tiep-sinh-cot-an";
+const KY_KEY = "tiep-sinh-ky-so-lieu";
+// Kỳ xem số liệu của các thẻ thống kê
+const KY_OPTIONS = [
+  { value: 1, label: "1 ngày" },
+  { value: 7, label: "7 ngày" },
+  { value: 14, label: "14 ngày" },
+  { value: 30, label: "30 ngày" },
+];
 
-// Nhãn trạng thái trong bảng (nền nhạt + icon như ảnh mẫu)
-const PILL = {
-  cho_duyet: { label: "Chờ kiểm duyệt", color: "#2563eb", bg: "#e6efff", icon: <ClockCircleFilled /> },
-  can_bo_sung: { label: "Cần bổ sung", color: "#e07b00", bg: "#fff1de", icon: <ExclamationCircleFilled /> },
-  da_duyet: { label: "Đã duyệt", color: "#15803d", bg: "#e3f7ea", icon: <CheckCircleFilled /> },
-  da_in: { label: "Đã in", color: "#7c3aed", bg: "#efe8ff", icon: <PrinterFilled /> },
-  bo_hoc: { label: "Bỏ học", color: "#64748b", bg: "#eef1f5", icon: <StopOutlined /> },
-};
-function Pill({ value }) {
-  const m = PILL[value] || { label: value, color: "#64748b", bg: "#f1f5f9" };
+/** Danh sách hồ sơ đã xoá trong kỳ */
+function DaXoaModal({ open, ky, onClose }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["tiep-sinh-da-xoa", ky],
+    queryFn: () => getDaXoaTiepSinh({ ky }),
+    enabled: open,
+    staleTime: 0,
+  });
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-[3px] text-xs font-medium" style={{ color: m.color, background: m.bg }}>
-      {m.icon}
-      {m.label}
-    </span>
+    <Modal open={open} onCancel={onClose} footer={null} width={1000} destroyOnHidden
+      title={`Hồ sơ đã xoá — ${ky === 1 ? "hôm nay" : `${ky} ngày gần nhất`}`}>
+      <Table rowKey="id" size="small" loading={isLoading} dataSource={data?.data || []} pagination={{ pageSize: 10, size: "small" }}
+        scroll={{ x: 900 }}
+        columns={[
+          { title: "Thời gian xoá", dataIndex: "xoa_at", width: 130, render: (v) => fmtDateTime(v) },
+          { title: "Mã hồ sơ", dataIndex: "ma_ho_so", width: 100 },
+          { title: "Họ và tên", dataIndex: "ho_ten", width: 160 },
+          { title: "CCCD", dataIndex: "cccd", width: 115 },
+          { title: "Điện thoại", dataIndex: "dien_thoai", width: 105 },
+          { title: "Loại hình", dataIndex: "loai_hinh", width: 150, ellipsis: true },
+          { title: "Trạng thái khi xoá", dataIndex: "trang_thai", width: 120, render: (v) => <StatusTag value={v} tooltip={false} /> },
+          { title: "Thời gian khai", dataIndex: "thoi_gian_khai", width: 130, render: (v) => fmtDateTime(v) },
+          { title: "Người xoá", dataIndex: "nguoi_xoa", width: 120, render: (v) => v || "-" },
+        ]} />
+    </Modal>
   );
 }
+
+// Nhãn trạng thái: dùng chung 4 loại (Chờ duyệt / Bổ sung / Duyệt / Bỏ học)
+const Pill = ({ row }) => <StatusTag hs={row} />;
 
 // ─── Khung nội dung (nền trắng mờ, không viền tiêu đề) ─────────────────────
 function Card({ title, icon, iconColor = "#1d5fd6", extra, children, className = "", bodyClassName = "px-4 pb-3" }) {
@@ -329,6 +350,24 @@ export default function TongQuanTiepSinh() {
   const now = useNow();
   const qc = useQueryClient();
   const [soNgay, setSoNgay] = useState(7);
+  // kỳ số liệu của thẻ thống kê (nhớ theo trình duyệt)
+  const [ky, setKyState] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(KY_KEY));
+      return KY_OPTIONS.some((o) => o.value === v) ? v : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const setKy = (v) => {
+    setKyState(v);
+    try {
+      localStorage.setItem(KY_KEY, String(v));
+    } catch {
+      /* bỏ qua */
+    }
+  };
+  const [daXoaOpen, setDaXoaOpen] = useState(false);
   const [filters, setFilters] = useState({ tu_ngay: dayjs(), den_ngay: dayjs(), trang_thai: undefined, hang: undefined, search: "" });
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState({ page: 1, limit: 10 });
@@ -376,8 +415,8 @@ export default function TongQuanTiepSinh() {
   }, []);
 
   const { data: tkRes, isLoading: tkLoading } = useQuery({
-    queryKey: ["tiep-sinh-thong-ke", soNgay],
-    queryFn: () => getThongKeTiepSinh({ so_ngay: soNgay }),
+    queryKey: ["tiep-sinh-thong-ke", soNgay, ky],
+    queryFn: () => getThongKeTiepSinh({ so_ngay: soNgay, ky }),
     refetchInterval: 10000,
     staleTime: 0,
   });
@@ -464,6 +503,11 @@ export default function TongQuanTiepSinh() {
     setPage((p) => ({ ...p, page: 1 }));
   };
 
+  // Thẻ "Hồ sơ N ngày": lọc danh sách theo đúng kỳ đang xem
+  const locTheoKy = () => {
+    setFilters((f) => ({ ...f, trang_thai: undefined, tu_ngay: dayjs().subtract(ky - 1, "day"), den_ngay: dayjs() }));
+    setPage((p) => ({ ...p, page: 1 }));
+  };
   const resetPage = () => setPage((p) => ({ ...p, page: 1 }));
   const doSearch = () => {
     setFilters((f) => ({ ...f, search: searchText.trim() }));
@@ -487,7 +531,11 @@ export default function TongQuanTiepSinh() {
     { key: "dau_moi", title: "Đầu mối", width: 120, ellipsis: { showTitle: true } },
     { key: "hang", title: "Hạng", width: 54, align: "center" },
     { key: "phai_thu", title: "Phải thu", width: 108, align: "right", render: (_, r) => nowrap(fmtTien(phaiThu(r))), xuat: phaiThu },
-    { key: "trang_thai", title: "Trạng thái", width: 138, render: (v) => <Pill value={v} />, xuat: (r) => TRANG_THAI_META[r.trang_thai]?.label || r.trang_thai },
+    { key: "trang_thai", title: "Trạng thái", width: 120, render: (_, r) => <Pill row={r} />,
+      xuat: (r) => {
+        const ct = chiTietTrangThai(r);
+        return `${TRANG_THAI_HIEN_THI[trangThaiHienThi(r)].label}${ct ? ` (${ct})` : ""}`;
+      } },
     { key: "nguoi_duyet", title: "Người duyệt", width: 120, ellipsis: { showTitle: true } },
   ];
 
@@ -593,9 +641,9 @@ export default function TongQuanTiepSinh() {
             </button>
           </div>
           <div className="flex items-center gap-5 rounded-xl bg-white/50 px-4 py-2 text-[14px] text-slate-800 backdrop-blur">
-            <span className="flex items-center gap-2"><FaRegCalendarAlt className="text-lg" style={{ color: NAVY }} />{WEEKDAYS[now.day()]}, {now.format("DD/MM/YYYY")}</span>
+            <span className="flex items-center gap-2 whitespace-nowrap"><FaRegCalendarAlt className="text-lg" style={{ color: NAVY }} /><span className="hidden 2xl:inline">{WEEKDAYS[now.day()]}, </span>{now.format("DD/MM/YYYY")}</span>
             <span className="flex items-center gap-2 font-semibold tabular-nums"><FaRegClock className="text-lg" style={{ color: NAVY }} />{now.format("HH:mm:ss")}</span>
-            <span className="flex items-center gap-1.5 text-[13px]"><span className="h-2 w-2 rounded-full bg-green-500" />Trực tuyến</span>
+            <span className="flex items-center gap-1.5 text-[13px]" title="Trực tuyến"><span className="h-2 w-2 rounded-full bg-green-500" /><span className="hidden 2xl:inline">Trực tuyến</span></span>
             <BellThongBao onOpenHoSo={openPopup} />
             <button
               type="button"
@@ -608,23 +656,29 @@ export default function TongQuanTiepSinh() {
           </div>
         </div>
 
-        {/* Thẻ thống kê */}
+        {/* Thẻ thống kê — chọn kỳ xem số liệu */}
+        <div className="-mb-1.5 -mt-1 flex shrink-0 items-center justify-end gap-2 text-[13px] font-semibold" style={{ color: NAVY }}>
+          Xem số liệu:
+          <Segmented size="small" value={ky} onChange={setKy} options={KY_OPTIONS} />
+        </div>
         <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
-          <StatCard icon={<FaUsers />} value={the.hom_nay ?? 0} label="Hồ sơ hôm nay" delta={tk ? the.hom_nay - the.hom_qua : null}
+          <StatCard icon={<FaUsers />} value={the.ky_moi ?? 0} label={ky === 1 ? "Hồ sơ hôm nay" : `Hồ sơ ${ky} ngày`}
+            delta={tk ? the.ky_moi - the.ky_moi_truoc : null}
             color="#2f6fe4" from="#f3f7ff" to="#d6e5fd" spark={spark("tong")}
-            active={!filters.trang_thai && filters.tu_ngay?.isSame(dayjs(), "day")} onClick={() => setStatusFilter(undefined, true)} />
-          <StatCard icon={<FaRegClock />} value={the.cho_duyet ?? 0} label="Đang chờ duyệt" delta={tk ? the.cho_duyet_moi : null}
+            active={!filters.trang_thai && filters.tu_ngay?.isSame(dayjs().subtract(ky - 1, "day"), "day") && filters.den_ngay?.isSame(dayjs(), "day")}
+            onClick={locTheoKy} />
+          <StatCard icon={<FaRegClock />} value={the.cho_duyet ?? 0} label="Đang chờ duyệt" delta={tk ? the.ky_cho_duyet_moi : null}
             color="#ef8a16" from="#fff8ee" to="#fde2bf" spark={spark("tong")}
             active={filters.trang_thai === "cho_duyet"} onClick={() => setStatusFilter("cho_duyet")} />
-          <StatCard icon={<FaExclamationCircle />} value={the.can_bo_sung ?? 0} label="Cần bổ sung" delta={tk ? the.can_bo_sung_moi : null}
-            color="#e53945" from="#fff4f5" to="#fcd6da" spark={spark("tong")}
+          <StatCard icon={<FaExclamationCircle />} value={the.can_bo_sung ?? 0} label="Bổ sung" delta={tk ? the.ky_can_bo_sung_moi : null}
+            color="#ca8a04" from="#fffbeb" to="#fde68a" spark={spark("tong")}
             active={filters.trang_thai === "can_bo_sung"} onClick={() => setStatusFilter("can_bo_sung")} />
-          <StatCard icon={<FaCheckCircle />} value={the.da_duyet ?? 0} label="Đã duyệt" delta={tk ? the.da_duyet - the.da_duyet_hom_qua : null}
+          <StatCard icon={<FaCheckCircle />} value={the.ky_da_duyet ?? 0} label="Đã duyệt" delta={tk ? the.ky_da_duyet - the.ky_da_duyet_truoc : null}
             color="#22a84f" from="#f1fcf5" to="#cdf1da" spark={spark("da_xu_ly")}
-            active={filters.trang_thai === "da_duyet"} onClick={() => setStatusFilter("da_duyet")} />
-          <StatCard icon={<FaPrint />} value={the.da_in ?? 0} label="Đã in" delta={tk ? the.da_in - the.da_in_hom_qua : null}
-            color="#7b4fe0" from="#f8f4ff" to="#e2d7fb" spark={spark("da_xu_ly")}
-            active={filters.trang_thai === "da_in"} onClick={() => setStatusFilter("da_in")} />
+            active={filters.trang_thai === "duyet"} onClick={() => setStatusFilter("duyet")} />
+          <StatCard icon={<FaTrashAlt />} value={the.ky_da_xoa ?? 0} label="Đã xoá" delta={tk ? the.ky_da_xoa - the.ky_da_xoa_truoc : null}
+            color="#e11d48" from="#fff1f3" to="#fecdd6" spark={spark("da_xoa")}
+            active={daXoaOpen} onClick={() => setDaXoaOpen(true)} />
         </div>
 
         {/* Biểu đồ + tỷ lệ + hàng đợi */}
@@ -751,7 +805,8 @@ export default function TongQuanTiepSinh() {
                 onChange={(v) => { setFilters((f) => ({ ...f, den_ngay: v })); resetPage(); }} />
               <Select allowClear placeholder="Tất cả trạng thái" style={{ width: 150 }} value={filters.trang_thai}
                 onChange={(v) => { setFilters((f) => ({ ...f, trang_thai: v })); resetPage(); }}
-                options={Object.entries(TRANG_THAI_META).map(([value, m]) => ({ value, label: m.label }))} />
+                options={LOC_TRANG_THAI}
+                labelRender={(o) => ({ da_in: "Duyệt (đã in)", da_duyet: "Duyệt" })[o.value] || o.label} />
               <Select allowClear placeholder="Tất cả hạng" style={{ width: 125 }} value={filters.hang}
                 onChange={(v) => { setFilters((f) => ({ ...f, hang: v })); resetPage(); }}
                 options={HANG_OPTIONS.map((h) => ({ value: h.value, label: `Hạng ${h.value}` }))} />
@@ -856,7 +911,8 @@ export default function TongQuanTiepSinh() {
                     <div className="min-w-0">
                       <div className="text-[18px] font-bold leading-snug" style={{ color: NAVY }}>{sel.ho_ten}</div>
                       <div className="text-[14px] text-slate-600">{sel.ma_ho_so}</div>
-                      <div className="mt-1"><Pill value={sel.trang_thai} /></div>
+                      <div className="mt-1"><Pill row={sel} /></div>
+                      {sel.can_bo_sung_sau && sel.ly_do_bo_sung ? <div className="mt-1 text-xs text-orange-600">Cần bổ sung: {sel.ly_do_bo_sung}</div> : null}
                     </div>
                   </div>
                   <div className="flex flex-col gap-0">
@@ -935,6 +991,7 @@ export default function TongQuanTiepSinh() {
         }}
       />
       <HoSoDetailModal id={detailId} open={!!detailId} onClose={() => setDetailId(null)} />
+      <DaXoaModal open={daXoaOpen} ky={ky} onClose={() => setDaXoaOpen(false)} />
       <TraBoSungModal
         open={!!traId}
         onClose={() => setTraId(null)}

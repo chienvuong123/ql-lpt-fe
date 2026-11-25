@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef, useState } from "react";
-import { Button, Descriptions, Empty, Image, Input, Modal, Segmented, Spin, Tag, Timeline, message } from "antd";
+import { Button, Descriptions, Empty, Image, Input, Modal, Segmented, Spin, Tag, Timeline, Tooltip, message } from "antd";
 import {
   CheckCircleFilled,
   ClockCircleFilled,
@@ -48,6 +48,7 @@ export const LOAI_HINH_OPTIONS = [
 ];
 // Theo Google Form "Khám sức khoẻ"
 export const KHAM_SK_TRUNG_TAM = "Khám theo lịch trung tâm";
+export const KHAM_SK_TU_KHAM = "Tự khám - tự nộp";
 export const KHAM_SK_OPTIONS = [
   { value: KHAM_SK_TRUNG_TAM, label: KHAM_SK_TRUNG_TAM },
   { value: "Tự khám - tự nộp", label: "Tự khám - tự nộp" },
@@ -69,7 +70,10 @@ const soTien = (v) => {
 export function tinhPhaiThu(hs, cfg = {}) {
   if (!hs) return null;
   const meta = loaiHinhMeta(hs.loai_hinh);
-  const hocPhi = meta ? soTien(cfg[meta.giaKey]) : null;
+  const giaGoc = meta ? soTien(cfg[meta.giaKey]) : null;
+  // Đã có GPLX ô tô -> giảm trừ học phí theo bảng giá
+  const giamTru = hs.gplx_hang ? soTien(cfg.giam_tru_gplx) || 0 : 0;
+  const hocPhi = giaGoc === null ? null : Math.max(0, giaGoc - giamTru);
   const phiKham = hs.kham_suc_khoe === KHAM_SK_TRUNG_TAM ? soTien(cfg.phi_kham_suc_khoe) : 0;
   const nhapTay = soTien(hs.tong_thu);
   // Tiền HV khác chuyển sang (chuyển học phí / phí khám) -> trừ vào số còn phải thu
@@ -78,7 +82,7 @@ export function tinhPhaiThu(hs, cfg = {}) {
   if (nhapTay !== null) return { tong: nhapTay, hocPhi, phiKham, nhapTay: true, duocChuyen, conLai: conLai(nhapTay) };
   const thieuGia = hocPhi === null || phiKham === null;
   const tong = thieuGia ? null : hocPhi + phiKham;
-  return { tong, hocPhi, phiKham, thieuGia, duocChuyen, conLai: conLai(tong) };
+  return { tong, hocPhi, phiKham, thieuGia, duocChuyen, conLai: conLai(tong), giamTru: giaGoc === null ? 0 : giaGoc - hocPhi };
 }
 
 /** Số tiền còn phải thu (đã trừ tiền được chuyển sang) */
@@ -156,9 +160,51 @@ export const fmtWait = (sec) => {
   return h > 99 ? `${Math.floor(h / 24)} ngày` : `${p(h)}:${p(m)}:${p(ss)}`;
 };
 
-export function StatusTag({ value, size = "default" }) {
-  const meta = TRANG_THAI_META[value] || { label: value || "-", color: "#64748b", bg: "#f1f5f9" };
-  return (
+// ─── Trạng thái hiển thị thống nhất (4 loại) ─────────────────────────────
+// Chờ duyệt (cam) · Bổ sung (vàng) · Duyệt (xanh, gồm cả đã in) · Bỏ học (đỏ)
+export const TRANG_THAI_HIEN_THI = {
+  cho_duyet: { label: "Chờ duyệt", color: "#c2410c", bg: "#ffedd5", icon: <ClockCircleFilled /> },
+  bo_sung: { label: "Bổ sung", color: "#a16207", bg: "#fef3c7", icon: <ExclamationCircleFilled /> },
+  duyet: { label: "Duyệt", color: "#15803d", bg: "#dcfce7", icon: <CheckCircleFilled /> },
+  bo_hoc: { label: "Bỏ học", color: "#dc2626", bg: "#fee2e2", icon: <StopOutlined /> },
+};
+
+/** Bộ lọc trạng thái (giá trị gửi lên API) */
+export const LOC_TRANG_THAI = [
+  { value: "cho_duyet", label: "Chờ duyệt" },
+  { value: "can_bo_sung", label: "Bổ sung" },
+  { value: "duyet", label: "Duyệt" },
+  { value: "bo_hoc", label: "Bỏ học" },
+];
+
+/** Hồ sơ -> 1 trong 4 trạng thái hiển thị (duyệt có điều kiện tính là "Bổ sung") */
+export function trangThaiHienThi(hs) {
+  const t = typeof hs === "string" ? hs : hs?.trang_thai;
+  if (t === "bo_hoc") return "bo_hoc";
+  if (t === "can_bo_sung" || (typeof hs === "object" && hs?.can_bo_sung_sau)) return "bo_sung";
+  if (t === "da_duyet" || t === "da_in") return "duyet";
+  return "cho_duyet";
+}
+
+/** Chi tiết phụ của trạng thái (tooltip / Excel) */
+export function chiTietTrangThai(hs) {
+  if (!hs || typeof hs !== "object") return "";
+  const daIn = hs.trang_thai === "da_in" ? `đã in${hs.so_lan_in > 1 ? ` ${hs.so_lan_in} lần` : ""}` : "";
+  const k = trangThaiHienThi(hs);
+  if (k === "bo_sung") {
+    const truoc = hs.trang_thai === "da_in" ? "Đã in" : hs.can_bo_sung_sau ? "Đã duyệt" : "";
+    return [truoc, hs.ly_do_bo_sung ? `cần bổ sung: ${hs.ly_do_bo_sung}` : "cần bổ sung"].filter(Boolean).join(" — ");
+  }
+  if (k === "duyet") return daIn || "chưa in";
+  if (k === "bo_hoc") return hs.ly_do_bo_hoc || "";
+  return "";
+}
+
+/** Nhãn trạng thái. hs (cả hồ sơ) cho kết quả chính xác nhất; value = mã trạng thái thô */
+export function StatusTag({ value, hs, size = "default", tooltip = true }) {
+  const meta = TRANG_THAI_HIEN_THI[trangThaiHienThi(hs || value)];
+  const ct = tooltip ? chiTietTrangThai(hs) : "";
+  const tag = (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap ${
         size === "large" ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
@@ -169,6 +215,7 @@ export function StatusTag({ value, size = "default" }) {
       {meta.label}
     </span>
   );
+  return ct ? <Tooltip title={ct}>{tag}</Tooltip> : tag;
 }
 
 // ─── Đồng hồ + ngày ─────────────────────────────────────
@@ -585,7 +632,7 @@ export function HoSoDetailModal({ id, open, onClose, footer }) {
             ) : (
               <div className="flex h-[200px] w-[150px] items-center justify-center rounded-xl bg-slate-100 text-slate-400">Chưa có ảnh</div>
             )}
-            <StatusTag value={hs.trang_thai} />
+            <StatusTag hs={hs} />
           </div>
           <div className="min-w-0 flex-1">
             <Descriptions size="small" column={2} bordered
@@ -598,7 +645,8 @@ export function HoSoDetailModal({ id, open, onClose, footer }) {
                 { label: "SĐT", children: hs.dien_thoai },
                 { label: "Địa chỉ", children: hs.dia_chi, span: 2 },
                 { label: "Loại hình", children: hs.loai_hinh || hs.hang },
-                { label: "Khám SK", children: hs.kham_suc_khoe },
+                { label: "Khám SK", children: `${hs.kham_suc_khoe || ""}${hs.ngay_kham ? ` · ngày khám ${fmtDate(hs.ngay_kham)}` : ""}` },
+                ...(hs.gplx_hang || hs.gplx_so ? [{ label: "GPLX ô tô", children: `Hạng ${hs.gplx_hang || "?"} · số ${hs.gplx_so || "-"} · cấp ${fmtDate(hs.gplx_ngay_cap) || "-"}`, span: 2 }] : []),
                 ...(hs.tien_duoc_chuyen ? [{ label: "Được chuyển", children: <span className="font-semibold text-green-600">{fmtTien(hs.tien_duoc_chuyen)}</span> }] : []),
                 ...(hs.khoa_da_vao ? [{ label: "Đã vào khoá", children: hs.khoa_da_vao }] : []),
                 ...(hs.trang_thai === "bo_hoc" ? [{ label: "Bỏ học", children: `${fmtDateTime(hs.bo_hoc_at)} — ${hs.ly_do_bo_hoc || ""}`, span: 2 }] : []),

@@ -10,25 +10,26 @@ import {
   PrinterOutlined, PlusOutlined, IdcardOutlined, UserOutlined, ExclamationCircleFilled,
   SafetyCertificateFilled, ArrowLeftOutlined, ThunderboltFilled, UndoOutlined,
   SyncOutlined, QrcodeOutlined, SettingOutlined, CloseOutlined, FileWordOutlined, LeftOutlined, DownOutlined,
-  DownloadOutlined,
+  DownloadOutlined, DeleteOutlined, FolderOpenOutlined,
 } from "@ant-design/icons";
 import {
   FaUser, FaRegCalendarAlt, FaRegIdCard, FaPhoneAlt, FaHome, FaGraduationCap, FaCar,
-  FaPrint, FaCamera, FaCheck, FaClipboardCheck, FaMoneyBillWave, FaHeartbeat,
+  FaPrint, FaCamera, FaCheck, FaClipboardCheck, FaMoneyBillWave, FaHeartbeat, FaIdCard,
 } from "react-icons/fa";
 import dayjs from "dayjs";
 import {
   getChiTietHoSo, taoHoSo, capNhatHoSo, capNhatAnhHoSo, duyetHoSo, traBoSungHoSo, moLaiHoSo,
-  ghiNhanInHoSo, getDanhSachHoSo, getThongKeTiepSinh, getCauHinhTiepSinh, getDauMoiTiepSinh, errMsg,
+  ghiNhanInHoSo, xoaHoSo, getDanhSachHoSo, getThongKeTiepSinh, getCauHinhTiepSinh, getDauMoiTiepSinh, errMsg,
 } from "../../apis/apiTiepSinh";
 import {
-  BLUE, BLUE_DARK, LOAI_HINH_OPTIONS, KHAM_SK_OPTIONS, tinhPhaiThu, fmtTien, hangTuLoaiHinh, NGUON_META, TRANG_THAI_META, WEEKDAYS, useNow, StatusTag, CccdScanModal,
+  BLUE, BLUE_DARK, LOAI_HINH_OPTIONS, KHAM_SK_OPTIONS, KHAM_SK_TU_KHAM, tinhPhaiThu, fmtTien, hangTuLoaiHinh, NGUON_META, TRANG_THAI_HIEN_THI, trangThaiHienThi, chiTietTrangThai, WEEKDAYS, useNow, StatusTag, CccdScanModal,
   HoSoDetailModal, TraBoSungModal, fmtDate, fmtDateTime, toPortraitDataUrl, fileToPortraitDataUrl, taiAnhHoSo,
   DAU_MOI_MAC_DINH, boDau, goiYDauMoi, kiemTraSo,
 } from "./tiepSinhShared";
 import { CauHinhModal, DongBoModal, QrKhaiModal } from "./tiepSinhModals";
 import OcrCccdModal from "./OcrCccdModal";
 import { NghiepVuButtons, coNghiepVu } from "./NghiepVuHoSo";
+import { CaiDatChupAnhModal, camConstraints, docCaiDatCamera, luuAnhVaoThuMuc, useThuMuc } from "./CaiDatChupAnh";
 import { MAU_DON, mauTheoHang, renderForms, printForms, downloadWord } from "./mauDon";
 
 const STEPS = [
@@ -97,7 +98,7 @@ function PhaiThuBox({ hs, compact = false }) {
   const chiTiet = [
     t.hocPhi !== null && t.hocPhi !== undefined ? `Học phí ${fmtTien(t.hocPhi)}` : null,
     t.phiKham ? `Khám SK ${fmtTien(t.phiKham)}` : null,
-  ].filter(Boolean).join(" + ") + (t.duocChuyen ? ` − được chuyển ${fmtTien(t.duocChuyen)}` : "");
+  ].filter(Boolean).join(" + ") + (t.giamTru ? ` − giảm trừ GPLX ${fmtTien(t.giamTru)}` : "") + (t.duocChuyen ? ` − được chuyển ${fmtTien(t.duocChuyen)}` : "");
   return (
     <div className={`flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 ${compact ? "px-3 py-2" : "px-4 py-2.5"}`}>
       <div className="min-w-0">
@@ -233,13 +234,32 @@ function InfoRow({ icon, label, value, extra }) {
   return (
     <div className="flex items-start gap-3 py-1.5">
       <span className="mt-0.5 w-5 shrink-0 text-base" style={{ color: BLUE }}>{icon}</span>
-      <span className="w-28 shrink-0 text-slate-500">{label}</span>
+      <span className="w-28 shrink-0 font-bold text-slate-700">{label}</span>
       <span className="min-w-0 flex-1 font-semibold text-slate-800">
         {value || <span className="font-normal italic text-red-400">Chưa có</span>} {extra}
       </span>
     </div>
   );
 }
+
+/** "Chưa đủ 18 tuổi ..." | null */
+function canhBaoTuoi(ngaySinh) {
+  if (!ngaySinh) return null;
+  const d = dayjs(ngaySinh);
+  if (!d.isValid()) return null;
+  const tuoi = dayjs().diff(d, "year");
+  return tuoi < 18 ? `Chưa đủ 18 tuổi (${tuoi} tuổi) — đủ 18 vào ${d.add(18, "year").format("DD/MM/YYYY")}` : null;
+}
+
+const CanhBao = ({ text }) => (
+  <div className="mt-0.5 flex items-start gap-1 text-xs font-medium text-amber-600">
+    <ExclamationCircleFilled className="mt-0.5" /> {text}
+  </div>
+);
+
+// Hạng GPLX ô tô
+const GPLX_HANG = ["B", "B1", "B2", "C", "C1", "D", "D1", "D2", "E", "BE", "C1E", "CE", "D1E", "D2E", "DE", "F", "FB2", "FC", "FD", "FE"]
+  .map((h) => ({ value: h, label: `Hạng ${h}` }));
 
 function StudentCard({ hs }) {
   if (!hs) {
@@ -280,14 +300,25 @@ function StudentCard({ hs }) {
         </div>
         <div className="min-w-0 flex-1 text-sm">
           <InfoRow icon={<FaUser />} label="Họ và tên" value={hs.ho_ten} />
-          <InfoRow icon={<FaRegCalendarAlt />} label="Ngày sinh" value={fmtDate(hs.ngay_sinh)} />
-          <InfoRow icon={<FaRegIdCard />} label="CCCD" value={hs.cccd} />
-          <InfoRow icon={<FaPhoneAlt />} label="SĐT" value={hs.dien_thoai} />
+          <InfoRow icon={<FaRegCalendarAlt />} label="Ngày sinh" value={fmtDate(hs.ngay_sinh)}
+            extra={canhBaoTuoi(hs.ngay_sinh) && <CanhBao text={canhBaoTuoi(hs.ngay_sinh)} />} />
+          <InfoRow icon={<FaRegIdCard />} label="CCCD" value={hs.cccd}
+            extra={hs.cccd && !kiemTraSo(hs.cccd, "cccd").ok && <CanhBao text={kiemTraSo(hs.cccd, "cccd").msg} />} />
+          <InfoRow icon={<FaPhoneAlt />} label="SĐT" value={hs.dien_thoai}
+            extra={hs.dien_thoai && !kiemTraSo(hs.dien_thoai, "sdt").ok && <CanhBao text={kiemTraSo(hs.dien_thoai, "sdt").msg} />} />
           <InfoRow icon={<FaHome />} label="Địa chỉ" value={hs.dia_chi} />
           <div className="my-1 border-t border-slate-100" />
           <InfoRow icon={<FaGraduationCap />} label="Khóa học" value={hs.khoa_hoc && chip(hs.khoa_hoc)} />
           <InfoRow icon={<FaCar />} label="Hạng đăng ký" value={(hs.loai_hinh || hs.hang) && chip(hs.loai_hinh || `Hạng ${hs.hang}`)} />
-          <InfoRow icon={<FaHeartbeat />} label="Khám sức khoẻ" value={hs.kham_suc_khoe && chip(hs.kham_suc_khoe)} />
+          <InfoRow icon={<FaHeartbeat />} label="Khám sức khoẻ" value={hs.kham_suc_khoe && chip(hs.kham_suc_khoe)}
+            extra={hs.kham_suc_khoe === KHAM_SK_TU_KHAM && (
+              <div className="mt-0.5 text-xs font-medium text-slate-600">
+                Ngày khám: {hs.ngay_kham ? <b>{fmtDate(hs.ngay_kham)}</b> : <i className="text-red-400">chưa nhập</i>}
+              </div>
+            )} />
+          <InfoRow icon={<FaIdCard />} label="Đã có GPLX" value={hs.gplx_hang || hs.gplx_so
+            ? `Hạng ${hs.gplx_hang || "?"}${hs.gplx_so ? ` · số ${hs.gplx_so}` : ""}${hs.gplx_ngay_cap ? ` · cấp ${fmtDate(hs.gplx_ngay_cap)}` : ""}`
+            : null} />
         </div>
       </div>
       <div className="mt-3">
@@ -297,11 +328,31 @@ function StudentCard({ hs }) {
   );
 }
 
+// Khám sức khoẻ: chọn "Tự khám - tự nộp" thì nhập thêm ngày khám
+function KhamSucKhoeFields({ form }) {
+  const kham = Form.useWatch("kham_suc_khoe", form);
+  const tuKham = kham === KHAM_SK_TU_KHAM;
+  return (
+    <div className={tuKham ? "grid grid-cols-2 gap-x-3" : ""}>
+      <Form.Item name="kham_suc_khoe" label="Khám sức khoẻ">
+        <Select options={KHAM_SK_OPTIONS} placeholder="Chọn hình thức khám" allowClear />
+      </Form.Item>
+      {tuKham && (
+        <Form.Item name="ngay_kham" label="Ngày khám">
+          <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy"
+            disabledDate={(d) => d && d.isAfter(dayjs(), "day")} />
+        </Form.Item>
+      )}
+    </div>
+  );
+}
+
 // Số tiền phải thu cập nhật ngay khi NV đổi loại hình / khám SK trên form
 function PhaiThuForm({ form, hs }) {
   const loai_hinh = Form.useWatch("loai_hinh", form);
   const kham_suc_khoe = Form.useWatch("kham_suc_khoe", form);
-  return <PhaiThuBox compact hs={{ loai_hinh, kham_suc_khoe, tong_thu: hs?.tong_thu }} />;
+  const gplx_hang = Form.useWatch("gplx_hang", form);
+  return <PhaiThuBox compact hs={{ loai_hinh, kham_suc_khoe, gplx_hang, tong_thu: hs?.tong_thu, tien_duoc_chuyen: hs?.tien_duoc_chuyen }} />;
 }
 
 // ─── Bước 1: nhập / bổ sung thông tin ─────────────────────────────
@@ -313,6 +364,8 @@ function toFormValues(hs) {
     loai_hinh: hs.loai_hinh || (hs.hang === "A1" ? "Hạng A1" : undefined),
     ngay_sinh: hs.ngay_sinh ? dayjs(hs.ngay_sinh) : null,
     ngay_cap_cccd: hs.ngay_cap_cccd ? dayjs(hs.ngay_cap_cccd) : null,
+    gplx_ngay_cap: hs.gplx_ngay_cap ? dayjs(hs.gplx_ngay_cap) : null,
+    ngay_kham: hs.ngay_kham ? dayjs(hs.ngay_kham) : null,
   };
 }
 
@@ -324,6 +377,11 @@ function fromFormValues(v) {
     dau_moi: String(v.dau_moi || "").trim() || DAU_MOI_MAC_DINH,
     ngay_sinh: v.ngay_sinh ? v.ngay_sinh.format("YYYY-MM-DD") : null,
     ngay_cap_cccd: v.ngay_cap_cccd ? v.ngay_cap_cccd.format("YYYY-MM-DD") : null,
+    gplx_hang: v.gplx_hang || null,
+    gplx_so: String(v.gplx_so || "").trim() || null,
+    gplx_ngay_cap: v.gplx_ngay_cap ? v.gplx_ngay_cap.format("YYYY-MM-DD") : null,
+    // ngày khám chỉ dùng khi tự khám
+    ngay_kham: v.kham_suc_khoe === KHAM_SK_TU_KHAM && v.ngay_kham ? v.ngay_kham.format("YYYY-MM-DD") : null,
   };
 }
 
@@ -344,7 +402,7 @@ function QueuePicker({ onPick }) {
             <b>{r.so_thu_tu ? String(r.so_thu_tu).padStart(4, "0") : r.ma_ho_so}</b> · {r.ho_ten}
             <span className="text-slate-400"> · {r.cccd || "chưa có CCCD"}</span>
           </span>
-          <StatusTag value={r.trang_thai} />
+          <StatusTag hs={r} tooltip={false} />
         </div>
       ),
     }));
@@ -374,13 +432,16 @@ function ChupAnhStep({ hs, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState(false);
   const [restart, setRestart] = useState(0);
+  const [camCfg, setCamCfg] = useState(docCaiDatCamera);
+  const [caiDatOpen, setCaiDatOpen] = useState(false);
+  const [thuMuc, taiThuMuc] = useThuMuc();
 
   useEffect(() => {
     let stopped = false;
     setReady(false);
     setCamErr(null);
     navigator.mediaDevices
-      ?.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 960 } } })
+      ?.getUserMedia(camConstraints(camCfg))
       .then(async (stream) => {
         if (stopped) return stream.getTracks().forEach((t) => t.stop());
         streamRef.current = stream;
@@ -388,14 +449,17 @@ function ChupAnhStep({ hs, onSaved }) {
         await videoRef.current.play().catch(() => {});
         setReady(true);
       })
-      .catch((e) => setCamErr(e?.message || "Không mở được camera"));
+      .catch((e) =>
+        setCamErr(e?.name === "OverconstrainedError" || e?.name === "NotFoundError"
+          ? "Không tìm thấy camera đã chọn — vào Cài đặt để chọn lại"
+          : e?.message || "Không mở được camera"));
     if (!navigator.mediaDevices) setCamErr("Trình duyệt không hỗ trợ camera (cần HTTPS hoặc localhost)");
     return () => {
       stopped = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, [restart]);
+  }, [restart, camCfg]);
 
   const save = async (dataUrl) => {
     setSaving(true);
@@ -410,28 +474,47 @@ function ChupAnhStep({ hs, onSaved }) {
     }
   };
 
+  // Lưu thêm vào thư mục trên máy (nếu đã cài đặt) — gọi ngay khi bấm để trình duyệt cho xin quyền ghi
+  const luuThuMuc = (nguon, { batBuoc = false } = {}) => {
+    if (!thuMuc || (!camCfg.tuLuuThuMuc && !batBuoc)) return;
+    luuAnhVaoThuMuc(nguon, hs.ma_ho_so || `ho-so-${hs.id}`)
+      .then((p) => p && message.success(`Đã lưu ảnh vào thư mục: ${p}`))
+      .catch((e) => message.warning(`Không lưu được vào thư mục: ${e.message}`));
+  };
+
   const capture = () => {
     const v = videoRef.current;
     if (!v?.videoWidth) return message.warning("Camera chưa sẵn sàng");
-    save(toPortraitDataUrl(v, v.videoWidth, v.videoHeight));
+    const url = toPortraitDataUrl(v, v.videoWidth, v.videoHeight);
+    luuThuMuc(url);
+    save(url);
   };
 
+  // Chọn ảnh có sẵn của HV -> xem trước -> bấm "Lưu ảnh":
+  // lưu vào hồ sơ + ghi file gốc vào thư mục ảnh, tự đổi tên thành mã hồ sơ
+  const [anhChon, setAnhChon] = useState(null); // { file, url }
   const pickFile = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
     try {
-      save(await fileToPortraitDataUrl(f));
+      setAnhChon({ file: f, url: await fileToPortraitDataUrl(f) });
     } catch (err) {
       message.error(err.message);
     }
+  };
+  const luuAnhChon = async () => {
+    if (!anhChon) return;
+    luuThuMuc(anhChon.file); // gọi trước (đang trong lúc bấm) để trình duyệt cho quyền ghi thư mục
+    await save(anhChon.url);
+    setAnhChon(null);
   };
 
   return (
     <div className="grid h-full gap-4 lg:grid-cols-[1fr_170px_150px]">
       <div className="flex flex-col gap-3">
         <div className="relative overflow-hidden rounded-xl bg-slate-800" style={{ aspectRatio: "4/3" }}>
-          <video ref={videoRef} muted playsInline className="h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} />
+          <video ref={videoRef} muted playsInline className="h-full w-full object-cover" style={{ transform: camCfg.latHinh ? "scaleX(-1)" : "none" }} />
           {/* khung 3x4 */}
           <div className="pointer-events-none absolute inset-y-[6%] left-1/2 aspect-[3/4] -translate-x-1/2">
             {["left-0 top-0 border-l-4 border-t-4", "right-0 top-0 border-r-4 border-t-4", "left-0 bottom-0 border-l-4 border-b-4", "right-0 bottom-0 border-r-4 border-b-4"].map((c) => (
@@ -461,6 +544,10 @@ function ChupAnhStep({ hs, onSaved }) {
             Yêu cầu: chính diện, nhìn thẳng, không đeo kính/khẩu trang, nền sáng, khuôn mặt nằm trong khung.
           </div>
         )}
+        <div className="text-xs text-slate-500">
+          Lưu ảnh vào thư mục: {thuMuc && camCfg.tuLuuThuMuc ? <b className="text-slate-700">{thuMuc}</b> : <i>không (chỉ lưu vào hồ sơ)</i>}
+          {" · "}<button type="button" className="text-blue-600 hover:underline" onClick={() => setCaiDatOpen(true)}>Cài đặt</button>
+        </div>
       </div>
       <div className="flex flex-row gap-3 lg:flex-col">
         <Button
@@ -483,24 +570,54 @@ function ChupAnhStep({ hs, onSaved }) {
           Chọn ảnh khác
         </Button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickFile} />
+        <Button icon={<SettingOutlined />} size="large" className="flex-1 !rounded-xl lg:!flex-none" style={{ color: "#475569", fontWeight: 600, height: 52 }} onClick={() => setCaiDatOpen(true)}>
+          Cài đặt
+        </Button>
+        {caiDatOpen && <CaiDatChupAnhModal open onClose={() => { setCaiDatOpen(false); taiThuMuc(); }}
+          onSaved={(cd) => { setCamCfg(cd); taiThuMuc(); }} />}
       </div>
       <div className="flex flex-col gap-2 rounded-xl bg-blue-50/60 p-2">
-        <div className="rounded-lg bg-blue-100/70 px-3 py-2 font-semibold" style={{ color: BLUE_DARK }}>Ảnh đã chụp</div>
-        {hs.anh_chan_dung ? (
+        <div className="rounded-lg bg-blue-100/70 px-3 py-2 font-semibold" style={{ color: BLUE_DARK }}>
+          {anhChon ? "Ảnh đã chọn" : "Ảnh đã chụp"}
+        </div>
+        {anhChon ? (
+          <>
+            <img src={anhChon.url} alt="Ảnh đã chọn" className="w-full rounded-lg object-cover ring-2 ring-orange-400" style={{ aspectRatio: "3/4" }} />
+            <div className="text-center text-[11px] leading-tight text-slate-600">
+              <div className="truncate" title={anhChon.file.name}>{anhChon.file.name}</div>
+              <div>→ lưu thành <b>{hs.ma_ho_so || `ho-so-${hs.id}`}</b>{thuMuc && camCfg.tuLuuThuMuc ? <> vào <b>{thuMuc}</b></> : ""}</div>
+            </div>
+            <Button type="primary" icon={<CheckOutlined />} loading={saving} onClick={luuAnhChon} style={{ background: BLUE }}>
+              Lưu ảnh
+            </Button>
+            <Button disabled={saving} onClick={() => setAnhChon(null)}>Huỷ</Button>
+          </>
+        ) : hs.anh_chan_dung ? (
           <img src={hs.anh_chan_dung} alt="Ảnh học viên" className="w-full rounded-lg object-cover" style={{ aspectRatio: "3/4" }} />
         ) : (
           <div className="flex w-full items-center justify-center rounded-lg bg-white text-xs text-slate-400" style={{ aspectRatio: "3/4" }}>
             Chưa có
           </div>
         )}
-        <Button icon={<SearchOutlined />} disabled={!hs.anh_chan_dung} onClick={() => setPreview(true)} style={{ color: BLUE }}>
-          Xem lớn
-        </Button>
-        <Tooltip title={hs.ma_ho_so ? `Lưu ảnh với tên ${hs.ma_ho_so}` : undefined}>
-          <Button icon={<DownloadOutlined />} disabled={!hs.anh_chan_dung} onClick={() => taiAnhHoSo(hs)} style={{ color: BLUE }}>
-            Tải ảnh
-          </Button>
-        </Tooltip>
+        {!anhChon && (
+          <>
+            <Button icon={<SearchOutlined />} disabled={!hs.anh_chan_dung} onClick={() => setPreview(true)} style={{ color: BLUE }}>
+              Xem lớn
+            </Button>
+            <Tooltip title={hs.ma_ho_so ? `Lưu ảnh với tên ${hs.ma_ho_so}` : undefined}>
+              <Button icon={<DownloadOutlined />} disabled={!hs.anh_chan_dung} onClick={() => taiAnhHoSo(hs)} style={{ color: BLUE }}>
+                Tải ảnh
+              </Button>
+            </Tooltip>
+            {thuMuc && (
+              <Tooltip title={`Ghi ảnh hiện tại vào thư mục ${thuMuc} với tên ${hs.ma_ho_so || ""}`}>
+                <Button icon={<FolderOpenOutlined />} disabled={!hs.anh_chan_dung} onClick={() => luuThuMuc(hs.anh_chan_dung, { batBuoc: true })} style={{ color: BLUE }}>
+                  Lưu vào thư mục
+                </Button>
+              </Tooltip>
+            )}
+          </>
+        )}
         {hs.anh_chan_dung && (
           <Image
             src={hs.anh_chan_dung}
@@ -627,7 +744,7 @@ function InStep({ hs, forms, setForms }) {
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <StatusTag value={hs.trang_thai} />
+        <StatusTag hs={hs} />
         {hs.so_lan_in > 0 && <span className="text-slate-500">Đã in {hs.so_lan_in} lần · lần đầu {fmtDateTime(hs.in_at)}</span>}
         {!daDuyet && <span className="text-red-500">Hồ sơ cần được duyệt trước khi in</span>}
       </div>
@@ -684,6 +801,8 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
   const [detailOpen, setDetailOpen] = useState(false);
   const [traOpen, setTraOpen] = useState(false);
   const [toolModal, setToolModal] = useState(null);
+  // hộp xác nhận render trong cây React của app (Modal.confirm tĩnh không hiện với React 19)
+  const [modal, modalCtx] = Modal.useModal();
 
   const { data, isLoading } = useQuery({
     queryKey: ["tiep-sinh-ho-so", id],
@@ -712,6 +831,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
       loadedId.current = hs.id;
       form.resetFields();
       form.setFieldsValue(toFormValues(hs));
+      setTimeout(() => form.validateFields(["ngay_sinh", "dien_thoai"]).catch(() => {}), 0);
       setStep(suggestStep(hs));
       setForms(mauTheoHang(hs.hang));
       setFromScan(false);
@@ -792,6 +912,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
       ngay_sinh: d.ngay_sinh ? dayjs(d.ngay_sinh) : cur.ngay_sinh,
       ngay_cap_cccd: d.ngay_cap_cccd ? dayjs(d.ngay_cap_cccd) : cur.ngay_cap_cccd,
     });
+    setTimeout(() => form.validateFields(["ngay_sinh", "dien_thoai"]).catch(() => {}), 0);
     // OCR có thể đọc sai -> không tính là đã đối chiếu CCCD
     setFromScan(nguon === "qr");
     if (toast) message.success(
@@ -813,13 +934,9 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     }
   };
 
-  const doDuyet = async () => {
-    if (!hs.co_anh) {
-      message.warning("Hãy chụp ảnh học viên trước khi duyệt");
-      setStep(1);
-      return;
-    }
-    const row = await run(() => duyetHoSo(hs.id), "Đã duyệt hồ sơ");
+  const thucHienDuyet = async (xacNhan) => {
+    const row = await run(() => duyetHoSo(hs.id, { xac_nhan: xacNhan }),
+      xacNhan ? "Đã duyệt — hồ sơ nằm trong mục Cần bổ sung" : "Đã duyệt hồ sơ");
     if (row) {
       setStep(3);
       // Duyệt xong in luôn các mẫu đơn cho học viên ký
@@ -827,7 +944,58 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     }
   };
 
+  // Còn thiếu / sai -> vẫn cho duyệt & in nhưng phải xác nhận; hồ sơ vào mục "Cần bổ sung"
+  const doDuyet = () => {
+    const so = String(hs.cccd || "").replace(/\s+/g, "");
+    const vanDe = [
+      ...(hs.thieu_truong || []).map((t) =>
+        t === "Số CCCD" && so ? `Số CCCD ${so} không đúng (${so.length} số, cần 12 số)` : `Thiếu ${t}`),
+      ...(hs.canh_bao || []),
+    ];
+    if (!vanDe.length) return thucHienDuyet(false);
+    modal.confirm({
+      title: "Hồ sơ chưa đầy đủ — vẫn duyệt và in?",
+      width: 520,
+      content: (
+        <div>
+          <ul className="my-2 list-disc pl-5 text-[14px] text-orange-700">
+            {vanDe.map((v) => <li key={v}>{v}</li>)}
+          </ul>
+          <div className="text-sm text-slate-600">
+            Hồ sơ sẽ được duyệt và in, đồng thời nằm trong mục <b>“Cần bổ sung”</b> cho tới khi bổ sung đủ.
+          </div>
+        </div>
+      ),
+      okText: "Vẫn duyệt & in",
+      cancelText: "Quay lại",
+      okButtonProps: { style: { background: "#ea580c" } },
+      onOk: () => thucHienDuyet(true),
+    });
+  };
+
   const doIn = () => inMauDon(hs);
+
+  // Xoá hồ sơ (HV đăng ký xong nhưng không học tiếp) — tránh phát sinh lệ phí
+  const doXoa = () =>
+    modal.confirm({
+      title: `Xoá hồ sơ ${hs.ma_ho_so} — ${hs.ho_ten}?`,
+      content: "Dùng khi học viên đăng ký xong nhưng không có nhu cầu học tiếp. Hồ sơ và lịch sử sẽ bị xoá, không khôi phục được.",
+      okText: "Xoá hồ sơ",
+      okButtonProps: { danger: true },
+      cancelText: "Huỷ",
+      onOk: async () => {
+        try {
+          await xoaHoSo(hs.id);
+          message.success("Đã xoá hồ sơ");
+          qc.invalidateQueries({ queryKey: ["tiep-sinh-thong-ke"] });
+          qc.invalidateQueries({ queryKey: ["tiep-sinh-list"] });
+          onBack();
+        } catch (e) {
+          message.error(errMsg(e, "Xoá hồ sơ thất bại"));
+          throw e;
+        }
+      },
+    });
 
   const doTraBoSung = async (lyDo) => {
     const row = await run(() => traBoSungHoSo(hs.id, lyDo), "Đã trả hồ sơ yêu cầu bổ sung");
@@ -844,7 +1012,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     if (!hs || boHoc) return null;
     if (step === 1 || step === 2) {
       if (daDuyet) return { label: "Sang bước in", onClick: () => setStep(3) };
-      return { label: "Duyệt hồ sơ", onClick: doDuyet, disabled: hs.thieu_truong?.length > 0 };
+      return { label: "Duyệt hồ sơ", onClick: doDuyet };
     }
     if (step === 3) {
       if (!daDuyet) return { label: "Duyệt hồ sơ", onClick: () => setStep(2) };
@@ -856,14 +1024,12 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
   const stepTitle = ["Nhập / bổ sung thông tin học viên", "Chụp ảnh học viên", "Kiểm tra & duyệt hồ sơ", "In hồ sơ để học viên ký"][step];
   const stepIcon = STEPS[step].icon;
   // Màu khung trạng thái (chờ duyệt dùng xanh lá như ảnh mẫu)
+  // Khung trạng thái: 4 loại thống nhất (Chờ duyệt / Bổ sung / Duyệt / Bỏ học)
   const st = (() => {
-    const t = hs?.trang_thai;
-    if (t === "cho_duyet") return { label: "Đang chờ duyệt", color: "#16a34a", bg: "#e9f9ee", icon: <CheckOutlined /> };
-    if (t === "da_duyet") return { label: "Đã duyệt", color: "#16a34a", bg: "#e9f9ee", icon: <CheckOutlined /> };
-    if (t === "da_in") return { label: "Đã in hồ sơ", color: "#7c3aed", bg: "#f2ecff", icon: <PrinterOutlined /> };
-    if (t === "can_bo_sung") return { label: "Cần bổ sung", color: "#ea580c", bg: "#fff3e6", icon: <ExclamationCircleFilled /> };
-    if (t === "bo_hoc") return { label: "Đã bỏ học", color: "#64748b", bg: "#eef1f5", icon: <CloseOutlined /> };
-    return { label: "", color: "#64748b", bg: "#f1f5f9", icon: null };
+    if (!hs) return { label: "", color: "#64748b", bg: "#f1f5f9", icon: null };
+    const m = TRANG_THAI_HIEN_THI[trangThaiHienThi(hs)];
+    const ct = chiTietTrangThai(hs);
+    return { ...m, label: ct && trangThaiHienThi(hs) === "duyet" ? `${m.label} · ${ct}` : m.label };
   })();
 
   return (
@@ -921,11 +1087,13 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       </Button>
                       {fromScan && <span className="text-sm text-green-600"><CheckCircleFilled /> Dữ liệu lấy từ CCCD</span>}
                     </div>
-                    <Form form={form} layout="vertical" requiredMark className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 [&_.ant-form-item]:!mb-3">
+                    <Form form={form} layout="vertical" requiredMark
+                      className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 [&_.ant-form-item]:!mb-3 [&_.ant-form-item-label>label]:!font-bold [&_.ant-form-item-label>label]:!text-slate-800">
                       <Form.Item name="ho_ten" label="Họ và tên" rules={[{ required: true, message: "Nhập họ tên" }]}>
                         <Input placeholder="VD: Phạm Thị Lan Anh" />
                       </Form.Item>
-                      <Form.Item name="ngay_sinh" label="Ngày sinh">
+                      <Form.Item name="ngay_sinh" label="Ngày sinh"
+                        rules={[{ warningOnly: true, validator: (_, v) => (canhBaoTuoi(v) ? Promise.reject(new Error(canhBaoTuoi(v))) : Promise.resolve()) }]}>
                         <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy" />
                       </Form.Item>
                       <Form.Item name="cccd" label="Số CCCD" rules={[{ pattern: /^\d{12}$/, message: "CCCD gồm 12 chữ số" }]}>
@@ -935,7 +1103,8 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                         <Form.Item name="ngay_cap_cccd" label="Ngày cấp">
                           <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy" />
                         </Form.Item>
-                        <Form.Item name="dien_thoai" label="Số điện thoại" rules={[{ pattern: /^[0-9+ .]{8,15}$/, message: "SĐT không hợp lệ" }]}>
+                        <Form.Item name="dien_thoai" label="Số điện thoại"
+                          rules={[{ warningOnly: true, validator: (_, v) => (!v || kiemTraSo(v, "sdt").ok ? Promise.resolve() : Promise.reject(new Error(kiemTraSo(v, "sdt").msg))) }]}>
                           <Input placeholder="09xx xxx xxx" />
                         </Form.Item>
                       </div>
@@ -951,9 +1120,18 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       <Form.Item name="loai_hinh" label="Hạng đăng ký (loại hình học)" rules={[{ required: true, message: "Chọn loại hình học" }]}>
                         <Select options={LOAI_HINH_OPTIONS} placeholder="Chọn theo đăng ký của học viên" />
                       </Form.Item>
-                      <Form.Item name="kham_suc_khoe" label="Khám sức khoẻ">
-                        <Select options={KHAM_SK_OPTIONS} placeholder="Chọn hình thức khám" allowClear />
-                      </Form.Item>
+                      <KhamSucKhoeFields form={form} />
+                      <div className="grid grid-cols-1 gap-x-3 sm:col-span-2 sm:grid-cols-3">
+                        <Form.Item name="gplx_hang" label="Đã có GPLX ô tô (hạng)" extra="Có GPLX ô tô thì được giảm trừ theo bảng giá">
+                          <Select allowClear showSearch options={GPLX_HANG} placeholder="Để trống nếu chưa có" />
+                        </Form.Item>
+                        <Form.Item name="gplx_so" label="Số GPLX">
+                          <Input maxLength={20} placeholder="12 chữ số trên GPLX" />
+                        </Form.Item>
+                        <Form.Item name="gplx_ngay_cap" label="Ngày cấp GPLX">
+                          <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy" />
+                        </Form.Item>
+                      </div>
                       <div className="sm:col-span-2 mb-3">
                         <PhaiThuForm form={form} hs={hs} />
                       </div>
@@ -995,7 +1173,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                       </div>
                       <div className="text-[12px] text-slate-700">Thời gian khai: {fmtDateTime(hs.thoi_gian_khai)}</div>
                       {boHoc && hs.ly_do_bo_hoc && <div className="truncate text-[13px] text-slate-600">Lý do: {hs.ly_do_bo_hoc}</div>}
-                      {hs.ly_do_bo_sung && hs.trang_thai === "can_bo_sung" && (
+                      {hs.ly_do_bo_sung && (hs.trang_thai === "can_bo_sung" || hs.can_bo_sung_sau) && (
                         <div className="truncate text-[13px] text-orange-600">Bổ sung: {hs.ly_do_bo_sung}</div>
                       )}
                     </div>
@@ -1008,22 +1186,28 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                 <div className="mb-1.5 flex items-center gap-2 text-[14px] font-bold" style={{ color: BLUE_DARK }}>
                   <ThunderboltFilled className="text-amber-400" /> Thao tác nhanh
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   <button type="button" disabled={!hs} onClick={() => setDetailOpen(true)}
-                    className="flex h-10 items-center justify-center gap-2 rounded-lg border-2 border-blue-400 bg-white font-semibold transition hover:bg-blue-50 disabled:opacity-40" style={{ color: "#1d4ed8", fontSize: 15 }}>
-                    <FileTextOutlined className="text-lg" /> Xem chi tiết
+                    className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border-2 px-1 py-1 leading-tight border-blue-400 bg-white font-semibold transition hover:bg-blue-50 disabled:opacity-40" style={{ color: "#1d4ed8", fontSize: 13 }}>
+                    <FileTextOutlined className="text-lg" /> Chi tiết
                   </button>
                   {hs?.trang_thai === "can_bo_sung" ? (
                     <button type="button" disabled={busy} onClick={() => run(() => moLaiHoSo(hs.id), "Đã chuyển về chờ duyệt")}
-                      className="flex h-10 items-center justify-center gap-2 rounded-lg border-2 border-orange-300 bg-orange-50 font-semibold transition hover:brightness-95 disabled:opacity-40" style={{ color: "#ea580c", fontSize: 15 }}>
-                      <UndoOutlined className="text-lg" /> Đã bổ sung xong
+                      className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border-2 px-1 py-1 leading-tight border-orange-300 bg-orange-50 font-semibold transition hover:brightness-95 disabled:opacity-40" style={{ color: "#ea580c", fontSize: 13 }}>
+                      <UndoOutlined className="text-lg" /> Đã bổ sung
                     </button>
                   ) : (
                     <button type="button" disabled={!hs || hs.trang_thai === "da_in" || boHoc} onClick={() => setTraOpen(true)}
-                      className="flex h-10 items-center justify-center gap-2 rounded-lg border-2 border-red-300 bg-red-50 font-semibold transition hover:brightness-95 disabled:opacity-40" style={{ color: "#ef4444", fontSize: 15 }}>
-                      <RollbackOutlined className="text-lg" /> Trả hồ sơ bổ sung
+                      className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border-2 px-1 py-1 leading-tight border-red-300 bg-red-50 font-semibold transition hover:brightness-95 disabled:opacity-40" style={{ color: "#ef4444", fontSize: 13 }}>
+                      <RollbackOutlined className="text-lg" /> Trả bổ sung
                     </button>
                   )}
+                  <Tooltip title={hs?.trang_thai === "da_in" ? "Hồ sơ đã in — không xoá được (dùng “Bỏ học”)" : "Xoá hồ sơ khi HV không học tiếp"}>
+                    <button type="button" disabled={!hs || busy || hs.trang_thai === "da_in"} onClick={doXoa}
+                      className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border-2 px-1 py-1 leading-tight border-slate-300 bg-white font-semibold transition hover:border-red-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40" style={{ color: "#475569", fontSize: 13 }}>
+                      <DeleteOutlined className="text-lg" /> Xoá
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
               {coNghiepVu(hs) && <NghiepVuButtons hs={hs} className="self-stretch" />}
@@ -1049,6 +1233,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
         )}
       </div>
 
+      {modalCtx}
       <CauHinhModal open={toolModal === "cau_hinh"} onClose={() => setToolModal(null)} />
       <DongBoModal
         open={toolModal === "dong_bo"}

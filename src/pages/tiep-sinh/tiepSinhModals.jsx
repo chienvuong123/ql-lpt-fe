@@ -69,6 +69,9 @@ export function CauHinhModal({ open, onClose }) {
           <Form.Item name="phi_kham_suc_khoe" label="Phí khám sức khoẻ (khám theo lịch trung tâm)">
             <InputNumber {...MONEY} />
           </Form.Item>
+          <Form.Item name="giam_tru_gplx" label="Giảm trừ học phí khi HV đã có GPLX ô tô">
+            <InputNumber {...MONEY} />
+          </Form.Item>
         </div>
       </Form>
     </Modal>

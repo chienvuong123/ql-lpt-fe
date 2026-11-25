@@ -4,6 +4,7 @@
 // dùng bản HTML dựng theo đúng bố cục mẫu Word.
 import axios from "axios";
 import dayjs from "dayjs";
+import QRCode from "qrcode";
 import { baseURL } from "../../constants/base";
 
 // Mã chung — máy chủ tự chọn file mẫu hạng A hoặc A1 theo hồ sơ
@@ -32,21 +33,22 @@ const esc = (v) =>
     .replace(/"/g, "&quot;");
 const d = (v) => (v ? dayjs(v).format("DD/MM/YYYY") : "");
 const val = (v, dots = "...............................") => (v ? `<b>${esc(v)}</b>` : dots);
-// khung dán ảnh 3x4 để trống (không in ảnh chân dung lên đơn)
+// khung dán ảnh 3x4 để trống (không in ảnh chân dung lên đơn) — 1 khung bên trái như mẫu Word, bên phải là QR mã hồ sơ
 const PHOTO = `<div class="photo">Ảnh màu<br/>3 cm x 4 cm<br/>chụp không quá 06 tháng</div>`;
 
-function donDeNghiHtml(hs) {
+function donDeNghiHtml(hs, { qr } = {}) {
   return `<section class="docx mau-page">
+    ${qr ? `<div class="qr"><img src="${qr}" alt="QR mã hồ sơ"/><div>${esc(hs.ma_ho_so)}</div></div>` : ""}
     <div class="qh"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br/><b class="u">Độc lập - Tự do - Hạnh phúc</b></div>
-    <div class="photos">${PHOTO}${PHOTO}</div>
+    <div class="photos">${PHOTO}</div>
     <h1>ĐƠN ĐỀ NGHỊ HỌC LÁI XE</h1>
     <p class="center">Kính gửi: Trung tâm GDNN &amp; SHLX Lập Phương Thành</p>
     <div class="lh">
       <p>Tôi là: ${val((hs.ho_ten || "").toUpperCase())} &nbsp;&nbsp;&nbsp; Ngày, tháng, năm sinh: ${val(d(hs.ngay_sinh))}</p>
       <p>Số Căn cước công dân hoặc Căn cước: ${val(hs.cccd)}</p>
       <p>Ngày cấp: ${val(d(hs.ngay_cap_cccd))} &nbsp;&nbsp;&nbsp; nơi cấp: ${val(hs.noi_cap || "Cục Cảnh sát QLHC về TTXH")}</p>
-      <p>Đã có giấy phép lái xe số:......................................................hạng..........................</p>
-      <p>do:................................................................................ cấp ngày: ..... /..... / ...........</p>
+      <p>Đã có giấy phép lái xe số: ${val(hs.gplx_so, "......................................................")} &nbsp;hạng: ${val(hs.gplx_hang, "..........................")}</p>
+      <p>do:................................................................................ cấp ngày: ${val(d(hs.gplx_ngay_cap), "..... /..... / ...........")}</p>
       <p>Đề nghị cho tôi được học lái xe hạng: ${val(hs.hang, ".......")}</p>
       <p class="justify">Vi phạm hành chính trong lĩnh vực giao thông đường bộ với hình thức tước quyền sử dụng giấy phép lái xe: &nbsp;<span class="box"></span> có &nbsp;&nbsp;<span class="box"></span> không</p>
       <p class="justify">Tôi xin cam đoan những điều ghi trên là đúng sự thật, nếu sai tôi xin hoàn toàn chịu trách nhiệm.</p>
@@ -64,9 +66,12 @@ const MAU_CSS = `
   /* index.css ép "* { font-family: Inter !important }" -> mẫu đơn dùng lại Times New Roman như file Word */
   .mau-don section.docx, .mau-don section.docx * { font-family: "Times New Roman", Times, serif !important; }
   .mau-don .mau-html { background: gray; padding: 30px 30px 0; display: flex; flex-direction: column; align-items: center; }
-  .mau-don .mau-page { box-sizing: border-box; background: #fff; width: 210mm; min-height: 297mm; padding: 15mm 18mm 15mm 25mm;
+  .mau-don .mau-page { position: relative; box-sizing: border-box; background: #fff; width: 210mm; min-height: 297mm; padding: 15mm 18mm 15mm 25mm;
     margin-bottom: 30px; box-shadow: 0 0 10px rgba(0,0,0,.5); font-size: 13.5pt; line-height: 1.3; }
   .mau-page .qh { text-align: center; font-size: 13pt; }
+  /* QR mã hồ sơ góc phải trên */
+  .mau-page .qr { position: absolute; top: 10mm; right: 18mm; width: 23mm; text-align: center; font-size: 9pt; font-weight: bold; line-height: 1.2; }
+  .mau-page .qr img { display: block; width: 23mm; height: 23mm; }
   .mau-page .u { text-decoration: underline; }
   .mau-page .photos { display: flex; justify-content: space-between; margin: 14px 10px 0; }
   .mau-page .photo { width: 30mm; height: 40mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center;
@@ -110,6 +115,10 @@ export async function renderForms(container, hs, keys, { isCancelled } = {}) {
   const list = sapXep(keys);
   const blobs = await Promise.all(list.map((k) => (MAU_HTML[k] ? null : taiDocx(hs.id, k).then((r) => r.data))));
   if (isCancelled?.()) return false;
+  // QR chứa mã hồ sơ (in lên Đơn đề nghị)
+  const qr = list.includes("don_de_nghi") && hs.ma_ho_so
+    ? await QRCode.toDataURL(String(hs.ma_ho_so), { margin: 1, width: 240, errorCorrectionLevel: "M" })
+    : null;
   const doc = container.ownerDocument;
   container.classList.add("mau-don");
   container.innerHTML = "";
@@ -118,7 +127,7 @@ export async function renderForms(container, hs, keys, { isCancelled } = {}) {
     container.appendChild(box);
     if (MAU_HTML[list[i]]) {
       box.className = "docx-wrapper mau-html";
-      box.innerHTML = MAU_HTML[list[i]](hs);
+      box.innerHTML = MAU_HTML[list[i]](hs, { qr });
     } else {
       // Mỗi file Word: tiền tố class riêng + CSS đặt ngay trong box (docx-preview xoá sạch styleContainer
       // mỗi lần gọi, và các file trùng tên style -> dùng chung sẽ đè định dạng của nhau)
