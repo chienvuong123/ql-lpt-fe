@@ -98,7 +98,8 @@ function PhaiThuBox({ hs, compact = false }) {
   const chiTiet = [
     t.hocPhi !== null && t.hocPhi !== undefined ? `Học phí ${fmtTien(t.hocPhi)}` : null,
     t.phiKham ? `Khám SK ${fmtTien(t.phiKham)}` : null,
-  ].filter(Boolean).join(" + ") + (t.giamTru ? ` − giảm trừ GPLX ${fmtTien(t.giamTru)}` : "") + (t.duocChuyen ? ` − được chuyển ${fmtTien(t.duocChuyen)}` : "");
+  ].filter(Boolean).join(" + ") + (t.giamTru ? ` − giảm trừ GPLX ${fmtTien(t.giamTru)}` : "") + (t.duocChuyen ? ` − được chuyển ${fmtTien(t.duocChuyen)}` : "")
+    + (t.chuaCaiGiamTru ? " (có GPLX nhưng chưa cài mức giảm trừ trong Cấu hình)" : "");
   return (
     <div className={`flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 ${compact ? "px-3 py-2" : "px-4 py-2.5"}`}>
       <div className="min-w-0">
@@ -831,7 +832,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
       loadedId.current = hs.id;
       form.resetFields();
       form.setFieldsValue(toFormValues(hs));
-      setTimeout(() => form.validateFields(["ngay_sinh", "dien_thoai"]).catch(() => {}), 0);
+      setTimeout(() => form.validateFields(["ngay_sinh", "cccd", "dien_thoai"]).catch(() => {}), 0);
       setStep(suggestStep(hs));
       setForms(mauTheoHang(hs.hang));
       setFromScan(false);
@@ -884,7 +885,13 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
     let values;
     try {
       values = await form.validateFields();
-    } catch {
+    } catch (err) {
+      // Ô lỗi có thể nằm khuất phía trên -> cuộn tới và báo rõ
+      const loi = err?.errorFields?.[0];
+      if (loi) {
+        form.scrollToField(loi.name, { behavior: "smooth", block: "center" });
+        message.error(loi.errors?.[0] || "Thông tin chưa hợp lệ");
+      }
       return;
     }
     const body = fromFormValues(values);
@@ -912,7 +919,7 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
       ngay_sinh: d.ngay_sinh ? dayjs(d.ngay_sinh) : cur.ngay_sinh,
       ngay_cap_cccd: d.ngay_cap_cccd ? dayjs(d.ngay_cap_cccd) : cur.ngay_cap_cccd,
     });
-    setTimeout(() => form.validateFields(["ngay_sinh", "dien_thoai"]).catch(() => {}), 0);
+    setTimeout(() => form.validateFields(["ngay_sinh", "cccd", "dien_thoai"]).catch(() => {}), 0);
     // OCR có thể đọc sai -> không tính là đã đối chiếu CCCD
     setFromScan(nguon === "qr");
     if (toast) message.success(
@@ -1096,8 +1103,9 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
                         rules={[{ warningOnly: true, validator: (_, v) => (canhBaoTuoi(v) ? Promise.reject(new Error(canhBaoTuoi(v))) : Promise.resolve()) }]}>
                         <DatePicker format="DD/MM/YYYY" className="w-full" placeholder="dd/mm/yyyy" />
                       </Form.Item>
-                      <Form.Item name="cccd" label="Số CCCD" rules={[{ pattern: /^\d{12}$/, message: "CCCD gồm 12 chữ số" }]}>
-                        <Input maxLength={12} placeholder="12 chữ số" />
+                      <Form.Item name="cccd" label="Số CCCD"
+                        rules={[{ warningOnly: true, validator: (_, v) => (!v || kiemTraSo(v, "cccd").ok ? Promise.resolve() : Promise.reject(new Error(kiemTraSo(v, "cccd").msg))) }]}>
+                        <Input maxLength={20} placeholder="12 chữ số" />
                       </Form.Item>
                       <div className="grid grid-cols-2 gap-x-3">
                         <Form.Item name="ngay_cap_cccd" label="Ngày cấp">

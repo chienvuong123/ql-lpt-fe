@@ -82,7 +82,11 @@ export function tinhPhaiThu(hs, cfg = {}) {
   if (nhapTay !== null) return { tong: nhapTay, hocPhi, phiKham, nhapTay: true, duocChuyen, conLai: conLai(nhapTay) };
   const thieuGia = hocPhi === null || phiKham === null;
   const tong = thieuGia ? null : hocPhi + phiKham;
-  return { tong, hocPhi, phiKham, thieuGia, duocChuyen, conLai: conLai(tong), giamTru: giaGoc === null ? 0 : giaGoc - hocPhi };
+  return {
+    tong, hocPhi, phiKham, thieuGia, duocChuyen, conLai: conLai(tong),
+    giamTru: giaGoc === null ? 0 : giaGoc - hocPhi,
+    chuaCaiGiamTru: !!hs.gplx_hang && !soTien(cfg.giam_tru_gplx),
+  };
 }
 
 /** Số tiền còn phải thu (đã trừ tiền được chuyển sang) */
