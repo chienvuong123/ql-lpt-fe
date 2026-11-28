@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Empty, Input, Spin, Table, message } from "antd";
 import { FaUsersRectangle, FaMagnifyingGlass, FaPrint, FaUsers } from "react-icons/fa6";
@@ -34,6 +35,7 @@ function HocVienLop({ id }) {
 
 /** Danh sách lớp đã vào khoá (từ màn Xếp lớp học viên) */
 export default function DanhSachLop() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const { data, isLoading } = useQuery({ queryKey: ["xl-lop", "da_vao_khoa"], queryFn: () => getXlLop({ trang_thai: "da_vao_khoa" }), staleTime: 0 });
   const rows = useMemo(() => {
@@ -71,7 +73,8 @@ export default function DanhSachLop() {
         <div className="p-3">
           <Table rowKey="id" size="middle" loading={isLoading} dataSource={rows} pagination={{ pageSize: 20, hideOnSinglePage: true }}
             components={{ header: { cell: headCell } }} scroll={{ x: 1000 }}
-            expandable={{ expandedRowRender: (l) => <HocVienLop id={l.id} />, expandRowByClick: true }}
+            expandable={{ expandedRowRender: (l) => <HocVienLop id={l.id} /> }}
+            onRow={(l) => ({ onClick: () => navigate(`/lop-hoc/${l.id}`), className: "cursor-pointer" })}
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có lớp nào vào khoá" /> }}
             className="[&_.ant-table-tbody>tr.ant-table-row>td]:!text-[14px] [&_.ant-table-tbody>tr.ant-table-row>td]:!text-[#263B5E]"
             columns={[

@@ -80,3 +80,18 @@ export const getXlTraCuu = (ma) => unwrap(api.get("/xep-lop/tra-cuu", { params: 
 export const xlQuetQr = (id, ma, extra = {}) => unwrap(api.post(`/xep-lop/lop/${id}/quet`, { ma, ...extra }));
 export const xlBoKhoiLop = (id, ids) => unwrap(api.post(`/xep-lop/lop/${id}/bo`, { ids }));
 export const xlVaoKhoa = (id) => unwrap(api.post(`/xep-lop/lop/${id}/vao-khoa`));
+// Đào tạo — khai giảng khoá học
+export const getKgLop = (params) => unwrap(api.get("/khai-giang/lop", { params }));
+export const kgTaoLop = (body) => unwrap(api.post("/khai-giang/lop", body));
+export const kgSuaLop = (id, body) => unwrap(api.put(`/khai-giang/lop/${id}`, body));
+export const kgKhaiGiang = (id) => unwrap(api.post(`/khai-giang/lop/${id}/khai-giang`));
+// Đào tạo — tiến độ đào tạo của lớp
+export const getTdLop = (id) => unwrap(api.get(`/tien-do/lop/${id}`));
+export const getTdGoiY = (hang) => unwrap(api.get("/tien-do/goi-y", { params: { hang } }));
+export const tdLuuThongTin = (id, body) => unwrap(api.put(`/tien-do/lop/${id}`, body));
+export const tdTaoNhom = (id, body) => unwrap(api.post(`/tien-do/lop/${id}/nhom`, body));
+export const tdSuaNhom = (id, nhomId, body) => unwrap(api.put(`/tien-do/lop/${id}/nhom/${nhomId}`, body));
+export const tdXoaNhom = (id, nhomId) => unwrap(api.delete(`/tien-do/lop/${id}/nhom/${nhomId}`));
+export const tdGanNhom = (id, ids, nhomId) => unwrap(api.post(`/tien-do/lop/${id}/gan-nhom`, { ids, nhom_id: nhomId || null }));
+export const tdTuDongGhep = (id) => unwrap(api.post(`/tien-do/lop/${id}/tu-dong-ghep`));
+export const tdXacThuc = (id, huy = false) => unwrap(api.post(`/tien-do/lop/${id}/xac-thuc`, { huy }));

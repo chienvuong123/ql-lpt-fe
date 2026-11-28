@@ -19,6 +19,7 @@ export const PERMISSION_TREE_TEMPLATE = [
       { key: "quan-ly-uy-quyen", name: "Ủy quyền xe", route: "/quan-ly-uy-quyen" },
       { key: "dang-ky-xe-giao-vien", name: "Đăng ký xe, giáo viên", route: "/dang-ky-xe-giao-vien" },
       { key: "xep-lop-hoc-vien", name: "Xếp lớp học viên", route: "/xep-lop-hoc-vien" },
+      { key: "khai-giang", name: "Khai giảng khoá học", route: "/khai-giang" },
       { key: "danh-sach-lop", name: "Danh sách lớp", route: "/danh-sach-lop" },
     ]
   },

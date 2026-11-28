@@ -22,6 +22,7 @@ import { BsCalendar3 } from "react-icons/bs";
 import {
   Avatar,
   Button,
+  ConfigProvider,
   Dropdown,
   Flex,
   Image,
@@ -34,6 +35,30 @@ import {
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { FaCarRear, FaBook } from "react-icons/fa6";
 import { checkPermission } from "../util/permission";
+import anhSanTap from "../assets/sidebar-san-tap.webp";
+
+// Sidebar nền xanh (cùng bảng màu các màn Kế toán / Đào tạo)
+const SB_NEN = "linear-gradient(180deg, #0646A8 0%, #0A53C4 45%, #0646A8 100%)";
+const SB_MENU = {
+  components: {
+    Menu: {
+      darkItemBg: "transparent",
+      darkSubMenuItemBg: "rgba(0,0,0,0.10)",
+      darkPopupBg: "#0646A8",
+      darkItemColor: "rgba(255,255,255,0.92)",
+      darkItemHoverColor: "#fff",
+      darkItemHoverBg: "rgba(255,255,255,0.12)",
+      darkItemSelectedBg: "#2D7CF6",
+      darkItemSelectedColor: "#fff",
+      itemBorderRadius: 12,
+      itemHeight: 46,
+      itemMarginInline: 10,
+      iconSize: 18,
+      collapsedIconSize: 20,
+      fontSize: 15,
+    },
+  },
+};
 
 const { Header, Sider, Content } = Layout;
 const menuPathMap = {
@@ -83,6 +108,7 @@ const menuPathMap = {
   "ke-toan": "/ke-toan",
   "xep-lop-hoc-vien": "/xep-lop-hoc-vien",
   "danh-sach-lop": "/danh-sach-lop",
+  "khai-giang": "/khai-giang",
   "ket-qua-sat-hach": "/ket-qua-sat-hach",
   "tiep-sinh": "/tiep-sinh",
   "tiep-nhan-ho-so": "/tiep-nhan-ho-so",
@@ -162,6 +188,7 @@ const LayoutTest = () => {
         { key: "quan-ly-uy-quyen", label: "Ủy quyền xe" },
         { key: "dang-ky-xe-giao-vien", label: "Đăng ký xe, giáo viên" },
         { key: "xep-lop-hoc-vien", label: "Xếp lớp học viên" },
+        { key: "khai-giang", label: "Khai giảng" },
         { key: "danh-sach-lop", label: "Danh sách lớp" },
       ]
     },
@@ -329,41 +356,46 @@ const LayoutTest = () => {
         collapsible
         collapsed={collapsed}
         style={{
-          background: "#fff",
+          background: SB_NEN,
           height: "100vh",
           position: "sticky",
           top: 0,
           left: 0,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div className="relative" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          {/* Ảnh sân tập mờ dần vào nền xanh ở cuối sidebar */}
+          {!collapsed && (
+            <img src={anhSanTap} alt="" aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 w-full select-none object-cover"
+              style={{ height: 230, opacity: 0.55, WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 55%)", maskImage: "linear-gradient(180deg, transparent 0%, #000 55%)" }} />
+          )}
           <Flex
+            vertical
             align="center"
-            justify={"center"}
-            className={`h-24 overflow-hidden transition-all duration-200 ${collapsed ? "px-0" : "px-4"
-              }`}
+            justify="center"
+            className={`relative overflow-hidden border-b border-white/10 transition-all duration-200 ${collapsed ? "h-20 px-2" : "h-[112px] px-4"}`}
             style={{ flexShrink: 0 }}
           >
-            <Image
-              src="/logo.png"
-              width={140}
-              height={140}
-              preview={false}
-              shape="square"
-              className="object-contain block"
-            />
+            <Image src="/logo.png" width={collapsed ? 64 : 150} preview={false} className="object-contain block drop-shadow-[0_3px_6px_rgba(0,0,0,0.25)]" />
+            {!collapsed && (
+              <div className="mt-1.5 text-[13px] font-medium tracking-wide text-white/85">Trung tâm GDNN&amp;SHLX</div>
+            )}
           </Flex>
-          <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
-            <Menu
-              theme="light"
-              mode="inline"
-              selectedKeys={[selectedMenuKey]}
-              onClick={({ key }) => {
-                const nextPath = menuPathMap[key];
-                if (nextPath) navigate(nextPath);
-              }}
-              items={menuItems}
-            />
+          <div className="no-scrollbar relative" style={{ flex: 1, overflowY: "auto", paddingTop: 8, paddingBottom: collapsed ? 8 : 120 }}>
+            <ConfigProvider theme={SB_MENU}>
+              <Menu
+                theme="dark"
+                mode="inline"
+                selectedKeys={[selectedMenuKey]}
+                onClick={({ key }) => {
+                  const nextPath = menuPathMap[key];
+                  if (nextPath) navigate(nextPath);
+                }}
+                items={menuItems}
+                style={{ background: "transparent", borderInlineEnd: 0 }}
+                className="[&_.ant-menu-item-selected]:!shadow-[0_6px_14px_rgba(0,0,0,0.22)] [&_.ant-menu-item-selected]:!font-semibold"
+              />
+            </ConfigProvider>
           </div>
         </div>
       </Sider>

@@ -22,6 +22,13 @@ export const SHADOW = "0 4px 16px rgba(30,100,190,0.12)";
 export const HEAD = `linear-gradient(90deg, ${C.sidebar}, ${C.primary} 65%, ${C.light})`;
 export const TABLE_HEAD = "#16357a";
 
+/** Body gửi API từ 1 lớp (dùng cả khi bật/tắt nhanh công việc chuẩn bị) */
+export const bodyTuLop = (l, sua = {}) => ({
+  hang: l.hang, khoa: l.khoa, ngay_khai_giang: l.ngay_khai_giang, co_so: l.co_so, suc_chua: l.suc_chua, si_so_toi_thieu: l.si_so_toi_thieu,
+  ghi_chu: l.ghi_chu, nguoi_phu_trach: l.nguoi_phu_trach, phong_hoc: l.phong_hoc, xe_thuc_hanh: l.xe_thuc_hanh, giao_vien: l.giao_vien,
+  cv_xe: l.cv_xe, cv_giao_vien: l.cv_giao_vien, cv_tai_lieu: l.cv_tai_lieu, ...sua,
+});
+
 export const tenLop = (l) => (l ? `${l.hang} - ${l.khoa}` : "");
 export const tenLopDayDu = (l) => (l ? `${tenLop(l)}${l.ngay_khai_giang ? ` (${fmtDate(l.ngay_khai_giang)})` : ""}` : "");
 

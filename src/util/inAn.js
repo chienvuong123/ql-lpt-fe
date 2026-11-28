@@ -10,6 +10,8 @@ const LE_MAC_DINH = "10mm";
 /** Áp dụng cho document của iframe in, gọi ngay trước print() */
 export function boTieuDeTrinhDuyet(doc) {
   if (!doc?.body || doc.body.querySelector(":scope > table.__in-le")) return;
+  // Tài liệu tự chia trang + tự căn lề (lề @page = 0) -> không bọc thêm
+  if (doc.body.hasAttribute("data-tu-chia-trang")) return;
   let tren = null;
   let duoi = null;
   let coPage = false;

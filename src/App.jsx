@@ -60,6 +60,8 @@ const TongQuanTiepSinh = lazy(() => import("./pages/tiep-sinh/TongQuanTiepSinh")
 const TiepNhanHoSo = lazy(() => import("./pages/tiep-sinh/TiepNhanHoSo"));
 const XepLopHocVien = lazy(() => import("./pages/xep-lop/XepLopHocVien"));
 const DanhSachLop = lazy(() => import("./pages/xep-lop/DanhSachLop"));
+const KhaiGiang = lazy(() => import("./pages/xep-lop/KhaiGiang"));
+const TienDoLop = lazy(() => import("./pages/xep-lop/TienDoLop"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -394,6 +396,14 @@ function App() {
               <Route
                 path="xep-lop-hoc-vien"
                 element={<GuardedRoute path="/xep-lop-hoc-vien" element={<XepLopHocVien />} />}
+              />
+              <Route
+                path="lop-hoc/:id"
+                element={<GuardedRoute path="/khai-giang" element={<TienDoLop />} />}
+              />
+              <Route
+                path="khai-giang"
+                element={<GuardedRoute path="/khai-giang" element={<KhaiGiang />} />}
               />
               <Route
                 path="danh-sach-lop"
