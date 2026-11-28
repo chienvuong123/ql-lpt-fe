@@ -179,6 +179,10 @@ const getDefaultPermission = (roleId, path, action) => {
 
   const isTheoryRoute = theoryRoutes.includes(path);
 
+  if (rId === 9) { // Phòng kế toán: chỉ màn kế toán
+    return path === "/ke-toan";
+  }
+
   if (rId === 4) { // Tổ lý thuyết
     return isTheoryRoute; // both view and edit are true
   }

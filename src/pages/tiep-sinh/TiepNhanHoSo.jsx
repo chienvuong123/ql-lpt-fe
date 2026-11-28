@@ -11,6 +11,7 @@ import {
   SafetyCertificateFilled, ArrowLeftOutlined, ThunderboltFilled, UndoOutlined,
   SyncOutlined, QrcodeOutlined, SettingOutlined, CloseOutlined, FileWordOutlined, LeftOutlined, DownOutlined,
   DownloadOutlined, DeleteOutlined, FolderOpenOutlined,
+  LockOutlined,
 } from "@ant-design/icons";
 import {
   FaUser, FaRegCalendarAlt, FaRegIdCard, FaPhoneAlt, FaHome, FaGraduationCap, FaCar,
@@ -1067,6 +1068,12 @@ export function TiepNhanView({ id: rawId, onOpen, onBack, inModal = false, prefi
         />
 
         <StepBar step={step} maxStep={maxStep} onChange={setStep} />
+        {hs?.kt_duyet_at && (
+          <div className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-[14px] text-amber-800">
+            <LockOutlined /> Kế toán đã duyệt thu hồ sơ này lúc {dayjs(hs.kt_duyet_at).format("HH:mm DD/MM/YYYY")}
+            {hs.kt_nguoi_duyet ? ` (${hs.kt_nguoi_duyet})` : ""} — dữ liệu đã khoá, chỉ xem / in, không sửa được.
+          </div>
+        )}
 
         {id && isLoading ? (
           <div className="py-24 text-center"><Spin size="large" /></div>

@@ -53,3 +53,18 @@ export const importExcelTiepSinh = (file, tu_ngay) => {
 
 export const errMsg = (err, fallback = "Có lỗi xảy ra") =>
   err?.response?.data?.message || err?.message || fallback;
+
+// Nộp kế toán: hồ sơ đã duyệt (đã thu tiền) chưa gửi -> gửi theo đợt
+export const getNopKeToanTiepSinh = (params) => unwrap(api.get("/nop-ke-toan", { params }));
+export const nopKeToanTiepSinh = (body) => unwrap(api.post("/nop-ke-toan", body));
+
+// Phòng kế toán: thu phí hồ sơ tiếp sinh đã nộp KT
+export const getKtThongKe = () => unwrap(api.get("/ke-toan/thong-ke"));
+export const getKtDanhSach = (params) => unwrap(api.get("/ke-toan/ho-so", { params }));
+export const getKtSoPhieu = () => unwrap(api.get("/ke-toan/so-phieu"));
+export const getKtChiTiet = (id) => unwrap(api.get(`/ke-toan/ho-so/${id}`));
+export const ktThuPhi = (id, body) => unwrap(api.post(`/ke-toan/ho-so/${id}/thu-phi`, body));
+// Đợt gửi từ tiếp sinh: kế toán duyệt thu theo đợt (duyệt xong -> khoá dữ liệu hồ sơ)
+export const getKtDot = () => unwrap(api.get("/ke-toan/dot"));
+export const getKtChiTietDot = (id) => unwrap(api.get(`/ke-toan/dot/${id}`));
+export const ktDuyetDot = (id, ids) => unwrap(api.post(`/ke-toan/dot/${id}/duyet`, { ids }));

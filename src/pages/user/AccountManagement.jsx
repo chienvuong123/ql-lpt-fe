@@ -118,6 +118,15 @@ const AccountManagement = () => {
       });
     }
 
+    if (Number(roleId) === 9) {
+      // Phòng kế toán: chỉ xem/sửa màn kế toán
+      return allLeafs.map((r) => ({
+        route: r.route,
+        view: r.key === "ke-toan",
+        edit: r.key === "ke-toan",
+      }));
+    }
+
     if (Number(roleId) === 3) {
       // Tổ nghiệp vụ đào tạo: View-only for progress, training, theory
       return allLeafs.map((r) => {
@@ -360,6 +369,7 @@ const AccountManagement = () => {
         else if (record.role_id === 4) color = "cyan";
         else if (record.role_id === 5) color = "geekblue";
         else if (record.role_id === 6) color = "green";
+        else if (record.role_id === 9) color = "gold";
 
         return <Tag color={color}>{label}</Tag>;
       },
@@ -512,7 +522,7 @@ const AccountManagement = () => {
                 rules={[{ required: true, message: "Vui lòng chọn quyền" }]}
               >
                 <Select placeholder="Chọn quyền" onChange={handleRoleChange}>
-                  {ROLE_OPTIONS.filter((opt) => opt.value <= 6).map((option) => (
+                  {ROLE_OPTIONS.filter((opt) => opt.value <= 6 || opt.value === 9).map((option) => (
                     <Select.Option key={option.value} value={option.value}>
                       {option.label}
                     </Select.Option>

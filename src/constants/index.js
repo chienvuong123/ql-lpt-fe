@@ -25,6 +25,7 @@ export const ROLE_OPTIONS = [
   { label: 'Tổ công nghệ', value: 6 },
   { label: 'Tổ tốt nghiệp', value: 7 },
   { label: 'Tổ sát hạch', value: 8 },
+  { label: 'Phòng kế toán', value: 9 },
 ]
 
 export const TRANG_THAI_HOC_BU_MAP = {

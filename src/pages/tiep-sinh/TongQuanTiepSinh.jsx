@@ -5,7 +5,7 @@ import {
   EyeOutlined, MoreOutlined, ClockCircleOutlined, SearchOutlined,
   DownloadOutlined, SyncOutlined, DeleteOutlined, EditOutlined, BellOutlined,
   FullscreenOutlined, FullscreenExitOutlined, ArrowRightOutlined, UserOutlined, FileSearchOutlined,
-  SettingOutlined,
+  SettingOutlined, SendOutlined,
 } from "@ant-design/icons";
 import {
   FaUsers, FaRegClock, FaExclamationCircle, FaCheckCircle, FaPrint, FaRegCalendarAlt, FaPhoneAlt, FaTrashAlt,
@@ -16,7 +16,6 @@ import {
   Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 import dayjs from "dayjs";
-import * as XLSX from "xlsx";
 import {
   getThongKeTiepSinh, getDaXoaTiepSinh, getDanhSachHoSo, getChiTietHoSo, getCauHinhTiepSinh, ghiNhanInHoSo, traBoSungHoSo, moLaiHoSo, xoaHoSo, errMsg,
 } from "../../apis/apiTiepSinh";
@@ -27,11 +26,15 @@ import {
 import { printForms, mauTheoHang } from "./mauDon";
 import { TiepNhanView } from "./TiepNhanHoSo";
 import OcrCccdModal from "./OcrCccdModal";
+import NopKeToanModal from "./NopKeToanModal";
+import CampusBackdrop from "./CampusBackdrop";
 
 const NAVY = "#0f2d6b";
 const TABLE_HEAD = "#16357a";
 const SHORT_DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-const COT_AN_KEY = "tiep-sinh-cot-an";
+// v2: mặc định ẩn "Thời gian duyệt" + "Địa chỉ" -> STT, Mã hồ sơ, Họ tên, Năm sinh, CCCD, Điện thoại, Loại hình, Đầu mối, Hạng, Phải thu, Trạng thái
+const COT_AN_KEY = "tiep-sinh-cot-an-v2";
+const COT_AN_MAC_DINH = ["duyet_at", "dia_chi"];
 const KY_KEY = "tiep-sinh-ky-so-lieu";
 // Kỳ xem số liệu của các thẻ thống kê
 const KY_OPTIONS = [
@@ -103,57 +106,6 @@ function useHeight() {
   return [setEl, h];
 }
 
-// ─── Ảnh nền khuôn viên (minh hoạ SVG) ─────────────────────────────
-function CampusBackdrop() {
-  const trees = [40, 120, 210, 330, 470, 560, 690, 800, 905, 1010];
-  return (
-    <svg
-      className="pointer-events-none absolute right-0 top-0 h-[230px] w-[72%] max-w-[1100px]"
-      viewBox="0 0 1100 230"
-      preserveAspectRatio="xMaxYMin slice"
-      style={{
-        WebkitMaskImage: "linear-gradient(90deg, transparent 0%, #000 35%), linear-gradient(180deg, #000 55%, transparent 100%)",
-        WebkitMaskComposite: "source-in",
-        maskImage: "linear-gradient(90deg, transparent 0%, #000 35%), linear-gradient(180deg, #000 55%, transparent 100%)",
-        maskComposite: "intersect",
-        opacity: 0.55,
-      }}
-    >
-      <defs>
-        <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#bcd6f7" />
-          <stop offset="1" stopColor="#e8f1fc" />
-        </linearGradient>
-      </defs>
-      <rect width="1100" height="230" fill="url(#sky)" />
-      <g fill="#f4f8fd" stroke="#9fbbe0" strokeWidth="1.2">
-        <rect x="150" y="70" width="330" height="110" rx="4" />
-        <rect x="560" y="55" width="300" height="125" rx="4" />
-        <rect x="880" y="85" width="190" height="95" rx="4" />
-        <path d="M140 72 L315 40 L490 72 Z" fill="#dbe7f7" />
-        <path d="M550 57 L710 28 L870 57 Z" fill="#dbe7f7" />
-      </g>
-      <g fill="#a8c4e8">
-        {Array.from({ length: 9 }).map((_, c) =>
-          [88, 118, 148].map((y) => <rect key={`a${c}-${y}`} x={170 + c * 34} y={y} width="20" height="16" rx="2" />),
-        )}
-        {Array.from({ length: 8 }).map((_, c) =>
-          [75, 105, 135].map((y) => <rect key={`b${c}-${y}`} x={580 + c * 34} y={y} width="20" height="18" rx="2" />),
-        )}
-        {Array.from({ length: 5 }).map((_, c) =>
-          [100, 135].map((y) => <rect key={`c${c}-${y}`} x={898 + c * 34} y={y} width="20" height="16" rx="2" />),
-        )}
-      </g>
-      {trees.map((x, i) => (
-        <g key={x}>
-          <rect x={x + 18} y={160} width="5" height="30" fill="#7c9a7a" />
-          <circle cx={x + 20} cy={150 - (i % 3) * 6} r={24 + (i % 2) * 6} fill={i % 2 ? "#8fbf8d" : "#7fb27f"} opacity="0.9" />
-        </g>
-      ))}
-      <rect y="186" width="1100" height="44" fill="#e3edf9" />
-    </svg>
-  );
-}
 
 // ─── Thẻ thống kê ─────────────────────────────────────
 function StatCard({ icon, value, label, delta, color, from, to, spark, active, onClick }) {
@@ -368,6 +320,7 @@ export default function TongQuanTiepSinh() {
     }
   };
   const [daXoaOpen, setDaXoaOpen] = useState(false);
+  const [nopKtOpen, setNopKtOpen] = useState(false);
   const [filters, setFilters] = useState({ tu_ngay: dayjs(), den_ngay: dayjs(), trang_thai: undefined, hang: undefined, search: "" });
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState({ page: 1, limit: 10 });
@@ -379,9 +332,10 @@ export default function TongQuanTiepSinh() {
   // Cột đang ẩn — nhớ theo trình duyệt
   const [cotAn, setCotAn] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(COT_AN_KEY)) || [];
+      const v = JSON.parse(localStorage.getItem(COT_AN_KEY));
+      return Array.isArray(v) ? v : COT_AN_MAC_DINH;
     } catch {
-      return [];
+      return COT_AN_MAC_DINH;
     }
   });
   useEffect(() => {
@@ -538,53 +492,6 @@ export default function TongQuanTiepSinh() {
       } },
     { key: "nguoi_duyet", title: "Người duyệt", width: 120, ellipsis: { showTitle: true } },
   ];
-
-  // Xuất Excel: dòng đã tick, nếu không tick thì toàn bộ hồ sơ theo bộ lọc hiện tại — đủ mọi cột
-  const exportExcel = async () => {
-    const hide = message.loading("Đang xuất Excel...", 0);
-    try {
-      let list;
-      if (checked.length) list = rows.filter((r) => checked.includes(r.id));
-      else {
-        list = [];
-        for (let p = 1; ; p++) {
-          const res = await getDanhSachHoSo({ ...listParams, page: p, limit: 500 });
-          list.push(...(res?.data || []));
-          if (p >= (res?.pagination?.totalPages || 1)) break;
-        }
-      }
-      if (!list.length) {
-        message.info("Không có hồ sơ nào để xuất");
-        return;
-      }
-      const data = list.map((r, i) => {
-        const o = {};
-        for (const c of COT) o[c.title] = c.key === "stt" ? i + 1 : c.xuat ? c.xuat(r) : r[c.key] ?? "";
-        Object.assign(o, {
-          "Giới tính": r.gioi_tinh || "",
-          "Ngày cấp CCCD": fmtDate(r.ngay_cap_cccd),
-          "Khám sức khoẻ": r.kham_suc_khoe || "",
-          "Thời gian khai": fmtDateTime(r.thoi_gian_khai),
-          Nguồn: NGUON_META[r.nguon]?.label || r.nguon || "",
-          "Người tiếp nhận": r.nguoi_tiep_nhan || "",
-          "Ghi chú": r.ghi_chu || "",
-          "Còn thiếu": (r.thieu_truong || []).join(", "),
-        });
-        return o;
-      });
-      const ws = XLSX.utils.json_to_sheet(data);
-      ws["!cols"] = Object.keys(data[0]).map((k) => ({
-        wch: Math.min(45, Math.max(k.length + 2, ...data.map((d) => String(d[k] ?? "").length + 1))),
-      }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Ho so");
-      XLSX.writeFile(wb, `ho-so-tiep-sinh-${dayjs().format("YYYYMMDD-HHmm")}.xlsx`);
-    } catch (e) {
-      message.error(errMsg(e, "Xuất Excel thất bại"));
-    } finally {
-      hide();
-    }
-  };
 
   const the = tk?.the || {};
   const chart = (tk?.bieu_do || []).map((d) => ({
@@ -838,9 +745,9 @@ export default function TongQuanTiepSinh() {
               >
                 <Button icon={<SettingOutlined />}>Cột{cotAn.length ? ` (ẩn ${cotAn.length})` : ""}</Button>
               </Popover>
-              <Tooltip title={checked.length ? `Xuất ${checked.length} hồ sơ đã chọn` : "Xuất toàn bộ hồ sơ theo bộ lọc"}>
-                <Button icon={<DownloadOutlined />} onClick={exportExcel} className="!border-green-600 !text-green-700">
-                  Xuất Excel{checked.length ? ` (${checked.length})` : ""}
+              <Tooltip title={checked.length ? `Gửi ${checked.length} hồ sơ đã tích chọn lên kế toán` : "Gửi dữ liệu học viên đã thu tiền lên kế toán (theo thời gian)"}>
+                <Button icon={<SendOutlined />} onClick={() => setNopKtOpen(true)} className="!border-green-600 !font-semibold !text-green-700">
+                  Nộp KT{checked.length ? ` (${checked.length})` : ""}
                 </Button>
               </Tooltip>
             </div>
@@ -878,7 +785,7 @@ export default function TongQuanTiepSinh() {
           </Card>
 
           <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            <Card title="Thông tin nhanh" icon={<FaInfoCircle />} iconColor="#22a84f" className="min-h-0 flex-1" bodyClassName="overflow-auto px-4 pb-3"
+            <Card title="Thông tin nhanh" icon={<FaInfoCircle />} iconColor="#22a84f" className="min-h-0 flex-1" bodyClassName="flex flex-col overflow-hidden px-4 pb-2"
               extra={sel && (
                 <Dropdown
                   trigger={["click"]}
@@ -886,8 +793,8 @@ export default function TongQuanTiepSinh() {
                     items: [
                       { key: "ct", icon: <FileSearchOutlined />, label: "Chi tiết & lịch sử", onClick: () => setDetailId(sel.id) },
                       { key: "anh", icon: <DownloadOutlined />, label: `Tải ảnh (${sel.ma_ho_so})`, disabled: !sel.anh_chan_dung, onClick: () => taiAnhHoSo(sel) },
-                      ...(sel.trang_thai === "can_bo_sung" ? [{ key: "mo", icon: <SyncOutlined />, label: "Đã bổ sung → chờ duyệt", onClick: () => act(() => moLaiHoSo(sel.id), "Đã chuyển về chờ duyệt") }] : []),
-                      ...(sel.trang_thai !== "da_in" ? [{ type: "divider" }, { key: "xoa", danger: true, icon: <DeleteOutlined />, label: "Xoá hồ sơ", onClick: () => xoa(sel) }] : []),
+                      ...(sel.trang_thai === "can_bo_sung" && !sel.kt_duyet_at ? [{ key: "mo", icon: <SyncOutlined />, label: "Đã bổ sung → chờ duyệt", onClick: () => act(() => moLaiHoSo(sel.id), "Đã chuyển về chờ duyệt") }] : []),
+                      ...(sel.trang_thai !== "da_in" && !sel.kt_duyet_at ? [{ type: "divider" }, { key: "xoa", danger: true, icon: <DeleteOutlined />, label: "Xoá hồ sơ", onClick: () => xoa(sel) }] : []),
                     ],
                   }}
                 >
@@ -899,7 +806,9 @@ export default function TongQuanTiepSinh() {
               {!sel ? (
                 <Empty description="Chọn một hồ sơ" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                <div className="flex h-full flex-col gap-2.5">
+                <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+                  {/* Phần thông tin cuộn; nút Xem chi tiết / Chỉnh sửa cố định bên dưới */}
+                  <div className="-mr-2 flex min-h-0 flex-1 flex-col gap-2.5 overflow-auto pr-2">
                   <div className="flex items-center gap-3">
                     {sel.anh_chan_dung ? (
                       <img src={sel.anh_chan_dung} alt={sel.ho_ten} className="h-[60px] w-[60px] shrink-0 rounded-full object-cover shadow-md ring-4 ring-blue-50" />
@@ -912,6 +821,7 @@ export default function TongQuanTiepSinh() {
                       <div className="text-[18px] font-bold leading-snug" style={{ color: NAVY }}>{sel.ho_ten}</div>
                       <div className="text-[14px] text-slate-600">{sel.ma_ho_so}</div>
                       <div className="mt-1"><Pill row={sel} /></div>
+                      {sel.kt_duyet_at ? <div className="mt-1 text-xs font-semibold text-amber-700">🔒 Kế toán đã duyệt thu — dữ liệu đã khoá</div> : null}
                       {sel.can_bo_sung_sau && sel.ly_do_bo_sung ? <div className="mt-1 text-xs text-orange-600">Cần bổ sung: {sel.ly_do_bo_sung}</div> : null}
                     </div>
                   </div>
@@ -927,9 +837,10 @@ export default function TongQuanTiepSinh() {
                     <InfoLine icon={<FaRegClock />} label="Thời gian khai" value={fmtDateTime(sel.thoi_gian_khai)} />
                     <InfoLine icon={<FaRegClock />} label="Thời gian duyệt" value={fmtDateTime(sel.duyet_at)} />
                   </div>
-                  <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
+                  </div>
+                  <div className="grid shrink-0 grid-cols-2 gap-2">
                     <Button type="primary" icon={<EyeOutlined />} onClick={() => setDetailId(sel.id)} style={{ background: "#1f6ae0" }}>Xem chi tiết</Button>
-                    <Button icon={<EditOutlined />} onClick={() => openPopup(sel.id)} className="!border-blue-300 !text-blue-600">Chỉnh sửa</Button>
+                    <Button icon={<EditOutlined />} onClick={() => openPopup(sel.id)} className="!border-blue-300 !text-blue-600">{sel.kt_duyet_at ? "Xem / In" : "Chỉnh sửa"}</Button>
                   </div>
                 </div>
               )}
@@ -938,11 +849,11 @@ export default function TongQuanTiepSinh() {
             <Card title="Thao tác nhanh" icon={<FaRegCheckCircle />} iconColor="#1f6ae0" className="shrink-0" bodyClassName="px-4 pb-3">
               <div className="grid grid-cols-5 gap-2">
                 {[
-                  { label: "Duyệt hồ sơ", icon: <FaCheckCircle />, color: "#1f6ae0", bg: "#e8f0ff", disabled: !sel || !["cho_duyet", "can_bo_sung"].includes(sel.trang_thai), onClick: () => openPopup(sel.id) },
+                  { label: "Duyệt hồ sơ", icon: <FaCheckCircle />, color: "#1f6ae0", bg: "#e8f0ff", disabled: !sel || !!sel.kt_duyet_at || !["cho_duyet", "can_bo_sung"].includes(sel.trang_thai), onClick: () => openPopup(sel.id) },
                   { label: "In hồ sơ", icon: <FaPrint />, color: "#7b4fe0", bg: "#f1ebff", disabled: !sel || !["da_duyet", "da_in"].includes(sel.trang_thai), onClick: () => inHoSo(sel.id) },
                   { label: "Tiếp nhận hồ sơ mới", icon: <FaUserPlus />, color: "#0e7490", bg: "#e0f7fb", onClick: () => openPopup(null) },
                   { label: "Nhập từ ảnh CCCD (OCR)", icon: <FaIdCard />, color: "#ea580c", bg: "#fff1e6", onClick: () => setOcrOpen(true) },
-                  { label: "Yêu cầu bổ sung", icon: <FaFolderPlus />, color: "#22a84f", bg: "#e6f8ec", disabled: !sel || ["da_in", "can_bo_sung", "bo_hoc"].includes(sel.trang_thai), onClick: () => setTraId(sel.id) },
+                  { label: "Yêu cầu bổ sung", icon: <FaFolderPlus />, color: "#22a84f", bg: "#e6f8ec", disabled: !sel || !!sel.kt_duyet_at || ["da_in", "can_bo_sung", "bo_hoc"].includes(sel.trang_thai), onClick: () => setTraId(sel.id) },
                 ].map((b) => (
                   <Tooltip key={b.label} title={b.label}>
                     <button type="button" aria-label={b.label} disabled={b.disabled || busy} onClick={b.onClick}
@@ -992,6 +903,7 @@ export default function TongQuanTiepSinh() {
       />
       <HoSoDetailModal id={detailId} open={!!detailId} onClose={() => setDetailId(null)} />
       <DaXoaModal open={daXoaOpen} ky={ky} onClose={() => setDaXoaOpen(false)} />
+      <NopKeToanModal open={nopKtOpen} ids={checked} onClose={() => { setNopKtOpen(false); setChecked([]); refresh(); }} />
       <TraBoSungModal
         open={!!traId}
         onClose={() => setTraId(null)}

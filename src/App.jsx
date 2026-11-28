@@ -54,7 +54,7 @@ const DangKyXeGiaoVien = lazy(() => import("./pages/add-data/DangKyXeGiaoVien"))
 const UyQuyen = lazy(() => import("./pages/add-data/UyQuyen"));
 const DSKyNhanHoSoVaGPLX = lazy(() => import("./pages/orther/DSKyNhanHoSoVaGPLX"));
 const GplxHoan = lazy(() => import("./pages/orther/GplxHoan"));
-const KeToan = lazy(() => import("./pages/ke-toan/KeToan"));
+const KeToan = lazy(() => import("./pages/ke-toan/PhongKeToan"));
 const KetQuaSatHach = lazy(() => import("./pages/sat-hach/KetQuaSatHach"));
 const TongQuanTiepSinh = lazy(() => import("./pages/tiep-sinh/TongQuanTiepSinh"));
 const TiepNhanHoSo = lazy(() => import("./pages/tiep-sinh/TiepNhanHoSo"));

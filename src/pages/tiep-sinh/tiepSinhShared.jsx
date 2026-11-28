@@ -606,11 +606,14 @@ const LOG_LABEL = {
   chuyen_phi_kham_den: "Nhận phí khám chuyển đến",
   hoan_phi_kham: "Hoàn phí khám",
   bo_hoc: "Bỏ học",
+  nop_ke_toan: "Gửi kế toán",
+  kt_duyet_thu: "Kế toán duyệt thu",
+  thu_phi: "Kế toán thu phí",
 };
 const LOG_COLOR = {
   duyet: "green", tra_bo_sung: "orange", in: "purple", tao_moi: "blue",
   chuyen_hoc_phi_di: "red", chuyen_hoc_phi_den: "green", chuyen_hang: "blue",
-  chuyen_phi_kham_di: "red", chuyen_phi_kham_den: "green", hoan_phi_kham: "orange", bo_hoc: "gray",
+  chuyen_phi_kham_di: "red", chuyen_phi_kham_den: "green", hoan_phi_kham: "orange", bo_hoc: "gray", nop_ke_toan: "cyan", kt_duyet_thu: "gold", thu_phi: "gold",
 };
 
 export function HoSoDetailModal({ id, open, onClose, footer }) {
