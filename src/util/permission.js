@@ -15,11 +15,11 @@ export const PERMISSION_TREE_TEMPLATE = [
     key: "dao-tao",
     name: "Đào tạo",
     children: [
+      { key: "xep-lop-hoc-vien", name: "Vào khóa (xếp lớp học viên)", route: "/xep-lop-hoc-vien" },
+      { key: "khai-giang", name: "Khai giảng khoá học", route: "/khai-giang" },
       { key: "danh-sach-xe", name: "Danh sách xe", route: "/danh-sach-xe" },
       { key: "quan-ly-uy-quyen", name: "Ủy quyền xe", route: "/quan-ly-uy-quyen" },
       { key: "dang-ky-xe-giao-vien", name: "Đăng ký xe, giáo viên", route: "/dang-ky-xe-giao-vien" },
-      { key: "xep-lop-hoc-vien", name: "Xếp lớp học viên", route: "/xep-lop-hoc-vien" },
-      { key: "khai-giang", name: "Khai giảng khoá học", route: "/khai-giang" },
       { key: "danh-sach-lop", name: "Danh sách lớp", route: "/danh-sach-lop" },
     ]
   },
@@ -124,7 +124,7 @@ export const PERMISSION_TREE_TEMPLATE = [
   },
   {
     key: "to-tiep-sinh",
-    name: "Tổ tiếp sinh",
+    name: "Tiếp sinh",
     children: [
       { key: "tiep-sinh", name: "Tổng quan tiếp sinh", route: "/tiep-sinh" },
       { key: "tiep-nhan-ho-so", name: "Tiếp nhận hồ sơ", route: "/tiep-nhan-ho-so" },
@@ -132,7 +132,7 @@ export const PERMISSION_TREE_TEMPLATE = [
   },
   {
     key: "ke-toan",
-    name: "Quản lý kế toán",
+    name: "Kế toán",
     route: "/ke-toan",
   },
   {

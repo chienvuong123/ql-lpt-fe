@@ -167,28 +167,33 @@ const LayoutTest = () => {
       label: "Dashboard",
     },
     {
+      key: "tien-do-dao-tao",
+      icon: <BarChartOutlined />,
+      label: "Tiến độ đào tạo",
+    },
+    {
+      key: "ke-toan",
+      icon: <DollarOutlined />,
+      label: "Kế toán",
+    },
+    {
       key: "to-tiep-sinh",
       icon: <TeamOutlined />,
-      label: "Tổ tiếp sinh",
+      label: "Tiếp sinh",
       children: [
         { key: "tiep-sinh", label: "Tổng quan tiếp sinh" },
         { key: "tiep-nhan-ho-so", label: "Tiếp nhận hồ sơ" },
       ],
     },
     {
-      key: "tien-do-dao-tao",
-      icon: <BarChartOutlined />,
-      label: "Tiến độ đào tạo",
-    },
-    {
       key: "dao-tao",
       icon: <AppstoreAddOutlined />,
       label: "Đào tạo", children: [
+        { key: "xep-lop-hoc-vien", label: "Vào khóa" },
+        { key: "khai-giang", label: "Khai giảng" },
         { key: "danh-sach-xe", label: "Danh sách xe" },
         { key: "quan-ly-uy-quyen", label: "Ủy quyền xe" },
         { key: "dang-ky-xe-giao-vien", label: "Đăng ký xe, giáo viên" },
-        { key: "xep-lop-hoc-vien", label: "Xếp lớp học viên" },
-        { key: "khai-giang", label: "Khai giảng" },
         { key: "danh-sach-lop", label: "Danh sách lớp" },
       ]
     },
@@ -305,11 +310,6 @@ const LayoutTest = () => {
       children: [
         { key: "ket-qua-sat-hach", label: "Kết quả sát hạch" },
       ],
-    },
-    {
-      key: "ke-toan",
-      icon: <DollarOutlined />,
-      label: "Quản lý kế toán",
     },
     {
       key: "tai-khoan",
