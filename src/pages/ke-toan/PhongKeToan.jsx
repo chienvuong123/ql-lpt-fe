@@ -5,7 +5,7 @@ import {
   FaSackDollar, FaUsers, FaWallet, FaCircleCheck, FaDatabase, FaRegCalendarDays, FaBell, FaFileExcel, FaClock,
   FaCheck, FaClipboardList, FaPrint, FaCreditCard, FaListUl, FaCircleInfo, FaPhone, FaUserTie,
   FaArrowTrendUp, FaArrowTrendDown, FaMoneyBill1, FaBuildingColumns, FaUser, FaMoneyCheckDollar,
-  FaHouse, FaCar, FaCarSide, FaCircleDollarToSlot, FaMagnifyingGlass, FaAnglesLeft, FaAnglesRight, FaChevronUp, FaChevronDown,
+  FaHouse, FaCar, FaCarSide, FaMotorcycle, FaIdCard, FaCircleDollarToSlot, FaMagnifyingGlass, FaAnglesLeft, FaAnglesRight, FaChevronUp, FaChevronDown,
 } from "react-icons/fa6";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
@@ -37,15 +37,16 @@ const SHADOW = "0 4px 16px rgba(30,100,190,0.12)";
 const CARD = "rounded-[18px] border bg-white";
 const cardStyle = { borderColor: C.border, boxShadow: SHADOW };
 
+// Danh sách = học viên tiếp sinh đã duyệt / cần bổ sung · Đã thu = tiếp sinh trình + KT duyệt thu, hoặc KT tự thu · Công nợ = còn lại
 const TABS = [
-  { key: "cho_thu", label: "Danh sách chờ thu phí" },
+  { key: "danh_sach", label: "Danh sách" },
   { key: "da_thu", label: "Đã thu" },
   { key: "cong_no", label: "Công nợ" },
-  { key: "tat_ca", label: "Tất cả" },
 ];
 const TRANG_THAI_THU = {
   cho_thu: { label: "Chờ thu phí", bg: "#FFF1DC", color: "#E8730C", icon: <FaClock /> },
-  cong_no: { label: "Công nợ", bg: "#FDE4E4", color: C.danger, icon: <FaWallet /> },
+  chua_trinh: { label: "Chưa trình KT", bg: "#EEF1F6", color: "#5B6B85", icon: <FaWallet /> },
+  thu_thieu: { label: "Thu thiếu", bg: "#FDE4E4", color: C.danger, icon: <FaWallet /> },
   da_thu: { label: "Đã thu", bg: "#DCF5E5", color: C.success, icon: <FaCircleCheck /> },
 };
 const HINH_THUC = [
@@ -102,6 +103,12 @@ function IconCircle({ children, className = "" }) {
   );
 }
 
+// Hạng mô tô (A, A1, A02...) -> biểu tượng xe máy; ô tô -> biểu tượng ô tô
+function IconXe({ hang, ...props }) {
+  const moTo = /^A/i.test(String(hang || "").trim()) || !hang;
+  return moTo ? <FaMotorcycle {...props} /> : <FaCarSide {...props} />;
+}
+
 // ─── Thông tin học viên ───
 function KhoaRow({ icon, label, children, hl }) {
   return (
@@ -149,10 +156,10 @@ function ThongTinHocVien({ id }) {
 
       <div className="mt-3 overflow-hidden rounded-2xl border" style={{ borderColor: C.border, boxShadow: SHADOW }}>
         <div className="flex items-center gap-3 px-3.5 py-2.5 text-[15px] font-bold" style={{ background: C.soft, color: C.title }}>
-          <FaCar className="text-[20px]" style={{ color: C.sidebar }} /> Thông tin khóa học
+          <IconXe hang={hs.hang} className="text-[20px]" style={{ color: C.sidebar }} /> Thông tin khóa học
         </div>
-        <KhoaRow icon={<FaCarSide />} label="Hạng đăng ký:">{hs.hang || "—"}</KhoaRow>
-        <KhoaRow icon={<FaCarSide />} label="Khóa học:">{tenKhoa(hs) || "—"}</KhoaRow>
+        <KhoaRow icon={<FaIdCard />} label="Hạng đăng ký:">{hs.hang || "—"}</KhoaRow>
+        <KhoaRow icon={<IconXe hang={hs.hang} />} label="Khóa học:">{tenKhoa(hs) || "—"}</KhoaRow>
         <KhoaRow icon={<FaCircleDollarToSlot />} label="Đơn giá:" hl>
           {hs.phai_thu === null ? <span className="font-normal" style={{ color: C.sub }}>Chưa có giá</span> : fmtTien(hs.phai_thu)}
         </KhoaRow>
@@ -175,6 +182,7 @@ function useThuPhi({ id, hinhThuc, onDone, onXemCongNo }) {
   const [saving, setSaving] = useState(false);
   const dangHoi = useRef(false);
   const daDu = hs?.trang_thai_thu === "da_thu";
+  const chuaTrinh = false; // kế toán được tự thu cả hồ sơ tiếp sinh chưa trình
 
   useEffect(() => {
     setSoTien(hs ? hs.con_lai ?? null : null);
@@ -192,6 +200,7 @@ function useThuPhi({ id, hinhThuc, onDone, onXemCongNo }) {
       content: (
         <div>
           Thu <b>{fmtTien(st)}</b> ({tenHt}) của <b>{hs.ho_ten}</b> ({hs.ma_ho_so}).
+          {!hs.nop_kt_at && <div className="mt-1 text-slate-600">Tiếp sinh chưa trình hồ sơ này — kế toán tự thu, số phải thu được chốt theo dữ liệu hiện tại.</div>}
           {hs.con_lai !== null && st < hs.con_lai && <div className="mt-1 text-orange-600">Thu thiếu — còn nợ {fmtTien(hs.con_lai - st)}.</div>}
         </div>
       ),
@@ -237,7 +246,7 @@ function useThuPhi({ id, hinhThuc, onDone, onXemCongNo }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  return { hs, daDu, soTien, setSoTien, saving, inPhieu, thuNhanh, xacNhan };
+  return { hs, daDu, chuaTrinh, soTien, setSoTien, saving, inPhieu, thuNhanh, xacNhan };
 }
 
 function NutLon({ icon, label, phim, from, to, color, onClick, disabled }) {
@@ -262,7 +271,7 @@ function Dong({ label, hv, tien }) {
 }
 
 function TongQuanThuPhi({ tk, tp, onXemCongNo }) {
-  const { hs, daDu, saving, inPhieu, thuNhanh } = tp;
+  const { hs, daDu, chuaTrinh, saving, inPhieu, thuNhanh } = tp;
   return (
     <>
       <div className={`${CARD} px-4 py-2.5`} style={cardStyle}>
@@ -275,7 +284,7 @@ function TongQuanThuPhi({ tk, tp, onXemCongNo }) {
       </div>
       <div className="flex min-w-0 items-center gap-3">
         <NutLon icon={<FaPrint />} label="In phiếu thu" phim="F2" from={C.light} to={C.primary} color={C.primary} onClick={inPhieu} disabled={!hs?.phieu_thu?.length} />
-        <NutLon icon={<FaCreditCard />} label="Thu phí nhanh" phim="F3" from="#2fc46c" to={C.success} color={C.success} onClick={thuNhanh} disabled={!hs || daDu || !hs.con_lai || saving} />
+        <NutLon icon={<FaCreditCard />} label="Thu phí nhanh" phim="F3" from="#2fc46c" to={C.success} color={C.success} onClick={thuNhanh} disabled={!hs || daDu || chuaTrinh || !hs.con_lai || saving} />
         <NutLon icon={<FaListUl />} label="Xem công nợ" phim="F4" from="#FFA54A" to="#FF8B18" color="#FF8B18" onClick={onXemCongNo} />
       </div>
     </>
@@ -283,7 +292,7 @@ function TongQuanThuPhi({ tk, tp, onXemCongNo }) {
 }
 
 function NhapSoTien({ tp }) {
-  const { hs, daDu, soTien, setSoTien, saving, xacNhan } = tp;
+  const { hs, daDu, chuaTrinh, soTien, setSoTien, saving, xacNhan } = tp;
   return (
     <div className={`${CARD} px-4 py-3`} style={cardStyle}>
       <div className="mb-1.5 truncate text-[15px] font-bold" style={{ color: C.title }}>
@@ -296,17 +305,17 @@ function NhapSoTien({ tp }) {
       ) : (
         <div className="flex gap-3">
           <InputNumber size="large" disabled={!hs}
-            className="!h-[54px] min-w-[170px] flex-1 !rounded-xl [&_.ant-input-number-suffix]:!text-[22px] [&_.ant-input-number-suffix]:!font-bold [&_input]:!h-[52px] [&_input]:!text-right [&_input]:!text-[24px] [&_input]:!font-extrabold"
+            className="!h-[54px] min-w-0 flex-1 !rounded-xl [&_.ant-input-number-suffix]:!text-[18px] [&_.ant-input-number-suffix]:!font-bold [&_input]:!h-[52px] [&_input]:!text-right [&_input]:!text-[20px] [&_input]:!font-extrabold"
             style={{ borderColor: C.border }}
             min={0} value={soTien} onChange={setSoTien} suffix="đ" controls={false}
             formatter={(v) => (v ? Number(v).toLocaleString("vi-VN") : "")} parser={(v) => Number(String(v).replace(/[^\d]/g, "")) || null}
             onPressEnter={xacNhan} />
-          <button type="button" disabled={!hs || saving} onClick={xacNhan}
-            className="flex h-[54px] shrink-0 items-center gap-2 rounded-xl px-3.5 text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
+          <button type="button" disabled={!hs || chuaTrinh || saving} onClick={xacNhan}
+            className="flex h-[54px] shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
             style={{ background: "linear-gradient(180deg, #2fc46c, #148a3f)", color: "#fff", boxShadow: `0 6px 16px ${C.success}55` }}>
-            <span className="text-[22px]">{saving ? <Spin size="small" /> : <FaCheck />}</span>
+            <span className="text-[18px]">{saving ? <Spin size="small" /> : <FaCheck />}</span>
             <span className="flex flex-col items-center leading-tight">
-              <span className="text-[15px] font-bold">Xác nhận thu phí</span>
+              <span className="text-[13.5px] font-bold">Xác nhận thu phí</span>
               <span className="text-[13px] font-semibold">(F5)</span>
             </span>
           </button>
@@ -331,7 +340,7 @@ function SongNen() {
 export default function PhongKeToan() {
   const qc = useQueryClient();
   const now = useNow();
-  const [tab, setTab] = useState("cho_thu");
+  const [tab, setTab] = useState("danh_sach");
   const [searchText, setSearchText] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState({ page: 1, limit: 10 });
@@ -339,6 +348,16 @@ export default function PhongKeToan() {
   const [selectedId, setSelectedId] = useState(null);
   const [chiTietId, setChiTietId] = useState(null);
   const [thuGon, setThuGon] = useState(false); // thu gọn ô thông tin học viên
+  // Trang cố định 1 màn hình: đo chiều cao vùng bảng để chỉ bảng cuộn
+  const bangRef = useRef(null);
+  const [caoBang, setCaoBang] = useState(400);
+  useEffect(() => {
+    const el = bangRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(([e]) => setCaoBang(Math.floor(e.contentRect.height)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const hinhThuc = "tien_mat"; // panel mới không còn chọn hình thức thu -> mặc định tiền mặt
 
   const { data: tkRes } = useQuery({ queryKey: ["kt-thong-ke"], queryFn: getKtThongKe, refetchInterval: 15000, staleTime: 0 });
@@ -427,8 +446,18 @@ export default function PhongKeToan() {
   const columns = [
     { title: "STT", width: 52, align: "center", render: (_, __, i) => (page.page - 1) * page.limit + i + 1 },
     { title: "Mã hồ sơ", dataIndex: "ma_ho_so", width: 130 },
-    { title: "Họ và tên", dataIndex: "ho_ten", width: 160, ellipsis: true },
-    { title: "CCCD", dataIndex: "cccd", width: 125 },
+    {
+      title: "Họ và tên", dataIndex: "ho_ten", width: 160, ellipsis: true,
+      render: (v, r) => (
+        <Tooltip title="Xem chi tiết học viên">
+          <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); setChiTietId(r.id); }}
+            className="max-w-full truncate text-left font-semibold underline-offset-2 hover:underline" style={{ color: C.sidebar }}>
+            {v}
+          </button>
+        </Tooltip>
+      ),
+    },
+    { title: "CCCD", dataIndex: "cccd", width: 140 },
     { title: "Hạng", dataIndex: "hang", width: 62, align: "center" },
     { title: "Khoá học", width: 100, align: "center", render: (_, r) => tenKhoa(r) },
     { title: "Số tiền phải thu", dataIndex: "phai_thu", width: 130, align: "right", render: (v) => (v === null ? <span style={{ color: C.sub }}>Chưa có giá</span> : fmtTien(v)) },
@@ -452,7 +481,7 @@ export default function PhongKeToan() {
   const navBtn = "flex h-8 w-8 items-center justify-center rounded-md border bg-white text-[12px] transition hover:border-blue-400 disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div className="relative -m-4 flex min-h-[calc(100vh-64px)] flex-col gap-4 overflow-hidden px-4 pb-6 pt-3 sm:px-5"
+    <div className="relative -m-4 flex h-[calc(100vh-64px)] min-h-[640px] flex-col gap-4 overflow-hidden px-4 pb-4 pt-3 sm:px-5"
       style={{ background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bg2} 45%, ${C.bg} 100%)` }}>
       {/* Ảnh nền khuôn viên phía sau tiêu đề + sóng đáy trang */}
       <img src={banner} alt="" aria-hidden
@@ -489,7 +518,7 @@ export default function PhongKeToan() {
           <span className="mx-1 h-9 w-px" style={{ background: C.border }} />
           <Tooltip title={tk.cho_thu_hom_nay ? `${tk.cho_thu_hom_nay} hồ sơ mới gửi lên hôm nay chờ thu phí` : "Không có hồ sơ mới hôm nay"}>
             <Badge count={tk.cho_thu_hom_nay || 0} offset={[-4, 4]}>
-              <button type="button" onClick={() => doiTab("cho_thu")} aria-label="Hồ sơ mới hôm nay">
+              <button type="button" onClick={() => doiTab("cong_no")} aria-label="Hồ sơ mới hôm nay">
                 <IconCircle className="h-[44px] w-[44px] text-[20px]"><FaBell /></IconCircle>
               </button>
             </Badge>
@@ -515,9 +544,9 @@ export default function PhongKeToan() {
       </div>
 
       {/* Cột trái: danh sách + tổng quan/nút · Cột phải: thông tin học viên + nhập tiền */}
-      <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col">
-          <div className={`${CARD} flex min-w-0 flex-col p-3`} style={cardStyle}>
+      <div className="relative grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-h-0 min-w-0 flex-col">
+          <div className={`${CARD} flex min-h-0 min-w-0 flex-1 flex-col p-3`} style={cardStyle}>
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div className="flex flex-wrap items-center gap-1">
                 {TABS.map((t) => {
@@ -558,17 +587,24 @@ export default function PhongKeToan() {
                 </Tooltip>
               </div>
             </div>
+            <div ref={bangRef} className="min-h-0 flex-1">
             <Table
               rowKey="id"
               size="small"
               columns={columns}
               dataSource={rows}
               loading={isLoading || (isFetching && isPlaceholderData)}
-              scroll={{ x: 1100 }}
+              scroll={{ x: 1160, y: Math.max(120, caoBang - 44) }}
               rowSelection={{ selectedRowKeys: checked, onChange: setChecked, columnWidth: 44 }}
-              onRow={(r) => ({ onClick: () => { setSelectedId(r.id); setChiTietId(r.id); }, className: "cursor-pointer" })}
-              rowClassName={(r) => (r.id === selectedId ? "[&>td]:!bg-[#EAF3FF]" : "")}
-              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có hồ sơ — tổ tiếp sinh gửi lên bằng nút “Nộp KT”" /> }}
+              // bấm dòng = chọn học viên; bấm vào tên mới mở chi tiết
+              onRow={(r) => ({ onClick: () => setSelectedId(r.id), className: "cursor-pointer" })}
+              // đã thu tiền -> nền xanh lá; đang chọn -> xanh dương
+              rowClassName={(r) => {
+                const daThu = r.trang_thai_thu === "da_thu" || r.trang_thai_thu === "thu_thieu";
+                if (daThu) return r.id === selectedId ? "[&>td]:!bg-[#7FCF9C]" : "[&>td]:!bg-[#A8E0BC] hover:[&>td]:!bg-[#95D8AD]";
+                return r.id === selectedId ? "[&>td]:!bg-[#EAF3FF]" : "";
+              }}
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có học viên — học viên được tiếp sinh duyệt sẽ hiện ở đây" /> }}
               components={{
                 header: {
                   cell: (props) => (
@@ -576,10 +612,11 @@ export default function PhongKeToan() {
                   ),
                 },
               }}
-              className="overflow-hidden rounded-xl border [&_.ant-table-tbody_td]:!border-[#E6EEF9] [&_.ant-table-tbody>tr.ant-table-row>td]:!py-[9px] [&_.ant-table-tbody_td]:!text-[15px] [&_.ant-table-tbody_td]:!text-[#263B5E] [&_.ant-table-tbody_td+td]:!border-l"
+              className="overflow-hidden rounded-xl border [&_.ant-table-tbody_td]:!border-[#E6EEF9] [&_.ant-table-tbody>tr.ant-table-row>td]:!py-[9px] [&_.ant-table-tbody_td]:!text-[15px] [&_.ant-table-tbody_td]:!text-[#263B5E] [&_.ant-table-tbody_td]:!whitespace-nowrap [&_.ant-table-tbody_td+td]:!border-l"
               style={{ borderColor: C.border }}
               pagination={false}
             />
+            </div>
             {/* Phân trang */}
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span className="text-[15px]" style={{ color: C.text }}>
@@ -599,8 +636,9 @@ export default function PhongKeToan() {
 
         </div>
 
-        <div className="flex min-w-0 flex-col self-start">
-          <div className={`${CARD} flex flex-col overflow-hidden`} style={cardStyle}>
+        <div className="flex min-h-0 min-w-0 flex-col">
+          {/* Cao bằng khung bảng bên trái; nội dung dài thì cuộn trong khung */}
+          <div className={`${CARD} flex min-h-0 flex-col overflow-hidden ${thuGon ? "" : "flex-1"}`} style={cardStyle}>
             <button type="button" onClick={() => setThuGon((v) => !v)}
               className="flex items-center gap-2.5 px-4 py-3 text-left text-[17px] font-bold text-white"
               style={{ background: `linear-gradient(90deg, ${C.sidebar}, ${C.primary} 70%, ${C.light})`, color: "#fff" }}>
@@ -609,7 +647,7 @@ export default function PhongKeToan() {
               {thuGon ? <FaChevronDown /> : <FaChevronUp />}
             </button>
             {!thuGon && (
-              <div className="p-3.5">
+              <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-3.5">
                 <ThongTinHocVien id={selectedId} />
               </div>
             )}
@@ -618,7 +656,7 @@ export default function PhongKeToan() {
       </div>
 
       {/* Footer 1 hàng: tổng quan · nút F2–F4 · nhập số tiền F5 */}
-      <div className="relative grid items-center gap-4 lg:grid-cols-[minmax(330px,380px)_minmax(0,1fr)] xl:grid-cols-[minmax(330px,380px)_minmax(0,1fr)_minmax(400px,440px)]">
+      <div className="relative grid items-center gap-4 lg:grid-cols-[minmax(330px,380px)_minmax(0,1fr)] xl:grid-cols-[minmax(330px,380px)_minmax(0,1fr)_360px]">
         <TongQuanThuPhi tk={tk} tp={tp} onXemCongNo={xemCongNo} />
         <div className="lg:col-span-2 xl:col-span-1">
           <NhapSoTien tp={tp} />

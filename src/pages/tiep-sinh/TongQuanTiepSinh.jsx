@@ -766,7 +766,7 @@ export default function TongQuanTiepSinh() {
               // Kế toán đã duyệt thu -> tô xanh lá cả dòng (đang chọn thì đậm hơn)
               rowClassName={(r) =>
                 r.kt_duyet_at
-                  ? r.id === selectedId ? "[&>td]:!bg-green-200/80" : "[&>td]:!bg-green-50 hover:[&>td]:!bg-green-100"
+                  ? r.id === selectedId ? "[&>td]:!bg-[#7FCF9C]" : "[&>td]:!bg-[#A8E0BC] hover:[&>td]:!bg-[#95D8AD]"
                   : r.id === selectedId ? "[&>td]:!bg-blue-50/70" : ""}
               pagination={{
                 current: page.page,
