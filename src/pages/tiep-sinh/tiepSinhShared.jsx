@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import jsQR from "jsqr";
 import { useQuery } from "@tanstack/react-query";
 import { getChiTietHoSo } from "../../apis/apiTiepSinh";
+import { inHtml } from "../../util/inAn";
 
 export const BLUE = "#1d5fd6";
 export const BLUE_DARK = "#0f3f9e";
@@ -573,21 +574,7 @@ export function buildPrintHtml(hs) {
 
 /** In bằng iframe ẩn để không bị trình duyệt chặn popup */
 export function printHoSo(hs) {
-  const iframe = document.createElement("iframe");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
-  document.body.appendChild(iframe);
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(buildPrintHtml(hs));
-  doc.close();
-  const go = () => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    setTimeout(() => iframe.remove(), 1000);
-  };
-  const img = doc.querySelector("img");
-  if (img && !img.complete) img.onload = go;
-  else setTimeout(go, 150);
+  inHtml(buildPrintHtml(hs));
 }
 
 // ─── Chi tiết hồ sơ (modal) ─────────────────────────────────────

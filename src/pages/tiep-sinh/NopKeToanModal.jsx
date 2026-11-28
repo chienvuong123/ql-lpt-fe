@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import { getNopKeToanTiepSinh, nopKeToanTiepSinh, errMsg } from "../../apis/apiTiepSinh";
 import { HeaderBanner, fmtDate, fmtTien } from "./tiepSinhShared";
 import { bienBanHtml } from "./bienBanNopKt";
+import { inHtml } from "../../util/inAn";
 
 const BLUE = "#1f6ae0";
 const HEAD_BG = "linear-gradient(90deg, #1d5fd6, #3b82f6)";
@@ -17,20 +18,6 @@ const NHANH = [
   { key: "30", label: "30 ngày qua", range: () => [dayjs().subtract(29, "day"), dayjs()] },
 ];
 const tenNguoi = () => sessionStorage.getItem("name") || sessionStorage.getItem("username") || "Nhân viên";
-function inHtml(html) {
-  const iframe = document.createElement("iframe");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
-  document.body.appendChild(iframe);
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(html);
-  doc.close();
-  setTimeout(() => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    setTimeout(() => iframe.remove(), 1000);
-  }, 150);
-}
 
 function StatBox({ icon, color, label, children }) {
   return (

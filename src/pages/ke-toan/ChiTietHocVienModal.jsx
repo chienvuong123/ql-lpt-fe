@@ -7,8 +7,8 @@ import { getKtChiTiet, getChiTietHoSo, errMsg } from "../../apis/apiTiepSinh";
 import { fmtDate, fmtTien, printHoSo } from "../tiep-sinh/tiepSinhShared";
 import { HINH_THUC, tenKhoa } from "./phieuThu";
 
-const NAVY = "#0f2d6b";
-const BLUE = "#1f6ae0";
+const NAVY = "#102D62";
+const BLUE = "#0878F9";
 const SO_DONG = 5; // số dòng hiện trước khi bấm "Xem tất cả"
 const CHUYEN_LABEL = {
   chuyen_hoc_phi_di: "Chuyển học phí đi",
@@ -94,7 +94,7 @@ export default function ChiTietHocVienModal({ id, open, onClose }) {
     <Modal open={open} onCancel={onClose} footer={null} closable={false} width="min(1300px, 96vw)" style={{ top: 24 }} destroyOnHidden
       afterOpenChange={(o) => !o && setMoTien(false)}
       styles={{ container: { padding: 0, overflow: "hidden", borderRadius: 20 }, content: { padding: 0 }, body: { padding: 0 } }}>
-      <div className="flex items-center gap-3 px-6 py-3.5 text-white" style={{ background: `linear-gradient(110deg, #0f3f9e, ${BLUE} 60%, #4f8ff7)` }}>
+      <div className="flex items-center gap-3 px-6 py-3.5 text-white" style={{ background: `linear-gradient(110deg, #0646A8, ${BLUE} 60%, #2495FF)` }}>
         <UserOutlined className="text-[26px]" />
         <span className="flex-1 text-[22px] font-bold">Chi tiết học viên</span>
         <button type="button" onClick={onClose} aria-label="Đóng" title="Đóng" className="text-[22px]" style={{ color: "#fff" }}>
@@ -102,7 +102,7 @@ export default function ChiTietHocVienModal({ id, open, onClose }) {
         </button>
       </div>
 
-      <div className="bg-[#f3f7fd] p-4">
+      <div className="bg-[#F5F9FF] p-4">
         {isLoading || !hs ? (
           <div className="py-24 text-center"><Spin /></div>
         ) : (
@@ -161,16 +161,16 @@ export default function ChiTietHocVienModal({ id, open, onClose }) {
             <div className="flex min-w-0 flex-col gap-4">
               <Khung icon={<FaDatabase />} title="Lịch sử đóng tiền" extra={<XemTatCa tong={lichSu.length} mo={moTien} onClick={() => setMoTien((v) => !v)} />}>
                 <Table size="middle" rowKey="key" pagination={false} bordered dataSource={moTien ? lichSu : lichSu.slice(0, SO_DONG)}
-                  components={{ header: { cell: headCell } }} scroll={{ x: 800 }}
+                  components={{ header: { cell: headCell } }} scroll={{ x: 990 }}
                   locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có lần đóng tiền nào" /> }}
                   columns={[
                     { title: "Ngày thu", dataIndex: "ngay", width: 110, align: "center", render: (v) => fmtDate(v) },
                     { title: "Số phiếu thu", dataIndex: "so_phieu", width: 130, align: "center" },
-                    { title: "Hình thức thanh toán", dataIndex: "hinh_thuc", width: 170 },
+                    { title: "Hình thức thanh toán", dataIndex: "hinh_thuc", width: 190 },
                     { title: "Số tiền", dataIndex: "so_tien", width: 130, align: "right",
                       render: (v, r) => (v === null || v === undefined ? "-" : <span className={r.am ? "text-red-600" : ""}>{r.am ? "−" : ""}{fmtTien(v)}</span>) },
-                    { title: "Nội dung", dataIndex: "noi_dung", ellipsis: { showTitle: true } },
-                    { title: "Chuyển học phí cho", dataIndex: "chuyen_cho", width: 170, align: "center", ellipsis: { showTitle: true } },
+                    { title: "Nội dung", dataIndex: "noi_dung", width: 240 },
+                    { title: "Chuyển học phí cho", dataIndex: "chuyen_cho", width: 190, align: "center" },
                   ]} />
               </Khung>
 

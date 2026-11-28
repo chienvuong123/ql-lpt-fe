@@ -6,6 +6,7 @@ import axios from "axios";
 import dayjs from "dayjs";
 import QRCode from "qrcode";
 import { baseURL } from "../../constants/base";
+import { boTieuDeTrinhDuyet } from "../../util/inAn";
 
 // Mã chung — máy chủ tự chọn file mẫu hạng A hoặc A1 theo hồ sơ
 export const MAU_DON = [
@@ -170,6 +171,7 @@ export async function printForms(hs, keys) {
     doc.head.appendChild(st);
     await doc.fonts?.ready;
     await new Promise((r) => setTimeout(r, 200));
+    boTieuDeTrinhDuyet(doc); // không in giờ / tên file / đường dẫn / số trang của trình duyệt
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
   } finally {

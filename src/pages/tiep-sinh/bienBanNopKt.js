@@ -1,8 +1,16 @@
 // Biên bản xác nhận chi phí phải nộp lên kế toán (dùng chung: tiếp sinh nộp KT + kế toán xem đợt gửi)
 import dayjs from "dayjs";
-import { CENTER_NAME, fmtDate, fmtTien } from "./tiepSinhShared";
+import { fmtDate, fmtTien } from "./tiepSinhShared";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// Mã hồ sơ trong biên bản: liệt kê nếu ít, nhiều thì ghi "từ … đến …" (mã tăng dần)
+function dsMa(rows) {
+  const ma = [...new Set(rows.map((r) => r.ma_ho_so).filter(Boolean))].sort();
+  if (!ma.length) return "—";
+  if (ma.length <= 12) return ma.join(", ");
+  return `từ ${ma[0]} đến ${ma[ma.length - 1]} (${ma.length} hồ sơ)`;
+}
 
 /** Biên bản xác nhận chi phí phải nộp lên kế toán (HTML để in / xem trước) */
 export function bienBanHtml({ rows, tu, den, nguoi, ghiChu, thoiGian }) {
@@ -18,23 +26,20 @@ export function bienBanHtml({ rows, tu, den, nguoi, ghiChu, thoiGian }) {
 <style>
   @page { size: A4; margin: 15mm 14mm; }
   body { font-family: "Times New Roman", serif; font-size: 13pt; color: #000; }
-  .top { display: flex; justify-content: space-between; text-align: center; }
-  .top div { width: 48%; } .b { font-weight: bold; }
-  h1 { text-align: center; font-size: 16pt; margin: 22px 0 4px; }
+  .b { font-weight: bold; }
+  h1 { text-align: center; font-size: 16pt; margin: 0 0 4px; }
+  .ma { text-align: center; margin: -8px 0 14px; word-break: break-word; }
   .sub { text-align: center; font-style: italic; margin-bottom: 14px; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; }
   th, td { border: 1px solid #000; padding: 4px 6px; font-size: 12pt; }
   th { background: #eee; } .c { text-align: center; } .r { text-align: right; white-space: nowrap; }
   tfoot td { font-weight: bold; }
   .ky { display: flex; justify-content: space-around; margin-top: 26px; text-align: center; }
-  .ky div { width: 40%; } .ky i { font-size: 11pt; } .ky .ten { margin-top: 70px; font-weight: bold; }
+  .ky > div { width: 40%; } .ky i { font-size: 11pt; } .ky .ten { margin-top: 70px; font-weight: bold; }
 </style></head><body>
-<div class="top">
-  <div><div>${esc(CENTER_NAME.toUpperCase())}</div><div class="b">TỔ TIẾP SINH</div></div>
-  <div><div class="b">CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM</div><div class="b"><u>Độc lập - Tự do - Hạnh phúc</u></div></div>
-</div>
 <h1>BIÊN BẢN XÁC NHẬN CHI PHÍ PHẢI NỘP LÊN KẾ TOÁN</h1>
 <div class="sub">Thời gian thu tiền: từ ngày ${esc(fmtDate(tu))} đến ngày ${esc(fmtDate(den))}</div>
+<div class="ma">Mã hồ sơ: ${esc(dsMa(rows))}</div>
 <div>Người lập: <b>${esc(nguoi)}</b> — Thời gian gửi: ${esc(thoiGian ? t.format("HH:mm DD/MM/YYYY") : "(chưa gửi)")}</div>
 <div>Tổng số học viên: <b>${rows.length}</b> — Tổng số tiền phải nộp: <b>${esc(fmtTien(tong))}</b></div>
 ${ghiChu ? `<div>Ghi chú: ${esc(ghiChu)}</div>` : ""}

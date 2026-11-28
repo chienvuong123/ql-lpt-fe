@@ -763,7 +763,11 @@ export default function TongQuanTiepSinh() {
               className="[&_.ant-table]:!text-[13px] [&_td]:!px-2 [&_th]:!px-2"
               rowSelection={{ selectedRowKeys: checked, onChange: setChecked, columnWidth: 36 }}
               onRow={(r) => ({ onClick: () => setSelectedId(r.id), onDoubleClick: () => openPopup(r.id), className: "cursor-pointer" })}
-              rowClassName={(r) => (r.id === selectedId ? "[&>td]:!bg-blue-50/70" : "")}
+              // Kế toán đã duyệt thu -> tô xanh lá cả dòng (đang chọn thì đậm hơn)
+              rowClassName={(r) =>
+                r.kt_duyet_at
+                  ? r.id === selectedId ? "[&>td]:!bg-green-200/80" : "[&>td]:!bg-green-50 hover:[&>td]:!bg-green-100"
+                  : r.id === selectedId ? "[&>td]:!bg-blue-50/70" : ""}
               pagination={{
                 current: page.page,
                 pageSize: page.limit,

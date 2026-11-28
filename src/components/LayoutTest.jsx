@@ -81,6 +81,8 @@ const menuPathMap = {
   "danh-sach-ky-nhan-ho-so-gplx": "/danh-sach-ky-nhan-ho-so-gplx",
   "gplx-hoan": "/gplx-hoan",
   "ke-toan": "/ke-toan",
+  "xep-lop-hoc-vien": "/xep-lop-hoc-vien",
+  "danh-sach-lop": "/danh-sach-lop",
   "ket-qua-sat-hach": "/ket-qua-sat-hach",
   "tiep-sinh": "/tiep-sinh",
   "tiep-nhan-ho-so": "/tiep-nhan-ho-so",
@@ -159,6 +161,8 @@ const LayoutTest = () => {
         { key: "danh-sach-xe", label: "Danh sách xe" },
         { key: "quan-ly-uy-quyen", label: "Ủy quyền xe" },
         { key: "dang-ky-xe-giao-vien", label: "Đăng ký xe, giáo viên" },
+        { key: "xep-lop-hoc-vien", label: "Xếp lớp học viên" },
+        { key: "danh-sach-lop", label: "Danh sách lớp" },
       ]
     },
     {

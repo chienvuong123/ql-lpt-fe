@@ -68,3 +68,15 @@ export const ktThuPhi = (id, body) => unwrap(api.post(`/ke-toan/ho-so/${id}/thu-
 export const getKtDot = () => unwrap(api.get("/ke-toan/dot"));
 export const getKtChiTietDot = (id) => unwrap(api.get(`/ke-toan/dot/${id}`));
 export const ktDuyetDot = (id, ids) => unwrap(api.post(`/ke-toan/dot/${id}/duyet`, { ids }));
+// Đào tạo — xếp lớp học viên (chỉ HV kế toán đã thu đủ tiền)
+export const getXlDuDieuKien = (params) => unwrap(api.get("/xep-lop/du-dieu-kien", { params }));
+export const getXlLop = (params) => unwrap(api.get("/xep-lop/lop", { params }));
+export const getXlChiTietLop = (id) => unwrap(api.get(`/xep-lop/lop/${id}`));
+export const xlTaoLop = (body) => unwrap(api.post("/xep-lop/lop", body));
+export const xlSuaLop = (id, body) => unwrap(api.put(`/xep-lop/lop/${id}`, body));
+export const xlXoaLop = (id) => unwrap(api.delete(`/xep-lop/lop/${id}`));
+export const xlThemVaoLop = (id, ids) => unwrap(api.post(`/xep-lop/lop/${id}/them`, { ids }));
+export const getXlTraCuu = (ma) => unwrap(api.get("/xep-lop/tra-cuu", { params: { ma } }));
+export const xlQuetQr = (id, ma, extra = {}) => unwrap(api.post(`/xep-lop/lop/${id}/quet`, { ma, ...extra }));
+export const xlBoKhoiLop = (id, ids) => unwrap(api.post(`/xep-lop/lop/${id}/bo`, { ids }));
+export const xlVaoKhoa = (id) => unwrap(api.post(`/xep-lop/lop/${id}/vao-khoa`));

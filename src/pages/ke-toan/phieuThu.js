@@ -179,18 +179,5 @@ export function phieuThuHtml(hs, p) {
   ]);
 }
 
-/** In bằng iframe ẩn để không bị trình duyệt chặn popup */
-export function inHtml(html) {
-  const iframe = document.createElement("iframe");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
-  document.body.appendChild(iframe);
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(html);
-  doc.close();
-  setTimeout(() => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    setTimeout(() => iframe.remove(), 1000);
-  }, 150);
-}
+/** In bằng iframe ẩn (không bị chặn popup), không in tiêu đề / chân trang của trình duyệt */
+export { inHtml } from "../../util/inAn";

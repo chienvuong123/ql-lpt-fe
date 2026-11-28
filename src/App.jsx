@@ -58,6 +58,8 @@ const KeToan = lazy(() => import("./pages/ke-toan/PhongKeToan"));
 const KetQuaSatHach = lazy(() => import("./pages/sat-hach/KetQuaSatHach"));
 const TongQuanTiepSinh = lazy(() => import("./pages/tiep-sinh/TongQuanTiepSinh"));
 const TiepNhanHoSo = lazy(() => import("./pages/tiep-sinh/TiepNhanHoSo"));
+const XepLopHocVien = lazy(() => import("./pages/xep-lop/XepLopHocVien"));
+const DanhSachLop = lazy(() => import("./pages/xep-lop/DanhSachLop"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -388,6 +390,14 @@ function App() {
               <Route
                 path="gplx-hoan"
                 element={<GuardedRoute path="/gplx-hoan" element={<GplxHoan />} />}
+              />
+              <Route
+                path="xep-lop-hoc-vien"
+                element={<GuardedRoute path="/xep-lop-hoc-vien" element={<XepLopHocVien />} />}
+              />
+              <Route
+                path="danh-sach-lop"
+                element={<GuardedRoute path="/danh-sach-lop" element={<DanhSachLop />} />}
               />
               <Route
                 path="ke-toan"
