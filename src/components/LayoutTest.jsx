@@ -172,11 +172,6 @@ const LayoutTest = () => {
       label: "Tiến độ đào tạo",
     },
     {
-      key: "ke-toan",
-      icon: <DollarOutlined />,
-      label: "Kế toán",
-    },
-    {
       key: "to-tiep-sinh",
       icon: <TeamOutlined />,
       label: "Tiếp sinh",
@@ -184,6 +179,11 @@ const LayoutTest = () => {
         { key: "tiep-sinh", label: "Tổng quan tiếp sinh" },
         { key: "tiep-nhan-ho-so", label: "Tiếp nhận hồ sơ" },
       ],
+    },
+    {
+      key: "ke-toan",
+      icon: <DollarOutlined />,
+      label: "Kế toán",
     },
     {
       key: "dao-tao",
